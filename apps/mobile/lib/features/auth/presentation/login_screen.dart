@@ -137,6 +137,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         },
                   child: const Text('Admin demo'),
                 ),
+                OutlinedButton(
+                  onPressed: _loading
+                      ? null
+                      : () {
+                          _emailController.text = 'agency@demo.local';
+                          _passwordController.text = 'Agency123!';
+                          _signIn(demoRole: UserRole.agency);
+                        },
+                  child: const Text('Agency demo'),
+                ),
               ],
             ),
           ],

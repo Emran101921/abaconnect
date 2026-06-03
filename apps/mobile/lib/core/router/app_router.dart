@@ -8,6 +8,7 @@ import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/register_screen.dart';
 import '../../features/auth/presentation/splash_screen.dart';
 import '../../features/matching/presentation/match_results_screen.dart';
+import '../../features/messaging/presentation/message_thread_screen.dart';
 import '../../features/messaging/presentation/messages_screen.dart';
 import '../../features/parent/presentation/booking_screen.dart';
 import '../../features/parent/presentation/children_list_screen.dart';
@@ -130,6 +131,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.messages,
         name: 'messages',
         builder: (context, state) => const MessagesScreen(),
+        routes: [
+          GoRoute(
+            path: ':threadId',
+            name: 'messageThread',
+            builder: (context, state) => MessageThreadScreen(
+              threadId: state.pathParameters['threadId']!,
+            ),
+          ),
+        ],
       ),
       GoRoute(
         path: AppRoutes.payments,

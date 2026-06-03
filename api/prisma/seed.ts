@@ -21,6 +21,7 @@ async function main() {
   const bcrypt = await import('bcrypt');
   const adminHash = await bcrypt.hash('Admin123!', 10);
   const parentHash = await bcrypt.hash('Parent123!', 10);
+  const agencyHash = await bcrypt.hash('Agency123!', 10);
   const therapistHash = await bcrypt.hash('Therapist123!', 10);
 
   await prisma.user.upsert({
@@ -134,6 +135,74 @@ async function main() {
     },
   });
 
+  const threadId = '00000000-0000-4000-8000-000000000020';
+  await prisma.messageThread.upsert({
+    where: { id: threadId },
+    update: {},
+    create: {
+      id: threadId,
+      tenantId: tenant.id,
+      subject: 'Care team — Sam Therapist',
+      participants: {
+        create: [
+          { userId: parentUser.id },
+          { userId: therapistUser.id },
+        ],
+      },
+    },
+  });
+
+  const existingMessages = await prisma.message.count({
+    where: { threadId },
+  });
+  if (existingMessages === 0) {
+    await prisma.message.createMany({
+      data: [
+        {
+          threadId,
+          senderId: therapistUser.id,
+          body: 'Hi Jamie! Looking forward to Alex\'s first session.',
+        },
+        {
+          threadId,
+          senderId: parentUser.id,
+          body: 'Thanks Sam! We are excited to get started.',
+        },
+      ],
+    });
+  }
+
+  await prisma.payment.upsert({
+    where: { id: '00000000-0000-4000-8000-000000000030' },
+    update: {},
+    create: {
+      id: '00000000-0000-4000-8000-000000000030',
+      tenantId: tenant.id,
+      parentId: parentProfile.id,
+      amount: 150,
+      currency: 'USD',
+      status: 'SUCCEEDED',
+      description: 'ABA session — May 2026',
+      paidAt: new Date(),
+      stripePaymentIntentId: 'pi_seed_succeeded',
+    },
+  });
+
+  await prisma.payment.upsert({
+    where: { id: '00000000-0000-4000-8000-000000000031' },
+    update: {},
+    create: {
+      id: '00000000-0000-4000-8000-000000000031',
+      tenantId: tenant.id,
+      parentId: parentProfile.id,
+      amount: 175,
+      currency: 'USD',
+      status: 'PENDING',
+      description: 'Upcoming ABA session',
+      stripePaymentIntentId: 'pi_seed_pending',
+    },
+  });
+
   const screeningTypes = [
     { therapyType: 'ABA' as const, name: 'ABA Intake', questions: [{ id: 'aggression', label: 'Aggression' }] },
     { therapyType: 'SPEECH' as const, name: 'Speech Intake', questions: [{ id: 'speech_delay', label: 'Speech delay' }] },
@@ -187,10 +256,57 @@ async function main() {
     },
   });
 
+  await prisma.user.upsert({
+    where: {
+      tenantId_email: { tenantId: tenant.id, email: 'agency@demo.local' },
+    },
+    update: {},
+    create: {
+      tenantId: tenant.id,
+      email: 'agency@demo.local',
+      passwordHash: agencyHash,
+      role: 'AGENCY_ADMIN',
+      firstName: 'Alex',
+      lastName: 'Agency',
+    },
+  });
+
+  let agency = await prisma.agency.findFirst({
+    where: { tenantId: tenant.id, name: 'Demo Therapy Agency' },
+  });
+  if (!agency) {
+    agency = await prisma.agency.create({
+      data: {
+        tenantId: tenant.id,
+        name: 'Demo Therapy Agency',
+        city: 'Austin',
+        state: 'TX',
+        isVerified: true,
+      },
+    });
+  }
+
+  await prisma.agencyTherapist.upsert({
+    where: {
+      agencyId_therapistId: {
+        agencyId: agency.id,
+        therapistId: therapistProfile.id,
+      },
+    },
+    update: { status: 'ACTIVE' },
+    create: {
+      agencyId: agency.id,
+      therapistId: therapistProfile.id,
+      status: 'ACTIVE',
+      joinedAt: new Date(),
+    },
+  });
+
   console.log('Seed complete.');
   console.log('  Admin:     admin@abaconnect.local / Admin123!');
   console.log('  Parent:    parent@demo.local / Parent123!');
   console.log('  Therapist: therapist@demo.local / Therapist123!');
+  console.log('  Agency:    agency@demo.local / Agency123!');
   console.log('  Pending:   pending@demo.local / Pending123! (unverified)');
 }
 

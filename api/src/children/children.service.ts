@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -13,6 +13,31 @@ export class ChildrenService {
     return this.prisma.child.findMany({
       where: { parentId: parent.id },
       orderBy: { firstName: 'asc' },
+    });
+  }
+
+  async createForParentUserId(
+    userId: string,
+    data: {
+      firstName: string;
+      lastName: string;
+      dateOfBirth: Date;
+      gender?: string;
+    },
+  ) {
+    const parent = await this.prisma.parent.findUnique({ where: { userId } });
+    if (!parent) {
+      throw new BadRequestException('Parent profile not found');
+    }
+    return this.prisma.child.create({
+      data: {
+        parentId: parent.id,
+        tenantId: parent.tenantId,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        dateOfBirth: data.dateOfBirth,
+        gender: data.gender,
+      },
     });
   }
 

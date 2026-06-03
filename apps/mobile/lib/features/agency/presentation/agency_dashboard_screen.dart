@@ -1,13 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../data/agency_repository.dart';
 
-class AgencyDashboardScreen extends StatelessWidget {
+final agencyDashboardProvider = FutureProvider<AgencyDashboardModel>((ref) {
+  return ref.watch(agencyRepositoryProvider).fetchDashboard();
+});
+
+final agencyTherapistsProvider = FutureProvider<List<AgencyTherapistModel>>((ref) {
+  return ref.watch(agencyRepositoryProvider).fetchTherapists();
+});
+
+class AgencyDashboardScreen extends ConsumerWidget {
   const AgencyDashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final dashboard = ref.watch(agencyDashboardProvider);
+
     return AppScaffold(
       title: 'Agency Dashboard',
       actions: [
@@ -16,17 +29,86 @@ class AgencyDashboardScreen extends StatelessWidget {
           onPressed: () => context.go('/login'),
         ),
       ],
-      body: GridView.count(
-        crossAxisCount: 2,
-        padding: const EdgeInsets.all(16),
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
-        children: const [
-          _StatCard(title: 'Therapists', value: '24'),
-          _StatCard(title: 'Active Clients', value: '156'),
-          _StatCard(title: 'Sessions Today', value: '18'),
-          _StatCard(title: 'Pending Reviews', value: '5'),
-        ],
+      body: dashboard.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Error: $e')),
+        data: (stats) => RefreshIndicator(
+          onRefresh: () async {
+            ref.invalidate(agencyDashboardProvider);
+            ref.invalidate(agencyTherapistsProvider);
+            await ref.read(agencyDashboardProvider.future);
+          },
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              GridView.count(
+                crossAxisCount: 2,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                children: [
+                  _StatCard(
+                    title: 'Therapists',
+                    value: '${stats.therapistCount}',
+                  ),
+                  _StatCard(
+                    title: 'Active Clients',
+                    value: '${stats.activeClients}',
+                  ),
+                  _StatCard(
+                    title: 'Sessions Today',
+                    value: '${stats.appointmentsToday}',
+                  ),
+                  _StatCard(
+                    title: 'Pending Verify',
+                    value: '${stats.pendingTherapists}',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Roster',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 8),
+              const _TherapistRoster(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TherapistRoster extends ConsumerWidget {
+  const _TherapistRoster();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final therapists = ref.watch(agencyTherapistsProvider);
+    return therapists.when(
+      loading: () => const LinearProgressIndicator(),
+      error: (e, _) => Text('Roster error: $e'),
+      data: (list) => Column(
+        children: list
+            .map(
+              (t) => Card(
+                child: ListTile(
+                  title: Text(t.displayName),
+                  subtitle: Text(
+                    t.isVerified
+                        ? 'Verified · ${t.licenseNumber ?? 'Licensed'}'
+                        : 'Pending verification',
+                  ),
+                  trailing: Icon(
+                    t.isVerified ? Icons.verified : Icons.pending,
+                    color: t.isVerified ? Colors.green : Colors.orange,
+                  ),
+                ),
+              ),
+            )
+            .toList(),
       ),
     );
   }

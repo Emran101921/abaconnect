@@ -5,12 +5,24 @@ import { AppointmentsService } from '../appointments/appointments.service';
 import { ChildrenService } from '../children/children.service';
 import { MatchingService } from '../matching/matching.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { ReviewsService } from '../reviews/reviews.service';
+import { ScreeningsService } from '../screenings/screenings.service';
 import { BookAppointmentInput, TherapistDiscoveryInput } from './inputs/book-appointment.input';
+import {
+  AddChildInput,
+  SubmitReviewInput,
+  SubmitScreeningInput,
+} from './inputs/parent-ext.input';
 import {
   AppointmentType,
   ChildType,
   TherapistMatchType,
 } from './types/parent-booking.types';
+import {
+  ReviewType,
+  ScreeningResponseType,
+  ScreeningTemplateType,
+} from './types/parent-ext.types';
 
 @Resolver()
 @Roles('PARENT')
@@ -19,6 +31,8 @@ export class ParentBookingResolver {
     private readonly childrenService: ChildrenService,
     private readonly appointmentsService: AppointmentsService,
     private readonly matchingService: MatchingService,
+    private readonly reviewsService: ReviewsService,
+    private readonly screeningsService: ScreeningsService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -90,6 +104,111 @@ export class ParentBookingResolver {
       reason,
     );
     return this.mapAppointment(row);
+  }
+
+  @Mutation(() => ChildType, { name: 'addChild' })
+  async addChild(
+    @CurrentUser() user: AuthUser,
+    @Args('input') input: AddChildInput,
+  ): Promise<ChildType> {
+    const child = await this.childrenService.createForParentUserId(user.id, {
+      firstName: input.firstName,
+      lastName: input.lastName,
+      dateOfBirth: input.dateOfBirth,
+      gender: input.gender,
+    });
+    return {
+      id: child.id,
+      firstName: child.firstName,
+      lastName: child.lastName,
+      dateOfBirth: child.dateOfBirth,
+    };
+  }
+
+  @Query(() => [ReviewType], { name: 'myReviews' })
+  async myReviews(@CurrentUser() user: AuthUser): Promise<ReviewType[]> {
+    const rows = await this.reviewsService.findByParentUserId(user.id);
+    return rows.map((r) => ({
+      id: r.id,
+      rating: r.rating,
+      title: r.title ?? undefined,
+      comment: r.comment ?? undefined,
+      createdAt: r.createdAt,
+      therapistUser: r.therapist?.user
+        ? {
+            firstName: r.therapist.user.firstName,
+            lastName: r.therapist.user.lastName,
+            email: r.therapist.user.email,
+          }
+        : undefined,
+    }));
+  }
+
+  @Mutation(() => ReviewType, { name: 'submitReview' })
+  async submitReview(
+    @CurrentUser() user: AuthUser,
+    @Args('input') input: SubmitReviewInput,
+  ): Promise<ReviewType> {
+    const r = await this.reviewsService.createForParentUserId(user.id, input);
+    return {
+      id: r.id,
+      rating: r.rating,
+      title: r.title ?? undefined,
+      comment: r.comment ?? undefined,
+      createdAt: r.createdAt,
+      therapistUser: r.therapist?.user
+        ? {
+            firstName: r.therapist.user.firstName,
+            lastName: r.therapist.user.lastName,
+            email: r.therapist.user.email,
+          }
+        : undefined,
+    };
+  }
+
+  @Query(() => [ScreeningTemplateType], { name: 'screeningTemplates' })
+  async screeningTemplates(
+    @CurrentUser() user: AuthUser,
+  ): Promise<ScreeningTemplateType[]> {
+    const tenantId = user.tenantId ?? (await this.resolveTenantId(user.id));
+    const rows = await this.screeningsService.listTemplatesForTenant(tenantId);
+    return rows.map((t) => ({
+      id: t.id,
+      name: t.name,
+      therapyType: t.therapyType,
+      version: String(t.version),
+    }));
+  }
+
+  @Mutation(() => ScreeningResponseType, { name: 'submitScreening' })
+  async submitScreening(
+    @CurrentUser() user: AuthUser,
+    @Args('input') input: SubmitScreeningInput,
+  ): Promise<ScreeningResponseType> {
+    let responses: Record<string, unknown> = {};
+    try {
+      responses = JSON.parse(input.responsesJson) as Record<string, unknown>;
+    } catch {
+      responses = { raw: input.responsesJson };
+    }
+    const row = await this.screeningsService.submitResponseForParent(user.id, {
+      templateId: input.templateId,
+      childId: input.childId,
+      responses,
+    });
+    const template = 'template' in row ? row.template : null;
+    return {
+      id: row.id,
+      completedAt: row.completedAt,
+      template: template
+        ? {
+            id: template.id,
+            name: template.name,
+            therapyType: template.therapyType,
+            version: String(template.version),
+          }
+        : undefined,
+    };
   }
 
   private async resolveTenantId(userId: string): Promise<string> {

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import '../../../core/network/graphql_client.dart';
 
 class ChildModel {
@@ -26,6 +28,36 @@ class TherapistModel {
   final String displayName;
   final double rating;
   final double? matchScore;
+}
+
+class ReviewModel {
+  const ReviewModel({
+    required this.id,
+    required this.rating,
+    required this.therapistName,
+    this.title,
+    this.comment,
+    this.createdAt,
+  });
+
+  final String id;
+  final int rating;
+  final String therapistName;
+  final String? title;
+  final String? comment;
+  final DateTime? createdAt;
+}
+
+class ScreeningTemplateModel {
+  const ScreeningTemplateModel({
+    required this.id,
+    required this.name,
+    required this.therapyType,
+  });
+
+  final String id;
+  final String name;
+  final String therapyType;
 }
 
 class AppointmentModel {
@@ -134,6 +166,155 @@ class ParentBookingRepository {
         matchScore: (e['matchScore'] as num?)?.toDouble(),
       );
     }).toList();
+  }
+
+  static const _addChildMutation = r'''
+    mutation AddChild($input: AddChildInput!) {
+      addChild(input: $input) {
+        id
+        firstName
+        lastName
+      }
+    }
+  ''';
+
+  static const _myReviewsQuery = r'''
+    query MyReviews {
+      myReviews {
+        id
+        rating
+        title
+        comment
+        createdAt
+        therapistUser { firstName lastName }
+      }
+    }
+  ''';
+
+  static const _submitReviewMutation = r'''
+    mutation SubmitReview($input: SubmitReviewInput!) {
+      submitReview(input: $input) {
+        id
+        rating
+      }
+    }
+  ''';
+
+  static const _screeningTemplatesQuery = r'''
+    query ScreeningTemplates {
+      screeningTemplates {
+        id
+        name
+        therapyType
+        version
+      }
+    }
+  ''';
+
+  static const _submitScreeningMutation = r'''
+    mutation SubmitScreening($input: SubmitScreeningInput!) {
+      submitScreening(input: $input) {
+        id
+        completedAt
+      }
+    }
+  ''';
+
+  Future<ChildModel> addChild({
+    required String firstName,
+    required String lastName,
+    required DateTime dateOfBirth,
+    String? gender,
+  }) async {
+    final result = await _graphql.query(
+      _addChildMutation,
+      variables: {
+        'input': {
+          'firstName': firstName,
+          'lastName': lastName,
+          'dateOfBirth': dateOfBirth.toIso8601String(),
+          if (gender != null) 'gender': gender,
+        },
+      },
+    );
+    final e = result['data']?['addChild'] as Map<String, dynamic>?;
+    if (e == null) {
+      throw Exception('Failed to add child');
+    }
+    return ChildModel(
+      id: e['id'] as String,
+      firstName: e['firstName'] as String,
+      lastName: e['lastName'] as String,
+    );
+  }
+
+  Future<List<ReviewModel>> fetchReviews() async {
+    final result = await _graphql.query(_myReviewsQuery);
+    final list = result['data']?['myReviews'] as List<dynamic>? ?? [];
+    return list.map((e) {
+      final user = e['therapistUser'] as Map<String, dynamic>?;
+      final name = user != null
+          ? '${user['firstName']} ${user['lastName']}'
+          : 'Therapist';
+      return ReviewModel(
+        id: e['id'] as String,
+        rating: e['rating'] as int? ?? 0,
+        title: e['title'] as String?,
+        comment: e['comment'] as String?,
+        therapistName: name,
+        createdAt: DateTime.tryParse(e['createdAt'] as String? ?? ''),
+      );
+    }).toList();
+  }
+
+  Future<void> submitReview({
+    required String therapistId,
+    required int rating,
+    String? title,
+    String? comment,
+  }) async {
+    await _graphql.query(
+      _submitReviewMutation,
+      variables: {
+        'input': {
+          'therapistId': therapistId,
+          'rating': rating,
+          if (title != null) 'title': title,
+          if (comment != null) 'comment': comment,
+        },
+      },
+    );
+  }
+
+  Future<List<ScreeningTemplateModel>> fetchScreeningTemplates() async {
+    final result = await _graphql.query(_screeningTemplatesQuery);
+    final list = result['data']?['screeningTemplates'] as List<dynamic>? ?? [];
+    return list
+        .map(
+          (e) => ScreeningTemplateModel(
+            id: e['id'] as String,
+            name: e['name'] as String,
+            therapyType: e['therapyType'] as String? ?? '',
+          ),
+        )
+        .toList();
+  }
+
+  Future<void> submitScreening({
+    required String templateId,
+    required String childId,
+    required Map<String, dynamic> responses,
+  }) async {
+    await _graphql.query(
+      _submitScreeningMutation,
+      variables: {
+        'input': {
+          'templateId': templateId,
+          'childId': childId,
+          'responsesJson': jsonEncode(responses),
+        },
+      },
+    );
   }
 
   Future<void> bookAppointment({

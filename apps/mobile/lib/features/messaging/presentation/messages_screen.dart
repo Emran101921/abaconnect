@@ -1,28 +1,110 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
+import '../../../core/providers/app_providers.dart';
+import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../data/messaging_repository.dart';
 
-class MessagesScreen extends StatelessWidget {
+final messageThreadsProvider = FutureProvider<List<MessageThreadModel>>((ref) {
+  return ref.watch(messagingRepositoryProvider).fetchThreads();
+});
+
+class MessagesScreen extends ConsumerWidget {
   const MessagesScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final threads = ref.watch(messageThreadsProvider);
+
     return AppScaffold(
       title: 'Messages',
-      body: ListView.separated(
-        padding: const EdgeInsets.all(16),
-        itemCount: 4,
-        separatorBuilder: (context, _) => const Divider(height: 1),
-        itemBuilder: (context, index) {
-          return ListTile(
-            leading: CircleAvatar(child: Text('U$index')),
-            title: Text('Conversation ${index + 1}'),
-            subtitle: const Text('Latest message preview...'),
-            trailing: const Text('2h'),
-            onTap: () {},
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _startCareTeamChat(context, ref),
+        child: const Icon(Icons.add_comment),
+      ),
+      body: threads.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Error: $e')),
+        data: (list) {
+          if (list.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('No conversations yet.'),
+                  const SizedBox(height: 12),
+                  FilledButton(
+                    onPressed: () => _startCareTeamChat(context, ref),
+                    child: const Text('Message your therapist'),
+                  ),
+                ],
+              ),
+            );
+          }
+          return RefreshIndicator(
+            onRefresh: () async {
+              ref.invalidate(messageThreadsProvider);
+              await ref.read(messageThreadsProvider.future);
+            },
+            child: ListView.separated(
+              padding: const EdgeInsets.all(16),
+              itemCount: list.length,
+              separatorBuilder: (context, _) => const Divider(height: 1),
+              itemBuilder: (context, index) {
+                final t = list[index];
+                final time = t.lastMessageAt ?? t.updatedAt;
+                return ListTile(
+                  leading: CircleAvatar(
+                    child: Text(t.otherParticipantName.characters.first),
+                  ),
+                  title: Text(t.otherParticipantName),
+                  subtitle: Text(
+                    t.lastMessageBody ?? t.subject ?? 'No messages yet',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  trailing: Text(
+                    DateFormat.MMMd().format(time),
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  onTap: () => context.push('${AppRoutes.messages}/${t.id}'),
+                );
+              },
+            ),
           );
         },
       ),
     );
+  }
+
+  Future<void> _startCareTeamChat(BuildContext context, WidgetRef ref) async {
+    try {
+      final therapists =
+          await ref.read(parentBookingRepositoryProvider).fetchTherapists();
+      if (therapists.isEmpty) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No therapists available')),
+          );
+        }
+        return;
+      }
+      final threadId = await ref
+          .read(messagingRepositoryProvider)
+          .startTherapistConversation(therapists.first.id);
+      ref.invalidate(messageThreadsProvider);
+      if (context.mounted) {
+        context.push('${AppRoutes.messages}/$threadId');
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not start chat: $e')),
+        );
+      }
+    }
   }
 }
