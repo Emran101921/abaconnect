@@ -1,0 +1,16 @@
+{
+  "name": "abaconnect",
+  "private": true,
+  "description": "HIPAA-oriented therapy marketplace monorepo",
+  "scripts": {
+    "api:dev": "npm run start:dev --prefix api",
+    "api:build": "npm run build --prefix api",
+    "api:migrate": "npm run prisma:migrate --prefix api",
+    "api:seed": "npm run prisma:seed --prefix api",
+    "mobile:run": "cd apps/mobile && flutter run",
+    "mobile:analyze": "cd apps/mobile && flutter analyze",
+    "docker:up": "docker compose up -d postgres redis",
+    "docker:full": "docker compose --profile full up -d",
+    "dev": "bash scripts/dev.sh"
+  }
+}
