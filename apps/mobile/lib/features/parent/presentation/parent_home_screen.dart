@@ -100,10 +100,22 @@ class ParentHomeScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
           _NavTile(
+            title: 'My Profile',
+            subtitle: 'Address, emergency contact, insurance',
+            icon: Icons.person,
+            onTap: () => context.push('/parent/profile'),
+          ),
+          _NavTile(
             title: 'My Children',
             subtitle: 'Manage child profiles',
             icon: Icons.child_care,
             onTap: () => context.push('/parent/children'),
+          ),
+          _NavTile(
+            title: 'Session History',
+            subtitle: 'Past therapy sessions',
+            icon: Icons.history,
+            onTap: () => context.push('/parent/session-history'),
           ),
           _NavTile(
             title: 'My Appointments',

@@ -10,6 +10,59 @@ import 'parent_home_screen.dart';
 class ParentAppointmentsScreen extends ConsumerWidget {
   const ParentAppointmentsScreen({super.key});
 
+  Future<void> _cancel(
+    BuildContext context,
+    WidgetRef ref,
+    AppointmentModel appointment,
+  ) async {
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        final controller = TextEditingController();
+        return AlertDialog(
+          title: const Text('Cancel appointment?'),
+          content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(
+              labelText: 'Reason (optional)',
+            ),
+            maxLines: 2,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Keep'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+              child: const Text('Cancel visit'),
+            ),
+          ],
+        );
+      },
+    );
+    if (reason == null || !context.mounted) return;
+
+    try {
+      await ref.read(parentBookingRepositoryProvider).cancelAppointment(
+            appointmentId: appointment.id,
+            reason: reason.isEmpty ? null : reason,
+          );
+      ref.invalidate(parentAppointmentsProvider);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Appointment cancelled')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Cancel failed: $e')),
+        );
+      }
+    }
+  }
+
   Future<void> _reschedule(
     BuildContext context,
     WidgetRef ref,
@@ -90,12 +143,18 @@ class ParentAppointmentsScreen extends ConsumerWidget {
                             onSelected: (v) {
                               if (v == 'reschedule') {
                                 _reschedule(context, ref, a);
+                              } else if (v == 'cancel') {
+                                _cancel(context, ref, a);
                               }
                             },
                             itemBuilder: (context) => [
                               const PopupMenuItem(
                                 value: 'reschedule',
                                 child: Text('Reschedule'),
+                              ),
+                              const PopupMenuItem(
+                                value: 'cancel',
+                                child: Text('Cancel'),
                               ),
                             ],
                           )

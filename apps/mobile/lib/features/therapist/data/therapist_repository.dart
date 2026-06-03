@@ -189,6 +189,18 @@ class TherapistRepository {
     await _graphql.query(mutation, variables: {'appointmentId': appointmentId});
   }
 
+  Future<void> cancelAppointment(String appointmentId, {String? reason}) async {
+    const mutation = r'''
+      mutation Cancel($appointmentId: ID!, $reason: String) {
+        cancelAppointmentAsTherapist(appointmentId: $appointmentId, reason: $reason) { id status }
+      }
+    ''';
+    await _graphql.query(mutation, variables: {
+      'appointmentId': appointmentId,
+      if (reason != null) 'reason': reason,
+    });
+  }
+
   Future<void> declineAppointment(String appointmentId, {String? reason}) async {
     const mutation = r'''
       mutation Decline($appointmentId: ID!, $reason: String) {

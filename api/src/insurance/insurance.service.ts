@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ClaimStatus } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -79,5 +80,45 @@ export class InsuranceService {
     await this.findOne(id);
     await this.prisma.insuranceClaim.delete({ where: { id } });
     return { id, deleted: true };
+  }
+
+  async listClaimsForTenant(tenantId: string, status?: ClaimStatus) {
+    return this.prisma.insuranceClaim.findMany({
+      where: {
+        tenantId,
+        ...(status ? { status } : {}),
+      },
+      include: {
+        child: true,
+        parent: { include: { user: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+  }
+
+  async updateClaimStatusForTenant(
+    tenantId: string,
+    claimId: string,
+    status: ClaimStatus,
+    options?: { denialReason?: string; approvedAmount?: number },
+  ) {
+    const claim = await this.prisma.insuranceClaim.findFirst({
+      where: { id: claimId, tenantId },
+      include: { child: true, parent: { include: { user: true } } },
+    });
+    if (!claim) throw new NotFoundException('Claim not found');
+
+    const resolvedStatuses: ClaimStatus[] = ['APPROVED', 'DENIED', 'PAID'];
+    return this.prisma.insuranceClaim.update({
+      where: { id: claimId },
+      data: {
+        status,
+        denialReason: options?.denialReason,
+        approvedAmount: options?.approvedAmount,
+        resolvedAt: resolvedStatuses.includes(status) ? new Date() : undefined,
+      },
+      include: { child: true, parent: { include: { user: true } } },
+    });
   }
 }

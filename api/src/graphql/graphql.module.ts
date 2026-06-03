@@ -14,6 +14,7 @@ import { DocumentsModule } from '../documents/documents.module';
 import { GpsModule } from '../gps/gps.module';
 import { InsuranceModule } from '../insurance/insurance.module';
 import { MatchingModule } from '../matching/matching.module';
+import { ParentsModule } from '../parents/parents.module';
 import { MessagingModule } from '../messaging/messaging.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { PaymentsModule } from '../payments/payments.module';
@@ -35,6 +36,7 @@ import { TherapistResolver } from './therapist.resolver';
 @Module({
   imports: [
     ChildrenModule,
+    ParentsModule,
     AppointmentsModule,
     MatchingModule,
     TherapistsModule,

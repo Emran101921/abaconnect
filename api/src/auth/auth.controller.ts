@@ -81,4 +81,18 @@ export class AuthController {
   ) {
     return this.mfaService.disable(user.id, code, password);
   }
+
+  @Post('device')
+  registerDevice(
+    @CurrentUser() user: AuthUser,
+    @Body('deviceToken') deviceToken: string,
+    @Body('platform') platform: string,
+    @Body('appVersion') appVersion?: string,
+  ) {
+    return this.authService.registerDevice(user.id, {
+      deviceToken,
+      platform,
+      appVersion,
+    });
+  }
 }

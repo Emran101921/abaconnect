@@ -21,6 +21,26 @@ export class SessionsService {
     private readonly notifications: NotificationsService,
   ) {}
 
+  async findHistoryForParentUserId(userId: string) {
+    const parent = await this.prisma.parent.findUnique({ where: { userId } });
+    if (!parent) {
+      return [];
+    }
+    return this.prisma.session.findMany({
+      where: {
+        child: { parentId: parent.id },
+        status: { in: ['COMPLETED', 'IN_PROGRESS', 'PENDING_DOCUMENTATION'] },
+      },
+      include: {
+        child: true,
+        therapist: { include: { user: true } },
+        appointment: true,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+  }
+
   async findByTherapistUserId(userId: string) {
     const therapist = await this.prisma.therapist.findUnique({
       where: { userId },

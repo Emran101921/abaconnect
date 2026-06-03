@@ -178,6 +178,13 @@ class PlatformRepository {
         .toList();
   }
 
+  Future<int> markAllNotificationsRead() async {
+    final result = await _graphql.query(r'''
+      mutation { markAllNotificationsRead }
+    ''');
+    return result['data']?['markAllNotificationsRead'] as int? ?? 0;
+  }
+
   Future<void> markNotificationRead(String id) async {
     await _graphql.query(
       r'''

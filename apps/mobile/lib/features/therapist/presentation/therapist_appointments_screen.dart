@@ -36,6 +36,30 @@ class TherapistAppointmentsScreen extends ConsumerWidget {
     }
   }
 
+  Future<void> _cancel(
+    BuildContext context,
+    WidgetRef ref,
+    TherapistAppointmentModel appointment,
+  ) async {
+    try {
+      await ref
+          .read(therapistRepositoryProvider)
+          .cancelAppointment(appointment.id, reason: 'Therapist unavailable');
+      ref.invalidate(therapistAppointmentsProvider);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Appointment cancelled')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Cancel failed: $e')),
+        );
+      }
+    }
+  }
+
   Future<void> _decline(
     BuildContext context,
     WidgetRef ref,
@@ -111,6 +135,8 @@ class TherapistAppointmentsScreen extends ConsumerWidget {
               final a = list[index];
               final isRequested = a.status == 'REQUESTED';
               final canStart = a.status == 'CONFIRMED' || a.status == 'SCHEDULED';
+              final canCancel = !['COMPLETED', 'CANCELLED', 'NO_SHOW', 'REQUESTED']
+                  .contains(a.status);
               return Card(
                 child: Padding(
                   padding: const EdgeInsets.all(12),
@@ -151,6 +177,16 @@ class TherapistAppointmentsScreen extends ConsumerWidget {
                           onPressed: () => _startSession(context, ref, a),
                           icon: const Icon(Icons.play_circle_outline),
                           label: const Text('Start session & document'),
+                        ),
+                      ],
+                      if (canCancel) ...[
+                        const SizedBox(height: 8),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: () => _cancel(context, ref, a),
+                            child: const Text('Cancel appointment'),
+                          ),
                         ),
                       ],
                     ],

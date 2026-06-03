@@ -1,7 +1,8 @@
 import { Field, Float, ID, ObjectType, registerEnumType } from '@nestjs/graphql';
-import { TherapyType } from '../../../generated/prisma/client';
+import { LocationType, TherapyType } from '../../../generated/prisma/client';
 
 registerEnumType(TherapyType, { name: 'TherapyType' });
+registerEnumType(LocationType, { name: 'LocationType' });
 
 @ObjectType()
 export class ChildType {
@@ -61,6 +62,9 @@ export class AppointmentType {
 
   @Field()
   scheduledEnd: Date;
+
+  @Field(() => LocationType, { nullable: true })
+  locationType?: LocationType;
 
   @Field(() => ChildType, { nullable: true })
   child?: ChildType;

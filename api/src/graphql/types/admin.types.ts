@@ -1,4 +1,4 @@
-import { Field, ID, Int, ObjectType } from '@nestjs/graphql';
+import { Field, Float, ID, Int, ObjectType } from '@nestjs/graphql';
 import { TherapistUserType } from './parent-booking.types';
 
 @ObjectType()
@@ -125,4 +125,34 @@ export class AuditLogEntryType {
 
   @Field({ nullable: true })
   actorEmail?: string;
+}
+
+@ObjectType()
+export class AdminInsuranceClaimType {
+  @Field(() => ID)
+  id: string;
+
+  @Field()
+  status: string;
+
+  @Field()
+  payerName: string;
+
+  @Field(() => Float)
+  billedAmount: number;
+
+  @Field(() => Float, { nullable: true })
+  approvedAmount?: number;
+
+  @Field()
+  serviceDate: Date;
+
+  @Field({ nullable: true })
+  childName?: string;
+
+  @Field({ nullable: true })
+  parentEmail?: string;
+
+  @Field({ nullable: true })
+  denialReason?: string;
 }

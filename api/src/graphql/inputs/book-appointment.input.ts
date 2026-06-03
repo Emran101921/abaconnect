@@ -1,5 +1,5 @@
 import { Field, ID, InputType } from '@nestjs/graphql';
-import { TherapyType } from '../../../generated/prisma/client';
+import { LocationType, TherapyType } from '../../../generated/prisma/client';
 
 @InputType()
 export class BookAppointmentInput {
@@ -20,6 +20,9 @@ export class BookAppointmentInput {
 
   @Field({ nullable: true })
   notes?: string;
+
+  @Field(() => LocationType, { nullable: true })
+  locationType?: LocationType;
 }
 
 @InputType()

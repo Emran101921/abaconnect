@@ -19,6 +19,15 @@ class NotificationsScreen extends ConsumerWidget {
 
     return AppScaffold(
       title: 'Notifications',
+      actions: [
+        TextButton(
+          onPressed: () async {
+            await ref.read(platformRepositoryProvider).markAllNotificationsRead();
+            ref.invalidate(notificationsProvider);
+          },
+          child: const Text('Mark all read'),
+        ),
+      ],
       body: items.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),

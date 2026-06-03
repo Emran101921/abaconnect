@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../../core/constants/api_constants.dart';
@@ -120,6 +121,32 @@ class AuthRepository {
     );
     final me = await fetchMe();
     await _persistMe(me);
+    await registerPushDevice(userId: me.id);
+  }
+
+  Future<void> registerPushDevice({required String userId}) async {
+    try {
+      final platform = kIsWeb
+          ? 'web'
+          : switch (defaultTargetPlatform) {
+              TargetPlatform.iOS => 'ios',
+              TargetPlatform.android => 'android',
+              _ => 'other',
+            };
+      final token = kIsWeb
+          ? 'web-$userId'
+          : 'mobile-$userId-${DateTime.now().millisecondsSinceEpoch ~/ 86400000}';
+      await _api.post(
+        '/auth/device',
+        data: {
+          'deviceToken': token,
+          'platform': platform,
+          'appVersion': '1.0.0',
+        },
+      );
+    } catch (_) {
+      // Push registration is best-effort until FCM/APNs is wired.
+    }
   }
 
   Future<bool> fetchMfaStatus() async {

@@ -20,6 +20,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
   String? _childId;
   String? _therapistId;
   String _therapyType = 'ABA';
+  String _locationType = 'IN_HOME';
   DateTime _start = DateTime.now().add(const Duration(days: 1));
   bool _recurring = false;
   int _recurringWeeks = 4;
@@ -73,6 +74,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
           start: _start,
           end: end,
           weeks: _recurringWeeks,
+          locationType: _locationType,
         );
         ref.invalidate(parentAppointmentsProvider);
         if (mounted) {
@@ -88,6 +90,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
           therapyType: _therapyType,
           start: _start,
           end: end,
+          locationType: _locationType,
         );
         ref.invalidate(parentAppointmentsProvider);
         if (mounted) {
@@ -202,6 +205,21 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                   )
                   .toList(),
               onSelected: (v) => setState(() => _therapistId = v),
+            ),
+            const SizedBox(height: 16),
+            DropdownMenu<String>(
+              label: const Text('Session location'),
+              initialSelection: _locationType,
+              dropdownMenuEntries: const [
+                DropdownMenuEntry(value: 'IN_HOME', label: 'In home'),
+                DropdownMenuEntry(value: 'CLINIC', label: 'Clinic'),
+                DropdownMenuEntry(value: 'SCHOOL', label: 'School'),
+                DropdownMenuEntry(value: 'TELEHEALTH', label: 'Telehealth'),
+                DropdownMenuEntry(value: 'COMMUNITY', label: 'Community'),
+              ],
+              onSelected: (v) {
+                if (v != null) setState(() => _locationType = v);
+              },
             ),
             const SizedBox(height: 16),
             ListTile(

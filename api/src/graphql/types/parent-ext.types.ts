@@ -3,6 +3,72 @@ import { TherapyType } from '../../../generated/prisma/client';
 import { TherapistUserType } from './parent-booking.types';
 
 @ObjectType()
+export class ParentProfileType {
+  @Field(() => ID)
+  id: string;
+
+  @Field({ nullable: true })
+  addressLine1?: string;
+
+  @Field({ nullable: true })
+  city?: string;
+
+  @Field({ nullable: true })
+  state?: string;
+
+  @Field({ nullable: true })
+  zipCode?: string;
+
+  @Field({ nullable: true })
+  emergencyContactName?: string;
+
+  @Field({ nullable: true })
+  emergencyContactPhone?: string;
+
+  @Field({ nullable: true })
+  insuranceProvider?: string;
+
+  @Field({ nullable: true })
+  insuranceMemberId?: string;
+
+  @Field({ nullable: true })
+  insuranceGroupNumber?: string;
+
+  @Field()
+  email: string;
+
+  @Field()
+  firstName: string;
+
+  @Field()
+  lastName: string;
+}
+
+@ObjectType()
+export class SessionHistoryType {
+  @Field(() => ID)
+  id: string;
+
+  @Field()
+  status: string;
+
+  @Field()
+  childName: string;
+
+  @Field()
+  therapistName: string;
+
+  @Field(() => TherapyType)
+  therapyType: TherapyType;
+
+  @Field({ nullable: true })
+  completedAt?: Date;
+
+  @Field(() => Int, { nullable: true })
+  durationMinutes?: number;
+}
+
+@ObjectType()
 export class ReviewType {
   @Field(() => ID)
   id: string;

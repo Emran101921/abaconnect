@@ -45,6 +45,16 @@ final adminReviewsProvider =
   return ref.watch(adminRepositoryProvider).fetchReviews();
 });
 
+final adminAnalyticsProvider =
+    FutureProvider<List<AnalyticsMetricModel>>((ref) async {
+  return ref.watch(adminRepositoryProvider).fetchAnalytics();
+});
+
+final adminInsuranceClaimsProvider =
+    FutureProvider<List<AdminInsuranceClaimModel>>((ref) async {
+  return ref.watch(adminRepositoryProvider).fetchInsuranceClaims();
+});
+
 class AdminDashboardScreen extends ConsumerWidget {
   const AdminDashboardScreen({super.key});
 
@@ -58,6 +68,9 @@ class AdminDashboardScreen extends ConsumerWidget {
     final paymentDisputes = ref.watch(adminPaymentDisputesProvider);
     final payouts = ref.watch(adminPayoutsProvider);
     final reviews = ref.watch(adminReviewsProvider);
+    final analytics = ref.watch(adminAnalyticsProvider);
+    final insuranceClaims = ref.watch(adminInsuranceClaimsProvider);
+    final currency = NumberFormat.currency(symbol: '\$');
 
     return AppScaffold(
       title: 'Admin Dashboard',
@@ -80,6 +93,8 @@ class AdminDashboardScreen extends ConsumerWidget {
           ref.invalidate(adminPaymentDisputesProvider);
           ref.invalidate(adminPayoutsProvider);
           ref.invalidate(adminReviewsProvider);
+          ref.invalidate(adminInsuranceClaimsProvider);
+          ref.invalidate(adminAnalyticsProvider);
         },
         child: ListView(
           padding: const EdgeInsets.all(16),
@@ -103,6 +118,49 @@ class AdminDashboardScreen extends ConsumerWidget {
               ),
               loading: () => const LinearProgressIndicator(),
               error: (e, _) => Text('Dashboard error: $e'),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Platform analytics',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            analytics.when(
+              data: (metrics) {
+                if (metrics.isEmpty) {
+                  return const Card(
+                    child: ListTile(title: Text('No analytics yet')),
+                  );
+                }
+                String label(String key) {
+                  switch (key) {
+                    case 'appointments_7d':
+                      return 'Appointments (7d)';
+                    case 'sessions_completed':
+                      return 'Sessions completed';
+                    case 'revenue_paid':
+                      return 'Revenue paid';
+                    case 'active_children':
+                      return 'Active children';
+                    default:
+                      return key;
+                  }
+                }
+                return Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: metrics.map((m) {
+                    final display = m.metricKey == 'revenue_paid'
+                        ? currency.format(m.metricValue)
+                        : m.metricValue.toStringAsFixed(
+                            m.metricValue == m.metricValue.roundToDouble() ? 0 : 2,
+                          );
+                    return _StatCard(label: label(m.metricKey), value: display);
+                  }).toList(),
+                );
+              },
+              loading: () => const LinearProgressIndicator(),
+              error: (e, _) => Text('Analytics error: $e'),
             ),
             const SizedBox(height: 24),
             Text(
@@ -281,6 +339,73 @@ class AdminDashboardScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 24),
             Text(
+              'Insurance claims',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            insuranceClaims.when(
+              data: (list) {
+                if (list.isEmpty) {
+                  return const Card(
+                    child: ListTile(title: Text('No insurance claims')),
+                  );
+                }
+                return Column(
+                  children: list.take(10).map((c) {
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: ListTile(
+                        title: Text('${c.payerName} · ${c.status}'),
+                        subtitle: Text(
+                          '${c.childName ?? ''} · ${c.parentEmail ?? ''}\n'
+                          '${currency.format(c.billedAmount)}',
+                        ),
+                        isThreeLine: true,
+                        trailing: c.status == 'SUBMITTED' ||
+                                c.status == 'PENDING' ||
+                                c.status == 'UNDER_REVIEW'
+                            ? PopupMenuButton<String>(
+                                onSelected: (status) async {
+                                  await ref
+                                      .read(adminRepositoryProvider)
+                                      .updateInsuranceClaim(
+                                        claimId: c.id,
+                                        status: status,
+                                        approvedAmount: status == 'APPROVED'
+                                            ? c.billedAmount
+                                            : null,
+                                        denialReason: status == 'DENIED'
+                                            ? 'Not covered under plan'
+                                            : null,
+                                      );
+                                  ref.invalidate(adminInsuranceClaimsProvider);
+                                },
+                                itemBuilder: (context) => const [
+                                  PopupMenuItem(
+                                    value: 'APPROVED',
+                                    child: Text('Approve'),
+                                  ),
+                                  PopupMenuItem(
+                                    value: 'DENIED',
+                                    child: Text('Deny'),
+                                  ),
+                                  PopupMenuItem(
+                                    value: 'PAID',
+                                    child: Text('Mark paid'),
+                                  ),
+                                ],
+                              )
+                            : null,
+                      ),
+                    );
+                  }).toList(),
+                );
+              },
+              loading: () => const CircularProgressIndicator(),
+              error: (e, _) => Text('$e'),
+            ),
+            const SizedBox(height: 24),
+            Text(
               'Review moderation',
               style: Theme.of(context).textTheme.titleMedium,
             ),
@@ -397,7 +522,7 @@ class _StatCard extends StatelessWidget {
   });
 
   final String label;
-  final int value;
+  final Object value;
   final bool highlight;
 
   @override
@@ -418,6 +543,8 @@ class _StatCard extends StatelessWidget {
               Text(
                 '$value',
                 style: Theme.of(context).textTheme.headlineMedium,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),

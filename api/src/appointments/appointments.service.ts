@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { TherapyType } from '../../generated/prisma/client';
+import { LocationType, TherapyType } from '../../generated/prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -14,6 +14,7 @@ export interface BookAppointmentInput {
   scheduledStart: Date;
   scheduledEnd: Date;
   notes?: string;
+  locationType?: LocationType;
 }
 
 @Injectable()
@@ -72,6 +73,7 @@ export class AppointmentsService {
         scheduledStart: input.scheduledStart,
         scheduledEnd: input.scheduledEnd,
         notes: input.notes,
+        locationType: input.locationType ?? 'IN_HOME',
         status: 'REQUESTED',
       },
       include: {
@@ -276,6 +278,63 @@ export class AppointmentsService {
     return updated;
   }
 
+  async cancelForTherapistUser(
+    userId: string,
+    appointmentId: string,
+    reason?: string,
+  ) {
+    const therapist = await this.prisma.therapist.findUnique({ where: { userId } });
+    if (!therapist) {
+      throw new BadRequestException('Therapist profile required');
+    }
+
+    const appointment = await this.prisma.appointment.findFirst({
+      where: { id: appointmentId, therapistId: therapist.id },
+      include: {
+        child: true,
+        therapist: { include: { user: true } },
+        parent: { include: { user: true } },
+      },
+    });
+    if (!appointment) {
+      throw new NotFoundException('Appointment not found');
+    }
+
+    if (['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(appointment.status)) {
+      throw new BadRequestException('Cannot cancel this appointment');
+    }
+
+    const updated = await this.prisma.appointment.update({
+      where: { id: appointmentId },
+      data: {
+        status: 'CANCELLED',
+        cancelledReason: reason ?? 'Cancelled by therapist',
+      },
+      include: {
+        child: true,
+        therapist: { include: { user: true } },
+        parent: { include: { user: true } },
+      },
+    });
+
+    const childName = `${updated.child.firstName} ${updated.child.lastName}`;
+    const when = updated.scheduledStart.toLocaleString();
+    const therapistName = `${updated.therapist.user.firstName} ${updated.therapist.user.lastName}`;
+    const cancelReason = reason ?? 'Cancelled by therapist';
+    await this.notifications.createForUser(updated.parent.userId, {
+      title: 'Appointment cancelled',
+      body: `${therapistName} cancelled ${updated.therapyType} for ${childName} on ${when}`,
+      data: { appointmentId: updated.id, type: 'APPOINTMENT_CANCELLED' },
+    });
+    await this.notifications.createForUser(updated.therapist.userId, {
+      title: 'Appointment cancelled',
+      body: `You cancelled ${updated.therapyType} for ${childName} on ${when}`,
+      data: { appointmentId: updated.id, type: 'APPOINTMENT_CANCELLED' },
+    });
+
+    return updated;
+  }
+
   async cancelForParentUser(userId: string, appointmentId: string, reason?: string) {
     const parent = await this.prisma.parent.findUnique({ where: { userId } });
     if (!parent) {
@@ -284,12 +343,21 @@ export class AppointmentsService {
 
     const appointment = await this.prisma.appointment.findFirst({
       where: { id: appointmentId, parentId: parent.id },
+      include: {
+        child: true,
+        therapist: { include: { user: true } },
+        parent: { include: { user: true } },
+      },
     });
     if (!appointment) {
       throw new NotFoundException('Appointment not found');
     }
 
-    return this.prisma.appointment.update({
+    if (['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(appointment.status)) {
+      throw new BadRequestException('Cannot cancel this appointment');
+    }
+
+    const updated = await this.prisma.appointment.update({
       where: { id: appointmentId },
       data: {
         status: 'CANCELLED',
@@ -298,8 +366,25 @@ export class AppointmentsService {
       include: {
         child: true,
         therapist: { include: { user: true } },
+        parent: { include: { user: true } },
       },
     });
+
+    const childName = `${updated.child.firstName} ${updated.child.lastName}`;
+    const when = updated.scheduledStart.toLocaleString();
+    const cancelReason = reason ?? 'Cancelled by parent';
+    await this.notifications.createForUser(updated.therapist.userId, {
+      title: 'Appointment cancelled',
+      body: `${childName} cancelled ${updated.therapyType} on ${when}: ${cancelReason}`,
+      data: { appointmentId: updated.id, type: 'APPOINTMENT_CANCELLED' },
+    });
+    await this.notifications.createForUser(updated.parent.userId, {
+      title: 'Appointment cancelled',
+      body: `Your ${updated.therapyType} session for ${childName} on ${when} was cancelled`,
+      data: { appointmentId: updated.id, type: 'APPOINTMENT_CANCELLED' },
+    });
+
+    return updated;
   }
 
   async create(data: Record<string, unknown>) {

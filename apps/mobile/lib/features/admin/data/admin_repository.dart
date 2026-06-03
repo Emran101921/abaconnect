@@ -1,5 +1,15 @@
 import '../../../core/network/graphql_client.dart';
 
+class AnalyticsMetricModel {
+  const AnalyticsMetricModel({
+    required this.metricKey,
+    required this.metricValue,
+  });
+
+  final String metricKey;
+  final double metricValue;
+}
+
 class AdminDashboardModel {
   const AdminDashboardModel({
     required this.userCount,
@@ -90,6 +100,30 @@ class AdminReviewModel {
   final String? authorEmail;
 }
 
+class AdminInsuranceClaimModel {
+  const AdminInsuranceClaimModel({
+    required this.id,
+    required this.status,
+    required this.payerName,
+    required this.billedAmount,
+    required this.serviceDate,
+    this.approvedAmount,
+    this.childName,
+    this.parentEmail,
+    this.denialReason,
+  });
+
+  final String id;
+  final String status;
+  final String payerName;
+  final double billedAmount;
+  final DateTime serviceDate;
+  final double? approvedAmount;
+  final String? childName;
+  final String? parentEmail;
+  final String? denialReason;
+}
+
 class AuditLogModel {
   const AuditLogModel({
     required this.id,
@@ -110,6 +144,24 @@ class AdminRepository {
   AdminRepository(this._graphql);
 
   final GraphqlClient _graphql;
+
+  Future<List<AnalyticsMetricModel>> fetchAnalytics() async {
+    const query = r'''
+      query {
+        tenantAnalytics { metricKey metricValue }
+      }
+    ''';
+    final result = await _graphql.query(query);
+    final list = result['data']?['tenantAnalytics'] as List<dynamic>? ?? [];
+    return list
+        .map(
+          (e) => AnalyticsMetricModel(
+            metricKey: e['metricKey'] as String? ?? '',
+            metricValue: (e['metricValue'] as num?)?.toDouble() ?? 0,
+          ),
+        )
+        .toList();
+  }
 
   Future<AdminDashboardModel> fetchDashboard() async {
     const query = r'''
@@ -296,5 +348,58 @@ class AdminRepository {
       }
     ''';
     await _graphql.query(mutation, variables: {'therapistId': therapistId});
+  }
+
+  Future<List<AdminInsuranceClaimModel>> fetchInsuranceClaims() async {
+    const query = r'''
+      query {
+        adminInsuranceClaims {
+          id status payerName billedAmount approvedAmount serviceDate
+          childName parentEmail denialReason
+        }
+      }
+    ''';
+    final result = await _graphql.query(query);
+    final list =
+        result['data']?['adminInsuranceClaims'] as List<dynamic>? ?? [];
+    return list
+        .map(
+          (e) => AdminInsuranceClaimModel(
+            id: e['id'] as String,
+            status: e['status'] as String? ?? '',
+            payerName: e['payerName'] as String? ?? '',
+            billedAmount: (e['billedAmount'] as num?)?.toDouble() ?? 0,
+            approvedAmount: (e['approvedAmount'] as num?)?.toDouble(),
+            serviceDate: DateTime.parse(e['serviceDate'] as String),
+            childName: e['childName'] as String?,
+            parentEmail: e['parentEmail'] as String?,
+            denialReason: e['denialReason'] as String?,
+          ),
+        )
+        .toList();
+  }
+
+  Future<void> updateInsuranceClaim({
+    required String claimId,
+    required String status,
+    String? denialReason,
+    double? approvedAmount,
+  }) async {
+    const mutation = r'''
+      mutation Update($input: UpdateInsuranceClaimInput!) {
+        updateInsuranceClaim(input: $input) { id status }
+      }
+    ''';
+    await _graphql.query(
+      mutation,
+      variables: {
+        'input': {
+          'claimId': claimId,
+          'status': status,
+          if (denialReason != null) 'denialReason': denialReason,
+          if (approvedAmount != null) 'approvedAmount': approvedAmount,
+        },
+      },
+    );
   }
 }

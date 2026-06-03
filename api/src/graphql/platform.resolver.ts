@@ -1,4 +1,4 @@
-import { Args, ID, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, ID, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Roles } from '../common/decorators/roles.decorator';
 import { AuthUser, CurrentUser } from '../common/decorators/current-user.decorator';
 import { AiService } from '../ai/ai.service';
@@ -140,6 +140,13 @@ export class PlatformResolver {
       readAt: n.readAt ?? undefined,
       sentAt: n.sentAt,
     };
+  }
+
+  @Mutation(() => Int, { name: 'markAllNotificationsRead' })
+  @Roles('PARENT', 'THERAPIST', 'AGENCY_ADMIN', 'PLATFORM_ADMIN')
+  async markAllNotificationsRead(@CurrentUser() user: AuthUser): Promise<number> {
+    const result = await this.notifications.markAllRead(user.id);
+    return result.updated;
   }
 
   @Query(() => [InsuranceClaimType], { name: 'myInsuranceClaims' })

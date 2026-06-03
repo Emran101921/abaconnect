@@ -132,7 +132,23 @@ Health check: `GET http://localhost:3000/api/v1/health`
 
 **Telehealth vendors:** `TELEHEALTH_VENDOR=local|daily|twilio` plus `DAILY_API_KEY` or Twilio credentials. Rooms store `vendor` on `TelehealthSession`.
 
-**Reschedule:** GraphQL `rescheduleAppointment` — parent **My Appointments** → menu → Reschedule.
+**Reschedule & cancel:** GraphQL `rescheduleAppointment` / `cancelAppointment` — parent **My Appointments** → menu.
+
+**Booking location:** Parents choose session location (in-home, clinic, telehealth, etc.) when booking.
+
+**Push device registry:** `POST /api/v1/auth/device` (Bearer) stores tokens in `user_devices` for future FCM/APNs (Flutter registers on login).
+
+**Admin insurance:** `adminInsuranceClaims` + `updateInsuranceClaim` — approve/deny/mark paid on the admin dashboard.
+
+**Parent profile:** `myParentProfile` / `updateParentProfile` — address, emergency contact, insurance on **My Profile**.
+
+**Session history:** `mySessionHistory` — parents view completed sessions (no SOAP content).
+
+**Therapist cancel:** `cancelAppointmentAsTherapist` — cancel confirmed/scheduled visits with parent notification.
+
+**Notifications:** `markAllNotificationsRead` — **Mark all read** on the notifications screen.
+
+**Admin analytics:** `tenantAnalytics` — appointments (7d), sessions, revenue, children on the admin dashboard.
 
 **Production Docker:**
 

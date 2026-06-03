@@ -4,9 +4,11 @@ import { AuthUser, CurrentUser } from '../common/decorators/current-user.decorat
 import { AppointmentsService } from '../appointments/appointments.service';
 import { ChildrenService } from '../children/children.service';
 import { MatchingService } from '../matching/matching.service';
+import { ParentsService } from '../parents/parents.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ReviewsService } from '../reviews/reviews.service';
 import { ScreeningsService } from '../screenings/screenings.service';
+import { SessionsService } from '../sessions/sessions.service';
 import {
   BookAppointmentInput,
   BookRecurringAppointmentsInput,
@@ -17,6 +19,8 @@ import {
   AddChildInput,
   SubmitReviewInput,
   SubmitScreeningInput,
+  UpdateChildInput,
+  UpdateParentProfileInput,
 } from './inputs/parent-ext.input';
 import {
   AppointmentType,
@@ -24,9 +28,11 @@ import {
   TherapistMatchType,
 } from './types/parent-booking.types';
 import {
+  ParentProfileType,
   ReviewType,
   ScreeningResponseType,
   ScreeningTemplateType,
+  SessionHistoryType,
 } from './types/parent-ext.types';
 
 @Resolver()
@@ -36,10 +42,43 @@ export class ParentBookingResolver {
     private readonly childrenService: ChildrenService,
     private readonly appointmentsService: AppointmentsService,
     private readonly matchingService: MatchingService,
+    private readonly parentsService: ParentsService,
     private readonly reviewsService: ReviewsService,
     private readonly screeningsService: ScreeningsService,
+    private readonly sessionsService: SessionsService,
     private readonly prisma: PrismaService,
   ) {}
+
+  @Query(() => ParentProfileType, { name: 'myParentProfile' })
+  async myParentProfile(@CurrentUser() user: AuthUser): Promise<ParentProfileType> {
+    const p = await this.parentsService.findProfileByUserId(user.id);
+    return this.mapParentProfile(p);
+  }
+
+  @Mutation(() => ParentProfileType, { name: 'updateParentProfile' })
+  async updateParentProfile(
+    @CurrentUser() user: AuthUser,
+    @Args('input') input: UpdateParentProfileInput,
+  ): Promise<ParentProfileType> {
+    const p = await this.parentsService.updateProfileByUserId(user.id, input);
+    return this.mapParentProfile(p);
+  }
+
+  @Query(() => [SessionHistoryType], { name: 'mySessionHistory' })
+  async mySessionHistory(
+    @CurrentUser() user: AuthUser,
+  ): Promise<SessionHistoryType[]> {
+    const rows = await this.sessionsService.findHistoryForParentUserId(user.id);
+    return rows.map((s) => ({
+      id: s.id,
+      status: s.status,
+      childName: `${s.child.firstName} ${s.child.lastName}`,
+      therapistName: `${s.therapist.user.firstName} ${s.therapist.user.lastName}`,
+      therapyType: s.appointment.therapyType,
+      completedAt: s.checkOutAt ?? s.checkInAt ?? undefined,
+      durationMinutes: s.durationMinutes ?? undefined,
+    }));
+  }
 
   @Query(() => [ChildType], { name: 'myChildren' })
   async myChildren(@CurrentUser() user: AuthUser): Promise<ChildType[]> {
@@ -157,6 +196,30 @@ export class ParentBookingResolver {
     return this.mapAppointment(row);
   }
 
+  @Mutation(() => ChildType, { name: 'updateChild' })
+  async updateChild(
+    @CurrentUser() user: AuthUser,
+    @Args('input') input: UpdateChildInput,
+  ): Promise<ChildType> {
+    const child = await this.childrenService.updateForParentUserId(
+      user.id,
+      input.childId,
+      {
+        firstName: input.firstName,
+        lastName: input.lastName,
+        dateOfBirth: input.dateOfBirth,
+        gender: input.gender,
+        notes: input.notes,
+      },
+    );
+    return {
+      id: child.id,
+      firstName: child.firstName,
+      lastName: child.lastName,
+      dateOfBirth: child.dateOfBirth,
+    };
+  }
+
   @Mutation(() => ChildType, { name: 'addChild' })
   async addChild(
     @CurrentUser() user: AuthUser,
@@ -263,6 +326,36 @@ export class ParentBookingResolver {
     };
   }
 
+  private mapParentProfile(p: {
+    id: string;
+    addressLine1?: string | null;
+    city?: string | null;
+    state?: string | null;
+    zipCode?: string | null;
+    emergencyContactName?: string | null;
+    emergencyContactPhone?: string | null;
+    insuranceProvider?: string | null;
+    insuranceMemberId?: string | null;
+    insuranceGroupNumber?: string | null;
+    user: { email: string; firstName: string; lastName: string };
+  }): ParentProfileType {
+    return {
+      id: p.id,
+      addressLine1: p.addressLine1 ?? undefined,
+      city: p.city ?? undefined,
+      state: p.state ?? undefined,
+      zipCode: p.zipCode ?? undefined,
+      emergencyContactName: p.emergencyContactName ?? undefined,
+      emergencyContactPhone: p.emergencyContactPhone ?? undefined,
+      insuranceProvider: p.insuranceProvider ?? undefined,
+      insuranceMemberId: p.insuranceMemberId ?? undefined,
+      insuranceGroupNumber: p.insuranceGroupNumber ?? undefined,
+      email: p.user.email,
+      firstName: p.user.firstName,
+      lastName: p.user.lastName,
+    };
+  }
+
   private async resolveTenantId(userId: string): Promise<string> {
     const u = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!u) {
@@ -277,6 +370,7 @@ export class ParentBookingResolver {
     therapyType: string;
     scheduledStart: Date;
     scheduledEnd: Date;
+    locationType?: string;
     child?: { id: string; firstName: string; lastName: string; dateOfBirth: Date };
     therapist?: {
       id: string;
@@ -290,6 +384,7 @@ export class ParentBookingResolver {
       therapyType: row.therapyType as AppointmentType['therapyType'],
       scheduledStart: row.scheduledStart,
       scheduledEnd: row.scheduledEnd,
+      locationType: row.locationType as AppointmentType['locationType'],
       child: row.child,
       therapist: row.therapist
         ? {

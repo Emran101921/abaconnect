@@ -17,6 +17,8 @@ import '../../features/parent/presentation/booking_screen.dart';
 import '../../features/parent/presentation/children_list_screen.dart';
 import '../../features/parent/presentation/parent_appointments_screen.dart';
 import '../../features/parent/presentation/parent_home_screen.dart';
+import '../../features/parent/presentation/parent_profile_screen.dart';
+import '../../features/parent/presentation/session_history_screen.dart';
 import '../../features/parent/presentation/complaints_screen.dart';
 import '../../features/parent/presentation/reviews_screen.dart';
 import '../../features/parent/presentation/screening_screen.dart';
@@ -61,6 +63,8 @@ abstract final class AppRoutes {
   static const consent = '/consent';
   static const security = '/security';
   static const parentAppointments = '/parent/appointments';
+  static const parentProfile = '/parent/profile';
+  static const sessionHistory = '/parent/session-history';
   static const treatmentPlans = '/treatment-plans';
   static const complaints = '/complaints';
   static const therapistPlans = '/therapist/plans';
@@ -143,6 +147,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: 'complaints',
             name: 'parentComplaints',
             builder: (context, state) => const ComplaintsScreen(),
+          ),
+          GoRoute(
+            path: 'profile',
+            name: 'parentProfile',
+            builder: (context, state) => const ParentProfileScreen(),
+          ),
+          GoRoute(
+            path: 'session-history',
+            name: 'sessionHistory',
+            builder: (context, state) => const SessionHistoryScreen(),
           ),
         ],
       ),

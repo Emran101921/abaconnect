@@ -62,6 +62,60 @@ class ScreeningTemplateModel {
   final String? questionsJson;
 }
 
+class ParentProfileModel {
+  const ParentProfileModel({
+    required this.id,
+    required this.email,
+    required this.firstName,
+    required this.lastName,
+    this.addressLine1,
+    this.city,
+    this.state,
+    this.zipCode,
+    this.emergencyContactName,
+    this.emergencyContactPhone,
+    this.insuranceProvider,
+    this.insuranceMemberId,
+    this.insuranceGroupNumber,
+  });
+
+  final String id;
+  final String email;
+  final String firstName;
+  final String lastName;
+  final String? addressLine1;
+  final String? city;
+  final String? state;
+  final String? zipCode;
+  final String? emergencyContactName;
+  final String? emergencyContactPhone;
+  final String? insuranceProvider;
+  final String? insuranceMemberId;
+  final String? insuranceGroupNumber;
+
+  String get fullName => '$firstName $lastName';
+}
+
+class SessionHistoryModel {
+  const SessionHistoryModel({
+    required this.id,
+    required this.status,
+    required this.childName,
+    required this.therapistName,
+    required this.therapyType,
+    this.completedAt,
+    this.durationMinutes,
+  });
+
+  final String id;
+  final String status;
+  final String childName;
+  final String therapistName;
+  final String therapyType;
+  final DateTime? completedAt;
+  final int? durationMinutes;
+}
+
 class AppointmentModel {
   const AppointmentModel({
     required this.id,
@@ -148,6 +202,94 @@ class ParentBookingRepository {
       }
     }
   ''';
+
+  Future<ParentProfileModel> fetchParentProfile() async {
+    const query = r'''
+      query {
+        myParentProfile {
+          id email firstName lastName
+          addressLine1 city state zipCode
+          emergencyContactName emergencyContactPhone
+          insuranceProvider insuranceMemberId insuranceGroupNumber
+        }
+      }
+    ''';
+    final result = await _graphql.query(query);
+    final e = result['data']?['myParentProfile'] as Map<String, dynamic>?;
+    if (e == null) throw Exception('Profile not found');
+    return ParentProfileModel(
+      id: e['id'] as String,
+      email: e['email'] as String,
+      firstName: e['firstName'] as String,
+      lastName: e['lastName'] as String,
+      addressLine1: e['addressLine1'] as String?,
+      city: e['city'] as String?,
+      state: e['state'] as String?,
+      zipCode: e['zipCode'] as String?,
+      emergencyContactName: e['emergencyContactName'] as String?,
+      emergencyContactPhone: e['emergencyContactPhone'] as String?,
+      insuranceProvider: e['insuranceProvider'] as String?,
+      insuranceMemberId: e['insuranceMemberId'] as String?,
+      insuranceGroupNumber: e['insuranceGroupNumber'] as String?,
+    );
+  }
+
+  Future<void> updateParentProfile({
+    String? addressLine1,
+    String? city,
+    String? state,
+    String? zipCode,
+    String? emergencyContactName,
+    String? emergencyContactPhone,
+    String? insuranceProvider,
+    String? insuranceMemberId,
+    String? insuranceGroupNumber,
+  }) async {
+    await _graphql.query(
+      r'''
+      mutation Update($input: UpdateParentProfileInput!) {
+        updateParentProfile(input: $input) { id }
+      }
+    ''',
+      variables: {
+        'input': {
+          if (addressLine1 != null) 'addressLine1': addressLine1,
+          if (city != null) 'city': city,
+          if (state != null) 'state': state,
+          if (zipCode != null) 'zipCode': zipCode,
+          if (emergencyContactName != null) 'emergencyContactName': emergencyContactName,
+          if (emergencyContactPhone != null) 'emergencyContactPhone': emergencyContactPhone,
+          if (insuranceProvider != null) 'insuranceProvider': insuranceProvider,
+          if (insuranceMemberId != null) 'insuranceMemberId': insuranceMemberId,
+          if (insuranceGroupNumber != null) 'insuranceGroupNumber': insuranceGroupNumber,
+        },
+      },
+    );
+  }
+
+  Future<List<SessionHistoryModel>> fetchSessionHistory() async {
+    const query = r'''
+      query {
+        mySessionHistory {
+          id status childName therapistName therapyType
+          completedAt durationMinutes
+        }
+      }
+    ''';
+    final result = await _graphql.query(query);
+    final list = result['data']?['mySessionHistory'] as List<dynamic>? ?? [];
+    return list.map((e) {
+      return SessionHistoryModel(
+        id: e['id'] as String,
+        status: e['status'] as String? ?? '',
+        childName: e['childName'] as String? ?? '',
+        therapistName: e['therapistName'] as String? ?? '',
+        therapyType: e['therapyType'] as String? ?? '',
+        completedAt: DateTime.tryParse(e['completedAt'] as String? ?? ''),
+        durationMinutes: e['durationMinutes'] as int?,
+      );
+    }).toList();
+  }
 
   Future<List<ChildModel>> fetchChildren() async {
     final result = await _graphql.query(_myChildrenQuery);
@@ -347,6 +489,7 @@ class ParentBookingRepository {
     required String therapyType,
     required DateTime start,
     required DateTime end,
+    String? locationType,
   }) async {
     await _graphql.query(
       _bookMutation,
@@ -357,6 +500,7 @@ class ParentBookingRepository {
           'therapyType': therapyType,
           'scheduledStart': start.toIso8601String(),
           'scheduledEnd': end.toIso8601String(),
+          if (locationType != null) 'locationType': locationType,
         },
       },
     );
@@ -369,6 +513,7 @@ class ParentBookingRepository {
     required DateTime start,
     required DateTime end,
     required int weeks,
+    String? locationType,
   }) async {
     final result = await _graphql.query(
       _bookRecurringMutation,
@@ -380,6 +525,7 @@ class ParentBookingRepository {
           'scheduledStart': start.toIso8601String(),
           'scheduledEnd': end.toIso8601String(),
           'weeks': weeks,
+          if (locationType != null) 'locationType': locationType,
         },
       },
     );
@@ -411,6 +557,28 @@ class ParentBookingRepository {
           'scheduledStart': start.toIso8601String(),
           'scheduledEnd': end.toIso8601String(),
         },
+      },
+    );
+  }
+
+  static const _cancelMutation = r'''
+    mutation Cancel($id: ID!, $reason: String) {
+      cancelAppointment(id: $id, reason: $reason) {
+        id
+        status
+      }
+    }
+  ''';
+
+  Future<void> cancelAppointment({
+    required String appointmentId,
+    String? reason,
+  }) async {
+    await _graphql.query(
+      _cancelMutation,
+      variables: {
+        'id': appointmentId,
+        if (reason != null) 'reason': reason,
       },
     );
   }

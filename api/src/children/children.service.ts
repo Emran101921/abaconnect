@@ -16,6 +16,33 @@ export class ChildrenService {
     });
   }
 
+  async updateForParentUserId(
+    userId: string,
+    childId: string,
+    data: {
+      firstName?: string;
+      lastName?: string;
+      dateOfBirth?: Date;
+      gender?: string;
+      notes?: string;
+    },
+  ) {
+    const parent = await this.prisma.parent.findUnique({ where: { userId } });
+    if (!parent) {
+      throw new BadRequestException('Parent profile not found');
+    }
+    const child = await this.prisma.child.findFirst({
+      where: { id: childId, parentId: parent.id },
+    });
+    if (!child) {
+      throw new NotFoundException('Child not found');
+    }
+    return this.prisma.child.update({
+      where: { id: childId },
+      data,
+    });
+  }
+
   async createForParentUserId(
     userId: string,
     data: {

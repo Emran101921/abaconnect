@@ -286,6 +286,35 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
+  async registerDevice(
+    userId: string,
+    data: { deviceToken: string; platform: string; appVersion?: string },
+  ) {
+    if (!data.deviceToken?.trim()) {
+      throw new BadRequestException('deviceToken is required');
+    }
+    const platform = data.platform?.trim() || 'unknown';
+    return this.prisma.userDevice.upsert({
+      where: {
+        userId_deviceToken: {
+          userId,
+          deviceToken: data.deviceToken.trim(),
+        },
+      },
+      create: {
+        userId,
+        deviceToken: data.deviceToken.trim(),
+        platform,
+        appVersion: data.appVersion,
+      },
+      update: {
+        platform,
+        appVersion: data.appVersion,
+        lastSeenAt: new Date(),
+      },
+    });
+  }
+
   private async defaultTenantId(): Promise<string> {
     const tenant = await this.prisma.tenant.findFirst({
       where: { slug: 'abaconnect' },

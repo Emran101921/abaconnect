@@ -116,6 +116,20 @@ export class TherapistResolver {
     return this.mapAppointment(row);
   }
 
+  @Mutation(() => TherapistAppointmentType, { name: 'cancelAppointmentAsTherapist' })
+  async cancelAppointmentAsTherapist(
+    @CurrentUser() user: AuthUser,
+    @Args('appointmentId', { type: () => ID }) appointmentId: string,
+    @Args('reason', { nullable: true }) reason?: string,
+  ): Promise<TherapistAppointmentType> {
+    const row = await this.appointmentsService.cancelForTherapistUser(
+      user.id,
+      appointmentId,
+      reason,
+    );
+    return this.mapAppointment(row);
+  }
+
   @Mutation(() => TherapistAppointmentType, { name: 'declineAppointment' })
   async declineAppointment(
     @CurrentUser() user: AuthUser,

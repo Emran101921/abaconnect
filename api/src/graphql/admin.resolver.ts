@@ -3,12 +3,15 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { AuthUser, CurrentUser } from '../common/decorators/current-user.decorator';
 import { AdminService } from '../admin/admin.service';
 import { ComplaintsService } from '../complaints/complaints.service';
+import { InsuranceService } from '../insurance/insurance.service';
 import { ReviewsService } from '../reviews/reviews.service';
+import { UpdateInsuranceClaimInput } from './inputs/admin.input';
 import {
   AdminDashboardType,
   AdminUserType,
   AuditLogEntryType,
   AdminComplaintType,
+  AdminInsuranceClaimType,
   AdminReviewType,
   PendingTherapistType,
 } from './types/admin.types';
@@ -20,6 +23,7 @@ export class AdminResolver {
     private readonly adminService: AdminService,
     private readonly complaintsService: ComplaintsService,
     private readonly reviewsService: ReviewsService,
+    private readonly insuranceService: InsuranceService,
   ) {}
 
   @Query(() => AdminDashboardType, { name: 'adminDashboard' })
@@ -147,6 +151,33 @@ export class AdminResolver {
     };
   }
 
+  @Query(() => [AdminInsuranceClaimType], { name: 'adminInsuranceClaims' })
+  async adminInsuranceClaims(
+    @CurrentUser() user: AuthUser,
+  ): Promise<AdminInsuranceClaimType[]> {
+    const rows = await this.insuranceService.listClaimsForTenant(
+      user.tenantId ?? '',
+    );
+    return rows.map((c) => this.mapInsuranceClaim(c));
+  }
+
+  @Mutation(() => AdminInsuranceClaimType, { name: 'updateInsuranceClaim' })
+  async updateInsuranceClaim(
+    @CurrentUser() user: AuthUser,
+    @Args('input') input: UpdateInsuranceClaimInput,
+  ): Promise<AdminInsuranceClaimType> {
+    const row = await this.insuranceService.updateClaimStatusForTenant(
+      user.tenantId ?? '',
+      input.claimId,
+      input.status,
+      {
+        denialReason: input.denialReason,
+        approvedAmount: input.approvedAmount,
+      },
+    );
+    return this.mapInsuranceClaim(row);
+  }
+
   @Mutation(() => PendingTherapistType, { name: 'verifyTherapist' })
   async verifyTherapist(
     @Args('therapistId', { type: () => ID }) therapistId: string,
@@ -162,6 +193,32 @@ export class AdminResolver {
         lastName: t.user.lastName,
         email: t.user.email,
       },
+    };
+  }
+
+  private mapInsuranceClaim(c: {
+    id: string;
+    status: string;
+    payerName: string;
+    billedAmount: unknown;
+    approvedAmount?: unknown | null;
+    serviceDate: Date;
+    denialReason?: string | null;
+    child?: { firstName: string; lastName: string };
+    parent?: { user: { email: string } };
+  }): AdminInsuranceClaimType {
+    return {
+      id: c.id,
+      status: c.status,
+      payerName: c.payerName,
+      billedAmount: Number(c.billedAmount),
+      approvedAmount: c.approvedAmount != null ? Number(c.approvedAmount) : undefined,
+      serviceDate: c.serviceDate,
+      childName: c.child
+        ? `${c.child.firstName} ${c.child.lastName}`
+        : undefined,
+      parentEmail: c.parent?.user.email,
+      denialReason: c.denialReason ?? undefined,
     };
   }
 }
