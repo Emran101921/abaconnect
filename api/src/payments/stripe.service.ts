@@ -46,4 +46,64 @@ export class StripeService {
       },
     });
   }
+
+  async createCheckoutSession(
+    amountCents: number,
+    metadata: Record<string, string>,
+    successUrl: string,
+    cancelUrl: string,
+  ) {
+    if (!this.stripe) {
+      return { url: null, id: `cs_stub_${Date.now()}` };
+    }
+    const session = await this.stripe.checkout.sessions.create({
+      mode: 'payment',
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency: 'usd',
+            unit_amount: amountCents,
+            product_data: {
+              name: metadata.description ?? 'ABAConnect session payment',
+            },
+          },
+        },
+      ],
+      metadata,
+    });
+    return { url: session.url, id: session.id };
+  }
+
+  async createTransfer(amountCents: number, metadata: Record<string, string>) {
+    if (!this.stripe) {
+      return { id: `tr_stub_${Date.now()}` };
+    }
+    const dest = metadata.destinationAccountId;
+    if (!dest?.startsWith('acct_')) {
+      return { id: `tr_stub_${Date.now()}` };
+    }
+    return this.stripe.transfers.create({
+      amount: amountCents,
+      currency: 'usd',
+      destination: dest,
+      metadata,
+    });
+  }
+
+  async retrievePaymentIntent(paymentIntentId: string) {
+    if (!this.stripe) {
+      return { status: 'succeeded' };
+    }
+    return this.stripe.paymentIntents.retrieve(paymentIntentId);
+  }
+
+  constructWebhookEvent(payload: Buffer, signature: string, secret: string) {
+    if (!this.stripe) {
+      return { type: 'stub', data: { object: {} } };
+    }
+    return this.stripe.webhooks.constructEvent(payload, signature, secret);
+  }
 }

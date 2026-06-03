@@ -54,14 +54,57 @@ export class PaymentsService {
       paymentId: payment.id,
     });
 
+    let checkoutUrl: string | null = null;
+    if (this.stripe.isConfigured()) {
+      const appUrl = process.env.APP_URL ?? 'http://localhost:3000';
+      const session = await this.stripe.createCheckoutSession(
+        input.amountCents,
+        {
+          paymentId: payment.id,
+          parentId: parent.id,
+          description: input.description ?? 'ABAConnect payment',
+        },
+        `${appUrl}/payments/success?paymentId=${payment.id}`,
+        `${appUrl}/payments/cancel`,
+      );
+      checkoutUrl = session.url;
+    }
+
     return {
       payment,
       clientSecret:
         'client_secret' in intent
           ? (intent.client_secret as string | null)
           : null,
+      checkoutUrl,
       stripeConfigured: this.stripe.isConfigured(),
     };
+  }
+
+  async syncPaymentFromStripe(paymentId: string, userId: string) {
+    const parent = await this.prisma.parent.findUnique({ where: { userId } });
+    if (!parent) {
+      throw new BadRequestException('Parent profile not found');
+    }
+    const payment = await this.prisma.payment.findFirst({
+      where: { id: paymentId, parentId: parent.id },
+    });
+    if (!payment) {
+      throw new NotFoundException('Payment not found');
+    }
+    if (!payment.stripePaymentIntentId) {
+      return payment;
+    }
+    const intent = await this.stripe.retrievePaymentIntent(
+      payment.stripePaymentIntentId,
+    );
+    if (intent.status === 'succeeded') {
+      return this.prisma.payment.update({
+        where: { id: paymentId },
+        data: { status: 'SUCCEEDED', paidAt: new Date() },
+      });
+    }
+    return payment;
   }
 
   async markPaymentSucceeded(paymentId: string, userId: string) {

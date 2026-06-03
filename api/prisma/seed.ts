@@ -431,6 +431,40 @@ async function main() {
     },
   });
 
+  const periodStart = new Date();
+  periodStart.setDate(1);
+  const periodEnd = new Date();
+  await prisma.payout.upsert({
+    where: { id: '00000000-0000-4000-8000-000000000090' },
+    update: {},
+    create: {
+      id: '00000000-0000-4000-8000-000000000090',
+      tenantId: tenant.id,
+      therapistId: therapistProfile.id,
+      amount: 450,
+      status: 'SUCCEEDED',
+      periodStart,
+      periodEnd,
+      paidAt: new Date(),
+      stripeTransferId: 'tr_seed_demo',
+    },
+  });
+
+  await prisma.dispute.upsert({
+    where: { id: '00000000-0000-4000-8000-000000000091' },
+    update: {},
+    create: {
+      id: '00000000-0000-4000-8000-000000000091',
+      tenantId: tenant.id,
+      paymentId: '00000000-0000-4000-8000-000000000031',
+      parentId: parentProfile.id,
+      openerId: parentUser.id,
+      reason: 'Demo: charged twice for same session',
+      amount: 175,
+      status: 'OPEN',
+    },
+  });
+
   await prisma.complaint.upsert({
     where: { id: '00000000-0000-4000-8000-000000000070' },
     update: {},

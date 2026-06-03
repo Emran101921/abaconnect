@@ -26,6 +26,7 @@ import '../../features/telehealth/presentation/telehealth_screen.dart';
 import '../../features/therapist/presentation/session_notes_screen.dart';
 import '../../features/therapist/presentation/therapist_appointments_screen.dart';
 import '../../features/therapist/presentation/therapist_home_screen.dart';
+import '../../features/therapist/presentation/therapist_payouts_screen.dart';
 import '../../features/therapist/presentation/therapist_plans_screen.dart';
 import '../../features/therapist/presentation/therapist_profile_screen.dart';
 
@@ -138,6 +139,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: 'plans',
             name: 'therapistPlans',
             builder: (context, state) => const TherapistPlansScreen(),
+          ),
+          GoRoute(
+            path: 'payouts',
+            name: 'therapistPayouts',
+            builder: (context, state) => const TherapistPayoutsScreen(),
           ),
         ],
       ),

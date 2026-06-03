@@ -37,7 +37,7 @@ class TherapistHomeScreen extends ConsumerWidget {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not start: $e'),
+          SnackBar(content: Text('Could not start: $e')),
         );
       }
     }
@@ -150,6 +150,11 @@ class TherapistHomeScreen extends ConsumerWidget {
             title: 'Telehealth',
             icon: Icons.video_call,
             onTap: () => context.push('/telehealth'),
+          ),
+          _NavTile(
+            title: 'Payouts',
+            icon: Icons.payments,
+            onTap: () => context.push('/therapist/payouts'),
           ),
         ],
       ),

@@ -35,6 +35,8 @@ import { AnalyticsModule } from './analytics/analytics.module';
 import { AiModule } from './ai/ai.module';
 import { ScreeningsModule } from './screenings/screenings.module';
 import { ComplaintsModule } from './complaints/complaints.module';
+import { DisputesModule } from './disputes/disputes.module';
+import { PayoutsModule } from './payouts/payouts.module';
 
 @Module({
   imports: [
@@ -85,6 +87,8 @@ import { ComplaintsModule } from './complaints/complaints.module';
     AiModule,
     ScreeningsModule,
     ComplaintsModule,
+    DisputesModule,
+    PayoutsModule,
     GraphqlFeatureModule,
   ],
   controllers: [AppController],

@@ -85,7 +85,7 @@ class InsuranceScreen extends ConsumerWidget {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed: $e'),
+          SnackBar(content: Text('Failed: $e')),
         );
       }
     }

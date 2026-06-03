@@ -73,7 +73,7 @@ class DocumentsScreen extends ConsumerWidget {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Upload failed: $e'),
+          SnackBar(content: Text('Upload failed: $e')),
         );
       }
     }

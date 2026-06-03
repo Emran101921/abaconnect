@@ -10,6 +10,15 @@ export class SendMessageInput {
 }
 
 @InputType()
+export class OpenPaymentDisputeInput {
+  @Field(() => ID)
+  paymentId: string;
+
+  @Field()
+  reason: string;
+}
+
+@InputType()
 export class CreatePaymentInput {
   @Field(() => Int)
   amountCents: number;

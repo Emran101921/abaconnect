@@ -7,6 +7,8 @@ import { AppointmentsModule } from '../appointments/appointments.module';
 import { ClinicalModule } from '../clinical/clinical.module';
 import { ChildrenModule } from '../children/children.module';
 import { ComplaintsModule } from '../complaints/complaints.module';
+import { DisputesModule } from '../disputes/disputes.module';
+import { PayoutsModule } from '../payouts/payouts.module';
 import { ComplianceModule } from '../compliance/compliance.module';
 import { DocumentsModule } from '../documents/documents.module';
 import { GpsModule } from '../gps/gps.module';
@@ -25,6 +27,7 @@ import { AgencyResolver } from './agency.resolver';
 import { MessagingResolver } from './messaging.resolver';
 import { ClinicalResolver } from './clinical.resolver';
 import { ParentBookingResolver } from './parent-booking.resolver';
+import { BillingResolver } from './billing.resolver';
 import { PaymentsResolver } from './payments.resolver';
 import { PlatformResolver } from './platform.resolver';
 import { TherapistResolver } from './therapist.resolver';
@@ -52,6 +55,8 @@ import { TherapistResolver } from './therapist.resolver';
     AiModule,
     ComplaintsModule,
     ClinicalModule,
+    DisputesModule,
+    PayoutsModule,
   ],
   providers: [
     ParentBookingResolver,
@@ -61,6 +66,7 @@ import { TherapistResolver } from './therapist.resolver';
     AgencyResolver,
     MessagingResolver,
     PaymentsResolver,
+    BillingResolver,
     PlatformResolver,
   ],
 })

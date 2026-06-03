@@ -46,7 +46,7 @@ class _ComplaintsScreenState extends ConsumerState<ComplaintsScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed: $e'),
+          SnackBar(content: Text('Failed: $e')),
         );
       }
     }

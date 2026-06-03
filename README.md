@@ -112,9 +112,19 @@ Health check: `GET http://localhost:3000/api/v1/health`
 
 **GraphQL therapist:** profile, appointments, sessions, SOAP, EVV (`recordEvvCheckIn`), AI SOAP assist (`suggestSoapNote`).
 
-**GraphQL admin:** dashboard, users, verify therapists, audit logs, complaints (`adminComplaints`, `resolveComplaint`).
+**GraphQL admin:** dashboard, users, verify therapists, audit logs, complaints (`adminComplaints`, `resolveComplaint`), payment disputes (`adminDisputes`, `resolvePaymentDispute`), payouts (`adminPayouts`, `markPayoutPaid`).
 
 **GraphQL agency:** `agencyDashboard`, `agencyTherapists`.
+
+**Payments & billing (Flutter):** Parents use **Payments** → pay session (Stripe Checkout when `STRIPE_SECRET_KEY` is set), mark paid in demo, sync status, open disputes. Therapists use **Payouts**. Admins resolve payment disputes and mark payouts paid on the dashboard.
+
+**Production Docker:**
+
+```bash
+cp api/.env.example api/.env   # set JWT_SECRET, POSTGRES_PASSWORD, STRIPE keys, APP_URL
+docker compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml exec api npx prisma db seed
+```
 
 ### Therapist SOAP workflow (Flutter)
 

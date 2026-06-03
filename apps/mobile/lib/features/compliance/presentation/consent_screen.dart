@@ -58,7 +58,7 @@ class ConsentScreen extends ConsumerWidget {
                 } catch (e) {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('$e'),
+                      SnackBar(content: Text('$e')),
                     );
                   }
                 }

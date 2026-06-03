@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/providers/app_providers.dart';
+import '../../payments/data/billing_repository.dart';
 import '../data/admin_repository.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 
@@ -30,6 +31,15 @@ final adminComplaintsProvider =
   return ref.watch(adminRepositoryProvider).fetchComplaints();
 });
 
+final adminPaymentDisputesProvider =
+    FutureProvider<List<DisputeModel>>((ref) async {
+  return ref.watch(billingRepositoryProvider).fetchAdminDisputes();
+});
+
+final adminPayoutsProvider = FutureProvider<List<PayoutModel>>((ref) async {
+  return ref.watch(billingRepositoryProvider).fetchAdminPayouts();
+});
+
 class AdminDashboardScreen extends ConsumerWidget {
   const AdminDashboardScreen({super.key});
 
@@ -40,6 +50,8 @@ class AdminDashboardScreen extends ConsumerWidget {
     final users = ref.watch(adminUsersProvider);
     final audits = ref.watch(adminAuditLogsProvider);
     final complaints = ref.watch(adminComplaintsProvider);
+    final paymentDisputes = ref.watch(adminPaymentDisputesProvider);
+    final payouts = ref.watch(adminPayoutsProvider);
 
     return AppScaffold(
       title: 'Admin Dashboard',
@@ -59,6 +71,8 @@ class AdminDashboardScreen extends ConsumerWidget {
           ref.invalidate(adminUsersProvider);
           ref.invalidate(adminAuditLogsProvider);
           ref.invalidate(adminComplaintsProvider);
+          ref.invalidate(adminPaymentDisputesProvider);
+          ref.invalidate(adminPayoutsProvider);
         },
         child: ListView(
           padding: const EdgeInsets.all(16),
@@ -174,6 +188,82 @@ class AdminDashboardScreen extends ConsumerWidget {
                           },
                           child: const Text('Resolve'),
                         ),
+                      ),
+                    );
+                  }).toList(),
+                );
+              },
+              loading: () => const CircularProgressIndicator(),
+              error: (e, _) => Text('$e'),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Payment disputes',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            paymentDisputes.when(
+              data: (list) {
+                if (list.isEmpty) {
+                  return const Card(
+                    child: ListTile(title: Text('No open payment disputes')),
+                  );
+                }
+                return Column(
+                  children: list.map((d) {
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: ListTile(
+                        title: Text(d.reason),
+                        subtitle: Text('${d.status} · ${d.paymentId ?? ''}'),
+                        trailing: TextButton(
+                          onPressed: () async {
+                            await ref
+                                .read(billingRepositoryProvider)
+                                .resolveDispute(d.id, 'Refunded per policy');
+                            ref.invalidate(adminPaymentDisputesProvider);
+                          },
+                          child: const Text('Resolve'),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                );
+              },
+              loading: () => const CircularProgressIndicator(),
+              error: (e, _) => Text('$e'),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Therapist payouts',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            payouts.when(
+              data: (list) {
+                if (list.isEmpty) {
+                  return const Card(
+                    child: ListTile(title: Text('No payouts')),
+                  );
+                }
+                return Column(
+                  children: list.map((p) {
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: ListTile(
+                        title: Text('\$${p.amount.toStringAsFixed(2)}'),
+                        subtitle: Text(p.status),
+                        trailing: p.status != 'SUCCEEDED'
+                            ? TextButton(
+                                onPressed: () async {
+                                  await ref
+                                      .read(billingRepositoryProvider)
+                                      .markPayoutPaid(p.id);
+                                  ref.invalidate(adminPayoutsProvider);
+                                },
+                                child: const Text('Mark paid'),
+                              )
+                            : const Icon(Icons.check, color: Colors.green),
                       ),
                     );
                   }).toList(),

@@ -8,6 +8,7 @@ import '../../features/auth/data/auth_repository.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/messaging/data/messaging_repository.dart';
 import '../../features/parent/data/parent_booking_repository.dart';
+import '../../features/payments/data/billing_repository.dart';
 import '../../features/payments/data/payments_repository.dart';
 import '../../features/clinical/data/clinical_repository.dart';
 import '../../features/platform/data/platform_repository.dart';
@@ -43,6 +44,10 @@ final messagingRepositoryProvider = Provider<MessagingRepository>((ref) {
 
 final paymentsRepositoryProvider = Provider<PaymentsRepository>((ref) {
   return PaymentsRepository(ref.watch(graphqlClientProvider));
+});
+
+final billingRepositoryProvider = Provider<BillingRepository>((ref) {
+  return BillingRepository(ref.watch(graphqlClientProvider));
 });
 
 final platformRepositoryProvider = Provider<PlatformRepository>((ref) {

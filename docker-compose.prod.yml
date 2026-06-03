@@ -1,0 +1,50 @@
+# Production-style stack: Postgres, Redis, API (migrate on start).
+# Usage:
+#   cp api/.env.example api/.env  # set JWT_SECRET, STRIPE keys, APP_URL
+#   docker compose -f docker-compose.prod.yml up -d --build
+#   docker compose -f docker-compose.prod.yml exec api npx prisma db seed
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: abaconnect
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      POSTGRES_DB: abaconnect
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U abaconnect']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    ports:
+      - '3000:3000'
+    env_file:
+      - ./api/.env
+    environment:
+      DATABASE_URL: postgresql://abaconnect:${POSTGRES_PASSWORD:-change_me}@postgres:5432/abaconnect
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      NODE_ENV: production
+      APP_URL: ${APP_URL:-http://localhost:3000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    entrypoint: ['sh', 'scripts/docker-entrypoint.sh']
+
+volumes:
+  postgres_data:
+  redis_data:

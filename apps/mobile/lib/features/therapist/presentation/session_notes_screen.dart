@@ -3,8 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/app_providers.dart';
-import '../../clinical/data/clinical_repository.dart';
-import '../../platform/data/platform_repository.dart';
 import '../data/therapist_repository.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 
@@ -167,7 +165,7 @@ class SessionNotesScreen extends ConsumerWidget {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('EVV failed: $e'),
+          SnackBar(content: Text('EVV failed: $e')),
         );
       }
     }

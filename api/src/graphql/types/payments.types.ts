@@ -35,6 +35,48 @@ export class PaymentIntentResultType {
   @Field({ nullable: true })
   clientSecret?: string;
 
+  @Field({ nullable: true })
+  checkoutUrl?: string;
+
   @Field()
   stripeConfigured: boolean;
+}
+
+@ObjectType()
+export class DisputeType {
+  @Field(() => ID)
+  id: string;
+
+  @Field()
+  status: string;
+
+  @Field()
+  reason: string;
+
+  @Field({ nullable: true })
+  paymentId?: string;
+
+  @Field({ nullable: true })
+  resolution?: string;
+}
+
+@ObjectType()
+export class PayoutType {
+  @Field(() => ID)
+  id: string;
+
+  @Field(() => Float)
+  amount: number;
+
+  @Field()
+  status: string;
+
+  @Field()
+  periodStart: Date;
+
+  @Field()
+  periodEnd: Date;
+
+  @Field({ nullable: true })
+  paidAt?: Date;
 }

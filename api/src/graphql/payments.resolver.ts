@@ -25,6 +25,7 @@ export class PaymentsResolver {
     return {
       payment: this.mapPayment(result.payment),
       clientSecret: result.clientSecret ?? undefined,
+      checkoutUrl: result.checkoutUrl ?? undefined,
       stripeConfigured: result.stripeConfigured,
     };
   }

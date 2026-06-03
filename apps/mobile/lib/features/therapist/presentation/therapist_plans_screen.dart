@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../clinical/data/clinical_repository.dart';
-import '../data/therapist_repository.dart';
 final therapistPlansProvider =
     FutureProvider<List<TreatmentPlanModel>>((ref) {
   return ref.watch(clinicalRepositoryProvider).fetchTherapistPlans();
@@ -56,7 +55,7 @@ class TherapistPlansScreen extends ConsumerWidget {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed: $e'),
+          SnackBar(content: Text('Failed: $e')),
         );
       }
     }
