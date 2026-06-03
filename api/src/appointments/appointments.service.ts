@@ -77,6 +77,31 @@ export class AppointmentsService {
     });
   }
 
+  async bookRecurringForParentUser(
+    userId: string,
+    input: BookAppointmentInput,
+    weeks: number,
+  ) {
+    if (weeks < 2 || weeks > 12) {
+      throw new BadRequestException('Recurring bookings must be 2–12 weeks');
+    }
+    const results = [];
+    for (let i = 0; i < weeks; i++) {
+      const weekMs = 7 * 24 * 60 * 60 * 1000;
+      const row = await this.bookForParentUser(userId, {
+        ...input,
+        scheduledStart: new Date(input.scheduledStart.getTime() + weekMs * i),
+        scheduledEnd: new Date(input.scheduledEnd.getTime() + weekMs * i),
+        notes:
+          i === 0
+            ? input.notes
+            : `${input.notes ?? 'Recurring session'} (week ${i + 1}/${weeks})`,
+      });
+      results.push(row);
+    }
+    return results;
+  }
+
   async cancelForParentUser(userId: string, appointmentId: string, reason?: string) {
     const parent = await this.prisma.parent.findUnique({ where: { userId } });
     if (!parent) {

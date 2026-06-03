@@ -7,7 +7,11 @@ import { MatchingService } from '../matching/matching.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ReviewsService } from '../reviews/reviews.service';
 import { ScreeningsService } from '../screenings/screenings.service';
-import { BookAppointmentInput, TherapistDiscoveryInput } from './inputs/book-appointment.input';
+import {
+  BookAppointmentInput,
+  BookRecurringAppointmentsInput,
+  TherapistDiscoveryInput,
+} from './inputs/book-appointment.input';
 import {
   AddChildInput,
   SubmitReviewInput,
@@ -90,6 +94,38 @@ export class ParentBookingResolver {
   ): Promise<AppointmentType> {
     const row = await this.appointmentsService.bookForParentUser(user.id, input);
     return this.mapAppointment(row);
+  }
+
+  @Mutation(() => [AppointmentType], { name: 'bookRecurringAppointments' })
+  async bookRecurringAppointments(
+    @CurrentUser() user: AuthUser,
+    @Args('input') input: BookRecurringAppointmentsInput,
+  ): Promise<AppointmentType[]> {
+    const { weeks, ...booking } = input;
+    const rows = await this.appointmentsService.bookRecurringForParentUser(
+      user.id,
+      booking,
+      weeks,
+    );
+    return rows.map((row) => this.mapAppointment(row));
+  }
+
+  @Query(() => [TherapistMatchType], { name: 'pendingReviewTherapists' })
+  async pendingReviewTherapists(
+    @CurrentUser() user: AuthUser,
+  ): Promise<TherapistMatchType[]> {
+    const rows = await this.reviewsService.findPendingReviewTherapists(user.id);
+    return rows.map((t) => ({
+      id: t.id,
+      ratingAverage: Number(t.ratingAverage ?? 0),
+      user: t.user
+        ? {
+            firstName: t.user.firstName,
+            lastName: t.user.lastName,
+            email: t.user.email,
+          }
+        : undefined,
+    }));
   }
 
   @Mutation(() => AppointmentType, { name: 'cancelAppointment' })

@@ -316,13 +316,23 @@ async function main() {
 
   await prisma.session.upsert({
     where: { appointmentId: '00000000-0000-4000-8000-000000000010' },
-    update: {},
+    update: {
+      status: 'COMPLETED',
+      checkInAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
+      checkOutAt: new Date(Date.now() - 60 * 60 * 1000),
+      durationMinutes: 60,
+      evvVerified: true,
+    },
     create: {
       appointmentId: '00000000-0000-4000-8000-000000000010',
       tenantId: tenant.id,
       childId: '00000000-0000-4000-8000-000000000001',
       therapistId: therapistProfile.id,
-      status: 'SCHEDULED',
+      status: 'COMPLETED',
+      checkInAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
+      checkOutAt: new Date(Date.now() - 60 * 60 * 1000),
+      durationMinutes: 60,
+      evvVerified: true,
     },
   });
 

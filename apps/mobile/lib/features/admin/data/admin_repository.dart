@@ -68,6 +68,28 @@ class AdminComplaintModel {
   final String? reporterName;
 }
 
+class AdminReviewModel {
+  const AdminReviewModel({
+    required this.id,
+    required this.rating,
+    required this.isPublished,
+    required this.createdAt,
+    this.title,
+    this.comment,
+    this.therapistName,
+    this.authorEmail,
+  });
+
+  final String id;
+  final int rating;
+  final bool isPublished;
+  final DateTime createdAt;
+  final String? title;
+  final String? comment;
+  final String? therapistName;
+  final String? authorEmail;
+}
+
 class AuditLogModel {
   const AuditLogModel({
     required this.id,
@@ -227,6 +249,44 @@ class AdminRepository {
       }
     ''';
     await _graphql.query(mutation, variables: {'id': id, 'resolution': resolution});
+  }
+
+  Future<List<AdminReviewModel>> fetchReviews() async {
+    const query = r'''
+      query {
+        adminReviews {
+          id rating title comment isPublished createdAt therapistName authorEmail
+        }
+      }
+    ''';
+    final result = await _graphql.query(query);
+    final list = result['data']?['adminReviews'] as List<dynamic>? ?? [];
+    return list
+        .map(
+          (e) => AdminReviewModel(
+            id: e['id'] as String,
+            rating: e['rating'] as int? ?? 0,
+            isPublished: e['isPublished'] as bool? ?? true,
+            createdAt: DateTime.parse(e['createdAt'] as String),
+            title: e['title'] as String?,
+            comment: e['comment'] as String?,
+            therapistName: e['therapistName'] as String?,
+            authorEmail: e['authorEmail'] as String?,
+          ),
+        )
+        .toList();
+  }
+
+  Future<void> moderateReview(String reviewId, bool publish) async {
+    const mutation = r'''
+      mutation Moderate($reviewId: ID!, $publish: Boolean!) {
+        moderateReview(reviewId: $reviewId, publish: $publish) { id isPublished }
+      }
+    ''';
+    await _graphql.query(
+      mutation,
+      variables: {'reviewId': reviewId, 'publish': publish},
+    );
   }
 
   Future<void> verifyTherapist(String therapistId) async {

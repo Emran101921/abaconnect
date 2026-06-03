@@ -40,6 +40,11 @@ final adminPayoutsProvider = FutureProvider<List<PayoutModel>>((ref) async {
   return ref.watch(billingRepositoryProvider).fetchAdminPayouts();
 });
 
+final adminReviewsProvider =
+    FutureProvider<List<AdminReviewModel>>((ref) async {
+  return ref.watch(adminRepositoryProvider).fetchReviews();
+});
+
 class AdminDashboardScreen extends ConsumerWidget {
   const AdminDashboardScreen({super.key});
 
@@ -52,6 +57,7 @@ class AdminDashboardScreen extends ConsumerWidget {
     final complaints = ref.watch(adminComplaintsProvider);
     final paymentDisputes = ref.watch(adminPaymentDisputesProvider);
     final payouts = ref.watch(adminPayoutsProvider);
+    final reviews = ref.watch(adminReviewsProvider);
 
     return AppScaffold(
       title: 'Admin Dashboard',
@@ -73,6 +79,7 @@ class AdminDashboardScreen extends ConsumerWidget {
           ref.invalidate(adminComplaintsProvider);
           ref.invalidate(adminPaymentDisputesProvider);
           ref.invalidate(adminPayoutsProvider);
+          ref.invalidate(adminReviewsProvider);
         },
         child: ListView(
           padding: const EdgeInsets.all(16),
@@ -264,6 +271,60 @@ class AdminDashboardScreen extends ConsumerWidget {
                                 child: const Text('Mark paid'),
                               )
                             : const Icon(Icons.check, color: Colors.green),
+                      ),
+                    );
+                  }).toList(),
+                );
+              },
+              loading: () => const CircularProgressIndicator(),
+              error: (e, _) => Text('$e'),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Review moderation',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            reviews.when(
+              data: (list) {
+                if (list.isEmpty) {
+                  return const Card(
+                    child: ListTile(title: Text('No reviews yet')),
+                  );
+                }
+                return Column(
+                  children: list.take(8).map((r) {
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: ListTile(
+                        title: Text(
+                          '${r.therapistName ?? 'Therapist'} · ${List.filled(r.rating.clamp(1, 5), '★').join()}',
+                        ),
+                        subtitle: Text(
+                          '${r.authorEmail ?? ''}\n${r.comment ?? r.title ?? ''}',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        isThreeLine: true,
+                        trailing: r.isPublished
+                            ? TextButton(
+                                onPressed: () async {
+                                  await ref
+                                      .read(adminRepositoryProvider)
+                                      .moderateReview(r.id, false);
+                                  ref.invalidate(adminReviewsProvider);
+                                },
+                                child: const Text('Hide'),
+                              )
+                            : TextButton(
+                                onPressed: () async {
+                                  await ref
+                                      .read(adminRepositoryProvider)
+                                      .moderateReview(r.id, true);
+                                  ref.invalidate(adminReviewsProvider);
+                                },
+                                child: const Text('Publish'),
+                              ),
                       ),
                     );
                   }).toList(),

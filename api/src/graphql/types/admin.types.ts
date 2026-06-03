@@ -83,6 +83,33 @@ export class AdminComplaintType {
 }
 
 @ObjectType()
+export class AdminReviewType {
+  @Field(() => ID)
+  id: string;
+
+  @Field(() => Int)
+  rating: number;
+
+  @Field({ nullable: true })
+  title?: string;
+
+  @Field({ nullable: true })
+  comment?: string;
+
+  @Field()
+  isPublished: boolean;
+
+  @Field()
+  createdAt: Date;
+
+  @Field({ nullable: true })
+  therapistName?: string;
+
+  @Field({ nullable: true })
+  authorEmail?: string;
+}
+
+@ObjectType()
 export class AuditLogEntryType {
   @Field(() => ID)
   id: string;

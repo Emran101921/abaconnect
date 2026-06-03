@@ -118,6 +118,12 @@ Health check: `GET http://localhost:3000/api/v1/health`
 
 **Payments & billing (Flutter):** Parents use **Payments** → pay session (Stripe Checkout when `STRIPE_SECRET_KEY` is set), mark paid in demo, sync status, open disputes. Therapists use **Payouts**. Admins resolve payment disputes and mark payouts paid on the dashboard.
 
+**Stripe webhooks:** `POST /api/v1/webhooks/stripe` with raw body and `STRIPE_WEBHOOK_SECRET` (use Stripe CLI: `stripe listen --forward-to localhost:3000/api/v1/webhooks/stripe`).
+
+**Booking:** Parents can book **weekly recurring** sessions (2–12 weeks). **Review prompts** appear on the parent home after completed sessions.
+
+**Admin:** Review moderation (publish/hide). **Agency:** Invite unlinked therapists to the roster.
+
 **Production Docker:**
 
 ```bash

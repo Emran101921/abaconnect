@@ -3,11 +3,13 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { AuthUser, CurrentUser } from '../common/decorators/current-user.decorator';
 import { AdminService } from '../admin/admin.service';
 import { ComplaintsService } from '../complaints/complaints.service';
+import { ReviewsService } from '../reviews/reviews.service';
 import {
   AdminDashboardType,
   AdminUserType,
   AuditLogEntryType,
   AdminComplaintType,
+  AdminReviewType,
   PendingTherapistType,
 } from './types/admin.types';
 
@@ -17,6 +19,7 @@ export class AdminResolver {
   constructor(
     private readonly adminService: AdminService,
     private readonly complaintsService: ComplaintsService,
+    private readonly reviewsService: ReviewsService,
   ) {}
 
   @Query(() => AdminDashboardType, { name: 'adminDashboard' })
@@ -102,6 +105,45 @@ export class AdminResolver {
       subject: c.subject,
       description: c.description,
       reporterName: `${c.reporter.firstName} ${c.reporter.lastName}`,
+    };
+  }
+
+  @Query(() => [AdminReviewType], { name: 'adminReviews' })
+  async adminReviews(
+    @CurrentUser() user: AuthUser,
+  ): Promise<AdminReviewType[]> {
+    const rows = await this.reviewsService.listForAdminModeration(user.tenantId);
+    return rows.map((r) => ({
+      id: r.id,
+      rating: r.rating,
+      title: r.title ?? undefined,
+      comment: r.comment ?? undefined,
+      isPublished: r.isPublished,
+      createdAt: r.createdAt,
+      therapistName: r.therapist?.user
+        ? `${r.therapist.user.firstName} ${r.therapist.user.lastName}`
+        : undefined,
+      authorEmail: r.author?.email,
+    }));
+  }
+
+  @Mutation(() => AdminReviewType, { name: 'moderateReview' })
+  async moderateReview(
+    @Args('reviewId', { type: () => ID }) reviewId: string,
+    @Args('publish') publish: boolean,
+  ): Promise<AdminReviewType> {
+    const r = await this.reviewsService.setPublished(reviewId, publish);
+    return {
+      id: r.id,
+      rating: r.rating,
+      title: r.title ?? undefined,
+      comment: r.comment ?? undefined,
+      isPublished: r.isPublished,
+      createdAt: r.createdAt,
+      therapistName: r.therapist?.user
+        ? `${r.therapist.user.firstName} ${r.therapist.user.lastName}`
+        : undefined,
+      authorEmail: r.author?.email,
     };
   }
 

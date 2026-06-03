@@ -129,6 +129,26 @@ class ParentBookingRepository {
     }
   ''';
 
+  static const _bookRecurringMutation = r'''
+    mutation BookRecurring($input: BookRecurringAppointmentsInput!) {
+      bookRecurringAppointments(input: $input) {
+        id
+        status
+        scheduledStart
+      }
+    }
+  ''';
+
+  static const _pendingReviewQuery = r'''
+    query PendingReview {
+      pendingReviewTherapists {
+        id
+        ratingAverage
+        user { firstName lastName }
+      }
+    }
+  ''';
+
   Future<List<ChildModel>> fetchChildren() async {
     final result = await _graphql.query(_myChildrenQuery);
     final list = result['data']?['myChildren'] as List<dynamic>? ?? [];
@@ -340,6 +360,49 @@ class ParentBookingRepository {
         },
       },
     );
+  }
+
+  Future<int> bookRecurringAppointments({
+    required String childId,
+    required String therapistId,
+    required String therapyType,
+    required DateTime start,
+    required DateTime end,
+    required int weeks,
+  }) async {
+    final result = await _graphql.query(
+      _bookRecurringMutation,
+      variables: {
+        'input': {
+          'childId': childId,
+          'therapistId': therapistId,
+          'therapyType': therapyType,
+          'scheduledStart': start.toIso8601String(),
+          'scheduledEnd': end.toIso8601String(),
+          'weeks': weeks,
+        },
+      },
+    );
+    final list =
+        result['data']?['bookRecurringAppointments'] as List<dynamic>? ?? [];
+    return list.length;
+  }
+
+  Future<List<TherapistModel>> fetchPendingReviewTherapists() async {
+    final result = await _graphql.query(_pendingReviewQuery);
+    final list =
+        result['data']?['pendingReviewTherapists'] as List<dynamic>? ?? [];
+    return list.map((e) {
+      final user = e['user'] as Map<String, dynamic>?;
+      final name = user != null
+          ? '${user['firstName']} ${user['lastName']}'
+          : 'Therapist';
+      return TherapistModel(
+        id: e['id'] as String,
+        displayName: name,
+        rating: (e['ratingAverage'] as num?)?.toDouble() ?? 0,
+      );
+    }).toList();
   }
 
   AppointmentModel _mapAppointment(dynamic e) {

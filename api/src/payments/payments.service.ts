@@ -64,8 +64,8 @@ export class PaymentsService {
           parentId: parent.id,
           description: input.description ?? 'ABAConnect payment',
         },
-        `${appUrl}/payments/success?paymentId=${payment.id}`,
-        `${appUrl}/payments/cancel`,
+        `${appUrl}/api/v1/payments/success?paymentId=${payment.id}`,
+        `${appUrl}/api/v1/payments/cancel`,
       );
       checkoutUrl = session.url;
     }
@@ -175,5 +175,78 @@ export class PaymentsService {
     await this.findOne(id);
     await this.prisma.payment.delete({ where: { id } });
     return { id, deleted: true };
+  }
+
+  async handleStripeWebhookEvent(event: {
+    type: string;
+    data: { object: unknown };
+  }) {
+    const object = (event.data?.object ?? {}) as Record<string, unknown>;
+    const metadata = (object.metadata ?? {}) as Record<string, string>;
+    const paymentId = metadata.paymentId;
+
+    if (event.type === 'checkout.session.completed') {
+      const intentId = object.payment_intent as string | undefined;
+      if (paymentId) {
+        await this.markPaymentSucceededFromWebhook(paymentId, intentId);
+      }
+      return;
+    }
+
+    if (
+      event.type === 'payment_intent.succeeded' ||
+      event.type === 'payment_intent.payment_failed'
+    ) {
+      const intentId = object.id as string | undefined;
+      const idFromMeta = paymentId ?? metadata.paymentId;
+      if (idFromMeta) {
+        if (event.type === 'payment_intent.succeeded') {
+          await this.markPaymentSucceededFromWebhook(idFromMeta, intentId);
+        } else {
+          await this.prisma.payment.updateMany({
+            where: { id: idFromMeta },
+            data: { status: 'FAILED' },
+          });
+        }
+        return;
+      }
+      if (intentId) {
+        const payment = await this.prisma.payment.findFirst({
+          where: { stripePaymentIntentId: intentId },
+        });
+        if (payment) {
+          if (event.type === 'payment_intent.succeeded') {
+            await this.markPaymentSucceededFromWebhook(payment.id, intentId);
+          } else {
+            await this.prisma.payment.update({
+              where: { id: payment.id },
+              data: { status: 'FAILED' },
+            });
+          }
+        }
+      }
+    }
+  }
+
+  private async markPaymentSucceededFromWebhook(
+    paymentId: string,
+    stripePaymentIntentId?: string,
+  ) {
+    const payment = await this.prisma.payment.findUnique({
+      where: { id: paymentId },
+    });
+    if (!payment || payment.status === 'SUCCEEDED') {
+      return payment;
+    }
+    return this.prisma.payment.update({
+      where: { id: paymentId },
+      data: {
+        status: 'SUCCEEDED',
+        paidAt: new Date(),
+        ...(stripePaymentIntentId
+          ? { stripePaymentIntentId }
+          : {}),
+      },
+    });
   }
 }

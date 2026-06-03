@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
+import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 export interface MatchProviderInput {
@@ -18,15 +19,60 @@ export interface MatchWeights {
 
 @Injectable()
 export class MatchingService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+  ) {}
 
   async create(data: Record<string, unknown>) {
-    void this.prisma;
-    return { id: 'stub', ...data };
+    const tenantId = data.tenantId as string | undefined;
+    if (!tenantId) {
+      throw new BadRequestException('tenantId is required');
+    }
+    const therapyType = data.therapyType as string | undefined;
+    const latitude = data.latitude as number | undefined;
+    const longitude = data.longitude as number | undefined;
+    const parentUserId = data.parentUserId as string | undefined;
+
+    const results = await this.findTherapistsForMatch(
+      tenantId,
+      therapyType,
+      latitude,
+      longitude,
+    );
+
+    const log = await this.audit.log({
+      tenantId,
+      actorId: parentUserId,
+      action: 'READ',
+      resourceType: 'MATCH_SEARCH',
+      metadata: {
+        therapyType,
+        latitude,
+        longitude,
+        resultCount: results.length,
+        topTherapistIds: results.slice(0, 10).map((r) => r.id),
+      },
+    });
+
+    return {
+      id: log.id,
+      tenantId,
+      therapyType,
+      resultCount: results.length,
+      results,
+    };
   }
 
-  async findAll() {
-    return [];
+  async findAll(tenantId?: string) {
+    return this.prisma.auditLog.findMany({
+      where: {
+        entityType: 'MATCH_SEARCH',
+        ...(tenantId ? { tenantId } : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 25,
+    });
   }
 
   async findOne(id: string) {

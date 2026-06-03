@@ -21,4 +21,23 @@ export class AppController {
       graphql: '/graphql',
     };
   }
+
+  @Public()
+  @Get('payments/success')
+  paymentSuccess(): { ok: boolean; message: string } {
+    return {
+      ok: true,
+      message:
+        'Payment received. Return to the ABAConnect app and refresh Payments.',
+    };
+  }
+
+  @Public()
+  @Get('payments/cancel')
+  paymentCancel(): { ok: boolean; message: string } {
+    return {
+      ok: false,
+      message: 'Checkout cancelled. You can try again from the app.',
+    };
+  }
 }

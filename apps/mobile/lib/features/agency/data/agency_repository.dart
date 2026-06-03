@@ -69,20 +69,57 @@ class AgencyRepository {
     );
   }
 
+  static const _availableInviteQuery = r'''
+    query AvailableInvite {
+      agencyTherapistsAvailableToInvite {
+        id
+        isVerified
+        licenseNumber
+        user { firstName lastName }
+      }
+    }
+  ''';
+
+  static const _inviteMutation = r'''
+    mutation Invite($therapistId: ID!) {
+      inviteAgencyTherapist(therapistId: $therapistId) {
+        id
+        isVerified
+      }
+    }
+  ''';
+
+  Future<List<AgencyTherapistModel>> fetchAvailableToInvite() async {
+    final result = await _graphql.query(_availableInviteQuery);
+    final list = result['data']?['agencyTherapistsAvailableToInvite']
+            as List<dynamic>? ??
+        [];
+    return list.map(_mapTherapist).toList();
+  }
+
+  Future<void> inviteTherapist(String therapistId) async {
+    await _graphql.query(
+      _inviteMutation,
+      variables: {'therapistId': therapistId},
+    );
+  }
+
   Future<List<AgencyTherapistModel>> fetchTherapists() async {
     final result = await _graphql.query(_therapistsQuery);
     final list = result['data']?['agencyTherapists'] as List<dynamic>? ?? [];
-    return list.map((e) {
-      final user = e['user'] as Map<String, dynamic>?;
-      final name = user != null
-          ? '${user['firstName']} ${user['lastName']}'
-          : 'Therapist';
-      return AgencyTherapistModel(
-        id: e['id'] as String,
-        displayName: name,
-        isVerified: e['isVerified'] as bool? ?? false,
-        licenseNumber: e['licenseNumber'] as String?,
-      );
-    }).toList();
+    return list.map(_mapTherapist).toList();
+  }
+
+  AgencyTherapistModel _mapTherapist(dynamic e) {
+    final user = e['user'] as Map<String, dynamic>?;
+    final name = user != null
+        ? '${user['firstName']} ${user['lastName']}'
+        : 'Therapist';
+    return AgencyTherapistModel(
+      id: e['id'] as String,
+      displayName: name,
+      isVerified: e['isVerified'] as bool? ?? false,
+      licenseNumber: e['licenseNumber'] as String?,
+    );
   }
 }

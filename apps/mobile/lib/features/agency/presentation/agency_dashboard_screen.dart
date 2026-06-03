@@ -15,10 +15,57 @@ final agencyTherapistsProvider = FutureProvider<List<AgencyTherapistModel>>((ref
   return ref.watch(agencyRepositoryProvider).fetchTherapists();
 });
 
+final agencyInviteCandidatesProvider =
+    FutureProvider<List<AgencyTherapistModel>>((ref) {
+  return ref.watch(agencyRepositoryProvider).fetchAvailableToInvite();
+});
+
 final agencyAnalyticsProvider =
     FutureProvider<List<Map<String, dynamic>>>((ref) {
   return ref.watch(platformRepositoryProvider).fetchTenantAnalytics();
 });
+
+Future<void> _showInviteTherapist(BuildContext context, WidgetRef ref) async {
+  final candidates = await ref.read(agencyInviteCandidatesProvider.future);
+  if (!context.mounted) return;
+  if (candidates.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('All therapists are already on your roster')),
+    );
+    return;
+  }
+  final selected = await showDialog<String>(
+    context: context,
+    builder: (ctx) => SimpleDialog(
+      title: const Text('Invite therapist'),
+      children: candidates
+          .map(
+            (t) => SimpleDialogOption(
+              onPressed: () => Navigator.pop(ctx, t.id),
+              child: Text(t.displayName),
+            ),
+          )
+          .toList(),
+    ),
+  );
+  if (selected == null) return;
+  try {
+    await ref.read(agencyRepositoryProvider).inviteTherapist(selected);
+    ref.invalidate(agencyTherapistsProvider);
+    ref.invalidate(agencyInviteCandidatesProvider);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Therapist added to agency')),
+      );
+    }
+  } catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Invite failed: $e')),
+      );
+    }
+  }
+}
 
 class AgencyDashboardScreen extends ConsumerWidget {
   const AgencyDashboardScreen({super.key});
@@ -106,6 +153,12 @@ class AgencyDashboardScreen extends ConsumerWidget {
                     value: '${stats.pendingTherapists}',
                   ),
                 ],
+              ),
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: () => _showInviteTherapist(context, ref),
+                icon: const Icon(Icons.person_add),
+                label: const Text('Invite therapist to agency'),
               ),
               const SizedBox(height: 24),
               Text(

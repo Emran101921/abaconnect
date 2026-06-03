@@ -36,6 +36,7 @@
 
 ## Production follow-ups (manual)
 - Execute BAAs and AWS HIPAA account setup
+- Configure Stripe webhooks (`STRIPE_WEBHOOK_SECRET`, `POST /api/v1/webhooks/stripe`)
 - Wire telehealth vendor SDK (Daily/Twilio)
 - Enable MFA (TOTP/WebAuthn)
 - Field-level encryption service for PHI columns

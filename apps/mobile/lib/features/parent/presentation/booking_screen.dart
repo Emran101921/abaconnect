@@ -21,6 +21,8 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
   String? _therapistId;
   String _therapyType = 'ABA';
   DateTime _start = DateTime.now().add(const Duration(days: 1));
+  bool _recurring = false;
+  int _recurringWeeks = 4;
   bool _loading = true;
   bool _submitting = false;
 
@@ -62,19 +64,38 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
     setState(() => _submitting = true);
     try {
       final end = _start.add(const Duration(hours: 1));
-      await ref.read(parentBookingRepositoryProvider).bookAppointment(
-            childId: _childId!,
-            therapistId: _therapistId!,
-            therapyType: _therapyType,
-            start: _start,
-            end: end,
-          );
-      ref.invalidate(parentAppointmentsProvider);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Appointment booked')),
+      final repo = ref.read(parentBookingRepositoryProvider);
+      if (_recurring) {
+        final count = await repo.bookRecurringAppointments(
+          childId: _childId!,
+          therapistId: _therapistId!,
+          therapyType: _therapyType,
+          start: _start,
+          end: end,
+          weeks: _recurringWeeks,
         );
-        context.pop();
+        ref.invalidate(parentAppointmentsProvider);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Booked $count weekly sessions')),
+          );
+          context.pop();
+        }
+      } else {
+        await repo.bookAppointment(
+          childId: _childId!,
+          therapistId: _therapistId!,
+          therapyType: _therapyType,
+          start: _start,
+          end: end,
+        );
+        ref.invalidate(parentAppointmentsProvider);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Appointment booked')),
+          );
+          context.pop();
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -190,6 +211,28 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
               trailing: const Icon(Icons.calendar_today),
               onTap: _pickDateTime,
             ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Weekly recurring'),
+              subtitle: const Text('Book the same slot each week'),
+              value: _recurring,
+              onChanged: (v) => setState(() => _recurring = v),
+            ),
+            if (_recurring)
+              DropdownMenu<int>(
+                label: const Text('Number of weeks'),
+                initialSelection: _recurringWeeks,
+                dropdownMenuEntries: List.generate(
+                  11,
+                  (i) => DropdownMenuEntry(
+                    value: i + 2,
+                    label: '${i + 2} weeks',
+                  ),
+                ),
+                onSelected: (v) {
+                  if (v != null) setState(() => _recurringWeeks = v);
+                },
+              ),
             const Spacer(),
             FilledButton(
               onPressed: _submitting ? null : _book,

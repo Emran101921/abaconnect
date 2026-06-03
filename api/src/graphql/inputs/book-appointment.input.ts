@@ -23,6 +23,12 @@ export class BookAppointmentInput {
 }
 
 @InputType()
+export class BookRecurringAppointmentsInput extends BookAppointmentInput {
+  @Field()
+  weeks: number;
+}
+
+@InputType()
 export class TherapistDiscoveryInput {
   @Field(() => TherapyType, { nullable: true })
   therapyType?: TherapyType;

@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -45,9 +49,72 @@ export class AgenciesService {
     });
   }
 
+  async inviteTherapistForTenant(tenantId: string, therapistId: string) {
+    const agency = await this.prisma.agency.findFirst({
+      where: { tenantId },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (!agency) {
+      throw new NotFoundException('Agency not found for tenant');
+    }
+
+    const therapist = await this.prisma.therapist.findFirst({
+      where: { id: therapistId, tenantId },
+      include: { user: true },
+    });
+    if (!therapist) {
+      throw new NotFoundException('Therapist not found');
+    }
+
+    return this.prisma.agencyTherapist.upsert({
+      where: {
+        agencyId_therapistId: {
+          agencyId: agency.id,
+          therapistId: therapist.id,
+        },
+      },
+      update: { status: 'ACTIVE', joinedAt: new Date() },
+      create: {
+        agencyId: agency.id,
+        therapistId: therapist.id,
+        status: 'ACTIVE',
+        joinedAt: new Date(),
+      },
+      include: { therapist: { include: { user: true } }, agency: true },
+    });
+  }
+
+  async listUnlinkedTherapistsForTenant(tenantId: string) {
+    const agency = await this.prisma.agency.findFirst({
+      where: { tenantId },
+    });
+    if (!agency) {
+      return [];
+    }
+    const linked = await this.prisma.agencyTherapist.findMany({
+      where: { agencyId: agency.id },
+      select: { therapistId: true },
+    });
+    const linkedIds = linked.map((l) => l.therapistId);
+    return this.prisma.therapist.findMany({
+      where: {
+        tenantId,
+        id: linkedIds.length ? { notIn: linkedIds } : undefined,
+      },
+      include: { user: true },
+      take: 50,
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   async create(data: Record<string, unknown>) {
-    void data;
-    return { id: 'stub' };
+    const tenantId = data.tenantId as string | undefined;
+    const therapistId = data.therapistId as string | undefined;
+    if (tenantId && therapistId) {
+      const link = await this.inviteTherapistForTenant(tenantId, therapistId);
+      return { id: link.id, agencyId: link.agencyId, therapistId: link.therapistId };
+    }
+    throw new BadRequestException('Provide tenantId and therapistId');
   }
 
   async findAll() {

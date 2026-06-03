@@ -20,6 +20,92 @@ export class ReviewsService {
     });
   }
 
+  async findPendingReviewTherapists(userId: string) {
+    const parent = await this.prisma.parent.findUnique({ where: { userId } });
+    if (!parent) {
+      return [];
+    }
+
+    const completed = await this.prisma.session.findMany({
+      where: {
+        status: 'COMPLETED',
+        child: { parentId: parent.id },
+      },
+      include: {
+        therapist: { include: { user: true } },
+      },
+      orderBy: { checkOutAt: 'desc' },
+      take: 30,
+    });
+
+    const reviewedTherapistIds = new Set(
+      (
+        await this.prisma.review.findMany({
+          where: { parentId: parent.id },
+          select: { therapistId: true },
+        })
+      ).map((r) => r.therapistId),
+    );
+
+    const seen = new Set<string>();
+    const pending: typeof completed[0]['therapist'][] = [];
+    for (const session of completed) {
+      const t = session.therapist;
+      if (!t || reviewedTherapistIds.has(t.id) || seen.has(t.id)) {
+        continue;
+      }
+      seen.add(t.id);
+      pending.push(t);
+    }
+    return pending;
+  }
+
+  async listForAdminModeration(tenantId?: string, take = 50) {
+    return this.prisma.review.findMany({
+      where: tenantId
+        ? { therapist: { tenantId } }
+        : undefined,
+      include: {
+        therapist: { include: { user: true } },
+        author: true,
+      },
+      orderBy: { createdAt: 'desc' },
+      take,
+    });
+  }
+
+  async setPublished(reviewId: string, isPublished: boolean) {
+    const review = await this.prisma.review.findUnique({
+      where: { id: reviewId },
+      include: { therapist: true },
+    });
+    if (!review) {
+      throw new NotFoundException('Review not found');
+    }
+
+    const updated = await this.prisma.review.update({
+      where: { id: reviewId },
+      data: { isPublished },
+      include: { therapist: { include: { user: true } }, author: true },
+    });
+
+    const stats = await this.prisma.review.aggregate({
+      where: { therapistId: review.therapistId, isPublished: true },
+      _avg: { rating: true },
+      _count: true,
+    });
+
+    await this.prisma.therapist.update({
+      where: { id: review.therapistId },
+      data: {
+        ratingAverage: stats._avg.rating ?? 0,
+        ratingCount: stats._count,
+      },
+    });
+
+    return updated;
+  }
+
   async createForParentUserId(
     userId: string,
     data: {

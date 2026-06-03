@@ -12,12 +12,18 @@ final parentAppointmentsProvider =
   return ref.watch(parentBookingRepositoryProvider).fetchAppointments();
 });
 
+final parentPendingReviewsProvider =
+    FutureProvider<List<TherapistModel>>((ref) async {
+  return ref.watch(parentBookingRepositoryProvider).fetchPendingReviewTherapists();
+});
+
 class ParentHomeScreen extends ConsumerWidget {
   const ParentHomeScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final appointments = ref.watch(parentAppointmentsProvider);
+    final pendingReviews = ref.watch(parentPendingReviewsProvider);
 
     return AppScaffold(
       title: 'Parent Home',
@@ -33,6 +39,26 @@ class ParentHomeScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          pendingReviews.when(
+            data: (therapists) {
+              if (therapists.isEmpty) return const SizedBox.shrink();
+              return Card(
+                color: Theme.of(context).colorScheme.secondaryContainer,
+                margin: const EdgeInsets.only(bottom: 16),
+                child: ListTile(
+                  leading: const Icon(Icons.rate_review),
+                  title: const Text('Rate your therapist'),
+                  subtitle: Text(
+                    'You have ${therapists.length} completed session(s) awaiting feedback',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push('/parent/reviews'),
+                ),
+              );
+            },
+            loading: () => const SizedBox.shrink(),
+            error: (_, __) => const SizedBox.shrink(),
+          ),
           Text(
             'Upcoming appointments',
             style: Theme.of(context).textTheme.titleMedium,
