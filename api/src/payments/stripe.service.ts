@@ -9,7 +9,7 @@ export class StripeService {
 
   constructor(private config: ConfigService) {
     const key = this.config.get<string>('STRIPE_SECRET_KEY');
-    if (key) {
+    if (key?.startsWith('sk_')) {
       this.stripe = new Stripe(key);
     }
   }

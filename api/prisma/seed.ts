@@ -1,6 +1,10 @@
+import { PrismaPg } from '@prisma/adapter-pg';
+import { Pool } from 'pg';
 import { PrismaClient } from '../generated/prisma/client';
 
-const prisma = new PrismaClient();
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
   const tenant = await prisma.tenant.upsert({
@@ -9,7 +13,7 @@ async function main() {
     create: {
       name: 'ABAConnect Platform',
       slug: 'abaconnect',
-      brandingJson: { primaryColor: '#1565C0', logoUrl: null },
+      settings: { branding: { primaryColor: '#1565C0' } },
       isActive: true,
     },
   });
@@ -131,10 +135,10 @@ async function main() {
   });
 
   const screeningTypes = [
-    { therapyType: 'ABA' as const, schemaJson: { sections: ['aggression', 'communication'] } },
-    { therapyType: 'SPEECH' as const, schemaJson: { sections: ['speech_delay', 'aac'] } },
-    { therapyType: 'OCCUPATIONAL' as const, schemaJson: { sections: ['fine_motor', 'sensory'] } },
-    { therapyType: 'PHYSICAL' as const, schemaJson: { sections: ['mobility', 'balance'] } },
+    { therapyType: 'ABA' as const, name: 'ABA Intake', questions: [{ id: 'aggression', label: 'Aggression' }] },
+    { therapyType: 'SPEECH' as const, name: 'Speech Intake', questions: [{ id: 'speech_delay', label: 'Speech delay' }] },
+    { therapyType: 'OCCUPATIONAL' as const, name: 'OT Intake', questions: [{ id: 'fine_motor', label: 'Fine motor' }] },
+    { therapyType: 'PHYSICAL' as const, name: 'PT Intake', questions: [{ id: 'mobility', label: 'Mobility' }] },
   ];
 
   for (const t of screeningTypes) {
@@ -145,9 +149,10 @@ async function main() {
       await prisma.screeningTemplate.create({
         data: {
           tenantId: tenant.id,
+          name: t.name,
           therapyType: t.therapyType,
           version: 1,
-          schemaJson: t.schemaJson,
+          questions: t.questions,
           isActive: true,
         },
       });
@@ -194,4 +199,7 @@ main()
     console.error(e);
     process.exit(1);
   })
-  .finally(() => prisma.$disconnect());
+  .finally(async () => {
+    await prisma.$disconnect();
+    await pool.end();
+  });
