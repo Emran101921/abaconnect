@@ -34,6 +34,7 @@ import { ComplianceModule } from './compliance/compliance.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { AiModule } from './ai/ai.module';
 import { ScreeningsModule } from './screenings/screenings.module';
+import { ComplaintsModule } from './complaints/complaints.module';
 
 @Module({
   imports: [
@@ -83,6 +84,7 @@ import { ScreeningsModule } from './screenings/screenings.module';
     AnalyticsModule,
     AiModule,
     ScreeningsModule,
+    ComplaintsModule,
     GraphqlFeatureModule,
   ],
   controllers: [AppController],

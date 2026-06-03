@@ -1,40 +1,140 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { DocumentType } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class DocumentsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(data: Record<string, unknown>) {
-    // return this.prisma.document.create({ data });
-    void this.prisma;
-    return { id: 'stub', ...data };
-  }
-
-  async findAll() {
-    // return this.prisma.documents.findMany();
-    void this.prisma;
+  async listForUser(userId: string) {
+    const parent = await this.prisma.parent.findUnique({ where: { userId } });
+    if (parent) {
+      return this.prisma.document.findMany({
+        where: {
+          OR: [{ child: { parentId: parent.id } }, { tenantId: parent.tenantId, childId: null }],
+        },
+        orderBy: { uploadedAt: 'desc' },
+        take: 50,
+      });
+    }
+    const therapist = await this.prisma.therapist.findUnique({ where: { userId } });
+    if (therapist) {
+      return this.prisma.document.findMany({
+        where: { therapistId: therapist.id },
+        orderBy: { uploadedAt: 'desc' },
+        take: 50,
+      });
+    }
     return [];
   }
 
-  async findOne(id: string) {
-    if (!id) {
-      throw new NotFoundException('Resource not found');
+  async registerUpload(
+    userId: string,
+    data: {
+      title: string;
+      fileName: string;
+      mimeType: string;
+      fileSize: number;
+      type: DocumentType;
+      childId?: string;
+    },
+  ) {
+    const parent = await this.prisma.parent.findUnique({ where: { userId } });
+    const therapist = await this.prisma.therapist.findUnique({ where: { userId } });
+    const tenantId = parent?.tenantId ?? therapist?.tenantId;
+    if (!tenantId) {
+      throw new BadRequestException('Profile not found');
     }
-    // return this.prisma.documents.findUnique({ where: { id } });
-    void this.prisma;
-    return { id };
+
+    if (data.childId && parent) {
+      const child = await this.prisma.child.findFirst({
+        where: { id: data.childId, parentId: parent.id },
+      });
+      if (!child) throw new NotFoundException('Child not found');
+    }
+
+    const storageKey = `tenants/${tenantId}/docs/${Date.now()}_${data.fileName}`;
+    const doc = await this.prisma.document.create({
+      data: {
+        tenantId,
+        childId: data.childId,
+        therapistId: therapist?.id,
+        type: data.type,
+        title: data.title,
+        fileName: data.fileName,
+        mimeType: data.mimeType,
+        fileSize: data.fileSize,
+        storageKey,
+      },
+    });
+
+    await this.prisma.documentAccessLog.create({
+      data: {
+        documentId: doc.id,
+        userId,
+        action: 'CREATE',
+      },
+    });
+
+    return doc;
+  }
+
+  async logAccess(userId: string, documentId: string) {
+    const doc = await this.findAccessible(userId, documentId);
+    await this.prisma.documentAccessLog.create({
+      data: { documentId: doc.id, userId, action: 'READ' },
+    });
+    return doc;
+  }
+
+  private async findAccessible(userId: string, documentId: string) {
+    const doc = await this.prisma.document.findUnique({
+      where: { id: documentId },
+      include: { child: { include: { parent: true } } },
+    });
+    if (!doc) throw new NotFoundException('Document not found');
+
+    const parent = await this.prisma.parent.findUnique({ where: { userId } });
+    if (parent && (doc.child?.parentId === parent.id || doc.tenantId === parent.tenantId)) {
+      return doc;
+    }
+    const therapist = await this.prisma.therapist.findUnique({ where: { userId } });
+    if (therapist && doc.therapistId === therapist.id) {
+      return doc;
+    }
+    throw new BadRequestException('Not authorized');
+  }
+
+  async create(data: Record<string, unknown>) {
+    void data;
+    throw new BadRequestException('Use GraphQL registerDocument');
+  }
+
+  async findAll() {
+    return this.prisma.document.findMany({ take: 20 });
+  }
+
+  async findOne(id: string) {
+    const doc = await this.prisma.document.findUnique({ where: { id } });
+    if (!doc) throw new NotFoundException('Document not found');
+    return doc;
   }
 
   async update(id: string, data: Record<string, unknown>) {
-    // return this.prisma.documents.update({ where: { id }, data });
-    void this.prisma;
-    return { id, ...data };
+    await this.findOne(id);
+    return this.prisma.document.update({
+      where: { id },
+      data: data as Parameters<typeof this.prisma.document.update>[0]['data'],
+    });
   }
 
   async remove(id: string) {
-    // return this.prisma.documents.delete({ where: { id } });
-    void this.prisma;
+    await this.findOne(id);
+    await this.prisma.document.delete({ where: { id } });
     return { id, deleted: true };
   }
 }

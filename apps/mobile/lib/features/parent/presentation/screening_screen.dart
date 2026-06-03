@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -46,6 +48,17 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
     }
   }
 
+  List<Map<String, dynamic>> _parseQuestions(ScreeningTemplateModel template) {
+    if (template.questionsJson == null) return [];
+    try {
+      final decoded = jsonDecode(template.questionsJson!);
+      if (decoded is List) {
+        return decoded.cast<Map<String, dynamic>>();
+      }
+    } catch (_) {}
+    return [];
+  }
+
   Future<void> _completeTemplate(ScreeningTemplateModel template) async {
     if (_children.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -53,12 +66,55 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
       );
       return;
     }
-    final childId = _children.first.id;
+
+    final questions = _parseQuestions(template);
+    final answers = <String, dynamic>{};
+
+    if (questions.isNotEmpty) {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) {
+          return AlertDialog(
+            title: Text(template.name),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: questions.map((q) {
+                  final id = q['id'] as String? ?? 'q';
+                  final label = q['label'] as String? ?? id;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: TextField(
+                      decoration: InputDecoration(labelText: label),
+                      onChanged: (v) => answers[id] = v,
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Submit'),
+              ),
+            ],
+          );
+        },
+      );
+      if (ok != true) return;
+    } else {
+      answers['completed'] = true;
+    }
+
     try {
       await ref.read(parentBookingRepositoryProvider).submitScreening(
             templateId: template.id,
-            childId: childId,
-            responses: {'completed': true, 'template': template.name},
+            childId: _children.first.id,
+            responses: answers,
           );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -99,49 +155,25 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
                   const Text('No screening templates configured.')
                 else
                   ..._templates.map(
-                    (t) => _FormCard(
-                      title: t.name,
-                      subtitle: t.therapyType,
-                      onComplete: () => _completeTemplate(t),
-                    ),
+                    (t) {
+                      final qCount = _parseQuestions(t).length;
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        child: ListTile(
+                          title: Text(t.name),
+                          subtitle: Text(
+                            '${t.therapyType} · $qCount question(s)',
+                          ),
+                          trailing: FilledButton(
+                            onPressed: () => _completeTemplate(t),
+                            child: const Text('Start'),
+                          ),
+                        ),
+                      );
+                    },
                   ),
               ],
             ),
-    );
-  }
-}
-
-class _FormCard extends StatelessWidget {
-  const _FormCard({
-    required this.title,
-    required this.subtitle,
-    required this.onComplete,
-  });
-
-  final String title;
-  final String subtitle;
-  final VoidCallback onComplete;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 4),
-            Text(subtitle),
-            const SizedBox(height: 12),
-            FilledButton(
-              onPressed: onComplete,
-              child: const Text('Mark complete'),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

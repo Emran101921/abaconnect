@@ -62,6 +62,27 @@ export class PendingTherapistType {
 }
 
 @ObjectType()
+export class AdminComplaintType {
+  @Field(() => ID)
+  id: string;
+
+  @Field()
+  status: string;
+
+  @Field()
+  category: string;
+
+  @Field()
+  subject: string;
+
+  @Field()
+  description: string;
+
+  @Field({ nullable: true })
+  reporterName?: string;
+}
+
+@ObjectType()
 export class AuditLogEntryType {
   @Field(() => ID)
   id: string;

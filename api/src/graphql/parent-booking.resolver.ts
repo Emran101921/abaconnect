@@ -177,6 +177,7 @@ export class ParentBookingResolver {
       name: t.name,
       therapyType: t.therapyType,
       version: String(t.version),
+      questionsJson: JSON.stringify(t.questions),
     }));
   }
 

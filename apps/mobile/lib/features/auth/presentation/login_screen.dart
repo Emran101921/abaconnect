@@ -64,7 +64,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Sign in with your account (API: localhost:3000)',
+              'API must be running at http://localhost:3000\n'
+              'Check: http://localhost:3000/api/v1/health',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 32),

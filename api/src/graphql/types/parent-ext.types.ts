@@ -36,6 +36,9 @@ export class ScreeningTemplateType {
 
   @Field()
   version: string;
+
+  @Field({ nullable: true })
+  questionsJson?: string;
 }
 
 @ObjectType()

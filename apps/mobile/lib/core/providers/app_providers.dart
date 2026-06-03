@@ -9,6 +9,7 @@ import '../../features/auth/providers/auth_provider.dart';
 import '../../features/messaging/data/messaging_repository.dart';
 import '../../features/parent/data/parent_booking_repository.dart';
 import '../../features/payments/data/payments_repository.dart';
+import '../../features/platform/data/platform_repository.dart';
 import '../../features/therapist/data/therapist_repository.dart';
 
 final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
@@ -41,6 +42,10 @@ final messagingRepositoryProvider = Provider<MessagingRepository>((ref) {
 
 final paymentsRepositoryProvider = Provider<PaymentsRepository>((ref) {
   return PaymentsRepository(ref.watch(graphqlClientProvider));
+});
+
+final platformRepositoryProvider = Provider<PlatformRepository>((ref) {
+  return PlatformRepository(ref.watch(graphqlClientProvider));
 });
 
 final authStateProvider =

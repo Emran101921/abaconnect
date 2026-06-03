@@ -101,13 +101,20 @@ Demo logins (after seed):
 |------|-------|----------|
 | Parent | `parent@demo.local` | `Parent123!` |
 | Therapist | `therapist@demo.local` | `Therapist123!` |
+| Agency | `agency@demo.local` | `Agency123!` |
 | Admin | `admin@abaconnect.local` | `Admin123!` |
+
+Health check: `GET http://localhost:3000/api/v1/health`
 
 **REST:** `GET /api/v1/auth/me` (Bearer token) returns profile + `parentId` / `therapistId`.
 
-**GraphQL therapist:** `myTherapistProfile`, `myTherapistAppointments`, `myTherapistSessions`, `updateTherapistProfile`, `saveSoapNote`, `startSession`.
+**GraphQL parent:** booking, children, reviews, screening, messages, payments, telehealth, documents, notifications, insurance, consent, complaints.
 
-**GraphQL admin:** `adminDashboard`, `adminUsers`, `pendingTherapistVerifications`, `verifyTherapist`, `adminRecentAuditLogs`.
+**GraphQL therapist:** profile, appointments, sessions, SOAP, EVV (`recordEvvCheckIn`), AI SOAP assist (`suggestSoapNote`).
+
+**GraphQL admin:** dashboard, users, verify therapists, audit logs, complaints (`adminComplaints`, `resolveComplaint`).
+
+**GraphQL agency:** `agencyDashboard`, `agencyTherapists`.
 
 ### Therapist SOAP workflow (Flutter)
 

@@ -50,6 +50,24 @@ class PendingTherapistModel {
   final String? licenseState;
 }
 
+class AdminComplaintModel {
+  const AdminComplaintModel({
+    required this.id,
+    required this.status,
+    required this.category,
+    required this.subject,
+    required this.description,
+    this.reporterName,
+  });
+
+  final String id;
+  final String status;
+  final String category;
+  final String subject;
+  final String description;
+  final String? reporterName;
+}
+
 class AuditLogModel {
   const AuditLogModel({
     required this.id,
@@ -176,6 +194,39 @@ class AdminRepository {
           ),
         )
         .toList();
+  }
+
+  Future<List<AdminComplaintModel>> fetchComplaints() async {
+    const query = r'''
+      query {
+        adminComplaints {
+          id status category subject description reporterName
+        }
+      }
+    ''';
+    final result = await _graphql.query(query);
+    final list = result['data']?['adminComplaints'] as List<dynamic>? ?? [];
+    return list
+        .map(
+          (e) => AdminComplaintModel(
+            id: e['id'] as String,
+            status: e['status'] as String? ?? '',
+            category: e['category'] as String? ?? '',
+            subject: e['subject'] as String? ?? '',
+            description: e['description'] as String? ?? '',
+            reporterName: e['reporterName'] as String?,
+          ),
+        )
+        .toList();
+  }
+
+  Future<void> resolveComplaint(String id, String resolution) async {
+    const mutation = r'''
+      mutation Resolve($id: ID!, $resolution: String!) {
+        resolveComplaint(complaintId: $id, resolution: $resolution) { id status }
+      }
+    ''';
+    await _graphql.query(mutation, variables: {'id': id, 'resolution': resolution});
   }
 
   Future<void> verifyTherapist(String therapistId) async {

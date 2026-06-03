@@ -121,6 +121,30 @@ class ParentHomeScreen extends ConsumerWidget {
             icon: Icons.video_call,
             onTap: () => context.push('/telehealth'),
           ),
+          _NavTile(
+            title: 'Notifications',
+            subtitle: 'Alerts and reminders',
+            icon: Icons.notifications,
+            onTap: () => context.push('/notifications'),
+          ),
+          _NavTile(
+            title: 'Documents',
+            subtitle: 'Insurance cards and reports',
+            icon: Icons.folder,
+            onTap: () => context.push('/documents'),
+          ),
+          _NavTile(
+            title: 'Insurance',
+            subtitle: 'Claims and coverage',
+            icon: Icons.health_and_safety,
+            onTap: () => context.push('/insurance'),
+          ),
+          _NavTile(
+            title: 'Privacy',
+            subtitle: 'HIPAA consent',
+            icon: Icons.privacy_tip,
+            onTap: () => context.push('/consent'),
+          ),
         ],
       ),
     );

@@ -42,11 +42,14 @@ export class AuditController {
   log(
     @Body()
     body: {
+      tenantId: string;
       action: string;
+      resourceType: string;
       actorId?: string;
+      resourceId?: string;
       metadata?: Record<string, unknown>;
     },
   ) {
-    return this.auditService.log(body.action, body.actorId, body.metadata);
+    return this.auditService.log(body);
   }
 }

@@ -302,6 +302,112 @@ async function main() {
     },
   });
 
+  await prisma.telehealthSession.upsert({
+    where: { appointmentId: '00000000-0000-4000-8000-000000000010' },
+    update: {},
+    create: {
+      tenantId: tenant.id,
+      appointmentId: '00000000-0000-4000-8000-000000000010',
+      roomId: 'demo_room_aba_001',
+      providerUrl: 'https://meet.abaconnect.local/demo_room_aba_001?role=provider',
+      patientUrl: 'https://meet.abaconnect.local/demo_room_aba_001?role=patient',
+    },
+  });
+
+  await prisma.session.upsert({
+    where: { appointmentId: '00000000-0000-4000-8000-000000000010' },
+    update: {},
+    create: {
+      appointmentId: '00000000-0000-4000-8000-000000000010',
+      tenantId: tenant.id,
+      childId: '00000000-0000-4000-8000-000000000001',
+      therapistId: therapistProfile.id,
+      status: 'SCHEDULED',
+    },
+  });
+
+  const notifCount = await prisma.notification.count({
+    where: { userId: parentUser.id },
+  });
+  if (notifCount === 0) {
+    await prisma.notification.createMany({
+      data: [
+        {
+          tenantId: tenant.id,
+          userId: parentUser.id,
+          title: 'Appointment confirmed',
+          body: 'Your ABA session is confirmed for 2 days from now.',
+        },
+        {
+          tenantId: tenant.id,
+          userId: parentUser.id,
+          title: 'Complete screening',
+          body: 'Please finish intake forms before the first visit.',
+        },
+      ],
+    });
+  }
+
+  await prisma.document.upsert({
+    where: { id: '00000000-0000-4000-8000-000000000040' },
+    update: {},
+    create: {
+      id: '00000000-0000-4000-8000-000000000040',
+      tenantId: tenant.id,
+      childId: '00000000-0000-4000-8000-000000000001',
+      type: 'INSURANCE_CARD',
+      title: 'Insurance card — Alex',
+      fileName: 'insurance_card.pdf',
+      mimeType: 'application/pdf',
+      fileSize: 245000,
+      storageKey: `tenants/${tenant.id}/docs/insurance_card.pdf`,
+    },
+  });
+
+  await prisma.insuranceClaim.upsert({
+    where: { id: '00000000-0000-4000-8000-000000000050' },
+    update: {},
+    create: {
+      id: '00000000-0000-4000-8000-000000000050',
+      tenantId: tenant.id,
+      parentId: parentProfile.id,
+      childId: '00000000-0000-4000-8000-000000000001',
+      payerName: 'Demo Health Plan',
+      billedAmount: 200,
+      serviceDate: new Date(),
+      status: 'PENDING',
+    },
+  });
+
+  await prisma.complaint.upsert({
+    where: { id: '00000000-0000-4000-8000-000000000070' },
+    update: {},
+    create: {
+      id: '00000000-0000-4000-8000-000000000070',
+      tenantId: tenant.id,
+      reporterId: parentUser.id,
+      parentId: parentProfile.id,
+      therapistId: therapistProfile.id,
+      category: 'SERVICE',
+      subject: 'Demo scheduling question',
+      description: 'Need to confirm first session time window.',
+      status: 'OPEN',
+    },
+  });
+
+  await prisma.hipaaConsent.upsert({
+    where: { id: '00000000-0000-4000-8000-000000000060' },
+    update: {},
+    create: {
+      id: '00000000-0000-4000-8000-000000000060',
+      tenantId: tenant.id,
+      userId: parentUser.id,
+      consentType: 'HIPAA_PRIVACY',
+      version: '1.0',
+      granted: true,
+    },
+  });
+
   console.log('Seed complete.');
   console.log('  Admin:     admin@abaconnect.local / Admin123!');
   console.log('  Parent:    parent@demo.local / Parent123!');

@@ -25,6 +25,11 @@ final adminAuditLogsProvider = FutureProvider<List<AuditLogModel>>((ref) async {
   return ref.watch(adminRepositoryProvider).fetchAuditLogs();
 });
 
+final adminComplaintsProvider =
+    FutureProvider<List<AdminComplaintModel>>((ref) async {
+  return ref.watch(adminRepositoryProvider).fetchComplaints();
+});
+
 class AdminDashboardScreen extends ConsumerWidget {
   const AdminDashboardScreen({super.key});
 
@@ -34,6 +39,7 @@ class AdminDashboardScreen extends ConsumerWidget {
     final pending = ref.watch(pendingTherapistsProvider);
     final users = ref.watch(adminUsersProvider);
     final audits = ref.watch(adminAuditLogsProvider);
+    final complaints = ref.watch(adminComplaintsProvider);
 
     return AppScaffold(
       title: 'Admin Dashboard',
@@ -52,6 +58,7 @@ class AdminDashboardScreen extends ConsumerWidget {
           ref.invalidate(pendingTherapistsProvider);
           ref.invalidate(adminUsersProvider);
           ref.invalidate(adminAuditLogsProvider);
+          ref.invalidate(adminComplaintsProvider);
         },
         child: ListView(
           padding: const EdgeInsets.all(16),
@@ -124,6 +131,48 @@ class AdminDashboardScreen extends ConsumerWidget {
                             }
                           },
                           child: const Text('Verify'),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                );
+              },
+              loading: () => const CircularProgressIndicator(),
+              error: (e, _) => Text('$e'),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Open complaints',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            complaints.when(
+              data: (list) {
+                if (list.isEmpty) {
+                  return const Card(
+                    child: ListTile(title: Text('No open complaints')),
+                  );
+                }
+                return Column(
+                  children: list.map((c) {
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: ListTile(
+                        title: Text(c.subject),
+                        subtitle: Text(
+                          '${c.category} · ${c.reporterName ?? ''}\n${c.description}',
+                        ),
+                        isThreeLine: true,
+                        trailing: TextButton(
+                          onPressed: () async {
+                            await ref.read(adminRepositoryProvider).resolveComplaint(
+                                  c.id,
+                                  'Resolved by admin',
+                                );
+                            ref.invalidate(adminComplaintsProvider);
+                            ref.invalidate(adminDashboardProvider);
+                          },
+                          child: const Text('Resolve'),
                         ),
                       ),
                     );

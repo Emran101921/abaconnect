@@ -53,11 +53,13 @@ class ScreeningTemplateModel {
     required this.id,
     required this.name,
     required this.therapyType,
+    this.questionsJson,
   });
 
   final String id;
   final String name;
   final String therapyType;
+  final String? questionsJson;
 }
 
 class AppointmentModel {
@@ -207,6 +209,7 @@ class ParentBookingRepository {
         name
         therapyType
         version
+        questionsJson
       }
     }
   ''';
@@ -295,6 +298,7 @@ class ParentBookingRepository {
             id: e['id'] as String,
             name: e['name'] as String,
             therapyType: e['therapyType'] as String? ?? '',
+            questionsJson: e['questionsJson'] as String?,
           ),
         )
         .toList();

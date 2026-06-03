@@ -5,36 +5,60 @@ import { PrismaService } from '../prisma/prisma.service';
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(data: Record<string, unknown>) {
-    // return this.prisma.user.create({ data });
-    void this.prisma;
-    return { id: 'stub', ...data };
-  }
-
-  async findAll() {
-    // return this.prisma.users.findMany();
-    void this.prisma;
-    return [];
+  async findAll(tenantId?: string) {
+    return this.prisma.user.findMany({
+      where: tenantId ? { tenantId } : undefined,
+      take: 100,
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        isActive: true,
+        createdAt: true,
+      },
+    });
   }
 
   async findOne(id: string) {
-    if (!id) {
-      throw new NotFoundException('Resource not found');
-    }
-    // return this.prisma.users.findUnique({ where: { id } });
-    void this.prisma;
-    return { id };
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        isActive: true,
+        tenantId: true,
+        createdAt: true,
+      },
+    });
+    if (!user) throw new NotFoundException('User not found');
+    return user;
+  }
+
+  async create(data: Record<string, unknown>) {
+    void data;
+    throw new Error('Use auth register');
   }
 
   async update(id: string, data: Record<string, unknown>) {
-    // return this.prisma.users.update({ where: { id }, data });
-    void this.prisma;
-    return { id, ...data };
+    await this.findOne(id);
+    return this.prisma.user.update({
+      where: { id },
+      data: data as Parameters<typeof this.prisma.user.update>[0]['data'],
+    });
   }
 
   async remove(id: string) {
-    // return this.prisma.users.delete({ where: { id } });
-    void this.prisma;
-    return { id, deleted: true };
+    await this.findOne(id);
+    await this.prisma.user.update({
+      where: { id },
+      data: { isActive: false },
+    });
+    return { id, deactivated: true };
   }
 }

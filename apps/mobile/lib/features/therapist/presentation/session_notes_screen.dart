@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/app_providers.dart';
+import '../../platform/data/platform_repository.dart';
 import '../data/therapist_repository.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 
@@ -66,6 +67,27 @@ class SessionNotesScreen extends ConsumerWidget {
                   maxLines: 2,
                 ),
                 const SizedBox(height: 16),
+                OutlinedButton(
+                  onPressed: () async {
+                    try {
+                      final s = await ref
+                          .read(platformRepositoryProvider)
+                          .suggestSoap(childName: session.childName);
+                      subjective.text = s['subjective'] ?? '';
+                      objective.text = s['objective'] ?? '';
+                      assessment.text = s['assessment'] ?? '';
+                      plan.text = s['plan'] ?? '';
+                    } catch (e) {
+                      if (ctx.mounted) {
+                        ScaffoldMessenger.of(ctx).showSnackBar(
+                          SnackBar(content: Text('AI assist: $e')),
+                        );
+                      }
+                    }
+                  },
+                  child: const Text('AI suggest'),
+                ),
+                const SizedBox(height: 8),
                 FilledButton(
                   onPressed: () => Navigator.pop(ctx, true),
                   child: const Text('Save SOAP Note'),
@@ -105,6 +127,33 @@ class SessionNotesScreen extends ConsumerWidget {
     objective.dispose();
     assessment.dispose();
     plan.dispose();
+  }
+
+  Future<void> _evv(
+    BuildContext context,
+    WidgetRef ref,
+    String sessionId,
+    String eventType,
+  ) async {
+    try {
+      await ref.read(platformRepositoryProvider).recordEvv(
+            sessionId: sessionId,
+            lat: 30.2672,
+            lng: -97.7431,
+            eventType: eventType,
+          );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('EVV $eventType recorded')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('EVV failed: $e'),
+        );
+      }
+    }
   }
 
   @override
@@ -152,14 +201,43 @@ class SessionNotesScreen extends ConsumerWidget {
             itemBuilder: (context, index) {
               final s = list[index];
               return Card(
-                child: ListTile(
-                  title: Text(s.childName),
-                  subtitle: Text(s.status),
-                  trailing: Icon(
-                    s.hasSoap ? Icons.check_circle : Icons.edit_note,
-                    color: s.hasSoap ? Colors.green : null,
-                  ),
-                  onTap: () => _openSoapEditor(context, ref, s),
+                child: Column(
+                  children: [
+                    ListTile(
+                      title: Text(s.childName),
+                      subtitle: Text(s.status),
+                      trailing: Icon(
+                        s.hasSoap ? Icons.check_circle : Icons.edit_note,
+                        color: s.hasSoap ? Colors.green : null,
+                      ),
+                      onTap: () => _openSoapEditor(context, ref, s),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      child: Row(
+                        children: [
+                          TextButton(
+                            onPressed: () => _evv(
+                              context,
+                              ref,
+                              s.id,
+                              'CHECK_IN',
+                            ),
+                            child: const Text('EVV in'),
+                          ),
+                          TextButton(
+                            onPressed: () => _evv(
+                              context,
+                              ref,
+                              s.id,
+                              'CHECK_OUT',
+                            ),
+                            child: const Text('EVV out'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               );
             },

@@ -15,6 +15,10 @@ import '../../features/parent/presentation/children_list_screen.dart';
 import '../../features/parent/presentation/parent_home_screen.dart';
 import '../../features/parent/presentation/reviews_screen.dart';
 import '../../features/parent/presentation/screening_screen.dart';
+import '../../features/compliance/presentation/consent_screen.dart';
+import '../../features/documents/presentation/documents_screen.dart';
+import '../../features/insurance/presentation/insurance_screen.dart';
+import '../../features/notifications/presentation/notifications_screen.dart';
 import '../../features/payments/presentation/payments_screen.dart';
 import '../../features/telehealth/presentation/telehealth_screen.dart';
 import '../../features/therapist/presentation/session_notes_screen.dart';
@@ -41,6 +45,10 @@ abstract final class AppRoutes {
   static const messages = '/messages';
   static const payments = '/payments';
   static const matching = '/matching';
+  static const notifications = '/notifications';
+  static const documents = '/documents';
+  static const insurance = '/insurance';
+  static const consent = '/consent';
 }
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -150,6 +158,26 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.matching,
         name: 'matching',
         builder: (context, state) => const MatchResultsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.notifications,
+        name: 'notifications',
+        builder: (context, state) => const NotificationsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.documents,
+        name: 'documents',
+        builder: (context, state) => const DocumentsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.insurance,
+        name: 'insurance',
+        builder: (context, state) => const InsuranceScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.consent,
+        name: 'consent',
+        builder: (context, state) => const ConsentScreen(),
       ),
     ],
     errorBuilder: (context, state) => Scaffold(
