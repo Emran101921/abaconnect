@@ -1,8 +1,10 @@
 import { Module } from '@nestjs/common';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { SessionsController } from './sessions.controller';
 import { SessionsService } from './sessions.service';
 
 @Module({
+  imports: [NotificationsModule],
   controllers: [SessionsController],
   providers: [SessionsService],
   exports: [SessionsService],

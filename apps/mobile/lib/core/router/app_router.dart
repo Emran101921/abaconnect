@@ -4,14 +4,18 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/admin/presentation/admin_dashboard_screen.dart';
 import '../../features/agency/presentation/agency_dashboard_screen.dart';
+import '../../features/auth/presentation/forgot_password_screen.dart';
+import '../../features/auth/presentation/security_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/register_screen.dart';
+import '../../features/auth/presentation/reset_password_screen.dart';
 import '../../features/auth/presentation/splash_screen.dart';
 import '../../features/matching/presentation/match_results_screen.dart';
 import '../../features/messaging/presentation/message_thread_screen.dart';
 import '../../features/messaging/presentation/messages_screen.dart';
 import '../../features/parent/presentation/booking_screen.dart';
 import '../../features/parent/presentation/children_list_screen.dart';
+import '../../features/parent/presentation/parent_appointments_screen.dart';
 import '../../features/parent/presentation/parent_home_screen.dart';
 import '../../features/parent/presentation/complaints_screen.dart';
 import '../../features/parent/presentation/reviews_screen.dart';
@@ -33,6 +37,8 @@ import '../../features/therapist/presentation/therapist_profile_screen.dart';
 abstract final class AppRoutes {
   static const splash = '/';
   static const login = '/login';
+  static const forgotPassword = '/forgot-password';
+  static const resetPassword = '/reset-password';
   static const register = '/register';
   static const parentHome = '/parent';
   static const parentChildren = '/parent/children';
@@ -53,6 +59,8 @@ abstract final class AppRoutes {
   static const documents = '/documents';
   static const insurance = '/insurance';
   static const consent = '/consent';
+  static const security = '/security';
+  static const parentAppointments = '/parent/appointments';
   static const treatmentPlans = '/treatment-plans';
   static const complaints = '/complaints';
   static const therapistPlans = '/therapist/plans';
@@ -79,6 +87,24 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const RegisterScreen(),
       ),
       GoRoute(
+        path: AppRoutes.forgotPassword,
+        name: 'forgotPassword',
+        builder: (context, state) => const ForgotPasswordScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.resetPassword,
+        name: 'resetPassword',
+        builder: (context, state) {
+          final token = state.uri.queryParameters['token'] ?? '';
+          return ResetPasswordScreen(token: token);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.security,
+        name: 'security',
+        builder: (context, state) => const SecurityScreen(),
+      ),
+      GoRoute(
         path: AppRoutes.parentHome,
         name: 'parentHome',
         builder: (context, state) => const ParentHomeScreen(),
@@ -87,6 +113,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: 'children',
             name: 'parentChildren',
             builder: (context, state) => const ChildrenListScreen(),
+          ),
+          GoRoute(
+            path: 'appointments',
+            name: 'parentAppointments',
+            builder: (context, state) => const ParentAppointmentsScreen(),
           ),
           GoRoute(
             path: 'booking',

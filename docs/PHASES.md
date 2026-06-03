@@ -36,9 +36,12 @@
 
 ## Production follow-ups (manual)
 - Execute BAAs and AWS HIPAA account setup
-- Configure Stripe webhooks (`STRIPE_WEBHOOK_SECRET`, `POST /api/v1/webhooks/stripe`)
-- Wire telehealth vendor SDK (Daily/Twilio)
-- Enable MFA (TOTP/WebAuthn)
+- [x] Configure Stripe webhooks (`STRIPE_WEBHOOK_SECRET`, `POST /api/v1/webhooks/stripe`)
+- [x] Telehealth vendor integration (Daily/Twilio/local via `TELEHEALTH_VENDOR`)
+- [x] MFA TOTP (`/auth/mfa/*`, login challenge)
+- [x] Password reset email (`SMTP_*` or dev log)
+- [x] Parent appointment reschedule
+- WebAuthn MFA (optional upgrade)
 - Field-level encryption service for PHI columns
 - Clearinghouse integration for 837/835 claims
 - Load testing for 100k+ users

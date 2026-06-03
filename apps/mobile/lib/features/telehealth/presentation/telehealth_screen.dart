@@ -36,8 +36,8 @@ class TelehealthScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Create or open a video room for an appointment. '
-              'Demo links open in your browser.',
+              'Create or open a video room. Set TELEHEALTH_VENDOR=daily or twilio '
+              'on the API for vendor-hosted rooms; otherwise demo links are used.',
             ),
             const SizedBox(height: 16),
             sessions.when(
@@ -48,7 +48,13 @@ class TelehealthScreen extends ConsumerWidget {
                       return Card(
                         child: ListTile(
                           title: Text(s.appointmentLabel ?? s.roomId),
-                          subtitle: Text(s.joinUrl ?? 'Room ready'),
+                          subtitle: Text(
+                            [
+                              if (s.vendor != null) 'Vendor: ${s.vendor}',
+                              s.joinUrl ?? 'Room ready',
+                            ].join('\n'),
+                          ),
+                          isThreeLine: s.vendor != null,
                           trailing: FilledButton(
                             onPressed: s.joinUrl != null
                                 ? () => _showRoomLink(context, s.joinUrl!)

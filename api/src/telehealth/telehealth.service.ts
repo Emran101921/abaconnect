@@ -4,10 +4,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { TelehealthVendorService } from './telehealth-vendor.service';
 
 @Injectable()
 export class TelehealthService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly vendor: TelehealthVendorService,
+  ) {}
 
   async listForUser(userId: string) {
     const parent = await this.prisma.parent.findUnique({ where: { userId } });
@@ -46,14 +50,31 @@ export class TelehealthService {
     }
 
     const roomId = `room_${appointment.id.replace(/-/g, '').slice(0, 12)}`;
-    const base = process.env.TELEHEALTH_BASE_URL ?? 'https://meet.abaconnect.local';
+    const full = await this.prisma.appointment.findUnique({
+      where: { id: appointment.id },
+      include: {
+        child: true,
+        therapist: { include: { user: true } },
+        parent: { include: { user: true } },
+      },
+    });
+    const links = await this.vendor.createRoomLinks(roomId, {
+      providerName: full?.therapist?.user
+        ? `${full.therapist.user.firstName} ${full.therapist.user.lastName}`
+        : 'Provider',
+      patientName: full?.child
+        ? `${full.child.firstName} ${full.child.lastName}`
+        : 'Patient',
+    });
+
     const created = await this.prisma.telehealthSession.create({
       data: {
         tenantId: appointment.tenantId,
         appointmentId: appointment.id,
-        roomId,
-        providerUrl: `${base}/${roomId}?role=provider`,
-        patientUrl: `${base}/${roomId}?role=patient`,
+        roomId: links.roomId,
+        vendor: links.vendor,
+        providerUrl: links.providerUrl,
+        patientUrl: links.patientUrl,
       },
       include: { appointment: true },
     });
@@ -69,9 +90,14 @@ export class TelehealthService {
     });
   }
 
-  private withJoinUrls<T extends { roomId: string; providerUrl: string | null; patientUrl: string | null }>(
-    row: T,
-  ) {
+  private withJoinUrls<
+    T extends {
+      roomId: string;
+      vendor?: string | null;
+      providerUrl: string | null;
+      patientUrl: string | null;
+    },
+  >(row: T) {
     const base = process.env.TELEHEALTH_BASE_URL ?? 'https://meet.abaconnect.local';
     return {
       ...row,

@@ -135,6 +135,28 @@ async function main() {
     },
   });
 
+  const pendingStart = new Date();
+  pendingStart.setDate(pendingStart.getDate() + 5);
+  const pendingEnd = new Date(pendingStart);
+  pendingEnd.setHours(pendingEnd.getHours() + 1);
+
+  await prisma.appointment.upsert({
+    where: { id: '00000000-0000-4000-8000-000000000011' },
+    update: { status: 'REQUESTED' },
+    create: {
+      id: '00000000-0000-4000-8000-000000000011',
+      tenantId: tenant.id,
+      parentId: parentProfile.id,
+      childId: '00000000-0000-4000-8000-000000000001',
+      therapistId: therapistProfile.id,
+      therapyType: 'SPEECH',
+      status: 'REQUESTED',
+      scheduledStart: pendingStart,
+      scheduledEnd: pendingEnd,
+      notes: 'Demo pending confirmation',
+    },
+  });
+
   const threadId = '00000000-0000-4000-8000-000000000020';
   await prisma.messageThread.upsert({
     where: { id: threadId },

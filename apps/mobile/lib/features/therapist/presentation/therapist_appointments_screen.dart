@@ -12,6 +12,54 @@ import '../../../shared/widgets/app_scaffold.dart';
 class TherapistAppointmentsScreen extends ConsumerWidget {
   const TherapistAppointmentsScreen({super.key});
 
+  Future<void> _confirm(
+    BuildContext context,
+    WidgetRef ref,
+    TherapistAppointmentModel appointment,
+  ) async {
+    try {
+      await ref
+          .read(therapistRepositoryProvider)
+          .confirmAppointment(appointment.id);
+      ref.invalidate(therapistAppointmentsProvider);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Appointment confirmed')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Confirm failed: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _decline(
+    BuildContext context,
+    WidgetRef ref,
+    TherapistAppointmentModel appointment,
+  ) async {
+    try {
+      await ref
+          .read(therapistRepositoryProvider)
+          .declineAppointment(appointment.id, reason: 'Schedule conflict');
+      ref.invalidate(therapistAppointmentsProvider);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Appointment declined')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Decline failed: $e')),
+        );
+      }
+    }
+  }
+
   Future<void> _startSession(
     BuildContext context,
     WidgetRef ref,
@@ -61,9 +109,8 @@ class TherapistAppointmentsScreen extends ConsumerWidget {
             separatorBuilder: (_, _) => const SizedBox(height: 8),
             itemBuilder: (context, index) {
               final a = list[index];
-              final canStart = a.status == 'CONFIRMED' ||
-                  a.status == 'SCHEDULED' ||
-                  a.status == 'REQUESTED';
+              final isRequested = a.status == 'REQUESTED';
+              final canStart = a.status == 'CONFIRMED' || a.status == 'SCHEDULED';
               return Card(
                 child: Padding(
                   padding: const EdgeInsets.all(12),
@@ -78,6 +125,26 @@ class TherapistAppointmentsScreen extends ConsumerWidget {
                       Text(
                         DateFormat.yMMMd().add_jm().format(a.scheduledStart),
                       ),
+                      if (isRequested) ...[
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: FilledButton(
+                                onPressed: () => _confirm(context, ref, a),
+                                child: const Text('Confirm'),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: () => _decline(context, ref, a),
+                                child: const Text('Decline'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                       if (canStart) ...[
                         const SizedBox(height: 12),
                         FilledButton.tonalIcon(

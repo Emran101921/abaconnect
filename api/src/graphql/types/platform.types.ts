@@ -20,6 +20,9 @@ export class TelehealthRoomType {
 
   @Field({ nullable: true })
   appointmentLabel?: string;
+
+  @Field({ nullable: true })
+  vendor?: string;
 }
 
 @ObjectType()

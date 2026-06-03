@@ -144,6 +144,30 @@ class SessionNotesScreen extends ConsumerWidget {
     progressSummary.dispose();
   }
 
+  Future<void> _completeSession(
+    BuildContext context,
+    WidgetRef ref,
+    String sessionId,
+  ) async {
+    try {
+      await ref.read(therapistRepositoryProvider).completeSession(sessionId);
+      ref.invalidate(therapistSessionsProvider);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Session completed — parent notified to review'),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Complete failed: $e')),
+        );
+      }
+    }
+  }
+
   Future<void> _evv(
     BuildContext context,
     WidgetRef ref,
@@ -249,6 +273,11 @@ class SessionNotesScreen extends ConsumerWidget {
                             ),
                             child: const Text('EVV out'),
                           ),
+                          if (s.status != 'COMPLETED')
+                            FilledButton(
+                              onPressed: () => _completeSession(context, ref, s.id),
+                              child: const Text('Complete'),
+                            ),
                         ],
                       ),
                     ),

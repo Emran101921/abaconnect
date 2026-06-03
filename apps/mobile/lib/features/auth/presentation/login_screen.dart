@@ -28,11 +28,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _signIn({UserRole? demoRole}) async {
     setState(() => _loading = true);
     try {
-      await ref.read(authStateProvider.notifier).login(
+      final result = await ref.read(authStateProvider.notifier).login(
             email: _emailController.text.trim(),
             password: _passwordController.text,
             role: demoRole ?? UserRole.parent,
           );
+      if (!mounted) return;
+      if (result.requiresMfa) {
+        final code = await _promptMfaCode();
+        if (code == null || !mounted) return;
+        await ref.read(authStateProvider.notifier).completeMfaLogin(
+              mfaChallengeToken: result.mfaChallengeToken!,
+              code: code,
+            );
+      }
       if (!mounted) return;
       final session = ref.read(authStateProvider).value;
       if (session != null) {
@@ -47,6 +56,32 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Future<String?> _promptMfaCode() async {
+    final controller = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Authenticator code'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            labelText: '6-digit code',
+            border: OutlineInputBorder(),
+          ),
+          keyboardType: TextInputType.number,
+          maxLength: 6,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            child: const Text('Verify'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -97,6 +132,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             TextButton(
               onPressed: () => context.push('/register'),
               child: const Text('Create an account'),
+            ),
+            TextButton(
+              onPressed: () => context.push('/forgot-password'),
+              child: const Text('Forgot password?'),
             ),
             const Spacer(),
             Text(

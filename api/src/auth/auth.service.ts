@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -6,7 +7,9 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import { MailService } from '../mail/mail.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { MfaService } from './mfa.service';
 import { JwtPayload } from './jwt.strategy';
 
 export interface RegisterDto {
@@ -28,6 +31,10 @@ export interface AuthTokens {
   refreshToken: string;
 }
 
+export type LoginResult =
+  | AuthTokens
+  | { requiresMfa: true; mfaChallengeToken: string };
+
 export interface AuthMeResponse {
   id: string;
   email: string;
@@ -37,6 +44,7 @@ export interface AuthMeResponse {
   tenantId: string;
   parentId?: string;
   therapistId?: string;
+  mfaEnabled: boolean;
 }
 
 @Injectable()
@@ -44,6 +52,8 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly mfaService: MfaService,
+    private readonly mailService: MailService,
   ) {}
 
   async me(userId: string): Promise<AuthMeResponse> {
@@ -63,6 +73,7 @@ export class AuthService {
       tenantId: user.tenantId,
       parentId: user.parent?.id,
       therapistId: user.therapist?.id,
+      mfaEnabled: user.mfaEnabled,
     };
   }
 
@@ -107,8 +118,10 @@ export class AuthService {
     return this.issueTokens(user.id, user.email, [role], tenantId);
   }
 
-  async login(dto: LoginDto): Promise<AuthTokens> {
-    const user = await this.findUserByEmail(dto.email);
+  async login(dto: LoginDto): Promise<LoginResult> {
+    const user = await this.prisma.user.findFirst({
+      where: { email: dto.email },
+    });
     if (!user?.passwordHash) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -116,11 +129,130 @@ export class AuthService {
     if (!valid) {
       throw new UnauthorizedException('Invalid credentials');
     }
+
+    if (user.mfaEnabled && user.mfaSecret) {
+      const mfaChallengeToken = this.jwtService.sign(
+        { sub: user.id, purpose: 'mfa_challenge' },
+        { expiresIn: '5m' },
+      );
+      return { requiresMfa: true, mfaChallengeToken };
+    }
+
     await this.prisma.user.update({
       where: { id: user.id },
       data: { lastLoginAt: new Date() },
     });
     return this.issueTokens(user.id, user.email, [user.role], user.tenantId);
+  }
+
+  async completeMfaLogin(
+    mfaChallengeToken: string,
+    code: string,
+  ): Promise<AuthTokens> {
+    let payload: { sub: string; purpose?: string };
+    try {
+      payload = this.jwtService.verify(mfaChallengeToken);
+    } catch {
+      throw new UnauthorizedException('MFA challenge expired — sign in again');
+    }
+    if (payload.purpose !== 'mfa_challenge') {
+      throw new UnauthorizedException('Invalid MFA challenge');
+    }
+
+    const user = await this.prisma.user.findUnique({ where: { id: payload.sub } });
+    if (!user?.mfaSecret) {
+      throw new UnauthorizedException('MFA not configured');
+    }
+    if (!(await this.mfaService.verifyForUser(user, code))) {
+      throw new UnauthorizedException('Invalid authenticator code');
+    }
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() },
+    });
+    return this.issueTokens(user.id, user.email, [user.role], user.tenantId);
+  }
+
+  async requestPasswordReset(email: string): Promise<{
+    message: string;
+    resetToken?: string;
+  }> {
+    const user = await this.findUserByEmail(email);
+    const message =
+      'If an account exists for this email, password reset instructions have been sent.';
+    if (!user) {
+      return { message };
+    }
+
+    const resetToken = this.jwtService.sign(
+      { sub: user.id, purpose: 'password_reset' },
+      {
+        secret: process.env.JWT_RESET_SECRET ?? process.env.JWT_SECRET,
+        expiresIn: '1h',
+      },
+    );
+
+    await this.prisma.auditLog.create({
+      data: {
+        tenantId: user.tenantId,
+        actorId: user.id,
+        action: 'UPDATE',
+        entityType: 'user',
+        entityId: user.id,
+        metadata: { event: 'password_reset_requested' },
+      },
+    });
+
+    const appUrl = process.env.APP_URL ?? 'http://localhost:3000';
+    const resetUrl = `${appUrl}/reset-password?token=${encodeURIComponent(resetToken)}`;
+    await this.mailService.sendPasswordResetEmail(user.email, resetUrl);
+
+    if (process.env.NODE_ENV !== 'production') {
+      return { message, resetToken };
+    }
+    return { message };
+  }
+
+  async resetPassword(
+    token: string,
+    newPassword: string,
+  ): Promise<{ message: string }> {
+    if (newPassword.length < 8) {
+      throw new BadRequestException('Password must be at least 8 characters');
+    }
+
+    let payload: { sub: string; purpose?: string };
+    try {
+      payload = this.jwtService.verify(token, {
+        secret: process.env.JWT_RESET_SECRET ?? process.env.JWT_SECRET,
+      });
+    } catch {
+      throw new UnauthorizedException('Invalid or expired reset token');
+    }
+
+    if (payload.purpose !== 'password_reset') {
+      throw new UnauthorizedException('Invalid reset token');
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    const user = await this.prisma.user.update({
+      where: { id: payload.sub },
+      data: { passwordHash },
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        tenantId: user.tenantId,
+        actorId: user.id,
+        action: 'UPDATE',
+        entityType: 'user',
+        entityId: user.id,
+        metadata: { event: 'password_reset_completed' },
+      },
+    });
+
+    return { message: 'Password updated successfully' };
   }
 
   async refresh(refreshToken: string): Promise<AuthTokens> {

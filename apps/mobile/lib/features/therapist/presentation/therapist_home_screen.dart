@@ -156,6 +156,11 @@ class TherapistHomeScreen extends ConsumerWidget {
             icon: Icons.payments,
             onTap: () => context.push('/therapist/payouts'),
           ),
+          _NavTile(
+            title: 'Security',
+            icon: Icons.security,
+            onTap: () => context.push('/security'),
+          ),
         ],
       ),
     );

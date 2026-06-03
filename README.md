@@ -124,6 +124,16 @@ Health check: `GET http://localhost:3000/api/v1/health`
 
 **Admin:** Review moderation (publish/hide). **Agency:** Invite unlinked therapists to the roster.
 
+**Appointments:** Therapists **confirm/decline** `REQUESTED` visits; booking sends in-app notifications to both parties. **Sessions:** Therapists mark **Complete** to notify parents for reviews.
+
+**Password reset:** `POST /api/v1/auth/forgot-password` (dev returns `resetToken`), then `POST /api/v1/auth/reset-password`. Flutter: **Forgot password?** on login. With `SMTP_*` set, reset links are emailed (otherwise logged to the API console).
+
+**MFA (TOTP):** `POST /api/v1/auth/mfa/setup`, `/mfa/enable`, `/login/mfa`. Flutter **Security** screen (parent/therapist home).
+
+**Telehealth vendors:** `TELEHEALTH_VENDOR=local|daily|twilio` plus `DAILY_API_KEY` or Twilio credentials. Rooms store `vendor` on `TelehealthSession`.
+
+**Reschedule:** GraphQL `rescheduleAppointment` — parent **My Appointments** → menu → Reschedule.
+
 **Production Docker:**
 
 ```bash

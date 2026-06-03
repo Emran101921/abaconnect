@@ -106,6 +106,12 @@ class ParentHomeScreen extends ConsumerWidget {
             onTap: () => context.push('/parent/children'),
           ),
           _NavTile(
+            title: 'My Appointments',
+            subtitle: 'View and reschedule visits',
+            icon: Icons.event_note,
+            onTap: () => context.push('/parent/appointments'),
+          ),
+          _NavTile(
             title: 'Book Session',
             subtitle: 'Schedule therapy appointments',
             icon: Icons.calendar_month,
@@ -164,6 +170,12 @@ class ParentHomeScreen extends ConsumerWidget {
             subtitle: 'Claims and coverage',
             icon: Icons.health_and_safety,
             onTap: () => context.push('/insurance'),
+          ),
+          _NavTile(
+            title: 'Security',
+            subtitle: 'Two-factor authentication',
+            icon: Icons.security,
+            onTap: () => context.push('/security'),
           ),
           _NavTile(
             title: 'Privacy',

@@ -10,6 +10,7 @@ import { ScreeningsService } from '../screenings/screenings.service';
 import {
   BookAppointmentInput,
   BookRecurringAppointmentsInput,
+  RescheduleAppointmentInput,
   TherapistDiscoveryInput,
 } from './inputs/book-appointment.input';
 import {
@@ -126,6 +127,20 @@ export class ParentBookingResolver {
           }
         : undefined,
     }));
+  }
+
+  @Mutation(() => AppointmentType, { name: 'rescheduleAppointment' })
+  async rescheduleAppointment(
+    @CurrentUser() user: AuthUser,
+    @Args('input') input: RescheduleAppointmentInput,
+  ): Promise<AppointmentType> {
+    const row = await this.appointmentsService.rescheduleForParentUser(
+      user.id,
+      input.appointmentId,
+      input.scheduledStart,
+      input.scheduledEnd,
+    );
+    return this.mapAppointment(row);
   }
 
   @Mutation(() => AppointmentType, { name: 'cancelAppointment' })

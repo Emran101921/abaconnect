@@ -8,12 +8,14 @@ class TelehealthSessionModel {
     required this.roomId,
     this.joinUrl,
     this.appointmentLabel,
+    this.vendor,
   });
 
   final String id;
   final String roomId;
   final String? joinUrl;
   final String? appointmentLabel;
+  final String? vendor;
 }
 
 class DocumentItemModel {
@@ -83,7 +85,7 @@ class PlatformRepository {
 
   Future<List<TelehealthSessionModel>> fetchTelehealthSessions() async {
     final result = await _graphql.query(r'''
-      query { myTelehealthSessions { id roomId joinUrl appointmentLabel } }
+      query { myTelehealthSessions { id roomId joinUrl appointmentLabel vendor } }
     ''');
     final list = result['data']?['myTelehealthSessions'] as List<dynamic>? ?? [];
     return list
@@ -93,6 +95,7 @@ class PlatformRepository {
             roomId: e['roomId'] as String,
             joinUrl: e['joinUrl'] as String?,
             appointmentLabel: e['appointmentLabel'] as String?,
+            vendor: e['vendor'] as String?,
           ),
         )
         .toList();
@@ -102,7 +105,7 @@ class PlatformRepository {
     final result = await _graphql.query(
       r'''
       mutation Join($id: ID!) {
-        joinTelehealth(appointmentId: $id) { id roomId joinUrl }
+        joinTelehealth(appointmentId: $id) { id roomId joinUrl vendor }
       }
     ''',
       variables: {'id': appointmentId},
@@ -113,6 +116,7 @@ class PlatformRepository {
       id: e['id'] as String,
       roomId: e['roomId'] as String,
       joinUrl: e['joinUrl'] as String?,
+      vendor: e['vendor'] as String?,
     );
   }
 

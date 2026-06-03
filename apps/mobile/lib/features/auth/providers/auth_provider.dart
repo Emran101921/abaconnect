@@ -19,18 +19,42 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthSession?>> {
     }
   }
 
-  Future<void> login({
+  Future<LoginResponse> login({
     required String email,
     required String password,
     UserRole role = UserRole.parent,
   }) async {
     state = const AsyncValue.loading();
     try {
-      await _repository.login(email: email, password: password);
+      final result = await _repository.login(email: email, password: password);
+      if (result.requiresMfa) {
+        state = const AsyncValue.data(null);
+        return result;
+      }
+      final session = await _repository.loadSession();
+      state = AsyncValue.data(session);
+      return result;
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      rethrow;
+    }
+  }
+
+  Future<void> completeMfaLogin({
+    required String mfaChallengeToken,
+    required String code,
+  }) async {
+    state = const AsyncValue.loading();
+    try {
+      await _repository.completeMfaLogin(
+        mfaChallengeToken: mfaChallengeToken,
+        code: code,
+      );
       final session = await _repository.loadSession();
       state = AsyncValue.data(session);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
+      rethrow;
     }
   }
 

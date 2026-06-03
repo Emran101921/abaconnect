@@ -4,6 +4,28 @@ import '../../../core/constants/api_constants.dart';
 import '../../../core/network/api_client.dart';
 import '../../../shared/models/user_role.dart';
 
+class LoginResponse {
+  const LoginResponse._({this.tokens, this.mfaChallengeToken});
+
+  factory LoginResponse.authenticated(AuthTokens tokens) =>
+      LoginResponse._(tokens: tokens);
+
+  factory LoginResponse.mfaRequired(String challengeToken) =>
+      LoginResponse._(mfaChallengeToken: challengeToken);
+
+  final AuthTokens? tokens;
+  final String? mfaChallengeToken;
+
+  bool get requiresMfa => mfaChallengeToken != null;
+}
+
+class MfaSetupResult {
+  const MfaSetupResult({required this.secret, required this.otpauthUrl});
+
+  final String secret;
+  final String otpauthUrl;
+}
+
 class AuthTokens {
   const AuthTokens({
     required this.accessToken,
@@ -45,7 +67,7 @@ class AuthRepository {
   final ApiClient _api;
   final FlutterSecureStorage _storage;
 
-  Future<AuthTokens> login({
+  Future<LoginResponse> login({
     required String email,
     required String password,
   }) async {
@@ -57,10 +79,40 @@ class AuthRepository {
     if (data == null) {
       throw Exception('Invalid login response');
     }
+    if (data['requiresMfa'] == true) {
+      return LoginResponse.mfaRequired(
+        data['mfaChallengeToken'] as String,
+      );
+    }
     final tokens = AuthTokens(
       accessToken: data['accessToken'] as String,
       refreshToken: data['refreshToken'] as String,
     );
+    await _persistTokens(tokens);
+    return LoginResponse.authenticated(tokens);
+  }
+
+  Future<AuthTokens> completeMfaLogin({
+    required String mfaChallengeToken,
+    required String code,
+  }) async {
+    final response = await _api.post<Map<String, dynamic>>(
+      '/auth/login/mfa',
+      data: {'mfaChallengeToken': mfaChallengeToken, 'code': code},
+    );
+    final data = response.data;
+    if (data == null) {
+      throw Exception('Invalid MFA login response');
+    }
+    final tokens = AuthTokens(
+      accessToken: data['accessToken'] as String,
+      refreshToken: data['refreshToken'] as String,
+    );
+    await _persistTokens(tokens);
+    return tokens;
+  }
+
+  Future<void> _persistTokens(AuthTokens tokens) async {
     await _api.saveToken(tokens.accessToken);
     await _storage.write(
       key: ApiConstants.refreshTokenKey,
@@ -68,7 +120,35 @@ class AuthRepository {
     );
     final me = await fetchMe();
     await _persistMe(me);
-    return tokens;
+  }
+
+  Future<bool> fetchMfaStatus() async {
+    final response = await _api.get<Map<String, dynamic>>('/auth/mfa/status');
+    return response.data?['enabled'] as bool? ?? false;
+  }
+
+  Future<MfaSetupResult> beginMfaSetup() async {
+    final response = await _api.post<Map<String, dynamic>>('/auth/mfa/setup');
+    final data = response.data;
+    if (data == null) throw Exception('MFA setup failed');
+    return MfaSetupResult(
+      secret: data['secret'] as String,
+      otpauthUrl: data['otpauthUrl'] as String,
+    );
+  }
+
+  Future<void> enableMfa(String code) async {
+    await _api.post('/auth/mfa/enable', data: {'code': code});
+  }
+
+  Future<void> disableMfa({
+    required String code,
+    required String password,
+  }) async {
+    await _api.post('/auth/mfa/disable', data: {
+      'code': code,
+      'password': password,
+    });
   }
 
   Future<AuthTokens> register({
@@ -96,13 +176,7 @@ class AuthRepository {
       accessToken: data['accessToken'] as String,
       refreshToken: data['refreshToken'] as String,
     );
-    await _api.saveToken(tokens.accessToken);
-    await _storage.write(
-      key: ApiConstants.refreshTokenKey,
-      value: tokens.refreshToken,
-    );
-    final me = await fetchMe();
-    await _persistMe(me);
+    await _persistTokens(tokens);
     return tokens;
   }
 
@@ -165,6 +239,24 @@ class AuthRepository {
     if (me.therapistId != null) {
       await _storage.write(key: ApiConstants.therapistIdKey, value: me.therapistId);
     }
+  }
+
+  Future<String?> requestPasswordReset(String email) async {
+    final response = await _api.post<Map<String, dynamic>>(
+      '/auth/forgot-password',
+      data: {'email': email},
+    );
+    return response.data?['resetToken'] as String?;
+  }
+
+  Future<void> resetPassword({
+    required String token,
+    required String newPassword,
+  }) async {
+    await _api.post<Map<String, dynamic>>(
+      '/auth/reset-password',
+      data: {'token': token, 'newPassword': newPassword},
+    );
   }
 
   Future<void> logout() async {

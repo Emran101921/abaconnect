@@ -180,6 +180,36 @@ class TherapistRepository {
     });
   }
 
+  Future<void> confirmAppointment(String appointmentId) async {
+    const mutation = r'''
+      mutation Confirm($appointmentId: ID!) {
+        confirmAppointment(appointmentId: $appointmentId) { id status }
+      }
+    ''';
+    await _graphql.query(mutation, variables: {'appointmentId': appointmentId});
+  }
+
+  Future<void> declineAppointment(String appointmentId, {String? reason}) async {
+    const mutation = r'''
+      mutation Decline($appointmentId: ID!, $reason: String) {
+        declineAppointment(appointmentId: $appointmentId, reason: $reason) { id status }
+      }
+    ''';
+    await _graphql.query(mutation, variables: {
+      'appointmentId': appointmentId,
+      if (reason != null) 'reason': reason,
+    });
+  }
+
+  Future<void> completeSession(String sessionId) async {
+    const mutation = r'''
+      mutation Complete($sessionId: ID!) {
+        completeSession(sessionId: $sessionId) { id status }
+      }
+    ''';
+    await _graphql.query(mutation, variables: {'sessionId': sessionId});
+  }
+
   Future<String> startSession(String appointmentId) async {
     const mutation = r'''
       mutation Start($appointmentId: ID!) {

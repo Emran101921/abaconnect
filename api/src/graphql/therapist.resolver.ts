@@ -1,6 +1,8 @@
 import { Args, ID, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { TherapyType } from '../../generated/prisma/client';
 import { Roles } from '../common/decorators/roles.decorator';
 import { AuthUser, CurrentUser } from '../common/decorators/current-user.decorator';
+import { AppointmentsService } from '../appointments/appointments.service';
 import { SessionsService } from '../sessions/sessions.service';
 import { TherapistsService } from '../therapists/therapists.service';
 import { SaveSoapNoteInput, UpdateTherapistProfileInput } from './inputs/therapist.inputs';
@@ -17,6 +19,7 @@ export class TherapistResolver {
   constructor(
     private readonly therapistsService: TherapistsService,
     private readonly sessionsService: SessionsService,
+    private readonly appointmentsService: AppointmentsService,
   ) {}
 
   @Query(() => TherapistProfileType, { name: 'myTherapistProfile' })
@@ -47,19 +50,7 @@ export class TherapistResolver {
     @CurrentUser() user: AuthUser,
   ): Promise<TherapistAppointmentType[]> {
     const rows = await this.therapistsService.findAppointmentsByUserId(user.id);
-    return rows.map((a) => ({
-      id: a.id,
-      status: a.status,
-      therapyType: a.therapyType,
-      scheduledStart: a.scheduledStart,
-      scheduledEnd: a.scheduledEnd,
-      child: {
-        id: a.child.id,
-        firstName: a.child.firstName,
-        lastName: a.child.lastName,
-        dateOfBirth: a.child.dateOfBirth,
-      },
-    }));
+    return rows.map((a) => this.mapAppointment(a));
   }
 
   @Query(() => [TherapistSessionType], { name: 'myTherapistSessions' })
@@ -112,6 +103,56 @@ export class TherapistResolver {
     };
   }
 
+  @Mutation(() => TherapistAppointmentType, { name: 'confirmAppointment' })
+  async confirmAppointment(
+    @CurrentUser() user: AuthUser,
+    @Args('appointmentId', { type: () => ID }) appointmentId: string,
+  ): Promise<TherapistAppointmentType> {
+    const row = await this.appointmentsService.respondForTherapistUserId(
+      user.id,
+      appointmentId,
+      'CONFIRM',
+    );
+    return this.mapAppointment(row);
+  }
+
+  @Mutation(() => TherapistAppointmentType, { name: 'declineAppointment' })
+  async declineAppointment(
+    @CurrentUser() user: AuthUser,
+    @Args('appointmentId', { type: () => ID }) appointmentId: string,
+    @Args('reason', { nullable: true }) reason?: string,
+  ): Promise<TherapistAppointmentType> {
+    const row = await this.appointmentsService.respondForTherapistUserId(
+      user.id,
+      appointmentId,
+      'DECLINE',
+      reason,
+    );
+    return this.mapAppointment(row);
+  }
+
+  @Mutation(() => TherapistSessionType, { name: 'completeSession' })
+  async completeSession(
+    @CurrentUser() user: AuthUser,
+    @Args('sessionId', { type: () => ID }) sessionId: string,
+  ): Promise<TherapistSessionType> {
+    const s = await this.sessionsService.completeSessionForTherapist(
+      user.id,
+      sessionId,
+    );
+    return {
+      id: s.id,
+      status: s.status,
+      child: {
+        id: s.child.id,
+        firstName: s.child.firstName,
+        lastName: s.child.lastName,
+        dateOfBirth: s.child.dateOfBirth,
+      },
+      soapNote: undefined,
+    };
+  }
+
   @Mutation(() => TherapistSessionType, { name: 'startSession' })
   async startSession(
     @CurrentUser() user: AuthUser,
@@ -146,6 +187,29 @@ export class TherapistResolver {
       objective: note.objective ?? undefined,
       assessment: note.assessment ?? undefined,
       plan: note.plan ?? undefined,
+    };
+  }
+
+  private mapAppointment(row: {
+    id: string;
+    status: string;
+    therapyType: string;
+    scheduledStart: Date;
+    scheduledEnd: Date;
+    child: { id: string; firstName: string; lastName: string; dateOfBirth: Date };
+  }): TherapistAppointmentType {
+    return {
+      id: row.id,
+      status: row.status,
+      therapyType: row.therapyType as TherapyType,
+      scheduledStart: row.scheduledStart,
+      scheduledEnd: row.scheduledEnd,
+      child: {
+        id: row.child.id,
+        firstName: row.child.firstName,
+        lastName: row.child.lastName,
+        dateOfBirth: row.child.dateOfBirth,
+      },
     };
   }
 }

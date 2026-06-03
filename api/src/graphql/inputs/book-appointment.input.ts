@@ -29,6 +29,18 @@ export class BookRecurringAppointmentsInput extends BookAppointmentInput {
 }
 
 @InputType()
+export class RescheduleAppointmentInput {
+  @Field(() => ID)
+  appointmentId: string;
+
+  @Field()
+  scheduledStart: Date;
+
+  @Field()
+  scheduledEnd: Date;
+}
+
+@InputType()
 export class TherapistDiscoveryInput {
   @Field(() => TherapyType, { nullable: true })
   therapyType?: TherapyType;

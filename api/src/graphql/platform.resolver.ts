@@ -55,6 +55,7 @@ export class PlatformResolver {
       roomId: r.roomId,
       joinUrl: isParent ? (r.patientUrl ?? undefined) : (r.providerUrl ?? undefined),
       startedAt: r.startedAt ?? undefined,
+      vendor: r.vendor ?? undefined,
       appointmentLabel: r.appointment
         ? `${r.appointment.therapyType} · ${r.appointment.scheduledStart.toISOString()}`
         : undefined,
@@ -77,6 +78,7 @@ export class PlatformResolver {
         ? (started.patientUrl ?? undefined)
         : (started.providerUrl ?? undefined),
       startedAt: started.startedAt ?? undefined,
+      vendor: started.vendor ?? undefined,
     };
   }
 

@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { TherapyType } from '../../generated/prisma/client';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 export interface BookAppointmentInput {
@@ -17,7 +18,10 @@ export interface BookAppointmentInput {
 
 @Injectable()
 export class AppointmentsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   async findByParentUserId(userId: string) {
     const parent = await this.prisma.parent.findUnique({ where: { userId } });
@@ -58,7 +62,7 @@ export class AppointmentsService {
       throw new BadRequestException('scheduledEnd must be after scheduledStart');
     }
 
-    return this.prisma.appointment.create({
+    const appointment = await this.prisma.appointment.create({
       data: {
         tenantId: parent.tenantId,
         parentId: parent.id,
@@ -73,8 +77,117 @@ export class AppointmentsService {
       include: {
         child: true,
         therapist: { include: { user: true } },
+        parent: { include: { user: true } },
       },
     });
+
+    await this.notifyBookingCreated(appointment);
+    return appointment;
+  }
+
+  async respondForTherapistUserId(
+    userId: string,
+    appointmentId: string,
+    action: 'CONFIRM' | 'DECLINE',
+    reason?: string,
+  ) {
+    const therapist = await this.prisma.therapist.findUnique({
+      where: { userId },
+      include: { user: true },
+    });
+    if (!therapist) {
+      throw new BadRequestException('Therapist profile not found');
+    }
+
+    const appointment = await this.prisma.appointment.findFirst({
+      where: { id: appointmentId, therapistId: therapist.id },
+      include: {
+        child: true,
+        parent: { include: { user: true } },
+        therapist: { include: { user: true } },
+      },
+    });
+    if (!appointment) {
+      throw new NotFoundException('Appointment not found');
+    }
+
+    if (!['REQUESTED', 'SCHEDULED'].includes(appointment.status)) {
+      throw new BadRequestException(
+        `Cannot ${action.toLowerCase()} appointment in status ${appointment.status}`,
+      );
+    }
+
+    const updated = await this.prisma.appointment.update({
+      where: { id: appointmentId },
+      data:
+        action === 'CONFIRM'
+          ? { status: 'CONFIRMED' }
+          : {
+              status: 'CANCELLED',
+              cancelledReason: reason ?? 'Declined by therapist',
+            },
+      include: {
+        child: true,
+        parent: { include: { user: true } },
+        therapist: { include: { user: true } },
+      },
+    });
+
+    await this.notifyAppointmentResponse(updated, action);
+    return updated;
+  }
+
+  private async notifyBookingCreated(appointment: {
+    id: string;
+    therapyType: string;
+    scheduledStart: Date;
+    child: { firstName: string; lastName: string };
+    therapist: { userId: string; user: { firstName: string; lastName: string } };
+    parent: { userId: string };
+  }) {
+    const childName = `${appointment.child.firstName} ${appointment.child.lastName}`;
+    const when = appointment.scheduledStart.toLocaleString();
+    await this.notifications.createForUser(appointment.therapist.userId, {
+      title: 'New appointment request',
+      body: `${childName} requested ${appointment.therapyType} on ${when}`,
+      data: { appointmentId: appointment.id, type: 'APPOINTMENT_REQUESTED' },
+    });
+    await this.notifications.createForUser(appointment.parent.userId, {
+      title: 'Booking submitted',
+      body: `Your ${appointment.therapyType} request for ${childName} is pending therapist confirmation`,
+      data: { appointmentId: appointment.id, type: 'APPOINTMENT_REQUESTED' },
+    });
+  }
+
+  private async notifyAppointmentResponse(
+    appointment: {
+      id: string;
+      therapyType: string;
+      scheduledStart: Date;
+      status: string;
+      child: { firstName: string; lastName: string };
+      parent: { userId: string };
+      therapist: { user: { firstName: string; lastName: string } };
+    },
+    action: 'CONFIRM' | 'DECLINE',
+  ) {
+    const childName = `${appointment.child.firstName} ${appointment.child.lastName}`;
+    const therapistName = `${appointment.therapist.user.firstName} ${appointment.therapist.user.lastName}`;
+    const when = appointment.scheduledStart.toLocaleString();
+
+    if (action === 'CONFIRM') {
+      await this.notifications.createForUser(appointment.parent.userId, {
+        title: 'Appointment confirmed',
+        body: `${therapistName} confirmed ${appointment.therapyType} for ${childName} on ${when}`,
+        data: { appointmentId: appointment.id, type: 'APPOINTMENT_CONFIRMED' },
+      });
+    } else {
+      await this.notifications.createForUser(appointment.parent.userId, {
+        title: 'Appointment declined',
+        body: `${therapistName} could not accept ${appointment.therapyType} on ${when}`,
+        data: { appointmentId: appointment.id, type: 'APPOINTMENT_DECLINED' },
+      });
+    }
   }
 
   async bookRecurringForParentUser(
@@ -100,6 +213,67 @@ export class AppointmentsService {
       results.push(row);
     }
     return results;
+  }
+
+  async rescheduleForParentUser(
+    userId: string,
+    appointmentId: string,
+    scheduledStart: Date,
+    scheduledEnd: Date,
+  ) {
+    const parent = await this.prisma.parent.findUnique({ where: { userId } });
+    if (!parent) {
+      throw new BadRequestException('Parent profile not found');
+    }
+
+    const appointment = await this.prisma.appointment.findFirst({
+      where: { id: appointmentId, parentId: parent.id },
+      include: {
+        child: true,
+        therapist: { include: { user: true } },
+        parent: { include: { user: true } },
+      },
+    });
+    if (!appointment) {
+      throw new NotFoundException('Appointment not found');
+    }
+
+    if (['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(appointment.status)) {
+      throw new BadRequestException('Cannot reschedule this appointment');
+    }
+
+    if (scheduledEnd <= scheduledStart) {
+      throw new BadRequestException('scheduledEnd must be after scheduledStart');
+    }
+
+    const updated = await this.prisma.appointment.update({
+      where: { id: appointmentId },
+      data: {
+        scheduledStart,
+        scheduledEnd,
+        status: 'RESCHEDULED',
+      },
+      include: {
+        child: true,
+        therapist: { include: { user: true } },
+        parent: { include: { user: true } },
+      },
+    });
+
+    const childName = `${updated.child.firstName} ${updated.child.lastName}`;
+    const when = scheduledStart.toLocaleString();
+    await this.notifications.createForUser(updated.therapist.userId, {
+      title: 'Appointment rescheduled',
+      body: `${childName} moved ${updated.therapyType} to ${when}`,
+      data: { appointmentId: updated.id, type: 'APPOINTMENT_RESCHEDULED' },
+    });
+    await this.notifications.createForUser(updated.parent.userId, {
+      title: 'Appointment updated',
+      body: `Your ${updated.therapyType} session for ${childName} is now ${when}`,
+      data: { appointmentId: updated.id, type: 'APPOINTMENT_RESCHEDULED' },
+    });
+
+    return updated;
   }
 
   async cancelForParentUser(userId: string, appointmentId: string, reason?: string) {

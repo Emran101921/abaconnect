@@ -205,6 +205,8 @@ model User {
   isActive        Boolean   @default(true) @map("is_active")
   emailVerifiedAt DateTime? @map("email_verified_at")
   lastLoginAt     DateTime? @map("last_login_at")
+  mfaSecret       String?   @map("mfa_secret")
+  mfaEnabled      Boolean   @default(false) @map("mfa_enabled")
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
@@ -737,6 +739,7 @@ model TelehealthSession {
   tenantId      String    @map("tenant_id") @db.Uuid
   appointmentId String    @unique @map("appointment_id") @db.Uuid
   roomId        String    @map("room_id")
+  vendor        String?   @map("vendor")
   providerUrl   String?   @map("provider_url")
   patientUrl    String?   @map("patient_url")
   startedAt     DateTime? @map("started_at")

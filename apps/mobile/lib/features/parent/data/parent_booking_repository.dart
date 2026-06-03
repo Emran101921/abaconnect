@@ -388,6 +388,33 @@ class ParentBookingRepository {
     return list.length;
   }
 
+  static const _rescheduleMutation = r'''
+    mutation Reschedule($input: RescheduleAppointmentInput!) {
+      rescheduleAppointment(input: $input) {
+        id
+        status
+        scheduledStart
+      }
+    }
+  ''';
+
+  Future<void> rescheduleAppointment({
+    required String appointmentId,
+    required DateTime start,
+    required DateTime end,
+  }) async {
+    await _graphql.query(
+      _rescheduleMutation,
+      variables: {
+        'input': {
+          'appointmentId': appointmentId,
+          'scheduledStart': start.toIso8601String(),
+          'scheduledEnd': end.toIso8601String(),
+        },
+      },
+    );
+  }
+
   Future<List<TherapistModel>> fetchPendingReviewTherapists() async {
     final result = await _graphql.query(_pendingReviewQuery);
     final list =
