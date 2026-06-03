@@ -137,9 +137,18 @@ Health check: `GET http://localhost:3000/api/v1/health`
 **Production Docker:**
 
 ```bash
-cp api/.env.example api/.env   # set JWT_SECRET, POSTGRES_PASSWORD, STRIPE keys, APP_URL
-docker compose -f docker-compose.prod.yml up -d --build
+chmod +x scripts/deploy.sh
+./scripts/deploy.sh
+# First-time demo data:
 docker compose -f docker-compose.prod.yml exec api npx prisma db seed
+```
+
+Or manually:
+
+```bash
+cp api/.env.example api/.env   # set JWT_SECRET, STRIPE keys, APP_URL
+export POSTGRES_PASSWORD=abaconnect_dev
+docker compose -f docker-compose.prod.yml up -d --build
 ```
 
 ### Therapist SOAP workflow (Flutter)

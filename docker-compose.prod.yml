@@ -9,7 +9,7 @@ services:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: abaconnect
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-abaconnect_dev}
       POSTGRES_DB: abaconnect
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -33,7 +33,7 @@ services:
     env_file:
       - ./api/.env
     environment:
-      DATABASE_URL: postgresql://abaconnect:${POSTGRES_PASSWORD:-change_me}@postgres:5432/abaconnect
+      DATABASE_URL: postgresql://abaconnect:${POSTGRES_PASSWORD:-abaconnect_dev}@postgres:5432/abaconnect
       REDIS_HOST: redis
       REDIS_PORT: 6379
       NODE_ENV: production
