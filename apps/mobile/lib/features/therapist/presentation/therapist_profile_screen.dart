@@ -2,8 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/app_providers.dart';
+import '../../clinical/data/clinical_repository.dart';
 import '../data/therapist_repository.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+
+final therapistBadgesProvider =
+    FutureProvider<List<TherapistBadgeModel>>((ref) {
+  return ref.watch(clinicalRepositoryProvider).fetchBadges();
+});
 
 final therapistProfileProvider =
     FutureProvider<TherapistProfileModel>((ref) async {
@@ -61,6 +67,7 @@ class _TherapistProfileScreenState
   @override
   Widget build(BuildContext context) {
     final profile = ref.watch(therapistProfileProvider);
+    final badges = ref.watch(therapistBadgesProvider);
 
     return AppScaffold(
       title: 'My Profile',
@@ -107,6 +114,25 @@ class _TherapistProfileScreenState
                     avatar: Icon(Icons.verified, size: 18),
                   ),
                 ),
+              const SizedBox(height: 16),
+              badges.when(
+                data: (list) => list.isEmpty
+                    ? const SizedBox.shrink()
+                    : Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        alignment: WrapAlignment.center,
+                        children: list
+                            .map(
+                              (b) => Chip(
+                                label: Text(b.label ?? b.type),
+                              ),
+                            )
+                            .toList(),
+                      ),
+                loading: () => const SizedBox.shrink(),
+                error: (_, __) => const SizedBox.shrink(),
+              ),
               const SizedBox(height: 24),
               TextField(
                 controller: _bioController,

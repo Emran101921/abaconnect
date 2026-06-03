@@ -379,6 +379,58 @@ async function main() {
     },
   });
 
+  await prisma.treatmentPlan.upsert({
+    where: { id: '00000000-0000-4000-8000-000000000080' },
+    update: {},
+    create: {
+      id: '00000000-0000-4000-8000-000000000080',
+      tenantId: tenant.id,
+      childId: '00000000-0000-4000-8000-000000000001',
+      therapistId: therapistProfile.id,
+      authorId: therapistUser.id,
+      therapyType: 'ABA',
+      title: 'ABA Goals — Q2 2026',
+      goals: [
+        { id: 'communication', label: 'Increase functional communication' },
+        { id: 'behavior', label: 'Reduce challenging behaviors' },
+      ],
+      startDate: new Date(),
+      isActive: true,
+    },
+  });
+
+  await prisma.providerBadge.upsert({
+    where: {
+      therapistId_type: {
+        therapistId: therapistProfile.id,
+        type: 'VERIFIED_LICENSE',
+      },
+    },
+    update: {},
+    create: {
+      tenantId: tenant.id,
+      therapistId: therapistProfile.id,
+      type: 'VERIFIED_LICENSE',
+      label: 'Texas BCBA',
+    },
+  });
+
+  await prisma.providerBadge.upsert({
+    where: {
+      therapistId_type: {
+        therapistId: therapistProfile.id,
+        type: 'TOP_RATED',
+      },
+    },
+    update: {},
+    create: {
+      tenantId: tenant.id,
+      therapistId: therapistProfile.id,
+      type: 'TOP_RATED',
+      label: '4.9 parent rating',
+    },
+  });
+
   await prisma.complaint.upsert({
     where: { id: '00000000-0000-4000-8000-000000000070' },
     update: {},

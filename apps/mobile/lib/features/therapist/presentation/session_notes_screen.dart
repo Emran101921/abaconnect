@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/app_providers.dart';
+import '../../clinical/data/clinical_repository.dart';
 import '../../platform/data/platform_repository.dart';
 import '../data/therapist_repository.dart';
 import '../../../shared/widgets/app_scaffold.dart';
@@ -24,6 +25,7 @@ class SessionNotesScreen extends ConsumerWidget {
     final objective = TextEditingController();
     final assessment = TextEditingController();
     final plan = TextEditingController();
+    final progressSummary = TextEditingController();
 
     final saved = await showModalBottomSheet<bool>(
       context: context,
@@ -64,6 +66,14 @@ class SessionNotesScreen extends ConsumerWidget {
                 TextField(
                   controller: plan,
                   decoration: const InputDecoration(labelText: 'Plan'),
+                  maxLines: 2,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: progressSummary,
+                  decoration: const InputDecoration(
+                    labelText: 'Progress summary (optional)',
+                  ),
                   maxLines: 2,
                 ),
                 const SizedBox(height: 16),
@@ -108,6 +118,12 @@ class SessionNotesScreen extends ConsumerWidget {
               assessment: assessment.text,
               plan: plan.text,
             );
+        if (progressSummary.text.trim().isNotEmpty) {
+          await ref.read(clinicalRepositoryProvider).saveProgressNote(
+                sessionId: session.id,
+                summary: progressSummary.text.trim(),
+              );
+        }
         ref.invalidate(therapistSessionsProvider);
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -127,6 +143,7 @@ class SessionNotesScreen extends ConsumerWidget {
     objective.dispose();
     assessment.dispose();
     plan.dispose();
+    progressSummary.dispose();
   }
 
   Future<void> _evv(

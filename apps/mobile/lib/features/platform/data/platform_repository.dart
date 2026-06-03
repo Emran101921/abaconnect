@@ -303,6 +303,21 @@ class PlatformRepository {
     };
   }
 
+  Future<List<Map<String, dynamic>>> fetchTenantAnalytics() async {
+    final result = await _graphql.query(r'''
+      query { tenantAnalytics { metricKey metricValue } }
+    ''');
+    final list = result['data']?['tenantAnalytics'] as List<dynamic>? ?? [];
+    return list
+        .map(
+          (e) => {
+            'key': e['metricKey'] as String? ?? '',
+            'value': (e['metricValue'] as num?)?.toDouble() ?? 0,
+          },
+        )
+        .toList();
+  }
+
   Future<void> fileComplaint({
     required String category,
     required String subject,

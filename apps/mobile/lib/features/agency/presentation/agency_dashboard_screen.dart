@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../platform/data/platform_repository.dart';
 import '../data/agency_repository.dart';
 
 final agencyDashboardProvider = FutureProvider<AgencyDashboardModel>((ref) {
@@ -14,16 +15,26 @@ final agencyTherapistsProvider = FutureProvider<List<AgencyTherapistModel>>((ref
   return ref.watch(agencyRepositoryProvider).fetchTherapists();
 });
 
+final agencyAnalyticsProvider =
+    FutureProvider<List<Map<String, dynamic>>>((ref) {
+  return ref.watch(platformRepositoryProvider).fetchTenantAnalytics();
+});
+
 class AgencyDashboardScreen extends ConsumerWidget {
   const AgencyDashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final dashboard = ref.watch(agencyDashboardProvider);
+    final analytics = ref.watch(agencyAnalyticsProvider);
 
     return AppScaffold(
       title: 'Agency Dashboard',
       actions: [
+        IconButton(
+          icon: const Icon(Icons.notifications),
+          onPressed: () => context.push('/notifications'),
+        ),
         IconButton(
           icon: const Icon(Icons.logout),
           onPressed: () => context.go('/login'),
@@ -36,11 +47,41 @@ class AgencyDashboardScreen extends ConsumerWidget {
           onRefresh: () async {
             ref.invalidate(agencyDashboardProvider);
             ref.invalidate(agencyTherapistsProvider);
+            ref.invalidate(agencyAnalyticsProvider);
             await ref.read(agencyDashboardProvider.future);
           },
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              analytics.when(
+                data: (metrics) {
+                  if (metrics.isEmpty) return const SizedBox.shrink();
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Analytics',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: metrics.map((m) {
+                          return Chip(
+                            label: Text(
+                              '${m['key']}: ${m['value']}',
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                  );
+                },
+                loading: () => const SizedBox.shrink(),
+                error: (_, __) => const SizedBox.shrink(),
+              ),
               GridView.count(
                 crossAxisCount: 2,
                 shrinkWrap: true,

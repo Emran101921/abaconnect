@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../data/therapist_repository.dart';
+import 'session_notes_screen.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 
 final therapistAppointmentsProvider =
@@ -14,6 +15,33 @@ final therapistAppointmentsProvider =
 
 class TherapistHomeScreen extends ConsumerWidget {
   const TherapistHomeScreen({super.key});
+
+  Future<void> _startSession(
+    BuildContext context,
+    WidgetRef ref,
+    TherapistAppointmentModel appointment,
+  ) async {
+    try {
+      await ref.read(therapistRepositoryProvider).startSession(appointment.id);
+      ref.invalidate(therapistSessionsProvider);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Session started for ${appointment.childName}'),
+          action: SnackBarAction(
+            label: 'SOAP',
+            onPressed: () => context.push('/therapist/session-notes'),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not start: $e'),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -64,9 +92,7 @@ class TherapistHomeScreen extends ConsumerWidget {
                             ? IconButton(
                                 icon: const Icon(Icons.play_arrow),
                                 tooltip: 'Start session',
-                                onPressed: () => context.push(
-                                  '/therapist/appointments',
-                                ),
+                                onPressed: () => _startSession(context, ref, a),
                               )
                             : Chip(label: Text(a.status)),
                       ),
@@ -104,6 +130,16 @@ class TherapistHomeScreen extends ConsumerWidget {
             title: 'Session Notes',
             icon: Icons.note_alt,
             onTap: () => context.push('/therapist/session-notes'),
+          ),
+          _NavTile(
+            title: 'Treatment Plans',
+            icon: Icons.medical_information,
+            onTap: () => context.push('/therapist/plans'),
+          ),
+          _NavTile(
+            title: 'Notifications',
+            icon: Icons.notifications,
+            onTap: () => context.push('/notifications'),
           ),
           _NavTile(
             title: 'Messages',

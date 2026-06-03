@@ -4,6 +4,7 @@ import { AgenciesModule } from '../agencies/agencies.module';
 import { AiModule } from '../ai/ai.module';
 import { AnalyticsModule } from '../analytics/analytics.module';
 import { AppointmentsModule } from '../appointments/appointments.module';
+import { ClinicalModule } from '../clinical/clinical.module';
 import { ChildrenModule } from '../children/children.module';
 import { ComplaintsModule } from '../complaints/complaints.module';
 import { ComplianceModule } from '../compliance/compliance.module';
@@ -22,6 +23,7 @@ import { TherapistsModule } from '../therapists/therapists.module';
 import { AdminResolver } from './admin.resolver';
 import { AgencyResolver } from './agency.resolver';
 import { MessagingResolver } from './messaging.resolver';
+import { ClinicalResolver } from './clinical.resolver';
 import { ParentBookingResolver } from './parent-booking.resolver';
 import { PaymentsResolver } from './payments.resolver';
 import { PlatformResolver } from './platform.resolver';
@@ -49,9 +51,11 @@ import { TherapistResolver } from './therapist.resolver';
     AnalyticsModule,
     AiModule,
     ComplaintsModule,
+    ClinicalModule,
   ],
   providers: [
     ParentBookingResolver,
+    ClinicalResolver,
     TherapistResolver,
     AdminResolver,
     AgencyResolver,

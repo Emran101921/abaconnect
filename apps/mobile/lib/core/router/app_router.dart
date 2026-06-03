@@ -13,8 +13,10 @@ import '../../features/messaging/presentation/messages_screen.dart';
 import '../../features/parent/presentation/booking_screen.dart';
 import '../../features/parent/presentation/children_list_screen.dart';
 import '../../features/parent/presentation/parent_home_screen.dart';
+import '../../features/parent/presentation/complaints_screen.dart';
 import '../../features/parent/presentation/reviews_screen.dart';
 import '../../features/parent/presentation/screening_screen.dart';
+import '../../features/parent/presentation/treatment_plans_screen.dart';
 import '../../features/compliance/presentation/consent_screen.dart';
 import '../../features/documents/presentation/documents_screen.dart';
 import '../../features/insurance/presentation/insurance_screen.dart';
@@ -24,6 +26,7 @@ import '../../features/telehealth/presentation/telehealth_screen.dart';
 import '../../features/therapist/presentation/session_notes_screen.dart';
 import '../../features/therapist/presentation/therapist_appointments_screen.dart';
 import '../../features/therapist/presentation/therapist_home_screen.dart';
+import '../../features/therapist/presentation/therapist_plans_screen.dart';
 import '../../features/therapist/presentation/therapist_profile_screen.dart';
 
 abstract final class AppRoutes {
@@ -49,6 +52,9 @@ abstract final class AppRoutes {
   static const documents = '/documents';
   static const insurance = '/insurance';
   static const consent = '/consent';
+  static const treatmentPlans = '/treatment-plans';
+  static const complaints = '/complaints';
+  static const therapistPlans = '/therapist/plans';
 }
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -96,6 +102,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             name: 'parentReviews',
             builder: (context, state) => const ReviewsScreen(),
           ),
+          GoRoute(
+            path: 'treatment-plans',
+            name: 'parentTreatmentPlans',
+            builder: (context, state) => const TreatmentPlansScreen(),
+          ),
+          GoRoute(
+            path: 'complaints',
+            name: 'parentComplaints',
+            builder: (context, state) => const ComplaintsScreen(),
+          ),
         ],
       ),
       GoRoute(
@@ -117,6 +133,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: 'session-notes',
             name: 'therapistSessionNotes',
             builder: (context, state) => const SessionNotesScreen(),
+          ),
+          GoRoute(
+            path: 'plans',
+            name: 'therapistPlans',
+            builder: (context, state) => const TherapistPlansScreen(),
           ),
         ],
       ),

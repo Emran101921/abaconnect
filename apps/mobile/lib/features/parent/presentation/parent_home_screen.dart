@@ -145,6 +145,18 @@ class ParentHomeScreen extends ConsumerWidget {
             icon: Icons.privacy_tip,
             onTap: () => context.push('/consent'),
           ),
+          _NavTile(
+            title: 'Treatment Plans',
+            subtitle: 'Goals and care plans',
+            icon: Icons.medical_information,
+            onTap: () => context.push('/parent/treatment-plans'),
+          ),
+          _NavTile(
+            title: 'File Complaint',
+            subtitle: 'Report a concern',
+            icon: Icons.report,
+            onTap: () => context.push('/parent/complaints'),
+          ),
         ],
       ),
     );

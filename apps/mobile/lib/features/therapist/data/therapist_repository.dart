@@ -35,6 +35,7 @@ class TherapistAppointmentModel {
     required this.therapyType,
     required this.scheduledStart,
     required this.childName,
+    required this.childId,
   });
 
   final String id;
@@ -42,6 +43,7 @@ class TherapistAppointmentModel {
   final String therapyType;
   final DateTime scheduledStart;
   final String childName;
+  final String childId;
 }
 
 class TherapistSessionModel {
@@ -111,7 +113,7 @@ class TherapistRepository {
           status
           therapyType
           scheduledStart
-          child { firstName lastName }
+          child { id firstName lastName }
         }
       }
     ''';
@@ -126,6 +128,7 @@ class TherapistRepository {
         therapyType: e['therapyType'] as String? ?? '',
         scheduledStart: DateTime.parse(e['scheduledStart'] as String),
         childName: '${child['firstName']} ${child['lastName']}',
+        childId: child['id'] as String,
       );
     }).toList();
   }
