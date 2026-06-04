@@ -68,6 +68,12 @@ export class NotificationType {
 
   @Field({ nullable: true })
   threadId?: string;
+
+  @Field({ nullable: true })
+  appointmentId?: string;
+
+  @Field({ nullable: true })
+  sessionId?: string;
 }
 
 @ObjectType()

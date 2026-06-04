@@ -47,6 +47,8 @@ class NotificationItemModel {
     required this.isRead,
     this.actionType,
     this.threadId,
+    this.appointmentId,
+    this.sessionId,
   });
 
   final String id;
@@ -55,6 +57,8 @@ class NotificationItemModel {
   final bool isRead;
   final String? actionType;
   final String? threadId;
+  final String? appointmentId;
+  final String? sessionId;
 }
 
 class InsuranceClaimItemModel {
@@ -217,7 +221,7 @@ class PlatformRepository {
 
   Future<List<NotificationItemModel>> fetchNotifications() async {
     final result = await _graphql.query(r'''
-      query { myNotifications { id title body readAt actionType threadId } }
+      query { myNotifications { id title body readAt actionType threadId appointmentId sessionId } }
     ''');
     final list = result['data']?['myNotifications'] as List<dynamic>? ?? [];
     return list
@@ -229,6 +233,8 @@ class PlatformRepository {
             isRead: e['readAt'] != null,
             actionType: e['actionType'] as String?,
             threadId: e['threadId'] as String?,
+            appointmentId: e['appointmentId'] as String?,
+            sessionId: e['sessionId'] as String?,
           ),
         )
         .toList();

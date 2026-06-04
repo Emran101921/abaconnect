@@ -152,6 +152,8 @@ export class PlatformResolver {
         : {};
     const threadId = data.threadId;
     const actionType = data.type;
+    const appointmentId = data.appointmentId;
+    const sessionId = data.sessionId;
     return {
       id: n.id,
       title: n.title,
@@ -160,6 +162,9 @@ export class PlatformResolver {
       sentAt: n.sentAt,
       actionType: typeof actionType === 'string' ? actionType : undefined,
       threadId: typeof threadId === 'string' ? threadId : undefined,
+      appointmentId:
+        typeof appointmentId === 'string' ? appointmentId : undefined,
+      sessionId: typeof sessionId === 'string' ? sessionId : undefined,
     };
   }
 
