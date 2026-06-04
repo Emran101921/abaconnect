@@ -113,6 +113,16 @@ export class PlatformResolver {
     };
   }
 
+  @Mutation(() => Boolean, { name: 'deleteMyDocument' })
+  @Roles('PARENT', 'THERAPIST')
+  async deleteMyDocument(
+    @CurrentUser() user: AuthUser,
+    @Args('documentId', { type: () => ID }) documentId: string,
+  ): Promise<boolean> {
+    await this.documents.deleteForUser(user.id, documentId);
+    return true;
+  }
+
   @Query(() => Int, { name: 'myUnreadNotificationCount' })
   @Roles('PARENT', 'THERAPIST', 'AGENCY_ADMIN', 'PLATFORM_ADMIN')
   async myUnreadNotificationCount(

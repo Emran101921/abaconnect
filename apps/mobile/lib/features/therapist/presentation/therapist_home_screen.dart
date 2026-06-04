@@ -149,6 +149,11 @@ class TherapistHomeScreen extends ConsumerWidget {
             },
           ),
           _NavTile(
+            title: 'Documents',
+            icon: Icons.folder,
+            onTap: () => context.push('/documents'),
+          ),
+          _NavTile(
             title: 'Messages',
             icon: Icons.message,
             onTap: () => context.push('/messages'),

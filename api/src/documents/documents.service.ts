@@ -3,7 +3,13 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { createReadStream, existsSync, mkdirSync, writeFileSync } from 'fs';
+import {
+  createReadStream,
+  existsSync,
+  mkdirSync,
+  unlinkSync,
+  writeFileSync,
+} from 'fs';
 import { join } from 'path';
 import { Readable } from 'stream';
 import { DocumentType } from '../../generated/prisma/client';
@@ -140,6 +146,19 @@ export class DocumentsService {
       data: { documentId: doc.id, userId, action: 'READ' },
     });
     return doc;
+  }
+
+  async deleteForUser(userId: string, documentId: string) {
+    const doc = await this.findAccessible(userId, documentId);
+    const absolutePath = this.resolveAbsolutePath(doc.storageKey);
+    if (existsSync(absolutePath)) {
+      unlinkSync(absolutePath);
+    }
+    await this.prisma.documentAccessLog.create({
+      data: { documentId: doc.id, userId, action: 'DELETE' },
+    });
+    await this.prisma.document.delete({ where: { id: documentId } });
+    return { id: documentId, deleted: true };
   }
 
   private async findAccessible(userId: string, documentId: string) {

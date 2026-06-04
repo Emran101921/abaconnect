@@ -3,11 +3,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/app_providers.dart';
+import '../../../shared/models/user_role.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../parent/data/parent_booking_repository.dart';
 import '../../platform/data/platform_repository.dart';
 
 final documentsProvider = FutureProvider<List<DocumentItemModel>>((ref) {
   return ref.watch(platformRepositoryProvider).fetchDocuments();
+});
+
+final documentChildrenProvider = FutureProvider<List<ChildModel>>((ref) async {
+  final session = ref.watch(authStateProvider).valueOrNull;
+  if (session?.user.role != UserRole.parent) {
+    return [];
+  }
+  return ref.watch(parentBookingRepositoryProvider).fetchChildren();
 });
 
 class DocumentsScreen extends ConsumerWidget {
@@ -47,7 +57,19 @@ class DocumentsScreen extends ConsumerWidget {
                     leading: const Icon(Icons.description),
                     title: Text(d.title),
                     subtitle: Text('${d.fileName} · ${d.type}'),
-                    trailing: Text('${(d.fileSize / 1024).round()} KB'),
+                    trailing: PopupMenuButton<String>(
+                      onSelected: (v) async {
+                        if (v == 'download') {
+                          await _download(context, ref, d);
+                        } else if (v == 'delete') {
+                          await _delete(context, ref, d);
+                        }
+                      },
+                      itemBuilder: (ctx) => const [
+                        PopupMenuItem(value: 'download', child: Text('Download')),
+                        PopupMenuItem(value: 'delete', child: Text('Delete')),
+                      ],
+                    ),
                     onTap: () => _download(context, ref, d),
                   ),
                 );
@@ -60,8 +82,15 @@ class DocumentsScreen extends ConsumerWidget {
   }
 
   Future<void> _pickAndUpload(BuildContext context, WidgetRef ref) async {
+    final session = ref.read(authStateProvider).valueOrNull;
+    final isParent = session?.user.role == UserRole.parent;
+    final children = isParent
+        ? await ref.read(documentChildrenProvider.future)
+        : <ChildModel>[];
+
     final titleController = TextEditingController();
     var docType = 'OTHER';
+    String? childId;
 
     final proceed = await showDialog<bool>(
       context: context,
@@ -99,6 +128,26 @@ class DocumentsScreen extends ConsumerWidget {
                   if (v != null) setDialogState(() => docType = v);
                 },
               ),
+              if (children.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String?>(
+                  value: childId,
+                  decoration: const InputDecoration(labelText: 'Child (optional)'),
+                  items: [
+                    const DropdownMenuItem<String?>(
+                      value: null,
+                      child: Text('No specific child'),
+                    ),
+                    ...children.map(
+                      (c) => DropdownMenuItem<String?>(
+                        value: c.id,
+                        child: Text(c.displayName),
+                      ),
+                    ),
+                  ],
+                  onChanged: (v) => setDialogState(() => childId = v),
+                ),
+              ],
             ],
           ),
           actions: [
@@ -126,7 +175,7 @@ class DocumentsScreen extends ConsumerWidget {
     try {
       await ref.read(platformRepositoryProvider).uploadDocumentFile(
             title: titleController.text.trim().isEmpty
-                ? (file.name)
+                ? file.name
                 : titleController.text.trim(),
             fileName: file.name,
             bytes: bytes,
@@ -134,6 +183,7 @@ class DocumentsScreen extends ConsumerWidget {
                 ? _mimeFromExtension(file.extension!)
                 : 'application/octet-stream',
             type: docType,
+            childId: childId,
           );
       ref.invalidate(documentsProvider);
       if (context.mounted) {
@@ -145,6 +195,40 @@ class DocumentsScreen extends ConsumerWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Upload failed: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _delete(
+    BuildContext context,
+    WidgetRef ref,
+    DocumentItemModel doc,
+  ) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete document?'),
+        content: Text('Remove "${doc.title}" permanently?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await ref.read(platformRepositoryProvider).deleteDocument(doc.id);
+      ref.invalidate(documentsProvider);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Document deleted')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Delete failed: $e')),
         );
       }
     }

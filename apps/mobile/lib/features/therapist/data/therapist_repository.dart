@@ -1,4 +1,10 @@
+import 'dart:typed_data';
+
+import 'package:dio/dio.dart';
+
+import '../../../core/network/api_client.dart';
 import '../../../core/network/graphql_client.dart';
+import '../../../core/utils/file_download.dart';
 
 class TherapistProfileModel {
   const TherapistProfileModel({
@@ -63,9 +69,10 @@ class TherapistSessionModel {
 }
 
 class TherapistRepository {
-  TherapistRepository(this._graphql);
+  TherapistRepository(this._graphql, this._api);
 
   final GraphqlClient _graphql;
+  final ApiClient _api;
 
   Future<TherapistProfileModel> fetchProfile() async {
     const query = r'''
@@ -178,6 +185,15 @@ class TherapistRepository {
         'yearsExperience': ?yearsExperience,
       },
     });
+  }
+
+  Future<String> downloadAppointmentsIcal() async {
+    final response = await _api.dio.get<List<int>>(
+      '/therapist/appointments/ical',
+      options: Options(responseType: ResponseType.bytes),
+    );
+    final bytes = Uint8List.fromList(response.data ?? []);
+    return downloadBytes(bytes, 'abaconnect-therapist.ics');
   }
 
   Future<void> confirmAppointment(String appointmentId) async {

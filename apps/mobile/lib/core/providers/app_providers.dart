@@ -30,7 +30,10 @@ final parentBookingRepositoryProvider = Provider<ParentBookingRepository>((ref) 
 });
 
 final therapistRepositoryProvider = Provider<TherapistRepository>((ref) {
-  return TherapistRepository(ref.watch(graphqlClientProvider));
+  return TherapistRepository(
+    ref.watch(graphqlClientProvider),
+    ref.watch(apiClientProvider),
+  );
 });
 
 final adminRepositoryProvider = Provider<AdminRepository>((ref) {

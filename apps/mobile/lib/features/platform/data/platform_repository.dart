@@ -184,6 +184,17 @@ class PlatformRepository {
     await _api.dio.post('/documents/upload', data: formData);
   }
 
+  Future<void> deleteDocument(String documentId) async {
+    await _graphql.query(
+      r'''
+      mutation Del($documentId: ID!) {
+        deleteMyDocument(documentId: $documentId)
+      }
+    ''',
+      variables: {'documentId': documentId},
+    );
+  }
+
   Future<String> downloadDocumentFile(String documentId, String fileName) async {
     final response = await _api.dio.get<List<int>>(
       '/documents/$documentId/file',

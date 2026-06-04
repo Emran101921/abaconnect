@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -114,12 +115,39 @@ class TherapistAppointmentsScreen extends ConsumerWidget {
     }
   }
 
+  Future<void> _exportCalendar(BuildContext context, WidgetRef ref) async {
+    try {
+      final path =
+          await ref.read(therapistRepositoryProvider).downloadAppointmentsIcal();
+      if (!context.mounted) return;
+      final message = kIsWeb
+          ? 'Calendar file downloaded'
+          : (path.isNotEmpty ? 'Saved to $path' : 'Calendar file saved');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Export failed: $e')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final appointments = ref.watch(therapistAppointmentsProvider);
 
     return AppScaffold(
       title: 'My Appointments',
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.calendar_month),
+          tooltip: 'Export to calendar',
+          onPressed: () => _exportCalendar(context, ref),
+        ),
+      ],
       body: appointments.when(
         data: (list) {
           if (list.isEmpty) {

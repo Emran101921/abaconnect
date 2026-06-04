@@ -58,6 +58,55 @@ export class AppointmentsService {
     });
   }
 
+  async findUpcomingForTherapistUser(userId: string) {
+    const therapist = await this.prisma.therapist.findUnique({ where: { userId } });
+    if (!therapist) {
+      return [];
+    }
+    return this.prisma.appointment.findMany({
+      where: {
+        therapistId: therapist.id,
+        scheduledStart: { gte: new Date() },
+        status: { notIn: ['CANCELLED', 'COMPLETED', 'NO_SHOW'] },
+      },
+      include: {
+        child: true,
+        therapist: { include: { user: true } },
+      },
+      orderBy: { scheduledStart: 'asc' },
+    });
+  }
+
+  async buildIcalForTherapistUser(userId: string): Promise<string> {
+    const rows = await this.findUpcomingForTherapistUser(userId);
+    const lines: string[] = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//ABAConnect//EN',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+    ];
+
+    for (const row of rows) {
+      const childName = `${row.child.firstName} ${row.child.lastName}`;
+      const summary = this.escapeIcalText(`${row.therapyType} – ${childName}`);
+      const description = this.escapeIcalText(
+        `Status: ${row.status}. Location: ${row.locationType ?? 'IN_HOME'}.`,
+      );
+      lines.push('BEGIN:VEVENT');
+      lines.push(`UID:${row.id}@abaconnect-therapist`);
+      lines.push(`DTSTAMP:${this.formatIcalUtc(new Date())}`);
+      lines.push(`DTSTART:${this.formatIcalUtc(row.scheduledStart)}`);
+      lines.push(`DTEND:${this.formatIcalUtc(row.scheduledEnd)}`);
+      lines.push(`SUMMARY:${summary}`);
+      lines.push(`DESCRIPTION:${description}`);
+      lines.push('END:VEVENT');
+    }
+
+    lines.push('END:VCALENDAR');
+    return `${lines.join('\r\n')}\r\n`;
+  }
+
   async buildIcalForParentUser(userId: string): Promise<string> {
     const rows = await this.findUpcomingForParentUser(userId);
     const lines: string[] = [

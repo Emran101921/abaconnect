@@ -158,7 +158,9 @@ Health check: `GET http://localhost:3000/api/v1/health`
 
 **Agency appointments:** `agencyUpcomingAppointments` — 14-day schedule on **Appointments** under the agency hub.
 
-**Document upload:** `POST /api/v1/documents/upload` (multipart, Bearer) stores files locally under `uploads/` (Docker volume `api_uploads`). Flutter **Documents** → pick file, tap list item to download. GraphQL `registerDocument` remains for metadata-only.
+**Document upload:** `POST /api/v1/documents/upload` (multipart, Bearer) stores files locally under `uploads/` (Docker volume `api_uploads`). Flutter **Documents** → pick file, optional child link (parents), download or delete via menu. GraphQL `deleteMyDocument` removes file and metadata.
+
+**Therapist calendar export:** `GET /api/v1/therapist/appointments/ical` — upcoming visits as `.ics` from **My Appointments** (calendar icon).
 
 **Children:** Parents can **edit child** names and **date of birth** on **My Children** (date picker in add/edit dialog).
 
