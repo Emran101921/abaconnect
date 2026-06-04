@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../messaging/messaging_providers.dart';
 import '../../notifications/notification_providers.dart';
 import '../data/therapist_repository.dart';
 import 'session_notes_screen.dart';
@@ -56,6 +57,9 @@ class TherapistHomeScreen extends ConsumerWidget {
     final appointments = ref.watch(therapistAppointmentsProvider);
     final unread = ref.watch(unreadNotificationsProvider);
     final unreadCount = unread.maybeWhen(data: (c) => c, orElse: () => 0);
+    final unreadMessages = ref.watch(unreadMessageThreadsProvider);
+    final unreadMessageCount =
+        unreadMessages.maybeWhen(data: (c) => c, orElse: () => 0);
 
     return AppScaffold(
       title: 'Therapist',
@@ -73,6 +77,7 @@ class TherapistHomeScreen extends ConsumerWidget {
           ref.invalidate(therapistDashboardProvider);
           ref.invalidate(therapistAppointmentsProvider);
           ref.invalidate(unreadNotificationsProvider);
+          ref.invalidate(unreadMessageThreadsProvider);
         },
         child: ListView(
           padding: const EdgeInsets.all(16),
@@ -88,20 +93,28 @@ class TherapistHomeScreen extends ConsumerWidget {
                     label: 'Pending requests',
                     value: '${d.pendingRequests}',
                     highlight: d.pendingRequests > 0,
+                    onTap: () =>
+                        context.push('${AppRoutes.therapistHome}/appointments'),
                   ),
                   _StatCard(
                     label: 'Today',
                     value: '${d.appointmentsToday}',
+                    onTap: () =>
+                        context.push('${AppRoutes.therapistHome}/appointments'),
                   ),
                   _StatCard(
                     label: 'In progress',
                     value: '${d.inProgressSessions}',
                     highlight: d.inProgressSessions > 0,
+                    onTap: () =>
+                        context.push('${AppRoutes.therapistHome}/session-notes'),
                   ),
                   _StatCard(
                     label: 'SOAP due',
                     value: '${d.pendingDocumentation}',
                     highlight: d.pendingDocumentation > 0,
+                    onTap: () =>
+                        context.push('${AppRoutes.therapistHome}/session-notes'),
                   ),
                 ],
               ),
@@ -213,8 +226,12 @@ class TherapistHomeScreen extends ConsumerWidget {
             Text('Communication', style: Theme.of(context).textTheme.titleSmall),
             const SizedBox(height: 8),
             _OpsTile(
-              title: 'Messages',
-              subtitle: 'Chat with parents on your caseload',
+              title: unreadMessageCount > 0
+                  ? 'Messages ($unreadMessageCount unread)'
+                  : 'Messages',
+              subtitle: unreadMessageCount > 0
+                  ? 'New replies from parents'
+                  : 'Chat with parents on your caseload',
               icon: Icons.message,
               onTap: () => context.push(AppRoutes.messages),
             ),
@@ -271,11 +288,13 @@ class _StatCard extends StatelessWidget {
     required this.label,
     required this.value,
     this.highlight = false,
+    this.onTap,
   });
 
   final String label;
   final String value;
   final bool highlight;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -284,20 +303,24 @@ class _StatCard extends StatelessWidget {
       width: 160,
       child: Card(
         color: highlight ? colorScheme.primaryContainer : null,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                value,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-              ),
-              const SizedBox(height: 4),
-              Text(label),
-            ],
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+                const SizedBox(height: 4),
+                Text(label),
+              ],
+            ),
           ),
         ),
       ),

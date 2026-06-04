@@ -47,13 +47,59 @@ export class MessagingService {
           : 'Conversation',
         lastMessageBody: last?.body ?? undefined,
         lastMessageAt: last?.sentAt ?? undefined,
+        hasUnread: this.isThreadUnread(last, m.lastReadAt, userId),
       };
     })
       .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
   }
 
+  async countUnreadThreadsForUser(userId: string) {
+    const memberships = await this.prisma.messageParticipant.findMany({
+      where: { userId },
+      include: {
+        thread: {
+          include: {
+            messages: {
+              where: { deletedAt: null },
+              orderBy: { sentAt: 'desc' },
+              take: 1,
+            },
+          },
+        },
+      },
+    });
+
+    return memberships.filter((m) =>
+      this.isThreadUnread(m.thread.messages[0], m.lastReadAt, userId),
+    ).length;
+  }
+
+  async markThreadRead(userId: string, threadId: string) {
+    await this.assertParticipant(userId, threadId);
+    await this.prisma.messageParticipant.update({
+      where: { threadId_userId: { threadId, userId } },
+      data: { lastReadAt: new Date() },
+    });
+    return true;
+  }
+
+  private isThreadUnread(
+    lastMessage: { senderId: string; sentAt: Date } | undefined,
+    lastReadAt: Date | null,
+    userId: string,
+  ) {
+    if (!lastMessage || lastMessage.senderId === userId) {
+      return false;
+    }
+    if (!lastReadAt) {
+      return true;
+    }
+    return lastMessage.sentAt > lastReadAt;
+  }
+
   async getThreadMessages(userId: string, threadId: string) {
     await this.assertParticipant(userId, threadId);
+    await this.markThreadRead(userId, threadId);
     return this.prisma.message.findMany({
       where: { threadId, deletedAt: null },
       include: { sender: true },
@@ -195,6 +241,7 @@ export class MessagingService {
       subject: thread.subject ?? undefined,
       updatedAt: thread.updatedAt,
       otherParticipantName: `${parent.user.firstName} ${parent.user.lastName}`,
+      hasUnread: false,
     };
   }
 
@@ -245,6 +292,7 @@ export class MessagingService {
       subject: thread.subject ?? undefined,
       updatedAt: thread.updatedAt,
       otherParticipantName: `${therapist.user.firstName} ${therapist.user.lastName}`,
+      hasUnread: false,
     };
   }
 
@@ -283,6 +331,7 @@ export class MessagingService {
             : 'Conversation',
           lastMessageBody: last?.body ?? undefined,
           lastMessageAt: last?.sentAt ?? undefined,
+          hasUnread: false,
         };
       }
     }

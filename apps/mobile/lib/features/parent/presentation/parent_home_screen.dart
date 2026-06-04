@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../messaging/messaging_providers.dart';
 import '../../notifications/notification_providers.dart';
 import '../data/parent_booking_repository.dart';
 
@@ -34,6 +35,9 @@ class ParentHomeScreen extends ConsumerWidget {
     final pendingReviews = ref.watch(parentPendingReviewsProvider);
     final unread = ref.watch(unreadNotificationsProvider);
     final unreadCount = unread.maybeWhen(data: (c) => c, orElse: () => 0);
+    final unreadMessages = ref.watch(unreadMessageThreadsProvider);
+    final unreadMessageCount =
+        unreadMessages.maybeWhen(data: (c) => c, orElse: () => 0);
 
     return AppScaffold(
       title: 'Parent',
@@ -52,6 +56,7 @@ class ParentHomeScreen extends ConsumerWidget {
           ref.invalidate(parentAppointmentsProvider);
           ref.invalidate(parentPendingReviewsProvider);
           ref.invalidate(unreadNotificationsProvider);
+          ref.invalidate(unreadMessageThreadsProvider);
         },
         child: ListView(
           padding: const EdgeInsets.all(16),
@@ -63,19 +68,28 @@ class ParentHomeScreen extends ConsumerWidget {
                 spacing: 12,
                 runSpacing: 12,
                 children: [
-                  _StatCard(label: 'Children', value: '${d.childrenCount}'),
+                  _StatCard(
+                    label: 'Children',
+                    value: '${d.childrenCount}',
+                    onTap: () => context.push('${AppRoutes.parentHome}/children'),
+                  ),
                   _StatCard(
                     label: 'Upcoming',
                     value: '${d.upcomingAppointments}',
+                    onTap: () =>
+                        context.push('${AppRoutes.parentHome}/appointments'),
                   ),
                   _StatCard(
                     label: 'Today',
                     value: '${d.appointmentsToday}',
+                    onTap: () =>
+                        context.push('${AppRoutes.parentHome}/appointments'),
                   ),
                   _StatCard(
                     label: 'Reviews due',
                     value: '${d.pendingReviews}',
                     highlight: d.pendingReviews > 0,
+                    onTap: () => context.push('${AppRoutes.parentHome}/reviews'),
                   ),
                 ],
               ),
@@ -176,8 +190,12 @@ class ParentHomeScreen extends ConsumerWidget {
             Text('Care team', style: Theme.of(context).textTheme.titleSmall),
             const SizedBox(height: 8),
             _OpsTile(
-              title: 'Messages',
-              subtitle: 'Chat with therapists',
+              title: unreadMessageCount > 0
+                  ? 'Messages ($unreadMessageCount unread)'
+                  : 'Messages',
+              subtitle: unreadMessageCount > 0
+                  ? 'New replies from your care team'
+                  : 'Chat with therapists',
               icon: Icons.message,
               onTap: () => context.push(AppRoutes.messages),
             ),
@@ -287,11 +305,13 @@ class _StatCard extends StatelessWidget {
     required this.label,
     required this.value,
     this.highlight = false,
+    this.onTap,
   });
 
   final String label;
   final String value;
   final bool highlight;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -300,20 +320,24 @@ class _StatCard extends StatelessWidget {
       width: 160,
       child: Card(
         color: highlight ? colorScheme.errorContainer : null,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                value,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-              ),
-              const SizedBox(height: 4),
-              Text(label),
-            ],
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+                const SizedBox(height: 4),
+                Text(label),
+              ],
+            ),
           ),
         ),
       ),
