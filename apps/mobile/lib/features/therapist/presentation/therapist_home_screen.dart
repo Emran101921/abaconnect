@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/providers/app_providers.dart';
+import '../../notifications/notification_providers.dart';
 import '../data/therapist_repository.dart';
 import 'session_notes_screen.dart';
 import '../../../shared/widgets/app_scaffold.dart';
@@ -136,10 +137,16 @@ class TherapistHomeScreen extends ConsumerWidget {
             icon: Icons.medical_information,
             onTap: () => context.push('/therapist/plans'),
           ),
-          _NavTile(
-            title: 'Notifications',
-            icon: Icons.notifications,
-            onTap: () => context.push('/notifications'),
+          Consumer(
+            builder: (context, ref, _) {
+              final unread = ref.watch(unreadNotificationsProvider);
+              final count = unread.maybeWhen(data: (c) => c, orElse: () => 0);
+              return _NavTile(
+                title: count > 0 ? 'Notifications ($count)' : 'Notifications',
+                icon: Icons.notifications,
+                onTap: () => context.push('/notifications'),
+              );
+            },
           ),
           _NavTile(
             title: 'Messages',

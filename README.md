@@ -150,6 +150,16 @@ Health check: `GET http://localhost:3000/api/v1/health`
 
 **Admin analytics:** `tenantAnalytics` — appointments (7d), sessions, revenue, children on the admin dashboard.
 
+**Admin users:** `setUserActive` — activate/deactivate accounts on **Users** (platform admins protected).
+
+**Agency roster:** `removeAgencyTherapist` — remove therapist from agency roster (menu on roster card).
+
+**Children:** Parents can **edit child** names on **My Children**.
+
+**Telehealth from appointments:** Parents with `TELEHEALTH` visits see **Join telehealth** on **My Appointments**.
+
+**Unread badges:** `myUnreadNotificationCount` — badge on parent/therapist home **Notifications**.
+
 **Production Docker:**
 
 ```bash

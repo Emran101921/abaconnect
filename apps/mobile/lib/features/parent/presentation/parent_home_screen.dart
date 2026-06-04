@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../notifications/notification_providers.dart';
 import '../data/parent_booking_repository.dart';
 
 final parentAppointmentsProvider =
@@ -165,11 +166,20 @@ class ParentHomeScreen extends ConsumerWidget {
             icon: Icons.video_call,
             onTap: () => context.push('/telehealth'),
           ),
-          _NavTile(
-            title: 'Notifications',
-            subtitle: 'Alerts and reminders',
-            icon: Icons.notifications,
-            onTap: () => context.push('/notifications'),
+          Consumer(
+            builder: (context, ref, _) {
+              final unread = ref.watch(unreadNotificationsProvider);
+              final count = unread.maybeWhen(data: (c) => c, orElse: () => 0);
+              return _NavTile(
+                title: 'Notifications',
+                subtitle: count > 0
+                    ? '$count unread alert${count == 1 ? '' : 's'}'
+                    : 'Alerts and reminders',
+                icon: Icons.notifications,
+                badge: count > 0 ? count : null,
+                onTap: () => context.push('/notifications'),
+              );
+            },
           ),
           _NavTile(
             title: 'Documents',
@@ -219,19 +229,25 @@ class _NavTile extends StatelessWidget {
     required this.subtitle,
     required this.icon,
     required this.onTap,
+    this.badge,
   });
 
   final String title;
   final String subtitle;
   final IconData icon;
   final VoidCallback onTap;
+  final int? badge;
 
   @override
   Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
-        leading: Icon(icon),
+        leading: Badge(
+          isLabelVisible: badge != null && badge! > 0,
+          label: Text('$badge'),
+          child: Icon(icon),
+        ),
         title: Text(title),
         subtitle: Text(subtitle),
         trailing: const Icon(Icons.chevron_right),

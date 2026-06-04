@@ -195,9 +195,54 @@ class _TherapistRoster extends ConsumerWidget {
                         ? 'Verified · ${t.licenseNumber ?? 'Licensed'}'
                         : 'Pending verification',
                   ),
-                  trailing: Icon(
-                    t.isVerified ? Icons.verified : Icons.pending,
-                    color: t.isVerified ? Colors.green : Colors.orange,
+                  trailing: PopupMenuButton<String>(
+                    onSelected: (v) async {
+                      if (v != 'remove') return;
+                      final ok = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Remove from roster?'),
+                          content: Text(
+                            'Remove ${t.displayName} from your agency roster?',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, false),
+                              child: const Text('Cancel'),
+                            ),
+                            FilledButton(
+                              onPressed: () => Navigator.pop(ctx, true),
+                              child: const Text('Remove'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (ok != true || !context.mounted) return;
+                      try {
+                        await ref
+                            .read(agencyRepositoryProvider)
+                            .removeTherapist(t.id);
+                        ref.invalidate(agencyTherapistsProvider);
+                        ref.invalidate(agencyInviteCandidatesProvider);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Removed from roster')),
+                          );
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Failed: $e')),
+                          );
+                        }
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'remove',
+                        child: Text('Remove from roster'),
+                      ),
+                    ],
                   ),
                 ),
               ),

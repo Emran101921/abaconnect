@@ -2,6 +2,15 @@ import { Field, Float, ID, InputType } from '@nestjs/graphql';
 import { ClaimStatus } from '../../../generated/prisma/client';
 
 @InputType()
+export class SetUserActiveInput {
+  @Field(() => ID)
+  userId: string;
+
+  @Field()
+  isActive: boolean;
+}
+
+@InputType()
 export class UpdateInsuranceClaimInput {
   @Field(() => ID)
   claimId: string;

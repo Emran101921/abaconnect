@@ -65,6 +65,21 @@ export class AgencyResolver {
     }));
   }
 
+  @Mutation(() => Boolean, { name: 'removeAgencyTherapist' })
+  async removeAgencyTherapist(
+    @CurrentUser() user: AuthUser,
+    @Args('therapistId', { type: () => ID }) therapistId: string,
+  ): Promise<boolean> {
+    if (!user.tenantId) {
+      throw new Error('Tenant required');
+    }
+    await this.agenciesService.removeTherapistFromAgency(
+      user.tenantId,
+      therapistId,
+    );
+    return true;
+  }
+
   @Mutation(() => AgencyTherapistType, { name: 'inviteAgencyTherapist' })
   async inviteAgencyTherapist(
     @CurrentUser() user: AuthUser,

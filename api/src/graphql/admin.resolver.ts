@@ -5,7 +5,10 @@ import { AdminService } from '../admin/admin.service';
 import { ComplaintsService } from '../complaints/complaints.service';
 import { InsuranceService } from '../insurance/insurance.service';
 import { ReviewsService } from '../reviews/reviews.service';
-import { UpdateInsuranceClaimInput } from './inputs/admin.input';
+import {
+  SetUserActiveInput,
+  UpdateInsuranceClaimInput,
+} from './inputs/admin.input';
 import {
   AdminDashboardType,
   AdminUserType,
@@ -176,6 +179,26 @@ export class AdminResolver {
       },
     );
     return this.mapInsuranceClaim(row);
+  }
+
+  @Mutation(() => AdminUserType, { name: 'setUserActive' })
+  async setUserActive(
+    @CurrentUser() user: AuthUser,
+    @Args('input') input: SetUserActiveInput,
+  ): Promise<AdminUserType> {
+    const row = await this.adminService.setUserActive(
+      input.userId,
+      input.isActive,
+      user.tenantId,
+    );
+    return {
+      id: row.id,
+      email: row.email,
+      firstName: row.firstName,
+      lastName: row.lastName,
+      role: row.role,
+      isActive: row.isActive,
+    };
   }
 
   @Mutation(() => PendingTherapistType, { name: 'verifyTherapist' })

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../platform/data/platform_repository.dart';
+import '../notification_providers.dart';
 
 final notificationsProvider =
     FutureProvider<List<NotificationItemModel>>((ref) {
@@ -24,6 +25,7 @@ class NotificationsScreen extends ConsumerWidget {
           onPressed: () async {
             await ref.read(platformRepositoryProvider).markAllNotificationsRead();
             ref.invalidate(notificationsProvider);
+            ref.invalidate(unreadNotificationsProvider);
           },
           child: const Text('Mark all read'),
         ),
@@ -59,6 +61,7 @@ class NotificationsScreen extends ConsumerWidget {
                           .read(platformRepositoryProvider)
                           .markNotificationRead(n.id);
                       ref.invalidate(notificationsProvider);
+                      ref.invalidate(unreadNotificationsProvider);
                     }
                   },
                 );

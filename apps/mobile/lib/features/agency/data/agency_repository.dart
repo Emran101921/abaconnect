@@ -97,6 +97,17 @@ class AgencyRepository {
     return list.map(_mapTherapist).toList();
   }
 
+  Future<void> removeTherapist(String therapistId) async {
+    await _graphql.query(
+      r'''
+      mutation Remove($therapistId: ID!) {
+        removeAgencyTherapist(therapistId: $therapistId)
+      }
+    ''',
+      variables: {'therapistId': therapistId},
+    );
+  }
+
   Future<void> inviteTherapist(String therapistId) async {
     await _graphql.query(
       _inviteMutation,

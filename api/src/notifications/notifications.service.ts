@@ -6,6 +6,12 @@ import { PrismaService } from '../prisma/prisma.service';
 export class NotificationsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async countUnread(userId: string) {
+    return this.prisma.notification.count({
+      where: { userId, readAt: null },
+    });
+  }
+
   async listForUser(userId: string, unreadOnly = false) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) return [];

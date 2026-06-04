@@ -92,6 +92,54 @@ class _ChildrenListScreenState extends ConsumerState<ChildrenListScreen> {
     }
   }
 
+  Future<void> _editChild(ChildModel child) async {
+    final firstName = TextEditingController(text: child.firstName);
+    final lastName = TextEditingController(text: child.lastName);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Edit child'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: firstName,
+              decoration: const InputDecoration(labelText: 'First name'),
+            ),
+            TextField(
+              controller: lastName,
+              decoration: const InputDecoration(labelText: 'Last name'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Save')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await ref.read(parentBookingRepositoryProvider).updateChild(
+            childId: child.id,
+            firstName: firstName.text.trim(),
+            lastName: lastName.text.trim(),
+          );
+      await _load();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Child updated')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Update failed: $e')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return AppScaffold(
@@ -118,8 +166,12 @@ class _ChildrenListScreenState extends ConsumerState<ChildrenListScreen> {
                             child: Text(child.firstName.characters.first),
                           ),
                           title: Text(child.displayName),
-                          subtitle: const Text('Tap to manage plans'),
-                          trailing: const Icon(Icons.chevron_right),
+                          subtitle: const Text('Tap to edit profile'),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.edit),
+                            onPressed: () => _editChild(child),
+                          ),
+                          onTap: () => _editChild(child),
                         ),
                       );
                     },

@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import 'package:go_router/go_router.dart';
+
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../platform/data/platform_repository.dart';
 import '../data/parent_booking_repository.dart';
 import 'parent_home_screen.dart';
 
@@ -58,6 +61,33 @@ class ParentAppointmentsScreen extends ConsumerWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Cancel failed: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _joinTelehealth(
+    BuildContext context,
+    WidgetRef ref,
+    AppointmentModel appointment,
+  ) async {
+    try {
+      final session =
+          await ref.read(platformRepositoryProvider).joinTelehealth(appointment.id);
+      if (!context.mounted) return;
+      if (session.joinUrl != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Room ready: ${session.joinUrl}'),
+            duration: const Duration(seconds: 8),
+          ),
+        );
+      }
+      context.push('/telehealth');
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Telehealth failed: $e')),
         );
       }
     }
@@ -129,36 +159,57 @@ class ParentAppointmentsScreen extends ConsumerWidget {
                 final a = list[index];
                 final canChange = !['COMPLETED', 'CANCELLED', 'NO_SHOW']
                     .contains(a.status);
+                final loc = a.locationType ?? 'IN_HOME';
                 return Card(
-                  child: ListTile(
-                    title: Text('${a.therapyType} · ${a.childName}'),
-                    subtitle: Text(
-                      '${a.therapistName}\n'
-                      '${DateFormat.yMMMd().add_jm().format(a.scheduledStart)}\n'
-                      '${a.status}',
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${a.therapyType} · ${a.childName}',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        Text('${a.therapistName} · $loc'),
+                        Text(
+                          DateFormat.yMMMd().add_jm().format(a.scheduledStart),
+                        ),
+                        Chip(label: Text(a.status)),
+                        if (a.isTelehealth &&
+                            !['COMPLETED', 'CANCELLED'].contains(a.status))
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: FilledButton.icon(
+                              onPressed: () => _joinTelehealth(context, ref, a),
+                              icon: const Icon(Icons.video_call),
+                              label: const Text('Join telehealth'),
+                            ),
+                          ),
+                        if (canChange)
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: PopupMenuButton<String>(
+                              onSelected: (v) {
+                                if (v == 'reschedule') {
+                                  _reschedule(context, ref, a);
+                                } else if (v == 'cancel') {
+                                  _cancel(context, ref, a);
+                                }
+                              },
+                              itemBuilder: (context) => const [
+                                PopupMenuItem(
+                                  value: 'reschedule',
+                                  child: Text('Reschedule'),
+                                ),
+                                PopupMenuItem(
+                                  value: 'cancel',
+                                  child: Text('Cancel'),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
                     ),
-                    isThreeLine: true,
-                    trailing: canChange
-                        ? PopupMenuButton<String>(
-                            onSelected: (v) {
-                              if (v == 'reschedule') {
-                                _reschedule(context, ref, a);
-                              } else if (v == 'cancel') {
-                                _cancel(context, ref, a);
-                              }
-                            },
-                            itemBuilder: (context) => [
-                              const PopupMenuItem(
-                                value: 'reschedule',
-                                child: Text('Reschedule'),
-                              ),
-                              const PopupMenuItem(
-                                value: 'cancel',
-                                child: Text('Cancel'),
-                              ),
-                            ],
-                          )
-                        : null,
                   ),
                 );
               },

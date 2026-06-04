@@ -161,6 +161,13 @@ class PlatformRepository {
     );
   }
 
+  Future<int> fetchUnreadNotificationCount() async {
+    final result = await _graphql.query(r'''
+      query { myUnreadNotificationCount }
+    ''');
+    return result['data']?['myUnreadNotificationCount'] as int? ?? 0;
+  }
+
   Future<List<NotificationItemModel>> fetchNotifications() async {
     final result = await _graphql.query(r'''
       query { myNotifications { id title body readAt } }

@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -72,6 +76,33 @@ export class AdminService {
       include: { user: true },
       orderBy: { createdAt: 'desc' },
       take: 50,
+    });
+  }
+
+  async setUserActive(userId: string, isActive: boolean, tenantId?: string) {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id: userId,
+        ...(tenantId ? { tenantId } : {}),
+      },
+    });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    if (user.role === 'PLATFORM_ADMIN' && !isActive) {
+      throw new BadRequestException('Cannot deactivate platform admin');
+    }
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { isActive },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        isActive: true,
+      },
     });
   }
 

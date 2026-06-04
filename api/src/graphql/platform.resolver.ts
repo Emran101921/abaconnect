@@ -113,6 +113,14 @@ export class PlatformResolver {
     };
   }
 
+  @Query(() => Int, { name: 'myUnreadNotificationCount' })
+  @Roles('PARENT', 'THERAPIST', 'AGENCY_ADMIN', 'PLATFORM_ADMIN')
+  async myUnreadNotificationCount(
+    @CurrentUser() user: AuthUser,
+  ): Promise<number> {
+    return this.notifications.countUnread(user.id);
+  }
+
   @Query(() => [NotificationType], { name: 'myNotifications' })
   @Roles('PARENT', 'THERAPIST', 'AGENCY_ADMIN', 'PLATFORM_ADMIN')
   async myNotifications(@CurrentUser() user: AuthUser): Promise<NotificationType[]> {

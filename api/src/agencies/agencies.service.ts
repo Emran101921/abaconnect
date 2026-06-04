@@ -84,6 +84,35 @@ export class AgenciesService {
     });
   }
 
+  async removeTherapistFromAgency(tenantId: string, therapistId: string) {
+    const agency = await this.prisma.agency.findFirst({
+      where: { tenantId },
+    });
+    if (!agency) {
+      throw new NotFoundException('Agency not found for tenant');
+    }
+
+    const link = await this.prisma.agencyTherapist.findUnique({
+      where: {
+        agencyId_therapistId: {
+          agencyId: agency.id,
+          therapistId,
+        },
+      },
+      include: { therapist: { include: { user: true } } },
+    });
+    if (!link) {
+      throw new NotFoundException('Therapist is not on this agency roster');
+    }
+
+    await this.prisma.agencyTherapist.update({
+      where: { id: link.id },
+      data: { status: 'INACTIVE' },
+    });
+
+    return link.therapist;
+  }
+
   async listUnlinkedTherapistsForTenant(tenantId: string) {
     const agency = await this.prisma.agency.findFirst({
       where: { tenantId },

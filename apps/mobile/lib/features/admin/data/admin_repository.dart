@@ -341,6 +341,23 @@ class AdminRepository {
     );
   }
 
+  Future<void> setUserActive({
+    required String userId,
+    required bool isActive,
+  }) async {
+    const mutation = r'''
+      mutation SetActive($input: SetUserActiveInput!) {
+        setUserActive(input: $input) { id isActive }
+      }
+    ''';
+    await _graphql.query(
+      mutation,
+      variables: {
+        'input': {'userId': userId, 'isActive': isActive},
+      },
+    );
+  }
+
   Future<void> verifyTherapist(String therapistId) async {
     const mutation = r'''
       mutation Verify($therapistId: ID!) {

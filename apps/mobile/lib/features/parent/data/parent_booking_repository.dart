@@ -124,6 +124,7 @@ class AppointmentModel {
     required this.scheduledStart,
     required this.childName,
     required this.therapistName,
+    this.locationType,
   });
 
   final String id;
@@ -132,6 +133,9 @@ class AppointmentModel {
   final DateTime scheduledStart;
   final String childName;
   final String therapistName;
+  final String? locationType;
+
+  bool get isTelehealth => locationType == 'TELEHEALTH';
 }
 
 class ParentBookingRepository {
@@ -156,6 +160,7 @@ class ParentBookingRepository {
         status
         therapyType
         scheduledStart
+        locationType
         child { firstName lastName }
         therapist { user { firstName lastName } }
       }
@@ -583,6 +588,27 @@ class ParentBookingRepository {
     );
   }
 
+  Future<void> updateChild({
+    required String childId,
+    String? firstName,
+    String? lastName,
+  }) async {
+    await _graphql.query(
+      r'''
+      mutation UpdateChild($input: UpdateChildInput!) {
+        updateChild(input: $input) { id }
+      }
+    ''',
+      variables: {
+        'input': {
+          'childId': childId,
+          if (firstName != null) 'firstName': firstName,
+          if (lastName != null) 'lastName': lastName,
+        },
+      },
+    );
+  }
+
   Future<List<TherapistModel>> fetchPendingReviewTherapists() async {
     final result = await _graphql.query(_pendingReviewQuery);
     final list =
@@ -615,6 +641,7 @@ class ParentBookingRepository {
       therapistName: user != null
           ? '${user['firstName']} ${user['lastName']}'
           : 'Therapist',
+      locationType: e['locationType'] as String?,
     );
   }
 }
