@@ -9,6 +9,7 @@ import { SaveSoapNoteInput, UpdateTherapistProfileInput } from './inputs/therapi
 import {
   SoapNoteType,
   TherapistAppointmentType,
+  TherapistDashboardType,
   TherapistProfileType,
   TherapistSessionType,
 } from './types/therapist.types';
@@ -21,6 +22,13 @@ export class TherapistResolver {
     private readonly sessionsService: SessionsService,
     private readonly appointmentsService: AppointmentsService,
   ) {}
+
+  @Query(() => TherapistDashboardType, { name: 'therapistDashboard' })
+  async therapistDashboard(
+    @CurrentUser() user: AuthUser,
+  ): Promise<TherapistDashboardType> {
+    return this.therapistsService.getDashboardForUserId(user.id);
+  }
 
   @Query(() => TherapistProfileType, { name: 'myTherapistProfile' })
   async myTherapistProfile(

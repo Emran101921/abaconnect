@@ -10,6 +10,11 @@ import '../../notifications/notification_providers.dart';
 import '../data/therapist_repository.dart';
 import 'session_notes_screen.dart';
 
+final therapistDashboardProvider =
+    FutureProvider<TherapistDashboardModel>((ref) async {
+  return ref.watch(therapistRepositoryProvider).fetchDashboard();
+});
+
 final therapistAppointmentsProvider =
     FutureProvider<List<TherapistAppointmentModel>>((ref) async {
   return ref.watch(therapistRepositoryProvider).fetchAppointments();
@@ -47,6 +52,7 @@ class TherapistHomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final dashboard = ref.watch(therapistDashboardProvider);
     final appointments = ref.watch(therapistAppointmentsProvider);
     final unread = ref.watch(unreadNotificationsProvider);
     final unreadCount = unread.maybeWhen(data: (c) => c, orElse: () => 0);
@@ -64,6 +70,7 @@ class TherapistHomeScreen extends ConsumerWidget {
       ],
       body: RefreshIndicator(
         onRefresh: () async {
+          ref.invalidate(therapistDashboardProvider);
           ref.invalidate(therapistAppointmentsProvider);
           ref.invalidate(unreadNotificationsProvider);
         },
@@ -71,6 +78,36 @@ class TherapistHomeScreen extends ConsumerWidget {
           padding: const EdgeInsets.all(16),
           children: [
             Text('Overview', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 12),
+            dashboard.when(
+              data: (d) => Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  _StatCard(
+                    label: 'Pending requests',
+                    value: '${d.pendingRequests}',
+                    highlight: d.pendingRequests > 0,
+                  ),
+                  _StatCard(
+                    label: 'Today',
+                    value: '${d.appointmentsToday}',
+                  ),
+                  _StatCard(
+                    label: 'In progress',
+                    value: '${d.inProgressSessions}',
+                    highlight: d.inProgressSessions > 0,
+                  ),
+                  _StatCard(
+                    label: 'SOAP due',
+                    value: '${d.pendingDocumentation}',
+                    highlight: d.pendingDocumentation > 0,
+                  ),
+                ],
+              ),
+              loading: () => const LinearProgressIndicator(),
+              error: (e, _) => Text('Overview error: $e'),
+            ),
             const SizedBox(height: 12),
             appointments.when(
               data: (list) {
@@ -223,6 +260,45 @@ class TherapistHomeScreen extends ConsumerWidget {
               onTap: () => context.push(AppRoutes.security),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  const _StatCard({
+    required this.label,
+    required this.value,
+    this.highlight = false,
+  });
+
+  final String label;
+  final String value;
+  final bool highlight;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return SizedBox(
+      width: 160,
+      child: Card(
+        color: highlight ? colorScheme.primaryContainer : null,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                value,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+              const SizedBox(height: 4),
+              Text(label),
+            ],
+          ),
         ),
       ),
     );

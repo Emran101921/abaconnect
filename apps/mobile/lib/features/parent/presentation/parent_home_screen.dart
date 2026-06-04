@@ -9,6 +9,11 @@ import '../../../shared/widgets/app_scaffold.dart';
 import '../../notifications/notification_providers.dart';
 import '../data/parent_booking_repository.dart';
 
+final parentDashboardProvider =
+    FutureProvider<ParentDashboardModel>((ref) async {
+  return ref.watch(parentBookingRepositoryProvider).fetchDashboard();
+});
+
 final parentAppointmentsProvider =
     FutureProvider<List<AppointmentModel>>((ref) async {
   return ref.watch(parentBookingRepositoryProvider).fetchAppointments();
@@ -24,6 +29,7 @@ class ParentHomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final dashboard = ref.watch(parentDashboardProvider);
     final appointments = ref.watch(parentAppointmentsProvider);
     final pendingReviews = ref.watch(parentPendingReviewsProvider);
     final unread = ref.watch(unreadNotificationsProvider);
@@ -42,6 +48,7 @@ class ParentHomeScreen extends ConsumerWidget {
       ],
       body: RefreshIndicator(
         onRefresh: () async {
+          ref.invalidate(parentDashboardProvider);
           ref.invalidate(parentAppointmentsProvider);
           ref.invalidate(parentPendingReviewsProvider);
           ref.invalidate(unreadNotificationsProvider);
@@ -50,6 +57,31 @@ class ParentHomeScreen extends ConsumerWidget {
           padding: const EdgeInsets.all(16),
           children: [
             Text('Overview', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 12),
+            dashboard.when(
+              data: (d) => Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  _StatCard(label: 'Children', value: '${d.childrenCount}'),
+                  _StatCard(
+                    label: 'Upcoming',
+                    value: '${d.upcomingAppointments}',
+                  ),
+                  _StatCard(
+                    label: 'Today',
+                    value: '${d.appointmentsToday}',
+                  ),
+                  _StatCard(
+                    label: 'Reviews due',
+                    value: '${d.pendingReviews}',
+                    highlight: d.pendingReviews > 0,
+                  ),
+                ],
+              ),
+              loading: () => const LinearProgressIndicator(),
+              error: (e, _) => Text('Overview error: $e'),
+            ),
             const SizedBox(height: 12),
             pendingReviews.when(
               data: (therapists) {
@@ -244,6 +276,45 @@ class ParentHomeScreen extends ConsumerWidget {
               onTap: () => context.push('${AppRoutes.parentHome}/complaints'),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  const _StatCard({
+    required this.label,
+    required this.value,
+    this.highlight = false,
+  });
+
+  final String label;
+  final String value;
+  final bool highlight;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return SizedBox(
+      width: 160,
+      child: Card(
+        color: highlight ? colorScheme.errorContainer : null,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                value,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+              const SizedBox(height: 4),
+              Text(label),
+            ],
+          ),
         ),
       ),
     );

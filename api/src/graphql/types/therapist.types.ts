@@ -3,6 +3,21 @@ import { TherapyType } from '../../../generated/prisma/client';
 import { ChildType, TherapistUserType } from './parent-booking.types';
 
 @ObjectType()
+export class TherapistDashboardType {
+  @Field(() => Int)
+  pendingRequests: number;
+
+  @Field(() => Int)
+  appointmentsToday: number;
+
+  @Field(() => Int)
+  inProgressSessions: number;
+
+  @Field(() => Int)
+  pendingDocumentation: number;
+}
+
+@ObjectType()
 export class TherapistProfileType {
   @Field(() => ID)
   id: string;
