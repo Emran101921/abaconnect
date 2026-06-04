@@ -22,6 +22,18 @@ export class MessageThreadType {
 }
 
 @ObjectType()
+export class ParentContactType {
+  @Field(() => ID)
+  parentId: string;
+
+  @Field()
+  displayName: string;
+
+  @Field({ nullable: true })
+  childSummary?: string;
+}
+
+@ObjectType()
 export class ChatMessageType {
   @Field(() => ID)
   id: string;

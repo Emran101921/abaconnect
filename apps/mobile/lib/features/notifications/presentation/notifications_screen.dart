@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/app_providers.dart';
+import '../../../core/router/app_router.dart';
+import '../../../shared/models/user_role.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../platform/data/platform_repository.dart';
 import '../notification_providers.dart';
@@ -13,6 +16,52 @@ final notificationsProvider =
 
 class NotificationsScreen extends ConsumerWidget {
   const NotificationsScreen({super.key});
+
+  bool _hasDestination(NotificationItemModel n) {
+    if (n.actionType == 'MESSAGE' && n.threadId != null) return true;
+    if (n.actionType != null &&
+        n.actionType!.startsWith('APPOINTMENT') &&
+        n.appointmentId != null) {
+      return true;
+    }
+    if (n.actionType == 'SESSION_COMPLETED') return true;
+    return false;
+  }
+
+  Future<void> _onTap(
+    BuildContext context,
+    WidgetRef ref,
+    NotificationItemModel n,
+  ) async {
+    if (!n.isRead) {
+      await ref.read(platformRepositoryProvider).markNotificationRead(n.id);
+      ref.invalidate(notificationsProvider);
+      ref.invalidate(unreadNotificationsProvider);
+    }
+    if (!context.mounted) return;
+
+    final role = ref.read(authStateProvider).valueOrNull?.user.role;
+
+    if (n.actionType == 'MESSAGE' && n.threadId != null) {
+      context.push('${AppRoutes.messages}/${n.threadId}');
+      return;
+    }
+
+    if (n.actionType != null &&
+        n.actionType!.startsWith('APPOINTMENT') &&
+        n.appointmentId != null) {
+      if (role == UserRole.therapist) {
+        context.push('${AppRoutes.therapistHome}/appointments');
+      } else {
+        context.push('${AppRoutes.parentHome}/appointments');
+      }
+      return;
+    }
+
+    if (n.actionType == 'SESSION_COMPLETED') {
+      context.push('${AppRoutes.parentHome}/reviews');
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -55,15 +104,10 @@ class NotificationsScreen extends ConsumerWidget {
                   ),
                   title: Text(n.title),
                   subtitle: Text(n.body),
-                  onTap: () async {
-                    if (!n.isRead) {
-                      await ref
-                          .read(platformRepositoryProvider)
-                          .markNotificationRead(n.id);
-                      ref.invalidate(notificationsProvider);
-                      ref.invalidate(unreadNotificationsProvider);
-                    }
-                  },
+                  trailing: _hasDestination(n)
+                      ? const Icon(Icons.chevron_right)
+                      : null,
+                  onTap: () => _onTap(context, ref, n),
                 );
               },
             ),

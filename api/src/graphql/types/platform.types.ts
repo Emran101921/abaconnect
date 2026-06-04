@@ -62,6 +62,18 @@ export class NotificationType {
 
   @Field()
   sentAt: Date;
+
+  @Field({ nullable: true })
+  actionType?: string;
+
+  @Field({ nullable: true })
+  threadId?: string;
+
+  @Field({ nullable: true })
+  appointmentId?: string;
+
+  @Field({ nullable: true })
+  sessionId?: string;
 }
 
 @ObjectType()

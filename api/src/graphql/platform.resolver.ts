@@ -135,13 +135,37 @@ export class PlatformResolver {
   @Roles('PARENT', 'THERAPIST', 'AGENCY_ADMIN', 'PLATFORM_ADMIN')
   async myNotifications(@CurrentUser() user: AuthUser): Promise<NotificationType[]> {
     const rows = await this.notifications.listForUser(user.id);
-    return rows.map((n) => ({
+    return rows.map((n) => this.mapNotification(n));
+  }
+
+  private mapNotification(n: {
+    id: string;
+    title: string;
+    body: string;
+    readAt: Date | null;
+    sentAt: Date;
+    data: unknown;
+  }): NotificationType {
+    const data =
+      n.data && typeof n.data === 'object' && !Array.isArray(n.data)
+        ? (n.data as Record<string, unknown>)
+        : {};
+    const threadId = data.threadId;
+    const actionType = data.type;
+    const appointmentId = data.appointmentId;
+    const sessionId = data.sessionId;
+    return {
       id: n.id,
       title: n.title,
       body: n.body,
       readAt: n.readAt ?? undefined,
       sentAt: n.sentAt,
-    }));
+      actionType: typeof actionType === 'string' ? actionType : undefined,
+      threadId: typeof threadId === 'string' ? threadId : undefined,
+      appointmentId:
+        typeof appointmentId === 'string' ? appointmentId : undefined,
+      sessionId: typeof sessionId === 'string' ? sessionId : undefined,
+    };
   }
 
   @Mutation(() => NotificationType, { name: 'markNotificationRead' })
@@ -151,13 +175,7 @@ export class PlatformResolver {
     @Args('id', { type: () => ID }) id: string,
   ): Promise<NotificationType> {
     const n = await this.notifications.markRead(user.id, id);
-    return {
-      id: n.id,
-      title: n.title,
-      body: n.body,
-      readAt: n.readAt ?? undefined,
-      sentAt: n.sentAt,
-    };
+    return this.mapNotification(n);
   }
 
   @Mutation(() => Int, { name: 'markAllNotificationsRead' })
