@@ -18,6 +18,18 @@ class MessageThreadModel {
   final DateTime updatedAt;
 }
 
+class ParentContactModel {
+  const ParentContactModel({
+    required this.parentId,
+    required this.displayName,
+    this.childSummary,
+  });
+
+  final String parentId;
+  final String displayName;
+  final String? childSummary;
+}
+
 class ChatMessageModel {
   const ChatMessageModel({
     required this.id,
@@ -85,6 +97,25 @@ class MessagingRepository {
     }
   ''';
 
+  static const _parentContactsQuery = r'''
+    query ParentContacts {
+      myTherapistParentContacts {
+        parentId
+        displayName
+        childSummary
+      }
+    }
+  ''';
+
+  static const _startParentConversationMutation = r'''
+    mutation StartParentChat($parentId: ID!) {
+      startParentConversation(parentId: $parentId) {
+        id
+        otherParticipantName
+      }
+    }
+  ''';
+
   Future<List<MessageThreadModel>> fetchThreads() async {
     final result = await _graphql.query(_threadsQuery);
     final list = result['data']?['myMessageThreads'] as List<dynamic>? ?? [];
@@ -113,6 +144,31 @@ class MessagingRepository {
     final e = result['data']?['sendMessage'] as Map<String, dynamic>?;
     if (e == null) throw Exception('Send failed');
     return _mapMessage(e);
+  }
+
+  Future<List<ParentContactModel>> fetchParentContacts() async {
+    final result = await _graphql.query(_parentContactsQuery);
+    final list =
+        result['data']?['myTherapistParentContacts'] as List<dynamic>? ?? [];
+    return list
+        .map(
+          (e) => ParentContactModel(
+            parentId: e['parentId'] as String,
+            displayName: e['displayName'] as String? ?? 'Parent',
+            childSummary: e['childSummary'] as String?,
+          ),
+        )
+        .toList();
+  }
+
+  Future<String> startParentConversation(String parentId) async {
+    final result = await _graphql.query(
+      _startParentConversationMutation,
+      variables: {'parentId': parentId},
+    );
+    final e = result['data']?['startParentConversation'] as Map<String, dynamic>?;
+    if (e == null) throw Exception('Could not start conversation');
+    return e['id'] as String;
   }
 
   Future<String> startTherapistConversation(String therapistId) async {

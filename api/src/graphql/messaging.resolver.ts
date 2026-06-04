@@ -3,7 +3,11 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { AuthUser, CurrentUser } from '../common/decorators/current-user.decorator';
 import { MessagingService } from '../messaging/messaging.service';
 import { SendMessageInput } from './inputs/messaging-payments.input';
-import { ChatMessageType, MessageThreadType } from './types/messaging.types';
+import {
+  ChatMessageType,
+  MessageThreadType,
+  ParentContactType,
+} from './types/messaging.types';
 
 @Resolver()
 @Roles('PARENT', 'THERAPIST')
@@ -51,6 +55,14 @@ export class MessagingResolver {
     };
   }
 
+  @Query(() => [ParentContactType], { name: 'myTherapistParentContacts' })
+  @Roles('THERAPIST')
+  async myTherapistParentContacts(
+    @CurrentUser() user: AuthUser,
+  ): Promise<ParentContactType[]> {
+    return this.messagingService.listParentContactsForTherapist(user.id);
+  }
+
   @Mutation(() => MessageThreadType, { name: 'startTherapistConversation' })
   @Roles('PARENT')
   async startTherapistConversation(
@@ -61,5 +73,14 @@ export class MessagingResolver {
       user.id,
       therapistId,
     );
+  }
+
+  @Mutation(() => MessageThreadType, { name: 'startParentConversation' })
+  @Roles('THERAPIST')
+  async startParentConversation(
+    @CurrentUser() user: AuthUser,
+    @Args('parentId', { type: () => ID }) parentId: string,
+  ): Promise<MessageThreadType> {
+    return this.messagingService.startConversationWithParent(user.id, parentId);
   }
 }

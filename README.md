@@ -162,6 +162,8 @@ Health check: `GET http://localhost:3000/api/v1/health`
 
 **Therapist calendar export:** `GET /api/v1/therapist/appointments/ical` — upcoming visits as `.ics` from **My Appointments** (calendar icon).
 
+**Messaging:** Parents pick a therapist to start a thread (`startTherapistConversation`). Therapists message parents from appointment contacts (`myTherapistParentContacts`, `startParentConversation`). New messages create in-app notifications for the other participant.
+
 **Children:** Parents can **edit child** names and **date of birth** on **My Children** (date picker in add/edit dialog).
 
 **Parent calendar export:** `GET /api/v1/parent/appointments/ical` (Bearer, `PARENT` role) — upcoming visits as `.ics`. Flutter **My Appointments** → calendar icon (web: browser download; mobile: temp file).

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
+import '../../../shared/models/user_role.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../data/messaging_repository.dart';
 
@@ -18,11 +19,15 @@ class MessagesScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final threads = ref.watch(messageThreadsProvider);
+    final role = ref.watch(authStateProvider).valueOrNull?.user.role;
+    final isTherapist = role == UserRole.therapist;
 
     return AppScaffold(
       title: 'Messages',
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _startCareTeamChat(context, ref),
+        onPressed: () => isTherapist
+            ? _startParentChat(context, ref)
+            : _startTherapistChat(context, ref),
         child: const Icon(Icons.add_comment),
       ),
       body: threads.when(
@@ -37,8 +42,12 @@ class MessagesScreen extends ConsumerWidget {
                   const Text('No conversations yet.'),
                   const SizedBox(height: 12),
                   FilledButton(
-                    onPressed: () => _startCareTeamChat(context, ref),
-                    child: const Text('Message your therapist'),
+                    onPressed: () => isTherapist
+                        ? _startParentChat(context, ref)
+                        : _startTherapistChat(context, ref),
+                    child: Text(
+                      isTherapist ? 'Message a parent' : 'Message your therapist',
+                    ),
                   ),
                 ],
               ),
@@ -80,7 +89,7 @@ class MessagesScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _startCareTeamChat(BuildContext context, WidgetRef ref) async {
+  Future<void> _startTherapistChat(BuildContext context, WidgetRef ref) async {
     try {
       final therapists =
           await ref.read(parentBookingRepositoryProvider).fetchTherapists();
@@ -92,9 +101,74 @@ class MessagesScreen extends ConsumerWidget {
         }
         return;
       }
+      if (!context.mounted) return;
+      final selected = await showDialog<String>(
+        context: context,
+        builder: (ctx) => SimpleDialog(
+          title: const Text('Choose therapist'),
+          children: therapists
+              .map(
+                (t) => SimpleDialogOption(
+                  onPressed: () => Navigator.pop(ctx, t.id),
+                  child: Text(t.displayName),
+                ),
+              )
+              .toList(),
+        ),
+      );
+      if (selected == null) return;
       final threadId = await ref
           .read(messagingRepositoryProvider)
-          .startTherapistConversation(therapists.first.id);
+          .startTherapistConversation(selected);
+      ref.invalidate(messageThreadsProvider);
+      if (context.mounted) {
+        context.push('${AppRoutes.messages}/$threadId');
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not start chat: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _startParentChat(BuildContext context, WidgetRef ref) async {
+    try {
+      final parents =
+          await ref.read(messagingRepositoryProvider).fetchParentContacts();
+      if (parents.isEmpty) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No parent contacts yet — book appointments first'),
+            ),
+          );
+        }
+        return;
+      }
+      if (!context.mounted) return;
+      final selected = await showDialog<String>(
+        context: context,
+        builder: (ctx) => SimpleDialog(
+          title: const Text('Choose parent'),
+          children: parents
+              .map(
+                (p) => SimpleDialogOption(
+                  onPressed: () => Navigator.pop(ctx, p.parentId),
+                  child: Text(
+                    p.childSummary != null
+                        ? '${p.displayName}\n${p.childSummary}'
+                        : p.displayName,
+                  ),
+                ),
+              )
+              .toList(),
+        ),
+      );
+      if (selected == null) return;
+      final threadId =
+          await ref.read(messagingRepositoryProvider).startParentConversation(selected);
       ref.invalidate(messageThreadsProvider);
       if (context.mounted) {
         context.push('${AppRoutes.messages}/$threadId');

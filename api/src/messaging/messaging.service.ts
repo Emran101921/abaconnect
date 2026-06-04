@@ -4,11 +4,15 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class MessagingService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   async listThreadsForUser(userId: string) {
     const memberships = await this.prisma.messageParticipant.findMany({
@@ -79,7 +83,119 @@ export class MessagingService {
       data: { updatedAt: new Date() },
     });
 
+    const recipients = await this.prisma.messageParticipant.findMany({
+      where: { threadId, userId: { not: userId } },
+      select: { userId: true },
+    });
+    const preview =
+      trimmed.length > 120 ? `${trimmed.slice(0, 117)}...` : trimmed;
+    const senderName = `${message.sender.firstName} ${message.sender.lastName}`;
+    await Promise.all(
+      recipients.map((r) =>
+        this.notifications.createForUser(r.userId, {
+          title: `Message from ${senderName}`,
+          body: preview,
+          data: { threadId, type: 'MESSAGE' },
+        }),
+      ),
+    );
+
     return message;
+  }
+
+  async listParentContactsForTherapist(therapistUserId: string) {
+    const therapist = await this.prisma.therapist.findUnique({
+      where: { userId: therapistUserId },
+    });
+    if (!therapist) {
+      return [];
+    }
+
+    const appointments = await this.prisma.appointment.findMany({
+      where: {
+        therapistId: therapist.id,
+        status: { notIn: ['CANCELLED'] },
+      },
+      include: {
+        parent: { include: { user: true } },
+        child: true,
+      },
+      orderBy: { scheduledStart: 'desc' },
+      take: 100,
+    });
+
+    const byParent = new Map<
+      string,
+      { parentId: string; displayName: string; children: Set<string> }
+    >();
+    for (const row of appointments) {
+      const key = row.parentId;
+      const existing = byParent.get(key);
+      const childName = `${row.child.firstName} ${row.child.lastName}`;
+      if (existing) {
+        existing.children.add(childName);
+      } else {
+        byParent.set(key, {
+          parentId: row.parentId,
+          displayName: `${row.parent.user.firstName} ${row.parent.user.lastName}`,
+          children: new Set([childName]),
+        });
+      }
+    }
+
+    return [...byParent.values()].map((p) => ({
+      parentId: p.parentId,
+      displayName: p.displayName,
+      childSummary: [...p.children].slice(0, 3).join(', '),
+    }));
+  }
+
+  async startConversationWithParent(therapistUserId: string, parentId: string) {
+    const therapist = await this.prisma.therapist.findUnique({
+      where: { userId: therapistUserId },
+      include: { user: true },
+    });
+    if (!therapist) {
+      throw new BadRequestException('Therapist profile not found');
+    }
+
+    const parent = await this.prisma.parent.findFirst({
+      where: { id: parentId, tenantId: therapist.tenantId },
+      include: { user: true },
+    });
+    if (!parent) {
+      throw new NotFoundException('Parent not found');
+    }
+
+    const existing = await this.findThreadBetweenUsers(
+      therapistUserId,
+      parent.userId,
+      therapist.tenantId,
+    );
+    if (existing) {
+      return existing;
+    }
+
+    const thread = await this.prisma.messageThread.create({
+      data: {
+        tenantId: therapist.tenantId,
+        subject: `Care team — ${parent.user.firstName} ${parent.user.lastName}`,
+        participants: {
+          create: [{ userId: therapistUserId }, { userId: parent.userId }],
+        },
+      },
+      include: {
+        participants: { include: { user: true } },
+        messages: { take: 0 },
+      },
+    });
+
+    return {
+      id: thread.id,
+      subject: thread.subject ?? undefined,
+      updatedAt: thread.updatedAt,
+      otherParticipantName: `${parent.user.firstName} ${parent.user.lastName}`,
+    };
   }
 
   async startConversationWithTherapist(parentUserId: string, therapistId: string) {
