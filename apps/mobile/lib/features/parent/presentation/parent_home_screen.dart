@@ -7,6 +7,8 @@ import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../messaging/messaging_providers.dart';
+import '../../messaging/presentation/messages_screen.dart';
+import '../../messaging/presentation/recent_messages_section.dart';
 import '../../notifications/notification_providers.dart';
 import '../data/parent_booking_repository.dart';
 
@@ -57,6 +59,7 @@ class ParentHomeScreen extends ConsumerWidget {
           ref.invalidate(parentPendingReviewsProvider);
           ref.invalidate(unreadNotificationsProvider);
           ref.invalidate(unreadMessageThreadsProvider);
+          ref.invalidate(messageThreadsProvider);
         },
         child: ListView(
           padding: const EdgeInsets.all(16),
@@ -96,6 +99,8 @@ class ParentHomeScreen extends ConsumerWidget {
               loading: () => const LinearProgressIndicator(),
               error: (e, _) => Text('Overview error: $e'),
             ),
+            const SizedBox(height: 12),
+            const RecentMessagesSection(),
             const SizedBox(height: 12),
             pendingReviews.when(
               data: (therapists) {

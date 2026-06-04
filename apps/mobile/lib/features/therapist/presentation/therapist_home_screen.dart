@@ -7,14 +7,12 @@ import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../messaging/messaging_providers.dart';
+import '../../messaging/presentation/messages_screen.dart';
+import '../../messaging/presentation/recent_messages_section.dart';
 import '../../notifications/notification_providers.dart';
 import '../data/therapist_repository.dart';
+import '../therapist_providers.dart';
 import 'session_notes_screen.dart';
-
-final therapistDashboardProvider =
-    FutureProvider<TherapistDashboardModel>((ref) async {
-  return ref.watch(therapistRepositoryProvider).fetchDashboard();
-});
 
 final therapistAppointmentsProvider =
     FutureProvider<List<TherapistAppointmentModel>>((ref) async {
@@ -78,6 +76,8 @@ class TherapistHomeScreen extends ConsumerWidget {
           ref.invalidate(therapistAppointmentsProvider);
           ref.invalidate(unreadNotificationsProvider);
           ref.invalidate(unreadMessageThreadsProvider);
+          ref.invalidate(messageThreadsProvider);
+          ref.invalidate(therapistDashboardProvider);
         },
         child: ListView(
           padding: const EdgeInsets.all(16),
@@ -121,6 +121,8 @@ class TherapistHomeScreen extends ConsumerWidget {
               loading: () => const LinearProgressIndicator(),
               error: (e, _) => Text('Overview error: $e'),
             ),
+            const SizedBox(height: 12),
+            const RecentMessagesSection(),
             const SizedBox(height: 12),
             appointments.when(
               data: (list) {
