@@ -62,6 +62,12 @@ export class NotificationType {
 
   @Field()
   sentAt: Date;
+
+  @Field({ nullable: true })
+  actionType?: string;
+
+  @Field({ nullable: true })
+  threadId?: string;
 }
 
 @ObjectType()

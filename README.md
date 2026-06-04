@@ -164,6 +164,8 @@ Health check: `GET http://localhost:3000/api/v1/health`
 
 **Messaging:** Parents pick a therapist to start a thread (`startTherapistConversation`). Therapists message parents from appointment contacts (`myTherapistParentContacts`, `startParentConversation`). New messages create in-app notifications for the other participant.
 
+**Notifications:** `myNotifications` includes `actionType` and `threadId` — tap a message notification to open that conversation. Parent home is organized into **Overview** and **Operations** (scheduling, care team, billing, account).
+
 **Children:** Parents can **edit child** names and **date of birth** on **My Children** (date picker in add/edit dialog).
 
 **Parent calendar export:** `GET /api/v1/parent/appointments/ical` (Bearer, `PARENT` role) — upcoming visits as `.ics`. Flutter **My Appointments** → calendar icon (web: browser download; mobile: temp file).
