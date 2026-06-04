@@ -1,5 +1,5 @@
 import { Field, Float, ID, Int, ObjectType } from '@nestjs/graphql';
-import { TherapyType } from '../../../generated/prisma/client';
+import { LocationType, TherapyType } from '../../../generated/prisma/client';
 import { ChildType, TherapistUserType } from './parent-booking.types';
 
 @ObjectType()
@@ -66,6 +66,9 @@ export class TherapistAppointmentType {
 
   @Field()
   scheduledEnd: Date;
+
+  @Field(() => LocationType, { nullable: true })
+  locationType?: LocationType;
 
   @Field(() => ChildType)
   child: ChildType;

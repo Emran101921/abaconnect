@@ -56,6 +56,7 @@ class TherapistAppointmentModel {
     required this.scheduledStart,
     required this.childName,
     required this.childId,
+    this.locationType,
   });
 
   final String id;
@@ -64,6 +65,9 @@ class TherapistAppointmentModel {
   final DateTime scheduledStart;
   final String childName;
   final String childId;
+  final String? locationType;
+
+  bool get isTelehealth => locationType == 'TELEHEALTH';
 }
 
 class TherapistSessionModel {
@@ -158,6 +162,7 @@ class TherapistRepository {
           status
           therapyType
           scheduledStart
+          locationType
           child { id firstName lastName }
         }
       }
@@ -174,6 +179,7 @@ class TherapistRepository {
         scheduledStart: DateTime.parse(e['scheduledStart'] as String),
         childName: '${child['firstName']} ${child['lastName']}',
         childId: child['id'] as String,
+        locationType: e['locationType'] as String?,
       );
     }).toList();
   }

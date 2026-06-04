@@ -168,7 +168,8 @@ class TherapistHomeScreen extends ConsumerWidget {
                         child: ListTile(
                           title: Text('${a.childName} · ${a.therapyType}'),
                           subtitle: Text(
-                            '${DateFormat.yMMMd().add_jm().format(a.scheduledStart)} · ${a.status}',
+                            '${DateFormat.yMMMd().add_jm().format(a.scheduledStart)} · ${a.status}'
+                            '${a.isTelehealth ? ' · Telehealth' : ''}',
                           ),
                           trailing: canStart
                               ? IconButton(

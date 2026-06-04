@@ -77,37 +77,45 @@ class TelehealthScreen extends ConsumerWidget {
                 }
                 if (isTherapist) {
                   return therapistAppointments.when(
-                    data: (apts) => _appointmentJoinList(
-                      context,
-                      ref,
-                      apts
-                          .map(
-                            (a) => _TelehealthAppointmentRow(
-                              id: a.id,
-                              title: '${a.childName} · ${a.therapyType}',
-                              subtitle: a.status,
-                            ),
-                          )
-                          .toList(),
-                    ),
+                    data: (apts) {
+                      final telehealth =
+                          apts.where((a) => a.isTelehealth).toList();
+                      return _appointmentJoinList(
+                        context,
+                        ref,
+                        telehealth
+                            .map(
+                              (a) => _TelehealthAppointmentRow(
+                                id: a.id,
+                                title: '${a.childName} · ${a.therapyType}',
+                                subtitle: a.status,
+                              ),
+                            )
+                            .toList(),
+                      );
+                    },
                     loading: () => const CircularProgressIndicator(),
                     error: (e, _) => Text('$e'),
                   );
                 }
                 return parentAppointments.when(
-                  data: (apts) => _appointmentJoinList(
-                    context,
-                    ref,
-                    apts
-                        .map(
-                          (a) => _TelehealthAppointmentRow(
-                            id: a.id,
-                            title: a.therapyType,
-                            subtitle: '${a.childName} · ${a.status}',
-                          ),
-                        )
-                        .toList(),
-                  ),
+                  data: (apts) {
+                    final telehealth =
+                        apts.where((a) => a.isTelehealth).toList();
+                    return _appointmentJoinList(
+                      context,
+                      ref,
+                      telehealth
+                          .map(
+                            (a) => _TelehealthAppointmentRow(
+                              id: a.id,
+                              title: a.therapyType,
+                              subtitle: '${a.childName} · ${a.status}',
+                            ),
+                          )
+                          .toList(),
+                    );
+                  },
                   loading: () => const CircularProgressIndicator(),
                   error: (e, _) => Text('$e'),
                 );
@@ -127,7 +135,9 @@ class TelehealthScreen extends ConsumerWidget {
     List<_TelehealthAppointmentRow> apts,
   ) {
     if (apts.isEmpty) {
-      return const Text('No appointments to join.');
+      return const Text(
+        'No telehealth appointments. Book or schedule visits with location type TELEHEALTH.',
+      );
     }
     return Column(
       children: apts.map((a) {

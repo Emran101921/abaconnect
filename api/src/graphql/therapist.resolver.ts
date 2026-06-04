@@ -1,5 +1,5 @@
 import { Args, ID, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { TherapyType } from '../../generated/prisma/client';
+import { LocationType, TherapyType } from '../../generated/prisma/client';
 import { Roles } from '../common/decorators/roles.decorator';
 import { AuthUser, CurrentUser } from '../common/decorators/current-user.decorator';
 import { AppointmentsService } from '../appointments/appointments.service';
@@ -218,6 +218,7 @@ export class TherapistResolver {
     therapyType: string;
     scheduledStart: Date;
     scheduledEnd: Date;
+    locationType?: string | null;
     child: { id: string; firstName: string; lastName: string; dateOfBirth: Date };
   }): TherapistAppointmentType {
     return {
@@ -226,6 +227,9 @@ export class TherapistResolver {
       therapyType: row.therapyType as TherapyType,
       scheduledStart: row.scheduledStart,
       scheduledEnd: row.scheduledEnd,
+      locationType: row.locationType
+        ? (row.locationType as LocationType)
+        : undefined,
       child: {
         id: row.child.id,
         firstName: row.child.firstName,
