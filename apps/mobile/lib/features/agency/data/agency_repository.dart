@@ -14,6 +14,28 @@ class AgencyDashboardModel {
   final int pendingTherapists;
 }
 
+class AgencyAppointmentModel {
+  const AgencyAppointmentModel({
+    required this.id,
+    required this.scheduledStart,
+    required this.scheduledEnd,
+    required this.therapyType,
+    required this.status,
+    required this.locationType,
+    required this.childName,
+    required this.therapistName,
+  });
+
+  final String id;
+  final DateTime scheduledStart;
+  final DateTime scheduledEnd;
+  final String therapyType;
+  final String status;
+  final String locationType;
+  final String childName;
+  final String therapistName;
+}
+
 class AgencyTherapistModel {
   const AgencyTherapistModel({
     required this.id,
@@ -113,6 +135,39 @@ class AgencyRepository {
       _inviteMutation,
       variables: {'therapistId': therapistId},
     );
+  }
+
+  static const _upcomingAppointmentsQuery = r'''
+    query AgencyUpcoming {
+      agencyUpcomingAppointments {
+        id
+        scheduledStart
+        scheduledEnd
+        therapyType
+        status
+        locationType
+        childName
+        therapistName
+      }
+    }
+  ''';
+
+  Future<List<AgencyAppointmentModel>> fetchUpcomingAppointments() async {
+    final result = await _graphql.query(_upcomingAppointmentsQuery);
+    final list =
+        result['data']?['agencyUpcomingAppointments'] as List<dynamic>? ?? [];
+    return list.map((e) {
+      return AgencyAppointmentModel(
+        id: e['id'] as String,
+        scheduledStart: DateTime.parse(e['scheduledStart'] as String),
+        scheduledEnd: DateTime.parse(e['scheduledEnd'] as String),
+        therapyType: e['therapyType'] as String? ?? '',
+        status: e['status'] as String? ?? '',
+        locationType: e['locationType'] as String? ?? '',
+        childName: e['childName'] as String? ?? '',
+        therapistName: e['therapistName'] as String? ?? '',
+      );
+    }).toList();
   }
 
   Future<List<AgencyTherapistModel>> fetchTherapists() async {

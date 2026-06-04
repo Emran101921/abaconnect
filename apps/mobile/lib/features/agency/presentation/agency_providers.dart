@@ -18,6 +18,11 @@ final agencyInviteCandidatesProvider =
   return ref.watch(agencyRepositoryProvider).fetchAvailableToInvite();
 });
 
+final agencyUpcomingAppointmentsProvider =
+    FutureProvider<List<AgencyAppointmentModel>>((ref) {
+  return ref.watch(agencyRepositoryProvider).fetchUpcomingAppointments();
+});
+
 final agencyAnalyticsProvider =
     FutureProvider<List<Map<String, dynamic>>>((ref) {
   return ref.watch(platformRepositoryProvider).fetchTenantAnalytics();

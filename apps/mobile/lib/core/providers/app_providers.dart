@@ -54,7 +54,10 @@ final billingRepositoryProvider = Provider<BillingRepository>((ref) {
 });
 
 final platformRepositoryProvider = Provider<PlatformRepository>((ref) {
-  return PlatformRepository(ref.watch(graphqlClientProvider));
+  return PlatformRepository(
+    ref.watch(graphqlClientProvider),
+    ref.watch(apiClientProvider),
+  );
 });
 
 final clinicalRepositoryProvider = Provider<ClinicalRepository>((ref) {

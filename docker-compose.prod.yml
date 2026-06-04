@@ -43,8 +43,11 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+    volumes:
+      - api_uploads:/app/uploads
     entrypoint: ['sh', 'scripts/docker-entrypoint.sh']
 
 volumes:
   postgres_data:
   redis_data:
+  api_uploads:

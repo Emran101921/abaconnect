@@ -1,6 +1,11 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
+import 'package:dio/dio.dart';
+
+import '../../../core/network/api_client.dart';
 import '../../../core/network/graphql_client.dart';
+import '../../../core/utils/file_download.dart';
 
 class TelehealthSessionModel {
   const TelehealthSessionModel({
@@ -79,9 +84,10 @@ class ConsentItemModel {
 }
 
 class PlatformRepository {
-  PlatformRepository(this._graphql);
+  PlatformRepository(this._graphql, this._api);
 
   final GraphqlClient _graphql;
+  final ApiClient _api;
 
   Future<List<TelehealthSessionModel>> fetchTelehealthSessions() async {
     final result = await _graphql.query(r'''
@@ -159,6 +165,32 @@ class PlatformRepository {
         },
       },
     );
+  }
+
+  Future<void> uploadDocumentFile({
+    required String title,
+    required String fileName,
+    required Uint8List bytes,
+    required String mimeType,
+    String type = 'OTHER',
+    String? childId,
+  }) async {
+    final formData = FormData.fromMap({
+      'title': title,
+      'type': type,
+      if (childId != null) 'childId': childId,
+      'file': MultipartFile.fromBytes(bytes, filename: fileName),
+    });
+    await _api.dio.post('/documents/upload', data: formData);
+  }
+
+  Future<String> downloadDocumentFile(String documentId, String fileName) async {
+    final response = await _api.dio.get<List<int>>(
+      '/documents/$documentId/file',
+      options: Options(responseType: ResponseType.bytes),
+    );
+    final bytes = Uint8List.fromList(response.data ?? []);
+    return downloadBytes(bytes, fileName);
   }
 
   Future<int> fetchUnreadNotificationCount() async {

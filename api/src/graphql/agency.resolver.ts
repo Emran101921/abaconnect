@@ -2,7 +2,11 @@ import { Args, ID, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Roles } from '../common/decorators/roles.decorator';
 import { AuthUser, CurrentUser } from '../common/decorators/current-user.decorator';
 import { AgenciesService } from '../agencies/agencies.service';
-import { AgencyDashboardType, AgencyTherapistType } from './types/agency.types';
+import {
+  AgencyAppointmentType,
+  AgencyDashboardType,
+  AgencyTherapistType,
+} from './types/agency.types';
 
 @Resolver()
 @Roles('AGENCY_ADMIN')
@@ -17,6 +21,28 @@ export class AgencyResolver {
       throw new Error('Tenant required');
     }
     return this.agenciesService.getDashboardForTenant(user.tenantId);
+  }
+
+  @Query(() => [AgencyAppointmentType], { name: 'agencyUpcomingAppointments' })
+  async agencyUpcomingAppointments(
+    @CurrentUser() user: AuthUser,
+  ): Promise<AgencyAppointmentType[]> {
+    if (!user.tenantId) {
+      throw new Error('Tenant required');
+    }
+    const rows = await this.agenciesService.listUpcomingAppointmentsForTenant(
+      user.tenantId,
+    );
+    return rows.map((a) => ({
+      id: a.id,
+      scheduledStart: a.scheduledStart,
+      scheduledEnd: a.scheduledEnd,
+      therapyType: a.therapyType,
+      status: a.status,
+      locationType: a.locationType,
+      childName: `${a.child.firstName} ${a.child.lastName}`,
+      therapistName: `${a.therapist.user.firstName} ${a.therapist.user.lastName}`,
+    }));
   }
 
   @Query(() => [AgencyTherapistType], { name: 'agencyTherapists' })

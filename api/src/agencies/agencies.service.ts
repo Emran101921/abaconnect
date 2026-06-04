@@ -113,6 +113,27 @@ export class AgenciesService {
     return link.therapist;
   }
 
+  async listUpcomingAppointmentsForTenant(tenantId: string, days = 14) {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(end.getDate() + days);
+
+    return this.prisma.appointment.findMany({
+      where: {
+        tenantId,
+        scheduledStart: { gte: start, lte: end },
+        status: { notIn: ['CANCELLED', 'NO_SHOW'] },
+      },
+      include: {
+        child: true,
+        therapist: { include: { user: true } },
+      },
+      orderBy: { scheduledStart: 'asc' },
+      take: 100,
+    });
+  }
+
   async listUnlinkedTherapistsForTenant(tenantId: string) {
     const agency = await this.prisma.agency.findFirst({
       where: { tenantId },

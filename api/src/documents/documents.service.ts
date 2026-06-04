@@ -3,12 +3,22 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { createReadStream, existsSync, mkdirSync, writeFileSync } from 'fs';
+import { join } from 'path';
+import { Readable } from 'stream';
 import { DocumentType } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class DocumentsService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly uploadRoot =
+    process.env.UPLOAD_DIR ?? join(process.cwd(), 'uploads');
+
+  constructor(private readonly prisma: PrismaService) {
+    if (!existsSync(this.uploadRoot)) {
+      mkdirSync(this.uploadRoot, { recursive: true });
+    }
+  }
 
   async listForUser(userId: string) {
     const parent = await this.prisma.parent.findUnique({ where: { userId } });
@@ -81,6 +91,47 @@ export class DocumentsService {
     });
 
     return doc;
+  }
+
+  async saveUploadedFile(
+    userId: string,
+    file: Express.Multer.File,
+    data: {
+      title: string;
+      type: DocumentType;
+      childId?: string;
+    },
+  ) {
+    const doc = await this.registerUpload(userId, {
+      title: data.title,
+      fileName: file.originalname,
+      mimeType: file.mimetype || 'application/octet-stream',
+      fileSize: file.size,
+      type: data.type,
+      childId: data.childId,
+    });
+
+    const absolutePath = this.resolveAbsolutePath(doc.storageKey);
+    const dir = join(absolutePath, '..');
+    if (!existsSync(dir)) {
+      mkdirSync(dir, { recursive: true });
+    }
+    writeFileSync(absolutePath, file.buffer);
+
+    return doc;
+  }
+
+  async openFileStream(userId: string, documentId: string) {
+    const doc = await this.logAccess(userId, documentId);
+    const absolutePath = this.resolveAbsolutePath(doc.storageKey);
+    if (!existsSync(absolutePath)) {
+      throw new NotFoundException('File content not found on server');
+    }
+    return { doc, stream: createReadStream(absolutePath) as Readable };
+  }
+
+  private resolveAbsolutePath(storageKey: string): string {
+    return join(this.uploadRoot, storageKey.replace(/^tenants\//, ''));
   }
 
   async logAccess(userId: string, documentId: string) {

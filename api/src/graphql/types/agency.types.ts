@@ -1,4 +1,9 @@
 import { Field, Int, ObjectType } from '@nestjs/graphql';
+import {
+  AppointmentStatus,
+  LocationType,
+  TherapyType,
+} from '../../../generated/prisma/client';
 import { TherapistUserType } from './parent-booking.types';
 
 @ObjectType()
@@ -14,6 +19,33 @@ export class AgencyDashboardType {
 
   @Field(() => Int)
   pendingTherapists: number;
+}
+
+@ObjectType()
+export class AgencyAppointmentType {
+  @Field()
+  id: string;
+
+  @Field()
+  scheduledStart: Date;
+
+  @Field()
+  scheduledEnd: Date;
+
+  @Field(() => TherapyType)
+  therapyType: TherapyType;
+
+  @Field(() => AppointmentStatus)
+  status: AppointmentStatus;
+
+  @Field(() => LocationType)
+  locationType: LocationType;
+
+  @Field()
+  childName: string;
+
+  @Field()
+  therapistName: string;
 }
 
 @ObjectType()
