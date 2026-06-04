@@ -1,10 +1,12 @@
-import { Field, Int, ObjectType } from '@nestjs/graphql';
+import { Field, Int, ObjectType, registerEnumType } from '@nestjs/graphql';
 import {
   AppointmentStatus,
   LocationType,
   TherapyType,
 } from '../../../generated/prisma/client';
 import { TherapistUserType } from './parent-booking.types';
+
+registerEnumType(AppointmentStatus, { name: 'AppointmentStatus' });
 
 @ObjectType()
 export class AgencyDashboardType {
