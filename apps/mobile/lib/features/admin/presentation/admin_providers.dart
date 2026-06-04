@@ -1,0 +1,52 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../core/providers/app_providers.dart';
+import '../../payments/data/billing_repository.dart';
+import '../data/admin_repository.dart';
+
+final adminDashboardProvider =
+    FutureProvider<AdminDashboardModel>((ref) async {
+  return ref.watch(adminRepositoryProvider).fetchDashboard();
+});
+
+final adminUsersProvider = FutureProvider<List<AdminUserModel>>((ref) async {
+  return ref.watch(adminRepositoryProvider).fetchUsers();
+});
+
+final pendingTherapistsProvider =
+    FutureProvider<List<PendingTherapistModel>>((ref) async {
+  return ref.watch(adminRepositoryProvider).fetchPendingTherapists();
+});
+
+final adminAuditLogsProvider = FutureProvider<List<AuditLogModel>>((ref) async {
+  return ref.watch(adminRepositoryProvider).fetchAuditLogs();
+});
+
+final adminComplaintsProvider =
+    FutureProvider<List<AdminComplaintModel>>((ref) async {
+  return ref.watch(adminRepositoryProvider).fetchComplaints();
+});
+
+final adminPaymentDisputesProvider =
+    FutureProvider<List<DisputeModel>>((ref) async {
+  return ref.watch(billingRepositoryProvider).fetchAdminDisputes();
+});
+
+final adminPayoutsProvider = FutureProvider<List<PayoutModel>>((ref) async {
+  return ref.watch(billingRepositoryProvider).fetchAdminPayouts();
+});
+
+final adminReviewsProvider =
+    FutureProvider<List<AdminReviewModel>>((ref) async {
+  return ref.watch(adminRepositoryProvider).fetchReviews();
+});
+
+final adminAnalyticsProvider =
+    FutureProvider<List<AnalyticsMetricModel>>((ref) async {
+  return ref.watch(adminRepositoryProvider).fetchAnalytics();
+});
+
+final adminInsuranceClaimsProvider =
+    FutureProvider<List<AdminInsuranceClaimModel>>((ref) async {
+  return ref.watch(adminRepositoryProvider).fetchInsuranceClaims();
+});

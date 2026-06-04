@@ -2,7 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../features/admin/presentation/admin_dashboard_screen.dart';
+import '../../features/admin/presentation/admin_analytics_screen.dart';
+import '../../features/admin/presentation/admin_audit_screen.dart';
+import '../../features/admin/presentation/admin_complaints_screen.dart';
+import '../../features/admin/presentation/admin_disputes_screen.dart';
+import '../../features/admin/presentation/admin_home_screen.dart';
+import '../../features/admin/presentation/admin_insurance_screen.dart';
+import '../../features/admin/presentation/admin_payouts_screen.dart';
+import '../../features/admin/presentation/admin_reviews_screen.dart';
+import '../../features/admin/presentation/admin_users_screen.dart';
+import '../../features/admin/presentation/admin_verifications_screen.dart';
 import '../../features/agency/presentation/agency_dashboard_screen.dart';
 import '../../features/auth/presentation/forgot_password_screen.dart';
 import '../../features/auth/presentation/security_screen.dart';
@@ -200,7 +209,54 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.adminHome,
         name: 'adminHome',
-        builder: (context, state) => const AdminDashboardScreen(),
+        builder: (context, state) => const AdminHomeScreen(),
+        routes: [
+          GoRoute(
+            path: 'verifications',
+            name: 'adminVerifications',
+            builder: (context, state) => const AdminVerificationsScreen(),
+          ),
+          GoRoute(
+            path: 'complaints',
+            name: 'adminComplaints',
+            builder: (context, state) => const AdminComplaintsScreen(),
+          ),
+          GoRoute(
+            path: 'disputes',
+            name: 'adminDisputes',
+            builder: (context, state) => const AdminDisputesScreen(),
+          ),
+          GoRoute(
+            path: 'payouts',
+            name: 'adminPayouts',
+            builder: (context, state) => const AdminPayoutsScreen(),
+          ),
+          GoRoute(
+            path: 'insurance',
+            name: 'adminInsurance',
+            builder: (context, state) => const AdminInsuranceScreen(),
+          ),
+          GoRoute(
+            path: 'reviews',
+            name: 'adminReviews',
+            builder: (context, state) => const AdminReviewsScreen(),
+          ),
+          GoRoute(
+            path: 'analytics',
+            name: 'adminAnalytics',
+            builder: (context, state) => const AdminAnalyticsScreen(),
+          ),
+          GoRoute(
+            path: 'users',
+            name: 'adminUsers',
+            builder: (context, state) => const AdminUsersScreen(),
+          ),
+          GoRoute(
+            path: 'audit',
+            name: 'adminAudit',
+            builder: (context, state) => const AdminAuditScreen(),
+          ),
+        ],
       ),
       GoRoute(
         path: AppRoutes.telehealth,
