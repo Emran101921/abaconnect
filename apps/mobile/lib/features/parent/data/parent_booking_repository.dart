@@ -1,17 +1,24 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
+import 'package:dio/dio.dart';
+
+import '../../../core/network/api_client.dart';
 import '../../../core/network/graphql_client.dart';
+import '../../../core/utils/file_download.dart';
 
 class ChildModel {
   const ChildModel({
     required this.id,
     required this.firstName,
     required this.lastName,
+    required this.dateOfBirth,
   });
 
   final String id;
   final String firstName;
   final String lastName;
+  final DateTime dateOfBirth;
 
   String get displayName => '$firstName $lastName';
 }
@@ -139,9 +146,10 @@ class AppointmentModel {
 }
 
 class ParentBookingRepository {
-  ParentBookingRepository(this._graphql);
+  ParentBookingRepository(this._graphql, this._api);
 
   final GraphqlClient _graphql;
+  final ApiClient _api;
 
   static const _myChildrenQuery = r'''
     query MyChildren {
@@ -149,6 +157,7 @@ class ParentBookingRepository {
         id
         firstName
         lastName
+        dateOfBirth
       }
     }
   ''';
@@ -299,15 +308,19 @@ class ParentBookingRepository {
   Future<List<ChildModel>> fetchChildren() async {
     final result = await _graphql.query(_myChildrenQuery);
     final list = result['data']?['myChildren'] as List<dynamic>? ?? [];
-    return list
-        .map(
-          (e) => ChildModel(
-            id: e['id'] as String,
-            firstName: e['firstName'] as String,
-            lastName: e['lastName'] as String,
-          ),
-        )
-        .toList();
+    return list.map(_mapChild).toList();
+  }
+
+  ChildModel _mapChild(dynamic e) {
+    final dobRaw = e['dateOfBirth'] as String?;
+    return ChildModel(
+      id: e['id'] as String,
+      firstName: e['firstName'] as String,
+      lastName: e['lastName'] as String,
+      dateOfBirth: dobRaw != null
+          ? DateTime.parse(dobRaw)
+          : DateTime(2018, 1, 1),
+    );
   }
 
   Future<List<AppointmentModel>> fetchAppointments() async {
@@ -402,7 +415,7 @@ class ParentBookingRepository {
         'input': {
           'firstName': firstName,
           'lastName': lastName,
-          'dateOfBirth': dateOfBirth.toIso8601String(),
+          'dateOfBirth': _dateOnlyIso(dateOfBirth),
           if (gender != null) 'gender': gender,
         },
       },
@@ -411,11 +424,7 @@ class ParentBookingRepository {
     if (e == null) {
       throw Exception('Failed to add child');
     }
-    return ChildModel(
-      id: e['id'] as String,
-      firstName: e['firstName'] as String,
-      lastName: e['lastName'] as String,
-    );
+    return _mapChild(e);
   }
 
   Future<List<ReviewModel>> fetchReviews() async {
@@ -592,11 +601,12 @@ class ParentBookingRepository {
     required String childId,
     String? firstName,
     String? lastName,
+    DateTime? dateOfBirth,
   }) async {
     await _graphql.query(
       r'''
       mutation UpdateChild($input: UpdateChildInput!) {
-        updateChild(input: $input) { id }
+        updateChild(input: $input) { id dateOfBirth }
       }
     ''',
       variables: {
@@ -604,9 +614,26 @@ class ParentBookingRepository {
           'childId': childId,
           if (firstName != null) 'firstName': firstName,
           if (lastName != null) 'lastName': lastName,
+          if (dateOfBirth != null)
+            'dateOfBirth': _dateOnlyIso(dateOfBirth),
         },
       },
     );
+  }
+
+  static String _dateOnlyIso(DateTime date) {
+    final d = DateTime(date.year, date.month, date.day);
+    return d.toIso8601String().split('T').first;
+  }
+
+  Future<String> downloadAppointmentsIcal() async {
+    final response = await _api.dio.get<List<int>>(
+      '/parent/appointments/ical',
+      options: Options(responseType: ResponseType.bytes),
+    );
+    final bytes = Uint8List.fromList(response.data ?? []);
+    const filename = 'abaconnect-appointments.ics';
+    return downloadBytes(bytes, filename);
   }
 
   Future<List<TherapistModel>> fetchPendingReviewTherapists() async {

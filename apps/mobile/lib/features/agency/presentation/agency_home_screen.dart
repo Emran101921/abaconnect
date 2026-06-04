@@ -1,0 +1,178 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../core/providers/app_providers.dart';
+import '../../../core/router/app_router.dart';
+import '../../../shared/widgets/app_scaffold.dart';
+import 'agency_providers.dart';
+
+class AgencyHomeScreen extends ConsumerWidget {
+  const AgencyHomeScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final dashboard = ref.watch(agencyDashboardProvider);
+
+    return AppScaffold(
+      title: 'Agency',
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.notifications),
+          onPressed: () => context.push(AppRoutes.notifications),
+        ),
+        IconButton(
+          icon: const Icon(Icons.logout),
+          onPressed: () async {
+            await ref.read(authStateProvider.notifier).logout();
+            if (context.mounted) context.go(AppRoutes.login);
+          },
+        ),
+      ],
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(agencyDashboardProvider);
+          ref.invalidate(agencyTherapistsProvider);
+          ref.invalidate(agencyAnalyticsProvider);
+        },
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Text(
+              'Overview',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 12),
+            dashboard.when(
+              data: (d) => Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  _StatCard(label: 'Therapists', value: '${d.therapistCount}'),
+                  _StatCard(label: 'Active clients', value: '${d.activeClients}'),
+                  _StatCard(
+                    label: 'Sessions today',
+                    value: '${d.appointmentsToday}',
+                  ),
+                  _StatCard(
+                    label: 'Pending verify',
+                    value: '${d.pendingTherapists}',
+                    highlight: d.pendingTherapists > 0,
+                  ),
+                ],
+              ),
+              loading: () => const LinearProgressIndicator(),
+              error: (e, _) => Text('Overview error: $e'),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Operations',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Manage your roster, invites, analytics, and today’s session load.',
+            ),
+            const SizedBox(height: 16),
+            _OpsTile(
+              title: 'Therapist roster',
+              subtitle: 'View roster and remove therapists',
+              icon: Icons.groups,
+              onTap: () => context.push('${AppRoutes.agencyHome}/roster'),
+            ),
+            _OpsTile(
+              title: 'Invite therapists',
+              subtitle: 'Add verified therapists to your agency',
+              icon: Icons.person_add,
+              onTap: () => context.push('${AppRoutes.agencyHome}/invites'),
+            ),
+            _OpsTile(
+              title: 'Platform analytics',
+              subtitle: 'Sessions, revenue, and activity metrics',
+              icon: Icons.insights,
+              onTap: () => context.push('${AppRoutes.agencyHome}/analytics'),
+            ),
+            _OpsTile(
+              title: 'Appointments overview',
+              subtitle: 'Today’s scheduled sessions across the agency',
+              icon: Icons.event,
+              onTap: () => context.push('${AppRoutes.agencyHome}/appointments'),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Tip: pull down to refresh counts on this screen.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  const _StatCard({
+    required this.label,
+    required this.value,
+    this.highlight = false,
+  });
+
+  final String label;
+  final String value;
+  final bool highlight;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return SizedBox(
+      width: 160,
+      child: Card(
+        color: highlight ? colorScheme.errorContainer : null,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                value,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+              const SizedBox(height: 4),
+              Text(label),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _OpsTile extends StatelessWidget {
+  const _OpsTile({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ListTile(
+        leading: Icon(icon, size: 32),
+        title: Text(title),
+        subtitle: Text(subtitle),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: onTap,
+      ),
+    );
+  }
+}

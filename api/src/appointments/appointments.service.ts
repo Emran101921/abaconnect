@@ -39,6 +39,70 @@ export class AppointmentsService {
     });
   }
 
+  async findUpcomingForParentUser(userId: string) {
+    const parent = await this.prisma.parent.findUnique({ where: { userId } });
+    if (!parent) {
+      return [];
+    }
+    return this.prisma.appointment.findMany({
+      where: {
+        parentId: parent.id,
+        scheduledStart: { gte: new Date() },
+        status: { notIn: ['CANCELLED', 'COMPLETED', 'NO_SHOW'] },
+      },
+      include: {
+        child: true,
+        therapist: { include: { user: true } },
+      },
+      orderBy: { scheduledStart: 'asc' },
+    });
+  }
+
+  async buildIcalForParentUser(userId: string): Promise<string> {
+    const rows = await this.findUpcomingForParentUser(userId);
+    const lines: string[] = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//ABAConnect//EN',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+    ];
+
+    for (const row of rows) {
+      const therapistName = `${row.therapist.user.firstName} ${row.therapist.user.lastName}`;
+      const childName = `${row.child.firstName} ${row.child.lastName}`;
+      const summary = this.escapeIcalText(
+        `${row.therapyType} – ${childName} with ${therapistName}`,
+      );
+      const description = this.escapeIcalText(
+        `Status: ${row.status}. Location: ${row.locationType ?? 'IN_HOME'}.`,
+      );
+      lines.push('BEGIN:VEVENT');
+      lines.push(`UID:${row.id}@abaconnect`);
+      lines.push(`DTSTAMP:${this.formatIcalUtc(new Date())}`);
+      lines.push(`DTSTART:${this.formatIcalUtc(row.scheduledStart)}`);
+      lines.push(`DTEND:${this.formatIcalUtc(row.scheduledEnd)}`);
+      lines.push(`SUMMARY:${summary}`);
+      lines.push(`DESCRIPTION:${description}`);
+      lines.push('END:VEVENT');
+    }
+
+    lines.push('END:VCALENDAR');
+    return `${lines.join('\r\n')}\r\n`;
+  }
+
+  private formatIcalUtc(date: Date): string {
+    return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  }
+
+  private escapeIcalText(value: string): string {
+    return value
+      .replace(/\\/g, '\\\\')
+      .replace(/;/g, '\\;')
+      .replace(/,/g, '\\,')
+      .replace(/\n/g, '\\n');
+  }
+
   async bookForParentUser(userId: string, input: BookAppointmentInput) {
     const parent = await this.prisma.parent.findUnique({ where: { userId } });
     if (!parent) {

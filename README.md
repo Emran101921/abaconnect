@@ -114,7 +114,9 @@ Health check: `GET http://localhost:3000/api/v1/health`
 
 **GraphQL admin:** dashboard, users, verify therapists, audit logs, complaints (`adminComplaints`, `resolveComplaint`), payment disputes (`adminDisputes`, `resolvePaymentDispute`), payouts (`adminPayouts`, `markPayoutPaid`).
 
-**GraphQL agency:** `agencyDashboard`, `agencyTherapists`.
+**GraphQL agency:** `agencyDashboard`, `agencyTherapists`, `inviteAgencyTherapist`, `removeAgencyTherapist`.
+
+**Agency operations hub (Flutter):** Overview stats plus **Operations** links — roster, invites, analytics, appointments overview (`/agency/*`).
 
 **Payments & billing (Flutter):** Parents use **Payments** → pay session (Stripe Checkout when `STRIPE_SECRET_KEY` is set), mark paid in demo, sync status, open disputes. Therapists use **Payouts**. Admins resolve payment disputes and mark payouts paid on the dashboard.
 
@@ -154,7 +156,9 @@ Health check: `GET http://localhost:3000/api/v1/health`
 
 **Agency roster:** `removeAgencyTherapist` — remove therapist from agency roster (menu on roster card).
 
-**Children:** Parents can **edit child** names on **My Children**.
+**Children:** Parents can **edit child** names and **date of birth** on **My Children** (date picker in add/edit dialog).
+
+**Parent calendar export:** `GET /api/v1/parent/appointments/ical` (Bearer, `PARENT` role) — upcoming visits as `.ics`. Flutter **My Appointments** → calendar icon (web: browser download; mobile: temp file).
 
 **Telehealth from appointments:** Parents with `TELEHEALTH` visits see **Join telehealth** on **My Appointments**.
 

@@ -23,7 +23,10 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 });
 
 final parentBookingRepositoryProvider = Provider<ParentBookingRepository>((ref) {
-  return ParentBookingRepository(ref.watch(graphqlClientProvider));
+  return ParentBookingRepository(
+    ref.watch(graphqlClientProvider),
+    ref.watch(apiClientProvider),
+  );
 });
 
 final therapistRepositoryProvider = Provider<TherapistRepository>((ref) {

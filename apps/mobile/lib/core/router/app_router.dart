@@ -12,7 +12,11 @@ import '../../features/admin/presentation/admin_payouts_screen.dart';
 import '../../features/admin/presentation/admin_reviews_screen.dart';
 import '../../features/admin/presentation/admin_users_screen.dart';
 import '../../features/admin/presentation/admin_verifications_screen.dart';
-import '../../features/agency/presentation/agency_dashboard_screen.dart';
+import '../../features/agency/presentation/agency_analytics_screen.dart';
+import '../../features/agency/presentation/agency_appointments_screen.dart';
+import '../../features/agency/presentation/agency_home_screen.dart';
+import '../../features/agency/presentation/agency_invites_screen.dart';
+import '../../features/agency/presentation/agency_roster_screen.dart';
 import '../../features/auth/presentation/forgot_password_screen.dart';
 import '../../features/auth/presentation/security_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
@@ -204,7 +208,29 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.agencyHome,
         name: 'agencyHome',
-        builder: (context, state) => const AgencyDashboardScreen(),
+        builder: (context, state) => const AgencyHomeScreen(),
+        routes: [
+          GoRoute(
+            path: 'roster',
+            name: 'agencyRoster',
+            builder: (context, state) => const AgencyRosterScreen(),
+          ),
+          GoRoute(
+            path: 'invites',
+            name: 'agencyInvites',
+            builder: (context, state) => const AgencyInvitesScreen(),
+          ),
+          GoRoute(
+            path: 'analytics',
+            name: 'agencyAnalytics',
+            builder: (context, state) => const AgencyAnalyticsScreen(),
+          ),
+          GoRoute(
+            path: 'appointments',
+            name: 'agencyAppointments',
+            builder: (context, state) => const AgencyAppointmentsScreen(),
+          ),
+        ],
       ),
       GoRoute(
         path: AppRoutes.adminHome,

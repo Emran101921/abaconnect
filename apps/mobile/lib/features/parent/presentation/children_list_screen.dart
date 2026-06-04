@@ -1,9 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../data/parent_booking_repository.dart';
+
+Future<DateTime?> pickChildDateOfBirth(
+  BuildContext context,
+  DateTime initial,
+) {
+  return showDatePicker(
+    context: context,
+    initialDate: initial,
+    firstDate: DateTime(1990),
+    lastDate: DateTime.now(),
+    helpText: 'Date of birth',
+  );
+}
 
 class ChildrenListScreen extends ConsumerStatefulWidget {
   const ChildrenListScreen({super.key});
@@ -45,27 +59,43 @@ class _ChildrenListScreenState extends ConsumerState<ChildrenListScreen> {
   Future<void> _addChild() async {
     final firstName = TextEditingController();
     final lastName = TextEditingController();
+    var dateOfBirth = DateTime(2018, 1, 1);
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Add child'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: firstName,
-              decoration: const InputDecoration(labelText: 'First name'),
-            ),
-            TextField(
-              controller: lastName,
-              decoration: const InputDecoration(labelText: 'Last name'),
-            ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Add child'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: firstName,
+                decoration: const InputDecoration(labelText: 'First name'),
+              ),
+              TextField(
+                controller: lastName,
+                decoration: const InputDecoration(labelText: 'Last name'),
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Date of birth'),
+                subtitle: Text(DateFormat.yMMMd().format(dateOfBirth)),
+                trailing: const Icon(Icons.calendar_today),
+                onTap: () async {
+                  final picked = await pickChildDateOfBirth(context, dateOfBirth);
+                  if (picked != null) {
+                    setDialogState(() => dateOfBirth = picked);
+                  }
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Save')),
           ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Save')),
-        ],
       ),
     );
     if (ok != true || firstName.text.isEmpty || lastName.text.isEmpty) {
@@ -75,7 +105,7 @@ class _ChildrenListScreenState extends ConsumerState<ChildrenListScreen> {
       await ref.read(parentBookingRepositoryProvider).addChild(
             firstName: firstName.text.trim(),
             lastName: lastName.text.trim(),
-            dateOfBirth: DateTime(2018, 1, 1),
+            dateOfBirth: dateOfBirth,
           );
       await _load();
       if (mounted) {
@@ -95,27 +125,43 @@ class _ChildrenListScreenState extends ConsumerState<ChildrenListScreen> {
   Future<void> _editChild(ChildModel child) async {
     final firstName = TextEditingController(text: child.firstName);
     final lastName = TextEditingController(text: child.lastName);
+    var dateOfBirth = child.dateOfBirth;
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Edit child'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: firstName,
-              decoration: const InputDecoration(labelText: 'First name'),
-            ),
-            TextField(
-              controller: lastName,
-              decoration: const InputDecoration(labelText: 'Last name'),
-            ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Edit child'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: firstName,
+                decoration: const InputDecoration(labelText: 'First name'),
+              ),
+              TextField(
+                controller: lastName,
+                decoration: const InputDecoration(labelText: 'Last name'),
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Date of birth'),
+                subtitle: Text(DateFormat.yMMMd().format(dateOfBirth)),
+                trailing: const Icon(Icons.calendar_today),
+                onTap: () async {
+                  final picked = await pickChildDateOfBirth(context, dateOfBirth);
+                  if (picked != null) {
+                    setDialogState(() => dateOfBirth = picked);
+                  }
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Save')),
           ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Save')),
-        ],
       ),
     );
     if (ok != true) return;
@@ -124,6 +170,7 @@ class _ChildrenListScreenState extends ConsumerState<ChildrenListScreen> {
             childId: child.id,
             firstName: firstName.text.trim(),
             lastName: lastName.text.trim(),
+            dateOfBirth: dateOfBirth,
           );
       await _load();
       if (mounted) {
@@ -166,7 +213,9 @@ class _ChildrenListScreenState extends ConsumerState<ChildrenListScreen> {
                             child: Text(child.firstName.characters.first),
                           ),
                           title: Text(child.displayName),
-                          subtitle: const Text('Tap to edit profile'),
+                          subtitle: Text(
+                            'DOB ${DateFormat.yMMMd().format(child.dateOfBirth)}',
+                          ),
                           trailing: IconButton(
                             icon: const Icon(Icons.edit),
                             onPressed: () => _editChild(child),
