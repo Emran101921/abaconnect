@@ -9,6 +9,54 @@ import { PrismaService } from '../prisma/prisma.service';
 export class TherapistsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async getDashboardForUserId(userId: string) {
+    const therapist = await this.prisma.therapist.findUnique({
+      where: { userId },
+    });
+    if (!therapist) {
+      throw new NotFoundException('Therapist profile not found');
+    }
+
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setHours(23, 59, 59, 999);
+
+    const [
+      pendingRequests,
+      appointmentsToday,
+      inProgressSessions,
+      pendingDocumentation,
+    ] = await Promise.all([
+      this.prisma.appointment.count({
+        where: { therapistId: therapist.id, status: 'REQUESTED' },
+      }),
+      this.prisma.appointment.count({
+        where: {
+          therapistId: therapist.id,
+          scheduledStart: { gte: start, lte: end },
+          status: { notIn: ['CANCELLED', 'NO_SHOW'] },
+        },
+      }),
+      this.prisma.session.count({
+        where: { therapistId: therapist.id, status: 'IN_PROGRESS' },
+      }),
+      this.prisma.session.count({
+        where: {
+          therapistId: therapist.id,
+          status: 'PENDING_DOCUMENTATION',
+        },
+      }),
+    ]);
+
+    return {
+      pendingRequests,
+      appointmentsToday,
+      inProgressSessions,
+      pendingDocumentation,
+    };
+  }
+
   async findByUserId(userId: string) {
     const therapist = await this.prisma.therapist.findUnique({
       where: { userId },

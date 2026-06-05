@@ -3,6 +3,21 @@ import { TherapyType } from '../../../generated/prisma/client';
 import { TherapistUserType } from './parent-booking.types';
 
 @ObjectType()
+export class ParentDashboardType {
+  @Field(() => Int)
+  childrenCount: number;
+
+  @Field(() => Int)
+  upcomingAppointments: number;
+
+  @Field(() => Int)
+  appointmentsToday: number;
+
+  @Field(() => Int)
+  pendingReviews: number;
+}
+
+@ObjectType()
 export class ParentProfileType {
   @Field(() => ID)
   id: string;

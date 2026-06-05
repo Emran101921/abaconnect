@@ -28,6 +28,7 @@ import {
   TherapistMatchType,
 } from './types/parent-booking.types';
 import {
+  ParentDashboardType,
   ParentProfileType,
   ReviewType,
   ScreeningResponseType,
@@ -48,6 +49,16 @@ export class ParentBookingResolver {
     private readonly sessionsService: SessionsService,
     private readonly prisma: PrismaService,
   ) {}
+
+  @Query(() => ParentDashboardType, { name: 'parentDashboard' })
+  async parentDashboard(@CurrentUser() user: AuthUser): Promise<ParentDashboardType> {
+    const base = await this.parentsService.getDashboardForUserId(user.id);
+    const pending = await this.reviewsService.findPendingReviewTherapists(user.id);
+    return {
+      ...base,
+      pendingReviews: pending.length,
+    };
+  }
 
   @Query(() => ParentProfileType, { name: 'myParentProfile' })
   async myParentProfile(@CurrentUser() user: AuthUser): Promise<ParentProfileType> {

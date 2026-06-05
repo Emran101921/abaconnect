@@ -19,6 +19,9 @@ export class MessageThreadType {
 
   @Field()
   updatedAt: Date;
+
+  @Field()
+  hasUnread: boolean;
 }
 
 @ObjectType()
