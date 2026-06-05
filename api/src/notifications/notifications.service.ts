@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -80,7 +84,9 @@ export class NotificationsService {
     await this.findOne(id);
     return this.prisma.notification.update({
       where: { id },
-      data: data as Parameters<typeof this.prisma.notification.update>[0]['data'],
+      data: data as Parameters<
+        typeof this.prisma.notification.update
+      >[0]['data'],
     });
   }
 

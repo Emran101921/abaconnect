@@ -70,7 +70,9 @@ export class AnalyticsService {
   }
 
   async findOne(id: string) {
-    const row = await this.prisma.analyticsSnapshot.findUnique({ where: { id } });
+    const row = await this.prisma.analyticsSnapshot.findUnique({
+      where: { id },
+    });
     if (!row) throw new NotFoundException('Snapshot not found');
     return row;
   }
@@ -79,7 +81,9 @@ export class AnalyticsService {
     await this.findOne(id);
     return this.prisma.analyticsSnapshot.update({
       where: { id },
-      data: data as Parameters<typeof this.prisma.analyticsSnapshot.update>[0]['data'],
+      data: data as Parameters<
+        typeof this.prisma.analyticsSnapshot.update
+      >[0]['data'],
     });
   }
 

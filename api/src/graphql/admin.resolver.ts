@@ -1,6 +1,9 @@
 import { Args, ID, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Roles } from '../common/decorators/roles.decorator';
-import { AuthUser, CurrentUser } from '../common/decorators/current-user.decorator';
+import {
+  AuthUser,
+  CurrentUser,
+} from '../common/decorators/current-user.decorator';
 import { AdminService } from '../admin/admin.service';
 import { ComplaintsService } from '../complaints/complaints.service';
 import { InsuranceService } from '../insurance/insurance.service';
@@ -49,7 +52,9 @@ export class AdminResolver {
     return this.adminService.listUsers(user.tenantId);
   }
 
-  @Query(() => [PendingTherapistType], { name: 'pendingTherapistVerifications' })
+  @Query(() => [PendingTherapistType], {
+    name: 'pendingTherapistVerifications',
+  })
   async pendingTherapistVerifications(
     @CurrentUser() user: AuthUser,
   ): Promise<PendingTherapistType[]> {
@@ -104,7 +109,10 @@ export class AdminResolver {
     @Args('complaintId', { type: () => ID }) complaintId: string,
     @Args('resolution') resolution: string,
   ): Promise<AdminComplaintType> {
-    const c = await this.complaintsService.resolveComplaint(complaintId, resolution);
+    const c = await this.complaintsService.resolveComplaint(
+      complaintId,
+      resolution,
+    );
     return {
       id: c.id,
       status: c.status,
@@ -119,7 +127,9 @@ export class AdminResolver {
   async adminReviews(
     @CurrentUser() user: AuthUser,
   ): Promise<AdminReviewType[]> {
-    const rows = await this.reviewsService.listForAdminModeration(user.tenantId);
+    const rows = await this.reviewsService.listForAdminModeration(
+      user.tenantId,
+    );
     return rows.map((r) => ({
       id: r.id,
       rating: r.rating,
@@ -235,7 +245,8 @@ export class AdminResolver {
       status: c.status,
       payerName: c.payerName,
       billedAmount: Number(c.billedAmount),
-      approvedAmount: c.approvedAmount != null ? Number(c.approvedAmount) : undefined,
+      approvedAmount:
+        c.approvedAmount != null ? Number(c.approvedAmount) : undefined,
       serviceDate: c.serviceDate,
       childName: c.child
         ? `${c.child.firstName} ${c.child.lastName}`

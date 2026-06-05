@@ -72,7 +72,9 @@ export class InsuranceService {
     await this.findOne(id);
     return this.prisma.insuranceClaim.update({
       where: { id },
-      data: data as Parameters<typeof this.prisma.insuranceClaim.update>[0]['data'],
+      data: data as Parameters<
+        typeof this.prisma.insuranceClaim.update
+      >[0]['data'],
     });
   }
 

@@ -1,6 +1,9 @@
 import { Args, ID, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Roles } from '../common/decorators/roles.decorator';
-import { AuthUser, CurrentUser } from '../common/decorators/current-user.decorator';
+import {
+  AuthUser,
+  CurrentUser,
+} from '../common/decorators/current-user.decorator';
 import { MessagingService } from '../messaging/messaging.service';
 import { SendMessageInput } from './inputs/messaging-payments.input';
 import {
@@ -33,7 +36,10 @@ export class MessagingResolver {
     @CurrentUser() user: AuthUser,
     @Args('threadId', { type: () => ID }) threadId: string,
   ): Promise<ChatMessageType[]> {
-    const rows = await this.messagingService.getThreadMessages(user.id, threadId);
+    const rows = await this.messagingService.getThreadMessages(
+      user.id,
+      threadId,
+    );
     return rows.map((m) => ({
       id: m.id,
       body: m.body,

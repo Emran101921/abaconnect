@@ -85,16 +85,25 @@ export class TelehealthVendorService {
     }
 
     const room = (await roomRes.json()) as { url?: string; name?: string };
-    const roomUrl = room.url ?? `https://${domain}.daily.co/${room.name ?? roomId}`;
+    const roomUrl =
+      room.url ?? `https://${domain}.daily.co/${room.name ?? roomId}`;
 
-    const providerToken = await this.dailyMeetingToken(apiKey, room.name ?? roomId, {
-      user_name: labels?.providerName ?? 'Provider',
-      is_owner: true,
-    });
-    const patientToken = await this.dailyMeetingToken(apiKey, room.name ?? roomId, {
-      user_name: labels?.patientName ?? 'Patient',
-      is_owner: false,
-    });
+    const providerToken = await this.dailyMeetingToken(
+      apiKey,
+      room.name ?? roomId,
+      {
+        user_name: labels?.providerName ?? 'Provider',
+        is_owner: true,
+      },
+    );
+    const patientToken = await this.dailyMeetingToken(
+      apiKey,
+      room.name ?? roomId,
+      {
+        user_name: labels?.patientName ?? 'Patient',
+        is_owner: false,
+      },
+    );
 
     return {
       vendor: 'daily',
@@ -126,10 +135,14 @@ export class TelehealthVendorService {
     return data.token ?? null;
   }
 
-  private async createTwilioLinks(roomId: string): Promise<TelehealthRoomLinks> {
+  private async createTwilioLinks(
+    roomId: string,
+  ): Promise<TelehealthRoomLinks> {
     const accountSid = this.config.get<string>('TWILIO_ACCOUNT_SID')!;
     const apiKeySecret = this.config.get<string>('TWILIO_API_KEY_SECRET')!;
-    const auth = Buffer.from(`${accountSid}:${apiKeySecret}`).toString('base64');
+    const auth = Buffer.from(`${accountSid}:${apiKeySecret}`).toString(
+      'base64',
+    );
 
     const res = await fetch('https://video.twilio.com/v1/Rooms', {
       method: 'POST',

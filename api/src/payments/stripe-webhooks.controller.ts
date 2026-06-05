@@ -26,7 +26,11 @@ export class StripeWebhooksController {
   ) {
     const secret = process.env.STRIPE_WEBHOOK_SECRET;
     if (!secret) {
-      return { received: true, processed: false, reason: 'webhook_secret_not_set' };
+      return {
+        received: true,
+        processed: false,
+        reason: 'webhook_secret_not_set',
+      };
     }
     if (!signature) {
       throw new BadRequestException('Missing stripe-signature header');

@@ -162,7 +162,11 @@ export class AgenciesService {
     const therapistId = data.therapistId as string | undefined;
     if (tenantId && therapistId) {
       const link = await this.inviteTherapistForTenant(tenantId, therapistId);
-      return { id: link.id, agencyId: link.agencyId, therapistId: link.therapistId };
+      return {
+        id: link.id,
+        agencyId: link.agencyId,
+        therapistId: link.therapistId,
+      };
     }
     throw new BadRequestException('Provide tenantId and therapistId');
   }

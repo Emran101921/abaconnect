@@ -243,9 +243,7 @@ export class PaymentsService {
       data: {
         status: 'SUCCEEDED',
         paidAt: new Date(),
-        ...(stripePaymentIntentId
-          ? { stripePaymentIntentId }
-          : {}),
+        ...(stripePaymentIntentId ? { stripePaymentIntentId } : {}),
       },
     });
   }

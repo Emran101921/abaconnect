@@ -1,6 +1,9 @@
 import { Args, ID, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Roles } from '../common/decorators/roles.decorator';
-import { AuthUser, CurrentUser } from '../common/decorators/current-user.decorator';
+import {
+  AuthUser,
+  CurrentUser,
+} from '../common/decorators/current-user.decorator';
 import { AiService } from '../ai/ai.service';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { ComplaintsService } from '../complaints/complaints.service';
@@ -53,7 +56,9 @@ export class PlatformResolver {
     return rows.map((r) => ({
       id: r.id,
       roomId: r.roomId,
-      joinUrl: isParent ? (r.patientUrl ?? undefined) : (r.providerUrl ?? undefined),
+      joinUrl: isParent
+        ? (r.patientUrl ?? undefined)
+        : (r.providerUrl ?? undefined),
       startedAt: r.startedAt ?? undefined,
       vendor: r.vendor ?? undefined,
       appointmentLabel: r.appointment
@@ -68,7 +73,10 @@ export class PlatformResolver {
     @CurrentUser() user: AuthUser,
     @Args('appointmentId', { type: () => ID }) appointmentId: string,
   ): Promise<TelehealthRoomType> {
-    const row = await this.telehealth.getOrCreateForAppointment(user.id, appointmentId);
+    const row = await this.telehealth.getOrCreateForAppointment(
+      user.id,
+      appointmentId,
+    );
     const started = await this.telehealth.startSession(user.id, row.id);
     const isParent = user.roles?.includes('PARENT');
     return {
@@ -84,7 +92,9 @@ export class PlatformResolver {
 
   @Query(() => [DocumentItemType], { name: 'myDocuments' })
   @Roles('PARENT', 'THERAPIST')
-  async myDocuments(@CurrentUser() user: AuthUser): Promise<DocumentItemType[]> {
+  async myDocuments(
+    @CurrentUser() user: AuthUser,
+  ): Promise<DocumentItemType[]> {
     const rows = await this.documents.listForUser(user.id);
     return rows.map((d) => ({
       id: d.id,
@@ -133,7 +143,9 @@ export class PlatformResolver {
 
   @Query(() => [NotificationType], { name: 'myNotifications' })
   @Roles('PARENT', 'THERAPIST', 'AGENCY_ADMIN', 'PLATFORM_ADMIN')
-  async myNotifications(@CurrentUser() user: AuthUser): Promise<NotificationType[]> {
+  async myNotifications(
+    @CurrentUser() user: AuthUser,
+  ): Promise<NotificationType[]> {
     const rows = await this.notifications.listForUser(user.id);
     return rows.map((n) => this.mapNotification(n));
   }
@@ -180,7 +192,9 @@ export class PlatformResolver {
 
   @Mutation(() => Int, { name: 'markAllNotificationsRead' })
   @Roles('PARENT', 'THERAPIST', 'AGENCY_ADMIN', 'PLATFORM_ADMIN')
-  async markAllNotificationsRead(@CurrentUser() user: AuthUser): Promise<number> {
+  async markAllNotificationsRead(
+    @CurrentUser() user: AuthUser,
+  ): Promise<number> {
     const result = await this.notifications.markAllRead(user.id);
     return result.updated;
   }
@@ -196,7 +210,9 @@ export class PlatformResolver {
       payerName: c.payerName,
       status: c.status,
       billedAmount: Number(c.billedAmount),
-      childName: c.child ? `${c.child.firstName} ${c.child.lastName}` : undefined,
+      childName: c.child
+        ? `${c.child.firstName} ${c.child.lastName}`
+        : undefined,
       serviceDate: c.serviceDate,
     }));
   }
@@ -213,7 +229,9 @@ export class PlatformResolver {
       payerName: c.payerName,
       status: c.status,
       billedAmount: Number(c.billedAmount),
-      childName: c.child ? `${c.child.firstName} ${c.child.lastName}` : undefined,
+      childName: c.child
+        ? `${c.child.firstName} ${c.child.lastName}`
+        : undefined,
       serviceDate: c.serviceDate,
     };
   }

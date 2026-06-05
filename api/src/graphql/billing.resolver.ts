@@ -1,6 +1,9 @@
 import { Args, ID, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Roles } from '../common/decorators/roles.decorator';
-import { AuthUser, CurrentUser } from '../common/decorators/current-user.decorator';
+import {
+  AuthUser,
+  CurrentUser,
+} from '../common/decorators/current-user.decorator';
 import { DisputesService } from '../disputes/disputes.service';
 import { PayoutsService } from '../payouts/payouts.service';
 import { PaymentsService } from '../payments/payments.service';
@@ -33,7 +36,9 @@ export class BillingResolver {
 
   @Query(() => [DisputeType], { name: 'myPaymentDisputes' })
   @Roles('PARENT')
-  async myPaymentDisputes(@CurrentUser() user: AuthUser): Promise<DisputeType[]> {
+  async myPaymentDisputes(
+    @CurrentUser() user: AuthUser,
+  ): Promise<DisputeType[]> {
     const rows = await this.disputes.listForParentUser(user.id);
     return rows.map((d) => ({
       id: d.id,
@@ -64,7 +69,9 @@ export class BillingResolver {
 
   @Query(() => [PayoutType], { name: 'myTherapistPayouts' })
   @Roles('THERAPIST')
-  async myTherapistPayouts(@CurrentUser() user: AuthUser): Promise<PayoutType[]> {
+  async myTherapistPayouts(
+    @CurrentUser() user: AuthUser,
+  ): Promise<PayoutType[]> {
     const rows = await this.payouts.listForTherapistUser(user.id);
     return rows.map((p) => this.mapPayout(p));
   }

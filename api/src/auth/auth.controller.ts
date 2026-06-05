@@ -1,5 +1,8 @@
 import { Body, Controller, Get, Post } from '@nestjs/common';
-import { AuthUser, CurrentUser } from '../common/decorators/current-user.decorator';
+import {
+  AuthUser,
+  CurrentUser,
+} from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { MfaService } from './mfa.service';
 import { AuthService, LoginDto, RegisterDto } from './auth.service';

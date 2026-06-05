@@ -33,8 +33,9 @@ export class RolesGuard implements CanActivate {
 
   private getUser(context: ExecutionContext): AuthUser | undefined {
     if (context.getType<string>() === 'graphql') {
-      return GqlExecutionContext.create(context).getContext<{ req: { user?: AuthUser } }>()
-        .req.user;
+      return GqlExecutionContext.create(context).getContext<{
+        req: { user?: AuthUser };
+      }>().req.user;
     }
     return context.switchToHttp().getRequest<{ user?: AuthUser }>().user;
   }

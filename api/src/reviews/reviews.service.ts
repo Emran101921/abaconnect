@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -48,7 +52,7 @@ export class ReviewsService {
     );
 
     const seen = new Set<string>();
-    const pending: typeof completed[0]['therapist'][] = [];
+    const pending: (typeof completed)[0]['therapist'][] = [];
     for (const session of completed) {
       const t = session.therapist;
       if (!t || reviewedTherapistIds.has(t.id) || seen.has(t.id)) {
@@ -62,9 +66,7 @@ export class ReviewsService {
 
   async listForAdminModeration(tenantId?: string, take = 50) {
     return this.prisma.review.findMany({
-      where: tenantId
-        ? { therapist: { tenantId } }
-        : undefined,
+      where: tenantId ? { therapist: { tenantId } } : undefined,
       include: {
         therapist: { include: { user: true } },
         author: true,
