@@ -34,26 +34,72 @@ export class MessagingService {
 
     return memberships
       .map((m) => {
-      const others = m.thread.participants
-        .filter((p) => p.userId !== userId)
-        .map((p) => p.user);
-      const last = m.thread.messages[0];
-      return {
-        id: m.thread.id,
-        subject: m.thread.subject ?? undefined,
-        updatedAt: m.thread.updatedAt,
-        otherParticipantName: others.length
-          ? `${others[0].firstName} ${others[0].lastName}`
-          : 'Conversation',
-        lastMessageBody: last?.body ?? undefined,
-        lastMessageAt: last?.sentAt ?? undefined,
-      };
-    })
+        const others = m.thread.participants
+          .filter((p) => p.userId !== userId)
+          .map((p) => p.user);
+        const last = m.thread.messages[0];
+        return {
+          id: m.thread.id,
+          subject: m.thread.subject ?? undefined,
+          updatedAt: m.thread.updatedAt,
+          otherParticipantName: others.length
+            ? `${others[0].firstName} ${others[0].lastName}`
+            : 'Conversation',
+          lastMessageBody: last?.body ?? undefined,
+          lastMessageAt: last?.sentAt ?? undefined,
+          hasUnread: this.isThreadUnread(last, m.lastReadAt, userId),
+        };
+      })
       .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+  }
+
+  async countUnreadThreadsForUser(userId: string) {
+    const memberships = await this.prisma.messageParticipant.findMany({
+      where: { userId },
+      include: {
+        thread: {
+          include: {
+            messages: {
+              where: { deletedAt: null },
+              orderBy: { sentAt: 'desc' },
+              take: 1,
+            },
+          },
+        },
+      },
+    });
+
+    return memberships.filter((m) =>
+      this.isThreadUnread(m.thread.messages[0], m.lastReadAt, userId),
+    ).length;
+  }
+
+  async markThreadRead(userId: string, threadId: string) {
+    await this.assertParticipant(userId, threadId);
+    await this.prisma.messageParticipant.update({
+      where: { threadId_userId: { threadId, userId } },
+      data: { lastReadAt: new Date() },
+    });
+    return true;
+  }
+
+  private isThreadUnread(
+    lastMessage: { senderId: string; sentAt: Date } | undefined,
+    lastReadAt: Date | null,
+    userId: string,
+  ) {
+    if (!lastMessage || lastMessage.senderId === userId) {
+      return false;
+    }
+    if (!lastReadAt) {
+      return true;
+    }
+    return lastMessage.sentAt > lastReadAt;
   }
 
   async getThreadMessages(userId: string, threadId: string) {
     await this.assertParticipant(userId, threadId);
+    await this.markThreadRead(userId, threadId);
     return this.prisma.message.findMany({
       where: { threadId, deletedAt: null },
       include: { sender: true },
@@ -195,10 +241,14 @@ export class MessagingService {
       subject: thread.subject ?? undefined,
       updatedAt: thread.updatedAt,
       otherParticipantName: `${parent.user.firstName} ${parent.user.lastName}`,
+      hasUnread: false,
     };
   }
 
-  async startConversationWithTherapist(parentUserId: string, therapistId: string) {
+  async startConversationWithTherapist(
+    parentUserId: string,
+    therapistId: string,
+  ) {
     const parent = await this.prisma.parent.findUnique({
       where: { userId: parentUserId },
     });
@@ -228,10 +278,7 @@ export class MessagingService {
         tenantId: parent.tenantId,
         subject: `Care team — ${therapist.user.firstName} ${therapist.user.lastName}`,
         participants: {
-          create: [
-            { userId: parentUserId },
-            { userId: therapist.userId },
-          ],
+          create: [{ userId: parentUserId }, { userId: therapist.userId }],
         },
       },
       include: {
@@ -245,6 +292,7 @@ export class MessagingService {
       subject: thread.subject ?? undefined,
       updatedAt: thread.updatedAt,
       otherParticipantName: `${therapist.user.firstName} ${therapist.user.lastName}`,
+      hasUnread: false,
     };
   }
 
@@ -271,7 +319,6 @@ export class MessagingService {
     for (const thread of threads) {
       const ids = new Set(thread.participants.map((p) => p.userId));
       if (ids.has(userA) && ids.has(userB) && ids.size === 2) {
-        const other = thread.participants.find((p) => p.userId === userA);
         const peer = thread.participants.find((p) => p.userId !== userA);
         const last = thread.messages[0];
         return {
@@ -283,6 +330,7 @@ export class MessagingService {
             : 'Conversation',
           lastMessageBody: last?.body ?? undefined,
           lastMessageAt: last?.sentAt ?? undefined,
+          hasUnread: false,
         };
       }
     }
@@ -308,7 +356,9 @@ export class MessagingService {
   }
 
   async findOne(id: string) {
-    const thread = await this.prisma.messageThread.findUnique({ where: { id } });
+    const thread = await this.prisma.messageThread.findUnique({
+      where: { id },
+    });
     if (!thread) {
       throw new NotFoundException('Thread not found');
     }
@@ -319,7 +369,9 @@ export class MessagingService {
     await this.findOne(id);
     return this.prisma.messageThread.update({
       where: { id },
-      data: data as Parameters<typeof this.prisma.messageThread.update>[0]['data'],
+      data: data as Parameters<
+        typeof this.prisma.messageThread.update
+      >[0]['data'],
     });
   }
 

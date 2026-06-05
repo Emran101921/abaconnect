@@ -1,6 +1,21 @@
-import { Field, Float, ID, Int, ObjectType } from '@nestjs/graphql';
+import { Field, ID, Int, ObjectType } from '@nestjs/graphql';
 import { TherapyType } from '../../../generated/prisma/client';
 import { TherapistUserType } from './parent-booking.types';
+
+@ObjectType()
+export class ParentDashboardType {
+  @Field(() => Int)
+  childrenCount: number;
+
+  @Field(() => Int)
+  upcomingAppointments: number;
+
+  @Field(() => Int)
+  appointmentsToday: number;
+
+  @Field(() => Int)
+  pendingReviews: number;
+}
 
 @ObjectType()
 export class ParentProfileType {

@@ -3,7 +3,6 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -20,7 +19,9 @@ export class GpsService {
       accuracyM?: number;
     },
   ) {
-    const therapist = await this.prisma.therapist.findUnique({ where: { userId } });
+    const therapist = await this.prisma.therapist.findUnique({
+      where: { userId },
+    });
     if (!therapist) {
       throw new BadRequestException('Therapist profile required for EVV');
     }
@@ -69,7 +70,9 @@ export class GpsService {
   }
 
   async listEventsForSession(userId: string, sessionId: string) {
-    const therapist = await this.prisma.therapist.findUnique({ where: { userId } });
+    const therapist = await this.prisma.therapist.findUnique({
+      where: { userId },
+    });
     if (!therapist) return [];
     const session = await this.prisma.session.findFirst({
       where: { id: sessionId, therapistId: therapist.id },
@@ -100,7 +103,9 @@ export class GpsService {
     await this.findOne(id);
     return this.prisma.locationEvent.update({
       where: { id },
-      data: data as Parameters<typeof this.prisma.locationEvent.update>[0]['data'],
+      data: data as Parameters<
+        typeof this.prisma.locationEvent.update
+      >[0]['data'],
     });
   }
 

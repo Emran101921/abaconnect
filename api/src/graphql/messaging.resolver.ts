@@ -1,4 +1,4 @@
-import { Args, ID, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, ID, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Roles } from '../common/decorators/roles.decorator';
 import { AuthUser, CurrentUser } from '../common/decorators/current-user.decorator';
 import { MessagingService } from '../messaging/messaging.service';
@@ -19,6 +19,13 @@ export class MessagingResolver {
     @CurrentUser() user: AuthUser,
   ): Promise<MessageThreadType[]> {
     return this.messagingService.listThreadsForUser(user.id);
+  }
+
+  @Query(() => Int, { name: 'unreadMessageThreadCount' })
+  async unreadMessageThreadCount(
+    @CurrentUser() user: AuthUser,
+  ): Promise<number> {
+    return this.messagingService.countUnreadThreadsForUser(user.id);
   }
 
   @Query(() => [ChatMessageType], { name: 'threadMessages' })
