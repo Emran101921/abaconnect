@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/router/app_router.dart';
 import '../data/messaging_repository.dart';
+import 'message_status_badge.dart';
 import 'messages_screen.dart' show messageThreadsProvider;
 
 class RecentMessagesSection extends ConsumerWidget {
@@ -83,17 +84,39 @@ class _ThreadPreviewCard extends StatelessWidget {
           child: Text(thread.otherParticipantName.characters.first),
         ),
         title: Text(thread.otherParticipantName),
-        subtitle: Text(
-          thread.lastMessageBody ?? thread.subject ?? 'No messages yet',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              thread.lastMessageBody ?? thread.subject ?? 'No messages yet',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            if (thread.lastMessageIsMine && thread.lastMessageStatus != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: MessageStatusBadge(
+                  status: thread.lastMessageStatus!,
+                  compact: true,
+                ),
+              ),
+          ],
         ),
         trailing: thread.hasUnread
             ? const Badge(label: Text('New'))
-            : Text(
-                DateFormat.MMMd().format(time),
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
+            : thread.lastMessageIsMine &&
+                    thread.lastMessageStatus == MessageDeliveryStatus.read
+                ? Text(
+                    'Read',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                  )
+                : Text(
+                    DateFormat.MMMd().format(time),
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
         onTap: () => context.push('${AppRoutes.messages}/${thread.id}'),
       ),
     );

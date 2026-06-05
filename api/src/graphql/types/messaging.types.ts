@@ -30,6 +30,12 @@ export class MessageThreadType {
 
   @Field()
   hasUnread: boolean;
+
+  @Field({ nullable: true })
+  lastMessageIsMine?: boolean;
+
+  @Field(() => MessageDeliveryStatus, { nullable: true })
+  lastMessageStatus?: MessageDeliveryStatus;
 }
 
 @ObjectType()

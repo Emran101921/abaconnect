@@ -9,6 +9,8 @@ class MessageThreadModel {
     this.lastMessageBody,
     this.lastMessageAt,
     this.hasUnread = false,
+    this.lastMessageIsMine = false,
+    this.lastMessageStatus,
   });
 
   final String id;
@@ -18,6 +20,8 @@ class MessageThreadModel {
   final DateTime? lastMessageAt;
   final DateTime updatedAt;
   final bool hasUnread;
+  final bool lastMessageIsMine;
+  final MessageDeliveryStatus? lastMessageStatus;
 }
 
 class ParentContactModel {
@@ -42,6 +46,7 @@ class ChatMessageModel {
     required this.senderName,
     required this.isMine,
     this.status,
+    this.readAt,
   });
 
   final String id;
@@ -50,6 +55,7 @@ class ChatMessageModel {
   final String senderName;
   final bool isMine;
   final MessageDeliveryStatus? status;
+  final DateTime? readAt;
 }
 
 class MessagingRepository {
@@ -67,6 +73,8 @@ class MessagingRepository {
         lastMessageAt
         updatedAt
         hasUnread
+        lastMessageIsMine
+        lastMessageStatus
       }
     }
   ''';
@@ -86,6 +94,7 @@ class MessagingRepository {
         senderName
         isMine
         status
+        readAt
       }
     }
   ''';
@@ -223,6 +232,8 @@ class MessagingRepository {
       lastMessageAt: DateTime.tryParse(e['lastMessageAt'] as String? ?? ''),
       updatedAt: DateTime.parse(e['updatedAt'] as String),
       hasUnread: e['hasUnread'] as bool? ?? false,
+      lastMessageIsMine: e['lastMessageIsMine'] as bool? ?? false,
+      lastMessageStatus: _mapStatus(e['lastMessageStatus'] as String?),
     );
   }
 
@@ -234,6 +245,7 @@ class MessagingRepository {
       senderName: e['senderName'] as String? ?? '',
       isMine: e['isMine'] as bool? ?? false,
       status: _mapStatus(e['status'] as String?),
+      readAt: DateTime.tryParse(e['readAt'] as String? ?? ''),
     );
   }
 

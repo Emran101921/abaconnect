@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -7,6 +9,7 @@ import '../../../shared/widgets/app_scaffold.dart';
 import '../../notifications/notification_providers.dart';
 import '../data/messaging_repository.dart';
 import '../messaging_providers.dart';
+import 'message_status_badge.dart';
 import 'messages_screen.dart' show messageThreadsProvider;
 
 class MessageThreadScreen extends ConsumerStatefulWidget {
@@ -23,15 +26,21 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
   List<ChatMessageModel> _messages = [];
   bool _loading = true;
   bool _sending = false;
+  Timer? _statusPoll;
 
   @override
   void initState() {
     super.initState();
     _load();
+    _statusPoll = Timer.periodic(
+      const Duration(seconds: 5),
+      (_) => _refreshStatuses(),
+    );
   }
 
   @override
   void dispose() {
+    _statusPoll?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -53,6 +62,7 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
           ref.invalidate(messageThreadsProvider);
           ref.invalidate(unreadMessageThreadsProvider);
         }
+        await _refreshStatuses();
       } catch (_) {
         // Read receipt is best-effort; messages are already visible.
       }
@@ -64,6 +74,17 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
         );
       }
     }
+  }
+
+  Future<void> _refreshStatuses() async {
+    if (_loading || !mounted) return;
+    try {
+      final list =
+          await ref.read(messagingRepositoryProvider).fetchMessages(widget.threadId);
+      if (mounted) {
+        setState(() => _messages = list);
+      }
+    } catch (_) {}
   }
 
   Future<void> _send() async {
@@ -107,6 +128,8 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
                     itemCount: _messages.length,
                     itemBuilder: (context, index) {
                       final m = _messages[index];
+                      final status =
+                          m.status ?? MessageDeliveryStatus.sent;
                       return Align(
                         alignment: m.isMine
                             ? Alignment.centerRight
@@ -120,7 +143,9 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
                           decoration: BoxDecoration(
                             color: m.isMine
                                 ? Theme.of(context).colorScheme.primaryContainer
-                                : Theme.of(context).colorScheme.surfaceContainerHighest,
+                                : Theme.of(context)
+                                    .colorScheme
+                                    .surfaceContainerHighest,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           constraints: BoxConstraints(
@@ -140,11 +165,15 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
                                 children: [
                                   Text(
                                     DateFormat.jm().format(m.sentAt),
-                                    style: Theme.of(context).textTheme.labelSmall,
+                                    style:
+                                        Theme.of(context).textTheme.labelSmall,
                                   ),
-                                  if (m.isMine && m.status != null) ...[
-                                    const SizedBox(width: 4),
-                                    _MessageStatusIcon(status: m.status!),
+                                  if (m.isMine) ...[
+                                    const SizedBox(width: 6),
+                                    MessageStatusBadge(
+                                      status: status,
+                                      readAt: m.readAt,
+                                    ),
                                   ],
                                 ],
                               ),
@@ -188,23 +217,5 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
         ],
       ),
     );
-  }
-}
-
-class _MessageStatusIcon extends StatelessWidget {
-  const _MessageStatusIcon({required this.status});
-
-  final MessageDeliveryStatus status;
-
-  @override
-  Widget build(BuildContext context) {
-    final isRead = status == MessageDeliveryStatus.read;
-    final color = isRead
-        ? Theme.of(context).colorScheme.primary
-        : Theme.of(context).colorScheme.onSurfaceVariant;
-    final icon = status == MessageDeliveryStatus.sent
-        ? Icons.done
-        : Icons.done_all;
-    return Icon(icon, size: 14, color: color);
   }
 }
