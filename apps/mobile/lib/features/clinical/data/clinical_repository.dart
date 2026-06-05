@@ -19,6 +19,29 @@ class TreatmentPlanGoalModel {
     );
   }
 
+  String get statusLabel {
+    switch (status) {
+      case 'done':
+        return 'Done';
+      case 'in_progress':
+        return 'In progress';
+      case 'active':
+        return 'Active';
+      default:
+        return 'Not started';
+    }
+  }
+
+  TreatmentPlanGoalModel cycleStatus() {
+    final next = switch (status) {
+      'done' => 'active',
+      'in_progress' => 'done',
+      'active' => 'in_progress',
+      _ => 'active',
+    };
+    return TreatmentPlanGoalModel(id: id, label: label, status: next);
+  }
+
   Map<String, dynamic> toJson() => {
         'id': id,
         'label': label,
@@ -34,6 +57,8 @@ class TreatmentPlanModel {
     required this.childName,
     this.therapistName,
     this.goals = const [],
+    this.goalsDoneCount = 0,
+    this.goalsTotalCount = 0,
   });
 
   final String id;
@@ -42,6 +67,11 @@ class TreatmentPlanModel {
   final String childName;
   final String? therapistName;
   final List<TreatmentPlanGoalModel> goals;
+  final int goalsDoneCount;
+  final int goalsTotalCount;
+
+  double get goalsProgress =>
+      goalsTotalCount > 0 ? goalsDoneCount / goalsTotalCount : 0;
 }
 
 class ParentProgressNoteModel {
@@ -84,6 +114,7 @@ class ClinicalRepository {
       query {
         myTreatmentPlans {
           id title therapyType therapistName
+          goalsDoneCount goalsTotalCount
           child { firstName lastName }
           goals { id label status }
         }
@@ -98,6 +129,7 @@ class ClinicalRepository {
       query {
         therapistTreatmentPlans {
           id title therapyType
+          goalsDoneCount goalsTotalCount
           child { firstName lastName }
           goals { id label status }
         }
@@ -237,6 +269,8 @@ class ClinicalRepository {
       therapyType: e['therapyType'] as String? ?? '',
       childName: childName,
       therapistName: e['therapistName'] as String?,
+      goalsDoneCount: e['goalsDoneCount'] as int? ?? 0,
+      goalsTotalCount: e['goalsTotalCount'] as int? ?? goalsRaw.length,
       goals: goalsRaw
           .map((g) => TreatmentPlanGoalModel.fromJson(g as Map<String, dynamic>))
           .toList(),

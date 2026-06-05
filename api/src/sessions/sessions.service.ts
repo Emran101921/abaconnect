@@ -37,6 +37,7 @@ export class SessionsService {
         child: true,
         therapist: { include: { user: true } },
         appointment: true,
+        progressNote: true,
       },
       orderBy: { createdAt: 'desc' },
       take: 50,

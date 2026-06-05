@@ -130,6 +130,9 @@ class SessionHistoryModel {
     required this.therapyType,
     this.completedAt,
     this.durationMinutes,
+    this.progressNoteSummary,
+    this.hasProgressNote = false,
+    this.parentFeedback,
   });
 
   final String id;
@@ -139,6 +142,22 @@ class SessionHistoryModel {
   final String therapyType;
   final DateTime? completedAt;
   final int? durationMinutes;
+  final String? progressNoteSummary;
+  final bool hasProgressNote;
+  final String? parentFeedback;
+
+  String get statusLabel {
+    switch (status) {
+      case 'COMPLETED':
+        return 'Completed';
+      case 'IN_PROGRESS':
+        return 'In progress';
+      case 'PENDING_DOCUMENTATION':
+        return 'Awaiting notes';
+      default:
+        return status;
+    }
+  }
 }
 
 class AppointmentModel {
@@ -345,6 +364,7 @@ class ParentBookingRepository {
         mySessionHistory {
           id status childName therapistName therapyType
           completedAt durationMinutes
+          progressNoteSummary hasProgressNote parentFeedback
         }
       }
     ''';
@@ -359,6 +379,9 @@ class ParentBookingRepository {
         therapyType: e['therapyType'] as String? ?? '',
         completedAt: DateTime.tryParse(e['completedAt'] as String? ?? ''),
         durationMinutes: e['durationMinutes'] as int?,
+        progressNoteSummary: e['progressNoteSummary'] as String?,
+        hasProgressNote: e['hasProgressNote'] as bool? ?? false,
+        parentFeedback: e['parentFeedback'] as String?,
       );
     }).toList();
   }

@@ -98,6 +98,9 @@ export class ParentBookingResolver {
       therapyType: s.appointment.therapyType,
       completedAt: s.checkOutAt ?? s.checkInAt ?? undefined,
       durationMinutes: s.durationMinutes ?? undefined,
+      progressNoteSummary: s.progressNote?.summary ?? undefined,
+      hasProgressNote: Boolean(s.progressNote?.signedAt),
+      parentFeedback: s.progressNote?.parentFeedback ?? undefined,
     }));
   }
 

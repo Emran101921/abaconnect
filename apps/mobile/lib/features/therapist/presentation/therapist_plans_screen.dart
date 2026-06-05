@@ -55,6 +55,7 @@ class TherapistPlansScreen extends ConsumerWidget {
                       goals.add(TreatmentPlanGoalModel(
                         id: 'g${goals.length + 1}',
                         label: label,
+                        status: 'active',
                       ));
                       goalLabel.clear();
                     });
@@ -133,6 +134,7 @@ class TherapistPlansScreen extends ConsumerWidget {
                       goals.add(TreatmentPlanGoalModel(
                         id: 'g${DateTime.now().millisecondsSinceEpoch}',
                         label: label,
+                        status: 'active',
                       ));
                       goalLabel.clear();
                     });
@@ -143,9 +145,22 @@ class TherapistPlansScreen extends ConsumerWidget {
                   (e) => ListTile(
                     dense: true,
                     title: Text(e.value.label),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.delete_outline),
-                      onPressed: () => setState(() => goals.removeAt(e.key)),
+                    subtitle: Text(e.value.statusLabel),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.swap_horiz),
+                          tooltip: 'Cycle status',
+                          onPressed: () => setState(() {
+                            goals[e.key] = e.value.cycleStatus();
+                          }),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline),
+                          onPressed: () => setState(() => goals.removeAt(e.key)),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -212,7 +227,23 @@ class TherapistPlansScreen extends ConsumerWidget {
               return Card(
                 child: ExpansionTile(
                   title: Text(p.title),
-                  subtitle: Text('${p.childName} · ${p.therapyType}'),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('${p.childName} · ${p.therapyType}'),
+                      if (p.goalsTotalCount > 0) ...[
+                        const SizedBox(height: 6),
+                        LinearProgressIndicator(
+                          value: p.goalsProgress,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        Text(
+                          '${p.goalsDoneCount}/${p.goalsTotalCount} done',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                    ],
+                  ),
                   trailing: IconButton(
                     icon: const Icon(Icons.edit_outlined),
                     onPressed: () => _editGoals(context, ref, p),
@@ -223,8 +254,13 @@ class TherapistPlansScreen extends ConsumerWidget {
                     else
                       ...p.goals.map(
                         (g) => ListTile(
-                          leading: const Icon(Icons.flag_outlined),
+                          leading: Icon(
+                            g.status == 'done'
+                                ? Icons.check_circle_outline
+                                : Icons.flag_outlined,
+                          ),
                           title: Text(g.label),
+                          trailing: Chip(label: Text(g.statusLabel)),
                         ),
                       ),
                   ],

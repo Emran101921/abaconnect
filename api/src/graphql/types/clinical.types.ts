@@ -1,4 +1,4 @@
-import { Field, ID, ObjectType } from '@nestjs/graphql';
+import { Field, ID, Int, ObjectType } from '@nestjs/graphql';
 import { TherapyType } from '../../../generated/prisma/client';
 import { ChildType } from './parent-booking.types';
 
@@ -39,6 +39,12 @@ export class TreatmentPlanType {
 
   @Field(() => [TreatmentPlanGoalType])
   goals: TreatmentPlanGoalType[];
+
+  @Field(() => Int)
+  goalsDoneCount: number;
+
+  @Field(() => Int)
+  goalsTotalCount: number;
 }
 
 @ObjectType()

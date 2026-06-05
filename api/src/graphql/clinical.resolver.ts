@@ -146,13 +146,17 @@ export class ClinicalResolver {
     };
     therapist?: { user: { firstName: string; lastName: string } };
   }): TreatmentPlanType {
+    const goals = this.mapGoals(p.goals);
+    const goalsDoneCount = goals.filter((g) => g.status === 'done').length;
     return {
       id: p.id,
       title: p.title,
       therapyType: p.therapyType,
       startDate: p.startDate,
       isActive: p.isActive,
-      goals: this.mapGoals(p.goals),
+      goals,
+      goalsDoneCount,
+      goalsTotalCount: goals.length,
       child: p.child
         ? {
             id: p.child.id,

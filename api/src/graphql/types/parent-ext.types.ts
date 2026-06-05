@@ -94,6 +94,15 @@ export class SessionHistoryType {
 
   @Field(() => Int, { nullable: true })
   durationMinutes?: number;
+
+  @Field({ nullable: true })
+  progressNoteSummary?: string;
+
+  @Field()
+  hasProgressNote: boolean;
+
+  @Field({ nullable: true })
+  parentFeedback?: string;
 }
 
 @ObjectType()
