@@ -41,14 +41,20 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
     try {
       final repo = ref.read(messagingRepositoryProvider);
       final list = await repo.fetchMessages(widget.threadId);
-      await repo.markThreadRead(widget.threadId);
       if (mounted) {
         setState(() {
           _messages = list;
           _loading = false;
         });
-        ref.invalidate(messageThreadsProvider);
-        ref.invalidate(unreadMessageThreadsProvider);
+      }
+      try {
+        await repo.markThreadRead(widget.threadId);
+        if (mounted) {
+          ref.invalidate(messageThreadsProvider);
+          ref.invalidate(unreadMessageThreadsProvider);
+        }
+      } catch (_) {
+        // Read receipt is best-effort; messages are already visible.
       }
     } catch (e) {
       if (mounted) {

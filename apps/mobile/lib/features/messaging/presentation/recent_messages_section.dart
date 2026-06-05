@@ -46,8 +46,21 @@ class RecentMessagesSection extends ConsumerWidget {
           ],
         );
       },
-      loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
+      loading: () => const Padding(
+        padding: EdgeInsets.symmetric(vertical: 8),
+        child: LinearProgressIndicator(),
+      ),
+      error: (e, _) => Card(
+        child: ListTile(
+          leading: const Icon(Icons.error_outline),
+          title: const Text('Messages unavailable'),
+          subtitle: Text(
+            e.toString(),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ),
     );
   }
 }
