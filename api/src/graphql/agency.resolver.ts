@@ -1,6 +1,9 @@
 import { Args, ID, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Roles } from '../common/decorators/roles.decorator';
-import { AuthUser, CurrentUser } from '../common/decorators/current-user.decorator';
+import {
+  AuthUser,
+  CurrentUser,
+} from '../common/decorators/current-user.decorator';
 import { AgenciesService } from '../agencies/agencies.service';
 import {
   AgencyAppointmentType,
@@ -52,7 +55,9 @@ export class AgencyResolver {
     if (!user.tenantId) {
       throw new Error('Tenant required');
     }
-    const rows = await this.agenciesService.listTherapistsForTenant(user.tenantId);
+    const rows = await this.agenciesService.listTherapistsForTenant(
+      user.tenantId,
+    );
     return rows.map((t) => ({
       id: t.id,
       isVerified: t.isVerified,
@@ -67,7 +72,9 @@ export class AgencyResolver {
     }));
   }
 
-  @Query(() => [AgencyTherapistType], { name: 'agencyTherapistsAvailableToInvite' })
+  @Query(() => [AgencyTherapistType], {
+    name: 'agencyTherapistsAvailableToInvite',
+  })
   async agencyTherapistsAvailableToInvite(
     @CurrentUser() user: AuthUser,
   ): Promise<AgencyTherapistType[]> {

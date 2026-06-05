@@ -5,7 +5,9 @@ import 'package:intl/intl.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
+import '../../../shared/models/dashboard_action_model.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/dashboard_action_inbox.dart';
 import '../../notifications/notification_providers.dart';
 import 'agency_providers.dart';
 
@@ -56,30 +58,77 @@ class AgencyHomeScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
             dashboard.when(
-              data: (d) => Wrap(
-                spacing: 12,
-                runSpacing: 12,
+              data: (d) => Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _StatCard(
-                    label: 'Therapists',
-                    value: '${d.therapistCount}',
-                    onTap: () => context.push('${AppRoutes.agencyHome}/roster'),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: [
+                      _StatCard(
+                        label: 'Therapists',
+                        value: '${d.therapistCount}',
+                        onTap: () =>
+                            context.push('${AppRoutes.agencyHome}/roster'),
+                      ),
+                      _StatCard(
+                        label: 'Active clients',
+                        value: '${d.activeClients}',
+                        onTap: () =>
+                            context.push('${AppRoutes.agencyHome}/analytics'),
+                      ),
+                      _StatCard(
+                        label: 'Sessions today',
+                        value: '${d.appointmentsToday}',
+                        onTap: () => context
+                            .push('${AppRoutes.agencyHome}/appointments'),
+                      ),
+                      _StatCard(
+                        label: 'Pending verify',
+                        value: '${d.pendingTherapists}',
+                        highlight: d.pendingTherapists > 0,
+                        onTap: () =>
+                            context.push('${AppRoutes.agencyHome}/roster'),
+                      ),
+                    ],
                   ),
-                  _StatCard(
-                    label: 'Active clients',
-                    value: '${d.activeClients}',
-                    onTap: () => context.push('${AppRoutes.agencyHome}/analytics'),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Operations board',
+                    style: Theme.of(context).textTheme.titleMedium,
                   ),
-                  _StatCard(
-                    label: 'Sessions today',
-                    value: '${d.appointmentsToday}',
-                    onTap: () => context.push('${AppRoutes.agencyHome}/appointments'),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: [
+                      _StatCard(
+                        label: 'Missing EVV',
+                        value: '${d.missingEvvCount}',
+                        highlight: d.missingEvvCount > 0,
+                        onTap: () =>
+                            context.push('${AppRoutes.agencyHome}/appointments'),
+                      ),
+                      _StatCard(
+                        label: 'Draft claims',
+                        value: '${d.draftClaimsCount}',
+                        highlight: d.draftClaimsCount > 0,
+                        onTap: () =>
+                            context.push('${AppRoutes.agencyHome}/analytics'),
+                      ),
+                      _StatCard(
+                        label: 'Cancels today',
+                        value: '${d.cancellationsToday}',
+                        onTap: () =>
+                            context.push('${AppRoutes.agencyHome}/appointments'),
+                      ),
+                    ],
                   ),
-                  _StatCard(
-                    label: 'Pending verify',
-                    value: '${d.pendingTherapists}',
-                    highlight: d.pendingTherapists > 0,
-                    onTap: () => context.push('${AppRoutes.agencyHome}/roster'),
+                  const SizedBox(height: 12),
+                  DashboardActionInbox(
+                    items: d.actionItems
+                        .map((e) => DashboardActionModel.fromJson(e))
+                        .toList(),
                   ),
                 ],
               ),

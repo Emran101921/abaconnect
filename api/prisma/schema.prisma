@@ -524,10 +524,11 @@ model Session {
   tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   child          Child           @relation(fields: [childId], references: [id], onDelete: Cascade)
   therapist      Therapist       @relation(fields: [therapistId], references: [id], onDelete: Cascade)
-  soapNote       SoapNote?
-  progressNote   ProgressNote?
-  locationEvents LocationEvent[]
-  payment        Payment?
+  soapNote        SoapNote?
+  progressNote    ProgressNote?
+  locationEvents  LocationEvent[]
+  payment         Payment?
+  insuranceClaim  InsuranceClaim?
 
   @@index([tenantId])
   @@index([childId])
@@ -836,6 +837,7 @@ model InsuranceClaim {
   tenantId        String      @map("tenant_id") @db.Uuid
   parentId        String      @map("parent_id") @db.Uuid
   childId         String      @map("child_id") @db.Uuid
+  sessionId       String?     @unique @map("session_id") @db.Uuid
   claimNumber     String?     @map("claim_number")
   payerName       String      @map("payer_name")
   status          ClaimStatus @default(DRAFT)
@@ -850,9 +852,10 @@ model InsuranceClaim {
   createdAt       DateTime    @default(now()) @map("created_at")
   updatedAt       DateTime    @updatedAt @map("updated_at")
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  parent Parent @relation(fields: [parentId], references: [id], onDelete: Cascade)
-  child  Child  @relation(fields: [childId], references: [id], onDelete: Cascade)
+  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  parent  Parent   @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  child   Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  session Session? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
 
   @@index([tenantId])
   @@index([parentId])

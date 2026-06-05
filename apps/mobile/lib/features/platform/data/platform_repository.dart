@@ -68,6 +68,10 @@ class InsuranceClaimItemModel {
     required this.status,
     required this.billedAmount,
     this.childName,
+    this.sessionId,
+    this.claimNumber,
+    this.ediReady,
+    this.clearinghouseStatus,
   });
 
   final String id;
@@ -75,6 +79,10 @@ class InsuranceClaimItemModel {
   final String status;
   final double billedAmount;
   final String? childName;
+  final String? sessionId;
+  final String? claimNumber;
+  final bool? ediReady;
+  final String? clearinghouseStatus;
 }
 
 class ConsentItemModel {
@@ -261,6 +269,7 @@ class PlatformRepository {
       query {
         myInsuranceClaims {
           id payerName status billedAmount childName
+          sessionId claimNumber ediReady clearinghouseStatus
         }
       }
     ''');
@@ -273,6 +282,10 @@ class PlatformRepository {
             status: e['status'] as String? ?? '',
             billedAmount: (e['billedAmount'] as num?)?.toDouble() ?? 0,
             childName: e['childName'] as String?,
+            sessionId: e['sessionId'] as String?,
+            claimNumber: e['claimNumber'] as String?,
+            ediReady: e['ediReady'] as bool?,
+            clearinghouseStatus: e['clearinghouseStatus'] as String?,
           ),
         )
         .toList();

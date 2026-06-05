@@ -155,4 +155,16 @@ export class AdminInsuranceClaimType {
 
   @Field({ nullable: true })
   denialReason?: string;
+
+  @Field({ nullable: true })
+  claimNumber?: string;
+
+  @Field({ nullable: true })
+  sessionId?: string;
+
+  @Field({ nullable: true })
+  ediReady?: boolean;
+
+  @Field({ nullable: true })
+  clearinghouseStatus?: string;
 }

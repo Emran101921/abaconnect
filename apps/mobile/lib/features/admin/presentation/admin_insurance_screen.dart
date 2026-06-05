@@ -49,11 +49,26 @@ class AdminInsuranceScreen extends ConsumerWidget {
                         const SizedBox(height: 4),
                         Text('${c.childName ?? ''} · ${c.parentEmail ?? ''}'),
                         Text(currency.format(c.billedAmount)),
+                        if (c.claimNumber != null)
+                          Text('Claim #${c.claimNumber}'),
+                        if (c.ediReady == true)
+                          const Text('837 EDI payload ready'),
+                        if (c.clearinghouseStatus != null)
+                          Text('Clearinghouse: ${c.clearinghouseStatus}'),
                         if (actionable) ...[
                           const SizedBox(height: 12),
                           Wrap(
                             spacing: 8,
                             children: [
+                              if (c.status == 'DRAFT' || c.status == 'PENDING')
+                                FilledButton.tonal(
+                                  onPressed: () => _submitClearinghouse(
+                                    context,
+                                    ref,
+                                    c,
+                                  ),
+                                  child: const Text('Submit 837'),
+                                ),
                               FilledButton(
                                 onPressed: () => _update(
                                   context,
@@ -98,6 +113,30 @@ class AdminInsuranceScreen extends ConsumerWidget {
         },
       ),
     );
+  }
+
+  Future<void> _submitClearinghouse(
+    BuildContext context,
+    WidgetRef ref,
+    AdminInsuranceClaimModel c,
+  ) async {
+    try {
+      await ref
+          .read(adminRepositoryProvider)
+          .submitClaimToClearinghouse(c.id);
+      ref.invalidate(adminInsuranceClaimsProvider);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Submitted to clearinghouse')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Submit failed: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _update(

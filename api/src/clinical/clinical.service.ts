@@ -25,7 +25,9 @@ export class ClinicalService {
   }
 
   async listPlansForTherapistUser(userId: string) {
-    const therapist = await this.prisma.therapist.findUnique({ where: { userId } });
+    const therapist = await this.prisma.therapist.findUnique({
+      where: { userId },
+    });
     if (!therapist) return [];
     return this.prisma.treatmentPlan.findMany({
       where: { therapistId: therapist.id },
@@ -45,7 +47,9 @@ export class ClinicalService {
       startDate: Date;
     },
   ) {
-    const therapist = await this.prisma.therapist.findUnique({ where: { userId } });
+    const therapist = await this.prisma.therapist.findUnique({
+      where: { userId },
+    });
     if (!therapist) {
       throw new BadRequestException('Therapist profile not found');
     }
@@ -77,7 +81,9 @@ export class ClinicalService {
     userId: string,
     data: { sessionId: string; summary: string; parentFeedback?: string },
   ) {
-    const therapist = await this.prisma.therapist.findUnique({ where: { userId } });
+    const therapist = await this.prisma.therapist.findUnique({
+      where: { userId },
+    });
     if (!therapist) {
       throw new BadRequestException('Therapist profile not found');
     }

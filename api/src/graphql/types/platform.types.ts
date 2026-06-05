@@ -1,4 +1,11 @@
-import { Field, Float, ID, Int, ObjectType, registerEnumType } from '@nestjs/graphql';
+import {
+  Field,
+  Float,
+  ID,
+  Int,
+  ObjectType,
+  registerEnumType,
+} from '@nestjs/graphql';
 import { ClaimStatus, DocumentType } from '../../../generated/prisma/client';
 
 registerEnumType(DocumentType, { name: 'DocumentType' });
@@ -95,6 +102,18 @@ export class InsuranceClaimType {
 
   @Field()
   serviceDate: Date;
+
+  @Field({ nullable: true })
+  sessionId?: string;
+
+  @Field({ nullable: true })
+  claimNumber?: string;
+
+  @Field({ nullable: true })
+  ediReady?: boolean;
+
+  @Field({ nullable: true })
+  clearinghouseStatus?: string;
 }
 
 @ObjectType()

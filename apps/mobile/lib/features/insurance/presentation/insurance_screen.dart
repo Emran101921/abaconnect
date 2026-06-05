@@ -43,10 +43,17 @@ class InsuranceScreen extends ConsumerWidget {
               separatorBuilder: (_, __) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
                 final c = list[index];
+                final meta = [
+                  c.childName,
+                  c.status,
+                  if (c.claimNumber != null) c.claimNumber,
+                  if (c.ediReady == true) 'EDI ready',
+                  if (c.clearinghouseStatus != null) c.clearinghouseStatus,
+                ].whereType<String>().join(' · ');
                 return Card(
                   child: ListTile(
                     title: Text(c.payerName),
-                    subtitle: Text('${c.childName ?? ''} · ${c.status}'),
+                    subtitle: Text(meta),
                     trailing: Text(formatter.format(c.billedAmount)),
                   ),
                 );

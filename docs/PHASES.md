@@ -43,5 +43,6 @@
 - [x] Parent appointment reschedule
 - WebAuthn MFA (optional upgrade)
 - Field-level encryption service for PHI columns
-- Clearinghouse integration for 837/835 claims
+- [x] 837 claim assembly + stub generator + clearinghouse adapter (stub vendor)
+- Production clearinghouse integration for live 837/835 exchange
 - Load testing for 100k+ users

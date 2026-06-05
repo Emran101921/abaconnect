@@ -3,6 +3,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../../core/constants/api_constants.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/push/push_token_service.dart';
 import '../../../shared/models/user_role.dart';
 
 class LoginResponse {
@@ -133,9 +134,7 @@ class AuthRepository {
               TargetPlatform.android => 'android',
               _ => 'other',
             };
-      final token = kIsWeb
-          ? 'web-$userId'
-          : 'mobile-$userId-${DateTime.now().millisecondsSinceEpoch ~/ 86400000}';
+      final token = await PushTokenService().resolveToken(userId: userId);
       await _api.post(
         '/auth/device',
         data: {
@@ -145,7 +144,7 @@ class AuthRepository {
         },
       );
     } catch (_) {
-      // Push registration is best-effort until FCM/APNs is wired.
+      // Push registration is best-effort until FCM/APNs credentials are configured.
     }
   }
 

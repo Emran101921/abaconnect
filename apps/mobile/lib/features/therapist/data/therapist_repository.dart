@@ -40,12 +40,16 @@ class TherapistDashboardModel {
     required this.appointmentsToday,
     required this.inProgressSessions,
     required this.pendingDocumentation,
+    required this.unreadMessages,
+    this.actionItems = const [],
   });
 
   final int pendingRequests;
   final int appointmentsToday;
   final int inProgressSessions;
   final int pendingDocumentation;
+  final int unreadMessages;
+  final List<Map<String, dynamic>> actionItems;
 }
 
 class TherapistAppointmentModel {
@@ -100,6 +104,11 @@ class TherapistRepository {
           appointmentsToday
           inProgressSessions
           pendingDocumentation
+          unreadMessages
+          actionItems {
+            id title subtitle actionType priority
+            threadId appointmentId sessionId claimId
+          }
         }
       }
     ''';
@@ -113,6 +122,9 @@ class TherapistRepository {
       appointmentsToday: d['appointmentsToday'] as int? ?? 0,
       inProgressSessions: d['inProgressSessions'] as int? ?? 0,
       pendingDocumentation: d['pendingDocumentation'] as int? ?? 0,
+      unreadMessages: d['unreadMessages'] as int? ?? 0,
+      actionItems: (d['actionItems'] as List<dynamic>? ?? [])
+          .cast<Map<String, dynamic>>(),
     );
   }
 

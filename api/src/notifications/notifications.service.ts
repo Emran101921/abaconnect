@@ -1,10 +1,20 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bull';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import type { Queue } from 'bull';
 import { Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import type { PushPayload } from '../push/push.service';
 
 @Injectable()
 export class NotificationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @InjectQueue('push') private readonly pushQueue: Queue<PushPayload>,
+  ) {}
 
   async countUnread(userId: string) {
     return this.prisma.notification.count({
@@ -50,7 +60,7 @@ export class NotificationsService {
   ) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new BadRequestException('User not found');
-    return this.prisma.notification.create({
+    const notification = await this.prisma.notification.create({
       data: {
         tenantId: user.tenantId,
         userId,
@@ -59,6 +69,19 @@ export class NotificationsService {
         data: (data.data ?? {}) as Prisma.InputJsonValue,
       },
     });
+
+    await this.pushQueue.add(
+      'send',
+      {
+        userId,
+        title: data.title,
+        body: data.body,
+        data: data.data,
+      },
+      { removeOnComplete: true, attempts: 2 },
+    );
+
+    return notification;
   }
 
   async create(data: Record<string, unknown>) {
@@ -80,7 +103,9 @@ export class NotificationsService {
     await this.findOne(id);
     return this.prisma.notification.update({
       where: { id },
-      data: data as Parameters<typeof this.prisma.notification.update>[0]['data'],
+      data: data as Parameters<
+        typeof this.prisma.notification.update
+      >[0]['data'],
     });
   }
 

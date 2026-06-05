@@ -12,7 +12,10 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { DocumentType } from '../../generated/prisma/client';
-import { AuthUser, CurrentUser } from '../common/decorators/current-user.decorator';
+import {
+  AuthUser,
+  CurrentUser,
+} from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { DocumentsService } from './documents.service';
 
@@ -39,7 +42,9 @@ export class UserDocumentsController {
     }
     const allowed = Object.values(DocumentType) as string[];
     const docType =
-      type && allowed.includes(type) ? (type as DocumentType) : DocumentType.OTHER;
+      type && allowed.includes(type)
+        ? (type as DocumentType)
+        : DocumentType.OTHER;
     return this.documentsService.saveUploadedFile(user.id, file, {
       title: title?.trim() || file.originalname,
       type: docType,
@@ -53,7 +58,10 @@ export class UserDocumentsController {
     @Param('id') id: string,
     @Res() res: Response,
   ): Promise<void> {
-    const { doc, stream } = await this.documentsService.openFileStream(user.id, id);
+    const { doc, stream } = await this.documentsService.openFileStream(
+      user.id,
+      id,
+    );
     res.setHeader('Content-Type', doc.mimeType);
     res.setHeader(
       'Content-Disposition',

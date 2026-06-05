@@ -5,6 +5,7 @@ import {
   TherapyType,
 } from '../../../generated/prisma/client';
 import { TherapistUserType } from './parent-booking.types';
+import { DashboardActionItemType } from './dashboard.types';
 
 registerEnumType(AppointmentStatus, { name: 'AppointmentStatus' });
 
@@ -21,6 +22,18 @@ export class AgencyDashboardType {
 
   @Field(() => Int)
   pendingTherapists: number;
+
+  @Field(() => Int)
+  missingEvvCount: number;
+
+  @Field(() => Int)
+  draftClaimsCount: number;
+
+  @Field(() => Int)
+  cancellationsToday: number;
+
+  @Field(() => [DashboardActionItemType])
+  actionItems: DashboardActionItemType[];
 }
 
 @ObjectType()

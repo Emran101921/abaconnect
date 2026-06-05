@@ -5,7 +5,9 @@ import 'package:intl/intl.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
+import '../../../shared/models/dashboard_action_model.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/dashboard_action_inbox.dart';
 import '../../messaging/messaging_providers.dart';
 import '../../messaging/presentation/messages_screen.dart';
 import '../../messaging/presentation/recent_messages_section.dart';
@@ -100,6 +102,63 @@ class ParentHomeScreen extends ConsumerWidget {
               error: (e, _) => Text('Overview error: $e'),
             ),
             const SizedBox(height: 12),
+            dashboard.when(
+              data: (d) {
+                final actions = d.actionItems
+                    .map((e) => DashboardActionModel.fromJson(e))
+                    .toList();
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    DashboardActionInbox(items: actions),
+                    if (d.lastSessionSummary != null ||
+                        d.openClaimsCount > 0 ||
+                        d.nextTelehealthAppointmentId != null) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        'Care & billing',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 8),
+                      if (d.lastSessionSummary != null)
+                        Card(
+                          child: ListTile(
+                            leading: const Icon(Icons.summarize_outlined),
+                            title: const Text('Latest session summary'),
+                            subtitle: Text(
+                              d.lastSessionSummary!,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
+                      if (d.openClaimsCount > 0)
+                        Card(
+                          child: ListTile(
+                            leading: const Icon(Icons.receipt_long_outlined),
+                            title: Text('${d.openClaimsCount} open claim(s)'),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => context.push(AppRoutes.insurance),
+                          ),
+                        ),
+                      if (d.nextTelehealthAppointmentId != null)
+                        Card(
+                          child: ListTile(
+                            leading: const Icon(Icons.videocam_outlined),
+                            title: const Text('Telehealth visit coming up'),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => context
+                                .push('${AppRoutes.parentHome}/appointments'),
+                          ),
+                        ),
+                    ],
+                    const SizedBox(height: 12),
+                  ],
+                );
+              },
+              loading: () => const SizedBox.shrink(),
+              error: (_, __) => const SizedBox.shrink(),
+            ),
             const RecentMessagesSection(),
             const SizedBox(height: 12),
             pendingReviews.when(

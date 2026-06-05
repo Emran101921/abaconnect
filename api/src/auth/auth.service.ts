@@ -159,7 +159,9 @@ export class AuthService {
       throw new UnauthorizedException('Invalid MFA challenge');
     }
 
-    const user = await this.prisma.user.findUnique({ where: { id: payload.sub } });
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.sub },
+    });
     if (!user?.mfaSecret) {
       throw new UnauthorizedException('MFA not configured');
     }

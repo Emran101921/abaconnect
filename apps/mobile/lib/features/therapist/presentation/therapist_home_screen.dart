@@ -5,7 +5,9 @@ import 'package:intl/intl.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
+import '../../../shared/models/dashboard_action_model.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/dashboard_action_inbox.dart';
 import '../../messaging/messaging_providers.dart';
 import '../../messaging/presentation/messages_screen.dart';
 import '../../messaging/presentation/recent_messages_section.dart';
@@ -120,6 +122,16 @@ class TherapistHomeScreen extends ConsumerWidget {
               ),
               loading: () => const LinearProgressIndicator(),
               error: (e, _) => Text('Overview error: $e'),
+            ),
+            const SizedBox(height: 12),
+            dashboard.when(
+              data: (d) => DashboardActionInbox(
+                items: d.actionItems
+                    .map((e) => DashboardActionModel.fromJson(e))
+                    .toList(),
+              ),
+              loading: () => const SizedBox.shrink(),
+              error: (_, __) => const SizedBox.shrink(),
             ),
             const SizedBox(height: 12),
             const RecentMessagesSection(),

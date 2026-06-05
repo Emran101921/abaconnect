@@ -31,13 +31,18 @@ export class DocumentsService {
     if (parent) {
       return this.prisma.document.findMany({
         where: {
-          OR: [{ child: { parentId: parent.id } }, { tenantId: parent.tenantId, childId: null }],
+          OR: [
+            { child: { parentId: parent.id } },
+            { tenantId: parent.tenantId, childId: null },
+          ],
         },
         orderBy: { uploadedAt: 'desc' },
         take: 50,
       });
     }
-    const therapist = await this.prisma.therapist.findUnique({ where: { userId } });
+    const therapist = await this.prisma.therapist.findUnique({
+      where: { userId },
+    });
     if (therapist) {
       return this.prisma.document.findMany({
         where: { therapistId: therapist.id },
@@ -60,7 +65,9 @@ export class DocumentsService {
     },
   ) {
     const parent = await this.prisma.parent.findUnique({ where: { userId } });
-    const therapist = await this.prisma.therapist.findUnique({ where: { userId } });
+    const therapist = await this.prisma.therapist.findUnique({
+      where: { userId },
+    });
     const tenantId = parent?.tenantId ?? therapist?.tenantId;
     if (!tenantId) {
       throw new BadRequestException('Profile not found');
@@ -169,10 +176,15 @@ export class DocumentsService {
     if (!doc) throw new NotFoundException('Document not found');
 
     const parent = await this.prisma.parent.findUnique({ where: { userId } });
-    if (parent && (doc.child?.parentId === parent.id || doc.tenantId === parent.tenantId)) {
+    if (
+      parent &&
+      (doc.child?.parentId === parent.id || doc.tenantId === parent.tenantId)
+    ) {
       return doc;
     }
-    const therapist = await this.prisma.therapist.findUnique({ where: { userId } });
+    const therapist = await this.prisma.therapist.findUnique({
+      where: { userId },
+    });
     if (therapist && doc.therapistId === therapist.id) {
       return doc;
     }
