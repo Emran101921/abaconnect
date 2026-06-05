@@ -34,20 +34,6 @@ class TherapistProfileModel {
   final List<String> therapyTypes;
 }
 
-class TherapistDashboardModel {
-  const TherapistDashboardModel({
-    required this.pendingRequests,
-    required this.appointmentsToday,
-    required this.inProgressSessions,
-    required this.pendingDocumentation,
-  });
-
-  final int pendingRequests;
-  final int appointmentsToday;
-  final int inProgressSessions;
-  final int pendingDocumentation;
-}
-
 class TherapistAppointmentModel {
   const TherapistAppointmentModel({
     required this.id,
@@ -56,7 +42,6 @@ class TherapistAppointmentModel {
     required this.scheduledStart,
     required this.childName,
     required this.childId,
-    this.locationType,
   });
 
   final String id;
@@ -65,9 +50,6 @@ class TherapistAppointmentModel {
   final DateTime scheduledStart;
   final String childName;
   final String childId;
-  final String? locationType;
-
-  bool get isTelehealth => locationType == 'TELEHEALTH';
 }
 
 class TherapistSessionModel {
@@ -91,30 +73,6 @@ class TherapistRepository {
 
   final GraphqlClient _graphql;
   final ApiClient _api;
-
-  Future<TherapistDashboardModel> fetchDashboard() async {
-    const query = r'''
-      query TherapistDashboard {
-        therapistDashboard {
-          pendingRequests
-          appointmentsToday
-          inProgressSessions
-          pendingDocumentation
-        }
-      }
-    ''';
-    final result = await _graphql.query(query);
-    final d = result['data']?['therapistDashboard'] as Map<String, dynamic>?;
-    if (d == null) {
-      throw Exception('therapistDashboard unavailable');
-    }
-    return TherapistDashboardModel(
-      pendingRequests: d['pendingRequests'] as int? ?? 0,
-      appointmentsToday: d['appointmentsToday'] as int? ?? 0,
-      inProgressSessions: d['inProgressSessions'] as int? ?? 0,
-      pendingDocumentation: d['pendingDocumentation'] as int? ?? 0,
-    );
-  }
 
   Future<TherapistProfileModel> fetchProfile() async {
     const query = r'''
@@ -162,7 +120,6 @@ class TherapistRepository {
           status
           therapyType
           scheduledStart
-          locationType
           child { id firstName lastName }
         }
       }
@@ -179,7 +136,6 @@ class TherapistRepository {
         scheduledStart: DateTime.parse(e['scheduledStart'] as String),
         childName: '${child['firstName']} ${child['lastName']}',
         childId: child['id'] as String,
-        locationType: e['locationType'] as String?,
       );
     }).toList();
   }

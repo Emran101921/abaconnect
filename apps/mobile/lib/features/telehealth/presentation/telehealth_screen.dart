@@ -3,11 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/app_providers.dart';
-import '../../../shared/models/user_role.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../parent/presentation/parent_home_screen.dart';
 import '../../platform/data/platform_repository.dart';
-import '../../therapist/presentation/therapist_home_screen.dart';
 
 final telehealthSessionsProvider =
     FutureProvider<List<TelehealthSessionModel>>((ref) {
@@ -20,21 +18,14 @@ class TelehealthScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final sessions = ref.watch(telehealthSessionsProvider);
-    final role = ref.watch(authStateProvider).valueOrNull?.user.role;
-    final isTherapist = role == UserRole.therapist;
-    final parentAppointments = ref.watch(parentAppointmentsProvider);
-    final therapistAppointments = ref.watch(therapistAppointmentsProvider);
+    final appointments = ref.watch(parentAppointmentsProvider);
 
     return AppScaffold(
       title: 'Telehealth',
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(telehealthSessionsProvider);
-          if (isTherapist) {
-            ref.invalidate(therapistAppointmentsProvider);
-          } else {
-            ref.invalidate(parentAppointmentsProvider);
-          }
+          ref.invalidate(parentAppointmentsProvider);
         },
         child: ListView(
           padding: const EdgeInsets.all(16),
@@ -75,45 +66,24 @@ class TelehealthScreen extends ConsumerWidget {
                     }).toList(),
                   );
                 }
-                if (isTherapist) {
-                  return therapistAppointments.when(
-                    data: (apts) {
-                      final telehealth =
-                          apts.where((a) => a.isTelehealth).toList();
-                      return _appointmentJoinList(
-                        context,
-                        ref,
-                        telehealth
-                            .map(
-                              (a) => _TelehealthAppointmentRow(
-                                id: a.id,
-                                title: '${a.childName} · ${a.therapyType}',
-                                subtitle: a.status,
-                              ),
-                            )
-                            .toList(),
-                      );
-                    },
-                    loading: () => const CircularProgressIndicator(),
-                    error: (e, _) => Text('$e'),
-                  );
-                }
-                return parentAppointments.when(
+                return appointments.when(
                   data: (apts) {
-                    final telehealth =
-                        apts.where((a) => a.isTelehealth).toList();
-                    return _appointmentJoinList(
-                      context,
-                      ref,
-                      telehealth
-                          .map(
-                            (a) => _TelehealthAppointmentRow(
-                              id: a.id,
-                              title: a.therapyType,
-                              subtitle: '${a.childName} · ${a.status}',
+                    if (apts.isEmpty) {
+                      return const Text('No appointments to join.');
+                    }
+                    return Column(
+                      children: apts.map((a) {
+                        return Card(
+                          child: ListTile(
+                            title: Text(a.therapyType),
+                            subtitle: Text('${a.childName} · ${a.status}'),
+                            trailing: FilledButton(
+                              onPressed: () => _join(context, ref, a.id),
+                              child: const Text('Join'),
                             ),
-                          )
-                          .toList(),
+                          ),
+                        );
+                      }).toList(),
                     );
                   },
                   loading: () => const CircularProgressIndicator(),
@@ -126,32 +96,6 @@ class TelehealthScreen extends ConsumerWidget {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _appointmentJoinList(
-    BuildContext context,
-    WidgetRef ref,
-    List<_TelehealthAppointmentRow> apts,
-  ) {
-    if (apts.isEmpty) {
-      return const Text(
-        'No telehealth appointments. Book or schedule visits with location type TELEHEALTH.',
-      );
-    }
-    return Column(
-      children: apts.map((a) {
-        return Card(
-          child: ListTile(
-            title: Text(a.title),
-            subtitle: Text(a.subtitle),
-            trailing: FilledButton(
-              onPressed: () => _join(context, ref, a.id),
-              child: const Text('Join'),
-            ),
-          ),
-        );
-      }).toList(),
     );
   }
 
@@ -201,16 +145,4 @@ class TelehealthScreen extends ConsumerWidget {
       ),
     );
   }
-}
-
-class _TelehealthAppointmentRow {
-  const _TelehealthAppointmentRow({
-    required this.id,
-    required this.title,
-    required this.subtitle,
-  });
-
-  final String id;
-  final String title;
-  final String subtitle;
 }

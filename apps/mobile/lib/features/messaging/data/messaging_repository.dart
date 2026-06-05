@@ -8,7 +8,6 @@ class MessageThreadModel {
     this.subject,
     this.lastMessageBody,
     this.lastMessageAt,
-    this.hasUnread = false,
   });
 
   final String id;
@@ -17,7 +16,6 @@ class MessageThreadModel {
   final String? lastMessageBody;
   final DateTime? lastMessageAt;
   final DateTime updatedAt;
-  final bool hasUnread;
 }
 
 class ParentContactModel {
@@ -62,14 +60,7 @@ class MessagingRepository {
         lastMessageBody
         lastMessageAt
         updatedAt
-        hasUnread
       }
-    }
-  ''';
-
-  static const _unreadCountQuery = r'''
-    query UnreadMessageThreadCount {
-      unreadMessageThreadCount
     }
   ''';
 
@@ -124,11 +115,6 @@ class MessagingRepository {
       }
     }
   ''';
-
-  Future<int> fetchUnreadThreadCount() async {
-    final result = await _graphql.query(_unreadCountQuery);
-    return result['data']?['unreadMessageThreadCount'] as int? ?? 0;
-  }
 
   Future<List<MessageThreadModel>> fetchThreads() async {
     final result = await _graphql.query(_threadsQuery);
@@ -203,7 +189,6 @@ class MessagingRepository {
       lastMessageBody: e['lastMessageBody'] as String?,
       lastMessageAt: DateTime.tryParse(e['lastMessageAt'] as String? ?? ''),
       updatedAt: DateTime.parse(e['updatedAt'] as String),
-      hasUnread: e['hasUnread'] as bool? ?? false,
     );
   }
 

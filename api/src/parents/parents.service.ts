@@ -9,43 +9,6 @@ import { PrismaService } from '../prisma/prisma.service';
 export class ParentsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getDashboardForUserId(userId: string) {
-    const parent = await this.prisma.parent.findUnique({ where: { userId } });
-    if (!parent) {
-      throw new NotFoundException('Parent profile not found');
-    }
-
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(start);
-    end.setHours(23, 59, 59, 999);
-
-    const [childrenCount, upcomingAppointments, appointmentsToday] =
-      await Promise.all([
-        this.prisma.child.count({ where: { parentId: parent.id } }),
-        this.prisma.appointment.count({
-          where: {
-            parentId: parent.id,
-            scheduledStart: { gte: new Date() },
-            status: { notIn: ['CANCELLED', 'COMPLETED', 'NO_SHOW'] },
-          },
-        }),
-        this.prisma.appointment.count({
-          where: {
-            parentId: parent.id,
-            scheduledStart: { gte: start, lte: end },
-            status: { notIn: ['CANCELLED', 'NO_SHOW'] },
-          },
-        }),
-      ]);
-
-    return {
-      childrenCount,
-      upcomingAppointments,
-      appointmentsToday,
-    };
-  }
-
   async findProfileByUserId(userId: string) {
     const parent = await this.prisma.parent.findUnique({
       where: { userId },

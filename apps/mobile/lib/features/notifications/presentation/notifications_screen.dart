@@ -6,7 +6,6 @@ import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/models/user_role.dart';
 import '../../../shared/widgets/app_scaffold.dart';
-import '../../messaging/messaging_providers.dart';
 import '../../platform/data/platform_repository.dart';
 import '../notification_providers.dart';
 
@@ -26,7 +25,6 @@ class NotificationsScreen extends ConsumerWidget {
       return true;
     }
     if (n.actionType == 'SESSION_COMPLETED') return true;
-    if (n.actionType == 'SOAP_DUE') return true;
     return false;
   }
 
@@ -45,13 +43,7 @@ class NotificationsScreen extends ConsumerWidget {
     final role = ref.read(authStateProvider).valueOrNull?.user.role;
 
     if (n.actionType == 'MESSAGE' && n.threadId != null) {
-      ref.invalidate(unreadMessageThreadsProvider);
       context.push('${AppRoutes.messages}/${n.threadId}');
-      return;
-    }
-
-    if (n.actionType == 'SOAP_DUE' && role == UserRole.therapist) {
-      context.push('${AppRoutes.therapistHome}/session-notes');
       return;
     }
 
