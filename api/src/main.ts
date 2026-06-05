@@ -1,20 +1,19 @@
 import { ArgumentMetadata, Injectable, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { CLASS_TYPE_METADATA } from '@nestjs/graphql/dist/graphql.constants';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 
-/** Skip class-validator whitelist for GraphQL @Args() and @InputType() classes. */
+/** Skip whitelist validation for GraphQL @Args() and @InputType() classes. */
 @Injectable()
 class HttpValidationPipe extends ValidationPipe {
   async transform(value: unknown, metadata: ArgumentMetadata) {
-    if (metadata.type !== 'body' && metadata.type !== 'query' && metadata.type !== 'param') {
+    if (metadata.type === 'custom') {
       return value;
     }
-    if (
+    const gqlClassType =
       metadata.metatype &&
-      Reflect.getMetadata(CLASS_TYPE_METADATA, metadata.metatype)
-    ) {
+      Reflect.getMetadata('graphql:class_type', metadata.metatype);
+    if (gqlClassType) {
       return value;
     }
     return super.transform(value, metadata);
