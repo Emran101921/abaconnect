@@ -3,6 +3,18 @@ import { TherapyType } from '../../../generated/prisma/client';
 import { ChildType } from './parent-booking.types';
 
 @ObjectType()
+export class TreatmentPlanGoalType {
+  @Field()
+  id: string;
+
+  @Field()
+  label: string;
+
+  @Field({ nullable: true })
+  status?: string;
+}
+
+@ObjectType()
 export class TreatmentPlanType {
   @Field(() => ID)
   id: string;
@@ -24,6 +36,9 @@ export class TreatmentPlanType {
 
   @Field({ nullable: true })
   therapistName?: string;
+
+  @Field(() => [TreatmentPlanGoalType])
+  goals: TreatmentPlanGoalType[];
 }
 
 @ObjectType()

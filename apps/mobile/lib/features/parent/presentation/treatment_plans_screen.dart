@@ -40,13 +40,28 @@ class TreatmentPlansScreen extends ConsumerWidget {
               itemBuilder: (context, index) {
                 final p = list[index];
                 return Card(
-                  child: ListTile(
+                  child: ExpansionTile(
                     title: Text(p.title),
                     subtitle: Text(
                       '${p.childName} · ${p.therapyType}\n'
                       'Therapist: ${p.therapistName ?? '—'}',
                     ),
-                    isThreeLine: true,
+                    children: [
+                      if (p.goals.isEmpty)
+                        const ListTile(title: Text('No goals listed yet'))
+                      else
+                        ...p.goals.map(
+                          (g) => ListTile(
+                            leading: Icon(
+                              g.status == 'done'
+                                  ? Icons.check_circle_outline
+                                  : Icons.flag_outlined,
+                            ),
+                            title: Text(g.label),
+                            subtitle: g.status != null ? Text(g.status!) : null,
+                          ),
+                        ),
+                    ],
                   ),
                 );
               },

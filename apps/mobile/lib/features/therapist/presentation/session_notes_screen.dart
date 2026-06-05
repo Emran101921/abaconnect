@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/location/location_service.dart';
 import '../../../core/providers/app_providers.dart';
 import '../data/therapist_repository.dart';
 import '../therapist_providers.dart';
@@ -180,10 +181,21 @@ class SessionNotesScreen extends ConsumerWidget {
     String eventType,
   ) async {
     try {
+      final coords = await LocationService().getCurrentCoords();
+      if (coords == null) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Location permission required for EVV check-in'),
+            ),
+          );
+        }
+        return;
+      }
       await ref.read(platformRepositoryProvider).recordEvv(
             sessionId: sessionId,
-            lat: 30.2672,
-            lng: -97.7431,
+            lat: coords.lat,
+            lng: coords.lng,
             eventType: eventType,
           );
       if (context.mounted) {

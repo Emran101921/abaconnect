@@ -31,6 +31,7 @@ import '../../features/parent/presentation/children_list_screen.dart';
 import '../../features/parent/presentation/parent_appointments_screen.dart';
 import '../../features/parent/presentation/parent_home_screen.dart';
 import '../../features/parent/presentation/parent_profile_screen.dart';
+import '../../features/parent/presentation/progress_notes_screen.dart';
 import '../../features/parent/presentation/session_history_screen.dart';
 import '../../features/parent/presentation/complaints_screen.dart';
 import '../../features/parent/presentation/reviews_screen.dart';
@@ -170,6 +171,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: 'session-history',
             name: 'sessionHistory',
             builder: (context, state) => const SessionHistoryScreen(),
+          ),
+          GoRoute(
+            path: 'progress-notes',
+            name: 'parentProgressNotes',
+            builder: (context, state) => const ProgressNotesScreen(),
           ),
         ],
       ),

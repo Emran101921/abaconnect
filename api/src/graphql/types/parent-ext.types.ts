@@ -97,6 +97,30 @@ export class SessionHistoryType {
 }
 
 @ObjectType()
+export class ParentProgressNoteType {
+  @Field(() => ID)
+  id: string;
+
+  @Field(() => ID)
+  sessionId: string;
+
+  @Field()
+  childName: string;
+
+  @Field()
+  therapistName: string;
+
+  @Field()
+  summary: string;
+
+  @Field({ nullable: true })
+  parentFeedback?: string;
+
+  @Field({ nullable: true })
+  signedAt?: Date;
+}
+
+@ObjectType()
 export class ReviewType {
   @Field(() => ID)
   id: string;

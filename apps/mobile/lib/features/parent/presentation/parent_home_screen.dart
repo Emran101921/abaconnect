@@ -130,6 +130,10 @@ class ParentHomeScreen extends ConsumerWidget {
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => context.push(
+                              '${AppRoutes.parentHome}/progress-notes',
+                            ),
                           ),
                         ),
                       if (d.openClaimsCount > 0)
@@ -286,6 +290,12 @@ class ParentHomeScreen extends ConsumerWidget {
               subtitle: 'Goals and care plans',
               icon: Icons.medical_information,
               onTap: () => context.push('${AppRoutes.parentHome}/treatment-plans'),
+            ),
+            _OpsTile(
+              title: 'Progress notes',
+              subtitle: 'Session summaries from your therapist',
+              icon: Icons.summarize_outlined,
+              onTap: () => context.push('${AppRoutes.parentHome}/progress-notes'),
             ),
             _OpsTile(
               title: 'Screening',

@@ -9,9 +9,16 @@ import { TherapistsService } from '../therapists/therapists.service';
 import {
   CreateTreatmentPlanInput,
   SaveProgressNoteInput,
+  SubmitSessionFeedbackInput,
+  UpdateTreatmentPlanInput,
 } from './inputs/clinical.input';
 import { TherapyType } from '../../generated/prisma/client';
-import { TherapistBadgeType, TreatmentPlanType } from './types/clinical.types';
+import {
+  TherapistBadgeType,
+  TreatmentPlanGoalType,
+  TreatmentPlanType,
+} from './types/clinical.types';
+import { ParentProgressNoteType } from './types/parent-ext.types';
 
 @Resolver()
 export class ClinicalResolver {
@@ -38,13 +45,39 @@ export class ClinicalResolver {
     return rows.map((p) => this.mapPlan(p));
   }
 
+  @Query(() => [ParentProgressNoteType], { name: 'myProgressNotes' })
+  @Roles('PARENT')
+  async myProgressNotes(
+    @CurrentUser() user: AuthUser,
+  ): Promise<ParentProgressNoteType[]> {
+    const rows = await this.clinical.listProgressNotesForParentUser(user.id);
+    return rows.map((n) => this.mapProgressNote(n));
+  }
+
   @Mutation(() => TreatmentPlanType, { name: 'createTreatmentPlan' })
   @Roles('THERAPIST')
   async createTreatmentPlan(
     @CurrentUser() user: AuthUser,
     @Args('input') input: CreateTreatmentPlanInput,
   ): Promise<TreatmentPlanType> {
-    const p = await this.clinical.createPlanForTherapist(user.id, input);
+    const p = await this.clinical.createPlanForTherapist(user.id, {
+      ...input,
+      goals: input.goals,
+    });
+    return this.mapPlan(p);
+  }
+
+  @Mutation(() => TreatmentPlanType, { name: 'updateTreatmentPlan' })
+  @Roles('THERAPIST')
+  async updateTreatmentPlan(
+    @CurrentUser() user: AuthUser,
+    @Args('input') input: UpdateTreatmentPlanInput,
+  ): Promise<TreatmentPlanType> {
+    const p = await this.clinical.updatePlanForTherapist(user.id, input.planId, {
+      title: input.title,
+      isActive: input.isActive,
+      goals: input.goals,
+    });
     return this.mapPlan(p);
   }
 
@@ -56,6 +89,20 @@ export class ClinicalResolver {
   ): Promise<boolean> {
     await this.clinical.saveProgressNote(user.id, input);
     return true;
+  }
+
+  @Mutation(() => ParentProgressNoteType, { name: 'submitSessionFeedback' })
+  @Roles('PARENT')
+  async submitSessionFeedback(
+    @CurrentUser() user: AuthUser,
+    @Args('input') input: SubmitSessionFeedbackInput,
+  ): Promise<ParentProgressNoteType> {
+    const n = await this.clinical.submitSessionFeedback(
+      user.id,
+      input.sessionId,
+      input.feedback,
+    );
+    return this.mapProgressNote(n);
   }
 
   @Query(() => [TherapistBadgeType], { name: 'myTherapistBadges' })
@@ -72,12 +119,25 @@ export class ClinicalResolver {
     }));
   }
 
+  private mapGoals(raw: unknown): TreatmentPlanGoalType[] {
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .filter((g): g is Record<string, unknown> => g != null && typeof g === 'object')
+      .map((g) => ({
+        id: String(g.id ?? ''),
+        label: String(g.label ?? ''),
+        status: g.status != null ? String(g.status) : undefined,
+      }))
+      .filter((g) => g.id && g.label);
+  }
+
   private mapPlan(p: {
     id: string;
     title: string;
     therapyType: TherapyType;
     startDate: Date;
     isActive: boolean;
+    goals?: unknown;
     child?: {
       id: string;
       firstName: string;
@@ -92,6 +152,7 @@ export class ClinicalResolver {
       therapyType: p.therapyType,
       startDate: p.startDate,
       isActive: p.isActive,
+      goals: this.mapGoals(p.goals),
       child: p.child
         ? {
             id: p.child.id,
@@ -103,6 +164,28 @@ export class ClinicalResolver {
       therapistName: p.therapist
         ? `${p.therapist.user.firstName} ${p.therapist.user.lastName}`
         : undefined,
+    };
+  }
+
+  private mapProgressNote(n: {
+    id: string;
+    sessionId: string;
+    summary: string;
+    parentFeedback?: string | null;
+    signedAt?: Date | null;
+    session: {
+      child: { firstName: string; lastName: string };
+      therapist: { user: { firstName: string; lastName: string } };
+    };
+  }): ParentProgressNoteType {
+    return {
+      id: n.id,
+      sessionId: n.sessionId,
+      childName: `${n.session.child.firstName} ${n.session.child.lastName}`,
+      therapistName: `${n.session.therapist.user.firstName} ${n.session.therapist.user.lastName}`,
+      summary: n.summary,
+      parentFeedback: n.parentFeedback ?? undefined,
+      signedAt: n.signedAt ?? undefined,
     };
   }
 }
