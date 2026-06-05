@@ -3,11 +3,17 @@ import { NestFactory } from '@nestjs/core';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 
-/** GraphQL @Args() uses metadata type `custom`; skip whitelist validation there. */
+/** Skip whitelist validation for GraphQL @Args() and @InputType() classes. */
 @Injectable()
 class HttpValidationPipe extends ValidationPipe {
   async transform(value: unknown, metadata: ArgumentMetadata) {
     if (metadata.type === 'custom') {
+      return value;
+    }
+    const gqlClassType =
+      metadata.metatype &&
+      Reflect.getMetadata('graphql:class_type', metadata.metatype);
+    if (gqlClassType) {
       return value;
     }
     return super.transform(value, metadata);
