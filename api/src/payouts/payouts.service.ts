@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { StripeService } from '../payments/stripe.service';
 
@@ -14,7 +10,9 @@ export class PayoutsService {
   ) {}
 
   async listForTherapistUser(userId: string) {
-    const therapist = await this.prisma.therapist.findUnique({ where: { userId } });
+    const therapist = await this.prisma.therapist.findUnique({
+      where: { userId },
+    });
     if (!therapist) return [];
     return this.prisma.payout.findMany({
       where: { therapistId: therapist.id },
@@ -66,7 +64,9 @@ export class PayoutsService {
   }
 
   async markPaid(payoutId: string) {
-    const row = await this.prisma.payout.findUnique({ where: { id: payoutId } });
+    const row = await this.prisma.payout.findUnique({
+      where: { id: payoutId },
+    });
     if (!row) throw new NotFoundException('Payout not found');
     return this.prisma.payout.update({
       where: { id: payoutId },

@@ -34,22 +34,22 @@ export class MessagingService {
 
     return memberships
       .map((m) => {
-      const others = m.thread.participants
-        .filter((p) => p.userId !== userId)
-        .map((p) => p.user);
-      const last = m.thread.messages[0];
-      return {
-        id: m.thread.id,
-        subject: m.thread.subject ?? undefined,
-        updatedAt: m.thread.updatedAt,
-        otherParticipantName: others.length
-          ? `${others[0].firstName} ${others[0].lastName}`
-          : 'Conversation',
-        lastMessageBody: last?.body ?? undefined,
-        lastMessageAt: last?.sentAt ?? undefined,
-        hasUnread: this.isThreadUnread(last, m.lastReadAt, userId),
-      };
-    })
+        const others = m.thread.participants
+          .filter((p) => p.userId !== userId)
+          .map((p) => p.user);
+        const last = m.thread.messages[0];
+        return {
+          id: m.thread.id,
+          subject: m.thread.subject ?? undefined,
+          updatedAt: m.thread.updatedAt,
+          otherParticipantName: others.length
+            ? `${others[0].firstName} ${others[0].lastName}`
+            : 'Conversation',
+          lastMessageBody: last?.body ?? undefined,
+          lastMessageAt: last?.sentAt ?? undefined,
+          hasUnread: this.isThreadUnread(last, m.lastReadAt, userId),
+        };
+      })
       .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
   }
 
@@ -245,7 +245,10 @@ export class MessagingService {
     };
   }
 
-  async startConversationWithTherapist(parentUserId: string, therapistId: string) {
+  async startConversationWithTherapist(
+    parentUserId: string,
+    therapistId: string,
+  ) {
     const parent = await this.prisma.parent.findUnique({
       where: { userId: parentUserId },
     });
@@ -275,10 +278,7 @@ export class MessagingService {
         tenantId: parent.tenantId,
         subject: `Care team — ${therapist.user.firstName} ${therapist.user.lastName}`,
         participants: {
-          create: [
-            { userId: parentUserId },
-            { userId: therapist.userId },
-          ],
+          create: [{ userId: parentUserId }, { userId: therapist.userId }],
         },
       },
       include: {
@@ -319,7 +319,6 @@ export class MessagingService {
     for (const thread of threads) {
       const ids = new Set(thread.participants.map((p) => p.userId));
       if (ids.has(userA) && ids.has(userB) && ids.size === 2) {
-        const other = thread.participants.find((p) => p.userId === userA);
         const peer = thread.participants.find((p) => p.userId !== userA);
         const last = thread.messages[0];
         return {
@@ -357,7 +356,9 @@ export class MessagingService {
   }
 
   async findOne(id: string) {
-    const thread = await this.prisma.messageThread.findUnique({ where: { id } });
+    const thread = await this.prisma.messageThread.findUnique({
+      where: { id },
+    });
     if (!thread) {
       throw new NotFoundException('Thread not found');
     }
@@ -368,7 +369,9 @@ export class MessagingService {
     await this.findOne(id);
     return this.prisma.messageThread.update({
       where: { id },
-      data: data as Parameters<typeof this.prisma.messageThread.update>[0]['data'],
+      data: data as Parameters<
+        typeof this.prisma.messageThread.update
+      >[0]['data'],
     });
   }
 

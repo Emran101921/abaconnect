@@ -59,7 +59,9 @@ export class AppointmentsService {
   }
 
   async findUpcomingForTherapistUser(userId: string) {
-    const therapist = await this.prisma.therapist.findUnique({ where: { userId } });
+    const therapist = await this.prisma.therapist.findUnique({
+      where: { userId },
+    });
     if (!therapist) {
       return [];
     }
@@ -141,7 +143,10 @@ export class AppointmentsService {
   }
 
   private formatIcalUtc(date: Date): string {
-    return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+    return date
+      .toISOString()
+      .replace(/[-:]/g, '')
+      .replace(/\.\d{3}/, '');
   }
 
   private escapeIcalText(value: string): string {
@@ -173,7 +178,9 @@ export class AppointmentsService {
     }
 
     if (input.scheduledEnd <= input.scheduledStart) {
-      throw new BadRequestException('scheduledEnd must be after scheduledStart');
+      throw new BadRequestException(
+        'scheduledEnd must be after scheduledStart',
+      );
     }
 
     const appointment = await this.prisma.appointment.create({
@@ -257,7 +264,10 @@ export class AppointmentsService {
     therapyType: string;
     scheduledStart: Date;
     child: { firstName: string; lastName: string };
-    therapist: { userId: string; user: { firstName: string; lastName: string } };
+    therapist: {
+      userId: string;
+      user: { firstName: string; lastName: string };
+    };
     parent: { userId: string };
   }) {
     const childName = `${appointment.child.firstName} ${appointment.child.lastName}`;
@@ -358,7 +368,9 @@ export class AppointmentsService {
     }
 
     if (scheduledEnd <= scheduledStart) {
-      throw new BadRequestException('scheduledEnd must be after scheduledStart');
+      throw new BadRequestException(
+        'scheduledEnd must be after scheduledStart',
+      );
     }
 
     const updated = await this.prisma.appointment.update({
@@ -396,7 +408,9 @@ export class AppointmentsService {
     appointmentId: string,
     reason?: string,
   ) {
-    const therapist = await this.prisma.therapist.findUnique({ where: { userId } });
+    const therapist = await this.prisma.therapist.findUnique({
+      where: { userId },
+    });
     if (!therapist) {
       throw new BadRequestException('Therapist profile required');
     }
@@ -436,7 +450,7 @@ export class AppointmentsService {
     const cancelReason = reason ?? 'Cancelled by therapist';
     await this.notifications.createForUser(updated.parent.userId, {
       title: 'Appointment cancelled',
-      body: `${therapistName} cancelled ${updated.therapyType} for ${childName} on ${when}`,
+      body: `${therapistName} cancelled ${updated.therapyType} for ${childName} on ${when}: ${cancelReason}`,
       data: { appointmentId: updated.id, type: 'APPOINTMENT_CANCELLED' },
     });
     await this.notifications.createForUser(updated.therapist.userId, {
@@ -448,7 +462,11 @@ export class AppointmentsService {
     return updated;
   }
 
-  async cancelForParentUser(userId: string, appointmentId: string, reason?: string) {
+  async cancelForParentUser(
+    userId: string,
+    appointmentId: string,
+    reason?: string,
+  ) {
     const parent = await this.prisma.parent.findUnique({ where: { userId } });
     if (!parent) {
       throw new BadRequestException('Parent profile not found');
@@ -502,7 +520,9 @@ export class AppointmentsService {
 
   async create(data: Record<string, unknown>) {
     void data;
-    throw new BadRequestException('Use GraphQL bookAppointment or bookForParentUser');
+    throw new BadRequestException(
+      'Use GraphQL bookAppointment or bookForParentUser',
+    );
   }
 
   async findAll() {
@@ -528,7 +548,9 @@ export class AppointmentsService {
     await this.findOne(id);
     return this.prisma.appointment.update({
       where: { id },
-      data: data as Parameters<typeof this.prisma.appointment.update>[0]['data'],
+      data: data as Parameters<
+        typeof this.prisma.appointment.update
+      >[0]['data'],
       include: { child: true, therapist: { include: { user: true } } },
     });
   }

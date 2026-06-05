@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
-import '../data/agency_repository.dart';
 import 'agency_providers.dart';
 
 class AgencyRosterScreen extends ConsumerWidget {

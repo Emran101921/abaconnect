@@ -1,6 +1,9 @@
-import { Args, ID, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Roles } from '../common/decorators/roles.decorator';
-import { AuthUser, CurrentUser } from '../common/decorators/current-user.decorator';
+import {
+  AuthUser,
+  CurrentUser,
+} from '../common/decorators/current-user.decorator';
 import { ClinicalService } from '../clinical/clinical.service';
 import { TherapistsService } from '../therapists/therapists.service';
 import {
@@ -75,7 +78,12 @@ export class ClinicalResolver {
     therapyType: TherapyType;
     startDate: Date;
     isActive: boolean;
-    child?: { id: string; firstName: string; lastName: string; dateOfBirth: Date };
+    child?: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      dateOfBirth: Date;
+    };
     therapist?: { user: { firstName: string; lastName: string } };
   }): TreatmentPlanType {
     return {
