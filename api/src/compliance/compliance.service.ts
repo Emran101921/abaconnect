@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -21,7 +25,12 @@ export class ComplianceService {
     if (!user) throw new BadRequestException('User not found');
 
     await this.prisma.hipaaConsent.updateMany({
-      where: { userId, consentType: data.consentType, granted: true, revokedAt: null },
+      where: {
+        userId,
+        consentType: data.consentType,
+        granted: true,
+        revokedAt: null,
+      },
       data: { granted: false, revokedAt: new Date() },
     });
 
@@ -66,7 +75,9 @@ export class ComplianceService {
     await this.findOne(id);
     return this.prisma.hipaaConsent.update({
       where: { id },
-      data: data as Parameters<typeof this.prisma.hipaaConsent.update>[0]['data'],
+      data: data as Parameters<
+        typeof this.prisma.hipaaConsent.update
+      >[0]['data'],
     });
   }
 

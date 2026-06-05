@@ -111,6 +111,10 @@ class AdminInsuranceClaimModel {
     this.childName,
     this.parentEmail,
     this.denialReason,
+    this.claimNumber,
+    this.sessionId,
+    this.ediReady,
+    this.clearinghouseStatus,
   });
 
   final String id;
@@ -122,6 +126,10 @@ class AdminInsuranceClaimModel {
   final String? childName;
   final String? parentEmail;
   final String? denialReason;
+  final String? claimNumber;
+  final String? sessionId;
+  final bool? ediReady;
+  final String? clearinghouseStatus;
 }
 
 class AuditLogModel {
@@ -373,6 +381,7 @@ class AdminRepository {
         adminInsuranceClaims {
           id status payerName billedAmount approvedAmount serviceDate
           childName parentEmail denialReason
+          claimNumber sessionId ediReady clearinghouseStatus
         }
       }
     ''';
@@ -391,9 +400,22 @@ class AdminRepository {
             childName: e['childName'] as String?,
             parentEmail: e['parentEmail'] as String?,
             denialReason: e['denialReason'] as String?,
+            claimNumber: e['claimNumber'] as String?,
+            sessionId: e['sessionId'] as String?,
+            ediReady: e['ediReady'] as bool?,
+            clearinghouseStatus: e['clearinghouseStatus'] as String?,
           ),
         )
         .toList();
+  }
+
+  Future<void> submitClaimToClearinghouse(String claimId) async {
+    const mutation = r'''
+      mutation Submit($claimId: String!) {
+        submitInsuranceClaimToClearinghouse(claimId: $claimId) { id status }
+      }
+    ''';
+    await _graphql.query(mutation, variables: {'claimId': claimId});
   }
 
   Future<void> updateInsuranceClaim({

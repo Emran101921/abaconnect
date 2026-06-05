@@ -6,12 +6,20 @@ class AgencyDashboardModel {
     required this.activeClients,
     required this.appointmentsToday,
     required this.pendingTherapists,
+    required this.missingEvvCount,
+    required this.draftClaimsCount,
+    required this.cancellationsToday,
+    this.actionItems = const [],
   });
 
   final int therapistCount;
   final int activeClients;
   final int appointmentsToday;
   final int pendingTherapists;
+  final int missingEvvCount;
+  final int draftClaimsCount;
+  final int cancellationsToday;
+  final List<Map<String, dynamic>> actionItems;
 }
 
 class AgencyAppointmentModel {
@@ -62,6 +70,13 @@ class AgencyRepository {
         activeClients
         appointmentsToday
         pendingTherapists
+        missingEvvCount
+        draftClaimsCount
+        cancellationsToday
+        actionItems {
+          id title subtitle actionType priority
+          threadId appointmentId sessionId claimId
+        }
       }
     }
   ''';
@@ -88,6 +103,11 @@ class AgencyRepository {
       activeClients: data['activeClients'] as int? ?? 0,
       appointmentsToday: data['appointmentsToday'] as int? ?? 0,
       pendingTherapists: data['pendingTherapists'] as int? ?? 0,
+      missingEvvCount: data['missingEvvCount'] as int? ?? 0,
+      draftClaimsCount: data['draftClaimsCount'] as int? ?? 0,
+      cancellationsToday: data['cancellationsToday'] as int? ?? 0,
+      actionItems: (data['actionItems'] as List<dynamic>? ?? [])
+          .cast<Map<String, dynamic>>(),
     );
   }
 

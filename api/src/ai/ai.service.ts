@@ -13,7 +13,8 @@ export class AiService {
     void this.prisma;
     return {
       subjective: `Parent reports progress with ${context.childName ?? 'client'} during ${context.therapyType ?? 'therapy'} sessions.`,
-      objective: 'Observed engagement and participation during structured activities.',
+      objective:
+        'Observed engagement and participation during structured activities.',
       assessment: 'Continues toward treatment goals with moderate support.',
       plan: 'Maintain current frequency; adjust goals at next review.',
     };

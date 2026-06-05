@@ -98,9 +98,7 @@ export class MatchingService {
         tenantId,
         isVerified: true,
         isAcceptingClients: true,
-        ...(therapyType
-          ? { therapyTypes: { has: therapyType as never } }
-          : {}),
+        ...(therapyType ? { therapyTypes: { has: therapyType as never } } : {}),
       },
       include: { user: true },
       take: 50,
@@ -126,10 +124,7 @@ export class MatchingService {
     providers: MatchProviderInput[],
     weights: MatchWeights = { distance: 0.6, rating: 0.4 },
   ): ScoredProvider[] {
-    const maxDistance = Math.max(
-      ...providers.map((p) => p.distanceKm),
-      1,
-    );
+    const maxDistance = Math.max(...providers.map((p) => p.distanceKm), 1);
     return providers
       .map((provider) => {
         const distanceScore = 1 - provider.distanceKm / maxDistance;

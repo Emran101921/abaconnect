@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -62,7 +66,9 @@ export class ScreeningsService {
   }
 
   async findOne(id: string) {
-    const row = await this.prisma.screeningTemplate.findUnique({ where: { id } });
+    const row = await this.prisma.screeningTemplate.findUnique({
+      where: { id },
+    });
     if (!row) {
       throw new NotFoundException('Screening template not found');
     }
@@ -73,7 +79,9 @@ export class ScreeningsService {
     await this.findOne(id);
     return this.prisma.screeningTemplate.update({
       where: { id },
-      data: data as Parameters<typeof this.prisma.screeningTemplate.update>[0]['data'],
+      data: data as Parameters<
+        typeof this.prisma.screeningTemplate.update
+      >[0]['data'],
     });
   }
 

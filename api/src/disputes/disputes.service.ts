@@ -29,7 +29,9 @@ export class DisputesService {
       where: { paymentId: payment.id, status: 'OPEN' },
     });
     if (existing) {
-      throw new BadRequestException('A dispute is already open for this payment');
+      throw new BadRequestException(
+        'A dispute is already open for this payment',
+      );
     }
 
     return this.prisma.dispute.create({
@@ -72,7 +74,9 @@ export class DisputesService {
   }
 
   async resolve(disputeId: string, resolution: string) {
-    const row = await this.prisma.dispute.findUnique({ where: { id: disputeId } });
+    const row = await this.prisma.dispute.findUnique({
+      where: { id: disputeId },
+    });
     if (!row) throw new NotFoundException('Dispute not found');
     return this.prisma.dispute.update({
       where: { id: disputeId },

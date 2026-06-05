@@ -10,33 +10,115 @@ export class AgenciesService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getDashboardForTenant(tenantId: string) {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setHours(23, 59, 59, 999);
+    const evvSince = new Date();
+    evvSince.setDate(evvSince.getDate() - 14);
+
     const [
       therapistCount,
       activeClients,
       appointmentsToday,
       pendingTherapists,
+      missingEvvCount,
+      draftClaimsCount,
+      cancellationsToday,
+      pendingTherapistRows,
+      draftClaims,
     ] = await Promise.all([
       this.prisma.therapist.count({ where: { tenantId } }),
       this.prisma.child.count({ where: { tenantId } }),
       this.prisma.appointment.count({
         where: {
           tenantId,
-          scheduledStart: {
-            gte: new Date(new Date().setHours(0, 0, 0, 0)),
-            lt: new Date(new Date().setHours(23, 59, 59, 999)),
-          },
+          scheduledStart: { gte: start, lte: end },
         },
       }),
       this.prisma.therapist.count({
         where: { tenantId, isVerified: false },
       }),
+      this.prisma.session.count({
+        where: {
+          tenantId,
+          status: 'COMPLETED',
+          evvVerified: false,
+          checkOutAt: { gte: evvSince },
+        },
+      }),
+      this.prisma.insuranceClaim.count({
+        where: { tenantId, status: 'DRAFT' },
+      }),
+      this.prisma.appointment.count({
+        where: {
+          tenantId,
+          status: 'CANCELLED',
+          updatedAt: { gte: start, lte: end },
+        },
+      }),
+      this.prisma.therapist.findMany({
+        where: { tenantId, isVerified: false },
+        take: 3,
+        include: { user: true },
+      }),
+      this.prisma.insuranceClaim.findMany({
+        where: { tenantId, status: 'DRAFT' },
+        take: 3,
+        include: { child: true },
+      }),
     ]);
+
+    const actionItems = [];
+    if (pendingTherapists > 0) {
+      actionItems.push({
+        id: 'pending-therapists',
+        title: 'Therapists awaiting verification',
+        subtitle: `${pendingTherapists} pending`,
+        actionType: 'VERIFICATION',
+        priority: 0,
+      });
+    }
+    if (missingEvvCount > 0) {
+      actionItems.push({
+        id: 'missing-evv',
+        title: 'Sessions missing EVV',
+        subtitle: `${missingEvvCount} in last 14 days`,
+        actionType: 'EVV',
+        priority: 1,
+      });
+    }
+    for (const claim of draftClaims) {
+      actionItems.push({
+        id: `claim-${claim.id}`,
+        title: 'Draft insurance claim',
+        subtitle: claim.child
+          ? `${claim.child.firstName} ${claim.child.lastName}`
+          : claim.payerName,
+        actionType: 'CLAIM',
+        claimId: claim.id,
+        priority: 2,
+      });
+    }
+    for (const t of pendingTherapistRows) {
+      actionItems.push({
+        id: `therapist-${t.id}`,
+        title: 'Verify therapist',
+        subtitle: `${t.user.firstName} ${t.user.lastName}`,
+        actionType: 'VERIFICATION',
+        priority: 3,
+      });
+    }
 
     return {
       therapistCount,
       activeClients,
       appointmentsToday,
       pendingTherapists,
+      missingEvvCount,
+      draftClaimsCount,
+      cancellationsToday,
+      actionItems,
     };
   }
 
@@ -162,7 +244,11 @@ export class AgenciesService {
     const therapistId = data.therapistId as string | undefined;
     if (tenantId && therapistId) {
       const link = await this.inviteTherapistForTenant(tenantId, therapistId);
-      return { id: link.id, agencyId: link.agencyId, therapistId: link.therapistId };
+      return {
+        id: link.id,
+        agencyId: link.agencyId,
+        therapistId: link.therapistId,
+      };
     }
     throw new BadRequestException('Provide tenantId and therapistId');
   }

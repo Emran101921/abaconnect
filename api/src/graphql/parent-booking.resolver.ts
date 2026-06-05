@@ -1,6 +1,9 @@
 import { Args, ID, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Roles } from '../common/decorators/roles.decorator';
-import { AuthUser, CurrentUser } from '../common/decorators/current-user.decorator';
+import {
+  AuthUser,
+  CurrentUser,
+} from '../common/decorators/current-user.decorator';
 import { AppointmentsService } from '../appointments/appointments.service';
 import { ChildrenService } from '../children/children.service';
 import { MatchingService } from '../matching/matching.service';
@@ -51,9 +54,13 @@ export class ParentBookingResolver {
   ) {}
 
   @Query(() => ParentDashboardType, { name: 'parentDashboard' })
-  async parentDashboard(@CurrentUser() user: AuthUser): Promise<ParentDashboardType> {
+  async parentDashboard(
+    @CurrentUser() user: AuthUser,
+  ): Promise<ParentDashboardType> {
     const base = await this.parentsService.getDashboardForUserId(user.id);
-    const pending = await this.reviewsService.findPendingReviewTherapists(user.id);
+    const pending = await this.reviewsService.findPendingReviewTherapists(
+      user.id,
+    );
     return {
       ...base,
       pendingReviews: pending.length,
@@ -61,7 +68,9 @@ export class ParentBookingResolver {
   }
 
   @Query(() => ParentProfileType, { name: 'myParentProfile' })
-  async myParentProfile(@CurrentUser() user: AuthUser): Promise<ParentProfileType> {
+  async myParentProfile(
+    @CurrentUser() user: AuthUser,
+  ): Promise<ParentProfileType> {
     const p = await this.parentsService.findProfileByUserId(user.id);
     return this.mapParentProfile(p);
   }
@@ -97,7 +106,9 @@ export class ParentBookingResolver {
   }
 
   @Query(() => [AppointmentType], { name: 'myAppointments' })
-  async myAppointments(@CurrentUser() user: AuthUser): Promise<AppointmentType[]> {
+  async myAppointments(
+    @CurrentUser() user: AuthUser,
+  ): Promise<AppointmentType[]> {
     const rows = await this.appointmentsService.findByParentUserId(user.id);
     return rows.map((row) => this.mapAppointment(row));
   }
@@ -143,7 +154,10 @@ export class ParentBookingResolver {
     @CurrentUser() user: AuthUser,
     @Args('input') input: BookAppointmentInput,
   ): Promise<AppointmentType> {
-    const row = await this.appointmentsService.bookForParentUser(user.id, input);
+    const row = await this.appointmentsService.bookForParentUser(
+      user.id,
+      input,
+    );
     return this.mapAppointment(row);
   }
 
@@ -382,7 +396,12 @@ export class ParentBookingResolver {
     scheduledStart: Date;
     scheduledEnd: Date;
     locationType?: string;
-    child?: { id: string; firstName: string; lastName: string; dateOfBirth: Date };
+    child?: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      dateOfBirth: Date;
+    };
     therapist?: {
       id: string;
       ratingAverage: unknown;

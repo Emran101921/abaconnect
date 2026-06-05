@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { InsuranceService } from '../insurance/insurance.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -19,6 +20,7 @@ export class SessionsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
+    private readonly insurance: InsuranceService,
   ) {}
 
   async findHistoryForParentUserId(userId: string) {
@@ -163,6 +165,8 @@ export class SessionsService {
       });
     }
 
+    await this.insurance.draftClaimFromSession(updated.id);
+
     return updated;
   }
 
@@ -204,6 +208,12 @@ export class SessionsService {
         where: { id: session.id },
         data: { status: 'COMPLETED' },
       });
+      const claim = await this.prisma.insuranceClaim.findUnique({
+        where: { sessionId: session.id },
+      });
+      if (claim) {
+        await this.insurance.prepareClaimEdi(claim.id);
+      }
     }
 
     return note;

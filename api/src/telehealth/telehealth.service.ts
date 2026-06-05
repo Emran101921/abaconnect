@@ -20,17 +20,27 @@ export class TelehealthService {
         where: {
           appointment: { parentId: parent.id },
         },
-        include: { appointment: { include: { child: true, therapist: { include: { user: true } } } } },
+        include: {
+          appointment: {
+            include: { child: true, therapist: { include: { user: true } } },
+          },
+        },
         orderBy: { createdAt: 'desc' },
         take: 30,
       });
     }
 
-    const therapist = await this.prisma.therapist.findUnique({ where: { userId } });
+    const therapist = await this.prisma.therapist.findUnique({
+      where: { userId },
+    });
     if (therapist) {
       return this.prisma.telehealthSession.findMany({
         where: { appointment: { therapistId: therapist.id } },
-        include: { appointment: { include: { child: true, parent: { include: { user: true } } } } },
+        include: {
+          appointment: {
+            include: { child: true, parent: { include: { user: true } } },
+          },
+        },
         orderBy: { createdAt: 'desc' },
         take: 30,
       });
@@ -40,7 +50,10 @@ export class TelehealthService {
   }
 
   async getOrCreateForAppointment(userId: string, appointmentId: string) {
-    const appointment = await this.findAccessibleAppointment(userId, appointmentId);
+    const appointment = await this.findAccessibleAppointment(
+      userId,
+      appointmentId,
+    );
     const existing = await this.prisma.telehealthSession.findUnique({
       where: { appointmentId },
       include: { appointment: true },
@@ -98,7 +111,8 @@ export class TelehealthService {
       patientUrl: string | null;
     },
   >(row: T) {
-    const base = process.env.TELEHEALTH_BASE_URL ?? 'https://meet.abaconnect.local';
+    const base =
+      process.env.TELEHEALTH_BASE_URL ?? 'https://meet.abaconnect.local';
     return {
       ...row,
       providerUrl: row.providerUrl ?? `${base}/${row.roomId}?role=provider`,
@@ -106,7 +120,10 @@ export class TelehealthService {
     };
   }
 
-  private async findAccessibleAppointment(userId: string, appointmentId: string) {
+  private async findAccessibleAppointment(
+    userId: string,
+    appointmentId: string,
+  ) {
     const appointment = await this.prisma.appointment.findUnique({
       where: { id: appointmentId },
       include: { parent: true, therapist: true },
@@ -148,7 +165,9 @@ export class TelehealthService {
   }
 
   async findOne(id: string) {
-    const row = await this.prisma.telehealthSession.findUnique({ where: { id } });
+    const row = await this.prisma.telehealthSession.findUnique({
+      where: { id },
+    });
     if (!row) throw new NotFoundException('Telehealth session not found');
     return row;
   }
@@ -157,7 +176,9 @@ export class TelehealthService {
     await this.findOne(id);
     return this.prisma.telehealthSession.update({
       where: { id },
-      data: data as Parameters<typeof this.prisma.telehealthSession.update>[0]['data'],
+      data: data as Parameters<
+        typeof this.prisma.telehealthSession.update
+      >[0]['data'],
     });
   }
 

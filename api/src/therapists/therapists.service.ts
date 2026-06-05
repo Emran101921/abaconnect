@@ -27,6 +27,8 @@ export class TherapistsService {
       appointmentsToday,
       inProgressSessions,
       pendingDocumentation,
+      pendingSessions,
+      messageMemberships,
     ] = await Promise.all([
       this.prisma.appointment.count({
         where: { therapistId: therapist.id, status: 'REQUESTED' },
@@ -47,13 +49,76 @@ export class TherapistsService {
           status: 'PENDING_DOCUMENTATION',
         },
       }),
+      this.prisma.session.findMany({
+        where: {
+          therapistId: therapist.id,
+          status: 'PENDING_DOCUMENTATION',
+        },
+        take: 5,
+        include: { child: true },
+        orderBy: { checkOutAt: 'desc' },
+      }),
+      this.prisma.messageParticipant.findMany({
+        where: { userId },
+        include: {
+          thread: {
+            include: {
+              messages: {
+                where: { deletedAt: null },
+                orderBy: { sentAt: 'desc' },
+                take: 1,
+              },
+            },
+          },
+        },
+      }),
     ]);
+
+    const unreadMessages = messageMemberships.filter((m) => {
+      const last = m.thread.messages[0];
+      if (!last || last.senderId === userId) return false;
+      return !m.lastReadAt || m.lastReadAt < last.sentAt;
+    }).length;
+
+    const actionItems = [];
+    if (pendingRequests > 0) {
+      actionItems.push({
+        id: 'pending-requests',
+        title: 'Appointment requests',
+        subtitle: `${pendingRequests} need confirmation`,
+        actionType: 'APPOINTMENT',
+        priority: 0,
+      });
+    }
+    for (const session of pendingSessions) {
+      actionItems.push({
+        id: `soap-${session.id}`,
+        title: 'SOAP note due',
+        subtitle: session.child
+          ? `${session.child.firstName} ${session.child.lastName}`
+          : 'Session documentation',
+        actionType: 'SOAP_DUE',
+        sessionId: session.id,
+        priority: 1,
+      });
+    }
+    if (unreadMessages > 0) {
+      actionItems.push({
+        id: 'messages',
+        title: 'Unread messages',
+        subtitle: `${unreadMessages} thread(s)`,
+        actionType: 'MESSAGE',
+        priority: 2,
+      });
+    }
 
     return {
       pendingRequests,
       appointmentsToday,
       inProgressSessions,
       pendingDocumentation,
+      unreadMessages,
+      actionItems,
     };
   }
 

@@ -1,11 +1,17 @@
 import { Args, ID, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { LocationType, TherapyType } from '../../generated/prisma/client';
 import { Roles } from '../common/decorators/roles.decorator';
-import { AuthUser, CurrentUser } from '../common/decorators/current-user.decorator';
+import {
+  AuthUser,
+  CurrentUser,
+} from '../common/decorators/current-user.decorator';
 import { AppointmentsService } from '../appointments/appointments.service';
 import { SessionsService } from '../sessions/sessions.service';
 import { TherapistsService } from '../therapists/therapists.service';
-import { SaveSoapNoteInput, UpdateTherapistProfileInput } from './inputs/therapist.inputs';
+import {
+  SaveSoapNoteInput,
+  UpdateTherapistProfileInput,
+} from './inputs/therapist.inputs';
 import {
   SoapNoteType,
   TherapistAppointmentType,
@@ -124,7 +130,9 @@ export class TherapistResolver {
     return this.mapAppointment(row);
   }
 
-  @Mutation(() => TherapistAppointmentType, { name: 'cancelAppointmentAsTherapist' })
+  @Mutation(() => TherapistAppointmentType, {
+    name: 'cancelAppointmentAsTherapist',
+  })
   async cancelAppointmentAsTherapist(
     @CurrentUser() user: AuthUser,
     @Args('appointmentId', { type: () => ID }) appointmentId: string,
@@ -219,7 +227,12 @@ export class TherapistResolver {
     scheduledStart: Date;
     scheduledEnd: Date;
     locationType?: string | null;
-    child: { id: string; firstName: string; lastName: string; dateOfBirth: Date };
+    child: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      dateOfBirth: Date;
+    };
   }): TherapistAppointmentType {
     return {
       id: row.id,

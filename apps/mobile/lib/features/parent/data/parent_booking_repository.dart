@@ -151,12 +151,20 @@ class ParentDashboardModel {
     required this.upcomingAppointments,
     required this.appointmentsToday,
     required this.pendingReviews,
+    required this.openClaimsCount,
+    this.lastSessionSummary,
+    this.nextTelehealthAppointmentId,
+    this.actionItems = const [],
   });
 
   final int childrenCount;
   final int upcomingAppointments;
   final int appointmentsToday;
   final int pendingReviews;
+  final int openClaimsCount;
+  final String? lastSessionSummary;
+  final String? nextTelehealthAppointmentId;
+  final List<Map<String, dynamic>> actionItems;
 }
 
 class ParentBookingRepository {
@@ -183,6 +191,13 @@ class ParentBookingRepository {
         upcomingAppointments
         appointmentsToday
         pendingReviews
+        openClaimsCount
+        lastSessionSummary
+        nextTelehealthAppointmentId
+        actionItems {
+          id title subtitle actionType priority
+          threadId appointmentId sessionId claimId
+        }
       }
     }
   ''';
@@ -359,6 +374,12 @@ class ParentBookingRepository {
       upcomingAppointments: d['upcomingAppointments'] as int? ?? 0,
       appointmentsToday: d['appointmentsToday'] as int? ?? 0,
       pendingReviews: d['pendingReviews'] as int? ?? 0,
+      openClaimsCount: d['openClaimsCount'] as int? ?? 0,
+      lastSessionSummary: d['lastSessionSummary'] as String?,
+      nextTelehealthAppointmentId:
+          d['nextTelehealthAppointmentId'] as String?,
+      actionItems: (d['actionItems'] as List<dynamic>? ?? [])
+          .cast<Map<String, dynamic>>(),
     );
   }
 

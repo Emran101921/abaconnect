@@ -1,6 +1,7 @@
 import { Field, ID, Int, ObjectType } from '@nestjs/graphql';
 import { TherapyType } from '../../../generated/prisma/client';
 import { TherapistUserType } from './parent-booking.types';
+import { DashboardActionItemType } from './dashboard.types';
 
 @ObjectType()
 export class ParentDashboardType {
@@ -15,6 +16,18 @@ export class ParentDashboardType {
 
   @Field(() => Int)
   pendingReviews: number;
+
+  @Field(() => Int)
+  openClaimsCount: number;
+
+  @Field({ nullable: true })
+  lastSessionSummary?: string;
+
+  @Field({ nullable: true })
+  nextTelehealthAppointmentId?: string;
+
+  @Field(() => [DashboardActionItemType])
+  actionItems: DashboardActionItemType[];
 }
 
 @ObjectType()
