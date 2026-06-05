@@ -4,6 +4,9 @@ import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
 
 class DefaultFirebaseOptions {
+  /// True when placeholder keys from `flutterfire configure` have not been applied.
+  static bool get isDemoConfig => currentPlatform.apiKey.startsWith('demo-');
+
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
       return web;

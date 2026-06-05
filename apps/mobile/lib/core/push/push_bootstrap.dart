@@ -10,7 +10,10 @@ class PushBootstrap {
   static Future<void> init({
     void Function(Map<String, dynamic> data)? onOpened,
   }) async {
-    if (kIsWeb) return;
+    if (kIsWeb || DefaultFirebaseOptions.isDemoConfig) {
+      firebaseReady = false;
+      return;
+    }
     try {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
