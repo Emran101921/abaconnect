@@ -1,4 +1,4 @@
-import { Field, ID, Int, ObjectType } from '@nestjs/graphql';
+import { Field, Float, ID, Int, ObjectType } from '@nestjs/graphql';
 import { TherapyType } from '../../../generated/prisma/client';
 import { TherapistUserType } from './parent-booking.types';
 import { DashboardActionItemType } from './dashboard.types';
@@ -169,4 +169,16 @@ export class ScreeningResponseType {
 
   @Field(() => ScreeningTemplateType, { nullable: true })
   template?: ScreeningTemplateType;
+
+  @Field({ nullable: true })
+  childName?: string;
+
+  @Field({ nullable: true })
+  templateName?: string;
+
+  @Field(() => Float, { nullable: true })
+  score?: number;
+
+  @Field({ nullable: true })
+  riskLevel?: string;
 }

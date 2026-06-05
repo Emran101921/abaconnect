@@ -69,6 +69,24 @@ class ScreeningTemplateModel {
   final String? questionsJson;
 }
 
+class ScreeningHistoryModel {
+  const ScreeningHistoryModel({
+    required this.id,
+    required this.completedAt,
+    required this.templateName,
+    required this.childName,
+    this.score,
+    this.riskLevel,
+  });
+
+  final String id;
+  final DateTime completedAt;
+  final String templateName;
+  final String childName;
+  final double? score;
+  final String? riskLevel;
+}
+
 class ParentProfileModel {
   const ParentProfileModel({
     required this.id,
@@ -523,6 +541,31 @@ class ParentBookingRepository {
         },
       },
     );
+  }
+
+  Future<List<ScreeningHistoryModel>> fetchScreeningHistory() async {
+    const query = r'''
+      query {
+        myScreeningHistory {
+          id completedAt childName templateName score riskLevel
+        }
+      }
+    ''';
+    final result = await _graphql.query(query);
+    final list = result['data']?['myScreeningHistory'] as List<dynamic>? ?? [];
+    return list.map((e) {
+      final completed = e['completedAt'] as String?;
+      return ScreeningHistoryModel(
+        id: e['id'] as String,
+        completedAt: completed != null
+            ? DateTime.parse(completed)
+            : DateTime.now(),
+        templateName: e['templateName'] as String? ?? 'Screening',
+        childName: e['childName'] as String? ?? '',
+        score: (e['score'] as num?)?.toDouble(),
+        riskLevel: e['riskLevel'] as String?,
+      );
+    }).toList();
   }
 
   Future<List<ScreeningTemplateModel>> fetchScreeningTemplates() async {
