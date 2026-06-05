@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../data/therapist_repository.dart';
+import '../therapist_providers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 
 final therapistSessionsProvider =
@@ -123,9 +124,10 @@ class SessionNotesScreen extends ConsumerWidget {
               );
         }
         ref.invalidate(therapistSessionsProvider);
+        ref.invalidate(therapistDashboardProvider);
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('SOAP note saved')),
+            const SnackBar(content: Text('SOAP note saved — session finalized')),
           );
         }
       } catch (e) {
@@ -152,10 +154,13 @@ class SessionNotesScreen extends ConsumerWidget {
     try {
       await ref.read(therapistRepositoryProvider).completeSession(sessionId);
       ref.invalidate(therapistSessionsProvider);
+      ref.invalidate(therapistDashboardProvider);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Session completed — parent notified to review'),
+            content: Text(
+              'Visit ended — complete SOAP notes, parent notified to review',
+            ),
           ),
         );
       }
@@ -273,10 +278,10 @@ class SessionNotesScreen extends ConsumerWidget {
                             ),
                             child: const Text('EVV out'),
                           ),
-                          if (s.status != 'COMPLETED')
+                          if (s.status == 'IN_PROGRESS')
                             FilledButton(
                               onPressed: () => _completeSession(context, ref, s.id),
-                              child: const Text('Complete'),
+                              child: const Text('End visit'),
                             ),
                         ],
                       ),

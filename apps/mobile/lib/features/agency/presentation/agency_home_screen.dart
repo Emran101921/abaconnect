@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../notifications/notification_providers.dart';
 import 'agency_providers.dart';
 
 class AgencyHomeScreen extends ConsumerWidget {
@@ -13,12 +15,20 @@ class AgencyHomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final dashboard = ref.watch(agencyDashboardProvider);
+    final upcoming = ref.watch(agencyUpcomingAppointmentsProvider);
+    final unread = ref.watch(unreadNotificationsProvider);
+    final unreadCount = unread.maybeWhen(data: (c) => c, orElse: () => 0);
 
     return AppScaffold(
       title: 'Agency',
       actions: [
         IconButton(
-          icon: const Icon(Icons.notifications),
+          icon: unreadCount > 0
+              ? Badge(
+                  label: Text('$unreadCount'),
+                  child: const Icon(Icons.notifications),
+                )
+              : const Icon(Icons.notifications),
           onPressed: () => context.push(AppRoutes.notifications),
         ),
         IconButton(
@@ -34,6 +44,8 @@ class AgencyHomeScreen extends ConsumerWidget {
           ref.invalidate(agencyDashboardProvider);
           ref.invalidate(agencyTherapistsProvider);
           ref.invalidate(agencyAnalyticsProvider);
+          ref.invalidate(agencyUpcomingAppointmentsProvider);
+          ref.invalidate(unreadNotificationsProvider);
         },
         child: ListView(
           padding: const EdgeInsets.all(16),
@@ -48,21 +60,73 @@ class AgencyHomeScreen extends ConsumerWidget {
                 spacing: 12,
                 runSpacing: 12,
                 children: [
-                  _StatCard(label: 'Therapists', value: '${d.therapistCount}'),
-                  _StatCard(label: 'Active clients', value: '${d.activeClients}'),
+                  _StatCard(
+                    label: 'Therapists',
+                    value: '${d.therapistCount}',
+                    onTap: () => context.push('${AppRoutes.agencyHome}/roster'),
+                  ),
+                  _StatCard(
+                    label: 'Active clients',
+                    value: '${d.activeClients}',
+                    onTap: () => context.push('${AppRoutes.agencyHome}/analytics'),
+                  ),
                   _StatCard(
                     label: 'Sessions today',
                     value: '${d.appointmentsToday}',
+                    onTap: () => context.push('${AppRoutes.agencyHome}/appointments'),
                   ),
                   _StatCard(
                     label: 'Pending verify',
                     value: '${d.pendingTherapists}',
                     highlight: d.pendingTherapists > 0,
+                    onTap: () => context.push('${AppRoutes.agencyHome}/roster'),
                   ),
                 ],
               ),
               loading: () => const LinearProgressIndicator(),
               error: (e, _) => Text('Overview error: $e'),
+            ),
+            const SizedBox(height: 12),
+            upcoming.when(
+              data: (list) {
+                if (list.isEmpty) return const SizedBox.shrink();
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          'Upcoming sessions',
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                        const Spacer(),
+                        TextButton(
+                          onPressed: () =>
+                              context.push('${AppRoutes.agencyHome}/appointments'),
+                          child: const Text('All'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    ...list.take(3).map(
+                      (a) => Card(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        child: ListTile(
+                          title: Text('${a.childName} · ${a.therapyType}'),
+                          subtitle: Text(
+                            '${a.therapistName}\n'
+                            '${DateFormat.yMMMd().add_jm().format(a.scheduledStart)} · ${a.locationType}',
+                          ),
+                          isThreeLine: true,
+                          trailing: Chip(label: Text(a.status)),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+              loading: () => const SizedBox.shrink(),
+              error: (_, __) => const SizedBox.shrink(),
             ),
             const SizedBox(height: 24),
             Text(
@@ -115,11 +179,13 @@ class _StatCard extends StatelessWidget {
     required this.label,
     required this.value,
     this.highlight = false,
+    this.onTap,
   });
 
   final String label;
   final String value;
   final bool highlight;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -128,20 +194,24 @@ class _StatCard extends StatelessWidget {
       width: 160,
       child: Card(
         color: highlight ? colorScheme.errorContainer : null,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                value,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-              ),
-              const SizedBox(height: 4),
-              Text(label),
-            ],
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+                const SizedBox(height: 4),
+                Text(label),
+              ],
+            ),
           ),
         ),
       ),
