@@ -175,10 +175,7 @@ class TherapistAppointmentsScreen extends ConsumerWidget {
                         a.childName,
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
-                      Text(
-                        '${a.therapyType} · ${a.status}'
-                        '${a.locationType != null ? ' · ${a.locationType}' : ''}',
-                      ),
+                      Text('${a.therapyType} · ${a.status}'),
                       Text(
                         DateFormat.yMMMd().add_jm().format(a.scheduledStart),
                       ),

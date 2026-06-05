@@ -145,20 +145,6 @@ class AppointmentModel {
   bool get isTelehealth => locationType == 'TELEHEALTH';
 }
 
-class ParentDashboardModel {
-  const ParentDashboardModel({
-    required this.childrenCount,
-    required this.upcomingAppointments,
-    required this.appointmentsToday,
-    required this.pendingReviews,
-  });
-
-  final int childrenCount;
-  final int upcomingAppointments;
-  final int appointmentsToday;
-  final int pendingReviews;
-}
-
 class ParentBookingRepository {
   ParentBookingRepository(this._graphql, this._api);
 
@@ -172,17 +158,6 @@ class ParentBookingRepository {
         firstName
         lastName
         dateOfBirth
-      }
-    }
-  ''';
-
-  static const _parentDashboardQuery = r'''
-    query ParentDashboard {
-      parentDashboard {
-        childrenCount
-        upcomingAppointments
-        appointmentsToday
-        pendingReviews
       }
     }
   ''';
@@ -345,20 +320,6 @@ class ParentBookingRepository {
       dateOfBirth: dobRaw != null
           ? DateTime.parse(dobRaw)
           : DateTime(2018, 1, 1),
-    );
-  }
-
-  Future<ParentDashboardModel> fetchDashboard() async {
-    final result = await _graphql.query(_parentDashboardQuery);
-    final d = result['data']?['parentDashboard'] as Map<String, dynamic>?;
-    if (d == null) {
-      throw Exception('parentDashboard unavailable');
-    }
-    return ParentDashboardModel(
-      childrenCount: d['childrenCount'] as int? ?? 0,
-      upcomingAppointments: d['upcomingAppointments'] as int? ?? 0,
-      appointmentsToday: d['appointmentsToday'] as int? ?? 0,
-      pendingReviews: d['pendingReviews'] as int? ?? 0,
     );
   }
 

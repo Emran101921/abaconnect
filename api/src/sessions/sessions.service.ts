@@ -127,7 +127,7 @@ export class SessionsService {
     const updated = await this.prisma.session.update({
       where: { id: sessionId },
       data: {
-        status: 'PENDING_DOCUMENTATION',
+        status: 'COMPLETED',
         checkOutAt: now,
         durationMinutes,
         evvVerified: true,
@@ -143,15 +143,9 @@ export class SessionsService {
       data: { status: 'COMPLETED' },
     });
 
-    const childName = `${updated.child.firstName} ${updated.child.lastName}`;
-    await this.notifications.createForUser(userId, {
-      title: 'SOAP note due',
-      body: `Document the session with ${childName}`,
-      data: { sessionId: updated.id, type: 'SOAP_DUE' },
-    });
-
     const parentUserId = updated.appointment?.parent?.userId;
     if (parentUserId) {
+      const childName = `${updated.child.firstName} ${updated.child.lastName}`;
       await this.notifications.createForUser(parentUserId, {
         title: 'Session completed',
         body: `Please rate your ${updated.appointment?.therapyType ?? 'therapy'} session with ${childName}`,
@@ -181,7 +175,7 @@ export class SessionsService {
       throw new NotFoundException('Session not found');
     }
 
-    const note = await this.prisma.soapNote.upsert({
+    return this.prisma.soapNote.upsert({
       where: { sessionId: session.id },
       create: {
         sessionId: session.id,
@@ -198,15 +192,6 @@ export class SessionsService {
         plan: input.plan,
       },
     });
-
-    if (session.status === 'PENDING_DOCUMENTATION') {
-      await this.prisma.session.update({
-        where: { id: session.id },
-        data: { status: 'COMPLETED' },
-      });
-    }
-
-    return note;
   }
 
   async create(data: Record<string, unknown>) {

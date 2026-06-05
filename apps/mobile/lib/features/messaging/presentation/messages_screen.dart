@@ -8,7 +8,6 @@ import '../../../core/router/app_router.dart';
 import '../../../shared/models/user_role.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../data/messaging_repository.dart';
-import '../messaging_providers.dart';
 
 final messageThreadsProvider = FutureProvider<List<MessageThreadModel>>((ref) {
   return ref.watch(messagingRepositoryProvider).fetchThreads();
@@ -57,7 +56,6 @@ class MessagesScreen extends ConsumerWidget {
           return RefreshIndicator(
             onRefresh: () async {
               ref.invalidate(messageThreadsProvider);
-              ref.invalidate(unreadMessageThreadsProvider);
               await ref.read(messageThreadsProvider.future);
             },
             child: ListView.separated(
@@ -77,23 +75,9 @@ class MessagesScreen extends ConsumerWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  trailing: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        DateFormat.MMMd().format(time),
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                      if (t.hasUnread) ...[
-                        const SizedBox(height: 4),
-                        Badge(
-                          label: const Text('New'),
-                          backgroundColor:
-                              Theme.of(context).colorScheme.primary,
-                        ),
-                      ],
-                    ],
+                  trailing: Text(
+                    DateFormat.MMMd().format(time),
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
                   onTap: () => context.push('${AppRoutes.messages}/${t.id}'),
                 );
@@ -137,7 +121,6 @@ class MessagesScreen extends ConsumerWidget {
           .read(messagingRepositoryProvider)
           .startTherapistConversation(selected);
       ref.invalidate(messageThreadsProvider);
-      ref.invalidate(unreadMessageThreadsProvider);
       if (context.mounted) {
         context.push('${AppRoutes.messages}/$threadId');
       }
@@ -187,7 +170,6 @@ class MessagesScreen extends ConsumerWidget {
       final threadId =
           await ref.read(messagingRepositoryProvider).startParentConversation(selected);
       ref.invalidate(messageThreadsProvider);
-      ref.invalidate(unreadMessageThreadsProvider);
       if (context.mounted) {
         context.push('${AppRoutes.messages}/$threadId');
       }

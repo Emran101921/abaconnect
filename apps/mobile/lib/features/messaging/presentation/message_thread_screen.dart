@@ -6,7 +6,6 @@ import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../notifications/notification_providers.dart';
 import '../data/messaging_repository.dart';
-import '../messaging_providers.dart';
 import 'messages_screen.dart' show messageThreadsProvider;
 
 class MessageThreadScreen extends ConsumerStatefulWidget {
@@ -47,8 +46,6 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
           _messages = list;
           _loading = false;
         });
-        ref.invalidate(messageThreadsProvider);
-        ref.invalidate(unreadMessageThreadsProvider);
       }
     } catch (e) {
       if (mounted) {
@@ -75,7 +72,6 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
         _sending = false;
       });
       ref.invalidate(messageThreadsProvider);
-      ref.invalidate(unreadMessageThreadsProvider);
       ref.invalidate(unreadNotificationsProvider);
     } catch (e) {
       setState(() => _sending = false);

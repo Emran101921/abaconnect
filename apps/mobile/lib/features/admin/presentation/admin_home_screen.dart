@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/app_scaffold.dart';
-import '../../notifications/notification_providers.dart';
 import 'admin_providers.dart';
 import 'admin_stat_card.dart';
 
@@ -16,21 +15,10 @@ class AdminHomeScreen extends ConsumerWidget {
     final dashboard = ref.watch(adminDashboardProvider);
     final pending = ref.watch(pendingTherapistsProvider);
     final complaints = ref.watch(adminComplaintsProvider);
-    final unread = ref.watch(unreadNotificationsProvider);
-    final unreadCount = unread.maybeWhen(data: (c) => c, orElse: () => 0);
 
     return AppScaffold(
       title: 'Admin',
       actions: [
-        IconButton(
-          icon: unreadCount > 0
-              ? Badge(
-                  label: Text('$unreadCount'),
-                  child: const Icon(Icons.notifications),
-                )
-              : const Icon(Icons.notifications),
-          onPressed: () => context.push(AppRoutes.notifications),
-        ),
         IconButton(
           icon: const Icon(Icons.logout),
           onPressed: () async {
@@ -44,7 +32,6 @@ class AdminHomeScreen extends ConsumerWidget {
           ref.invalidate(adminDashboardProvider);
           ref.invalidate(pendingTherapistsProvider);
           ref.invalidate(adminComplaintsProvider);
-          ref.invalidate(unreadNotificationsProvider);
         },
         child: ListView(
           padding: const EdgeInsets.all(16),
@@ -89,14 +76,6 @@ class AdminHomeScreen extends ConsumerWidget {
               '(verify, resolve, approve, publish, etc.).',
             ),
             const SizedBox(height: 16),
-            _OpsTile(
-              title: unreadCount > 0
-                  ? 'Notifications ($unreadCount)'
-                  : 'Notifications',
-              subtitle: 'Platform alerts and activity',
-              icon: Icons.notifications,
-              onTap: () => context.push(AppRoutes.notifications),
-            ),
             _OpsTile(
               title: 'Therapist verification',
               subtitle: 'Approve licenses for new providers',
