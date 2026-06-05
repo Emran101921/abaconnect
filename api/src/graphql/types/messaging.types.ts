@@ -1,4 +1,12 @@
-import { Field, ID, ObjectType } from '@nestjs/graphql';
+import { Field, ID, ObjectType, registerEnumType } from '@nestjs/graphql';
+
+export enum MessageDeliveryStatus {
+  SENT = 'SENT',
+  DELIVERED = 'DELIVERED',
+  READ = 'READ',
+}
+
+registerEnumType(MessageDeliveryStatus, { name: 'MessageDeliveryStatus' });
 
 @ObjectType()
 export class MessageThreadType {
@@ -52,4 +60,13 @@ export class ChatMessageType {
 
   @Field()
   isMine: boolean;
+
+  @Field({ nullable: true })
+  deliveredAt?: Date;
+
+  @Field({ nullable: true })
+  readAt?: Date;
+
+  @Field(() => MessageDeliveryStatus, { nullable: true })
+  status?: MessageDeliveryStatus;
 }

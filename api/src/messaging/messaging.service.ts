@@ -76,11 +76,33 @@ export class MessagingService {
 
   async markThreadRead(userId: string, threadId: string) {
     await this.assertParticipant(userId, threadId);
+    const now = new Date();
     await this.prisma.messageParticipant.update({
       where: { threadId_userId: { threadId, userId } },
-      data: { lastReadAt: new Date() },
+      data: { lastReadAt: now },
+    });
+    await this.prisma.message.updateMany({
+      where: {
+        threadId,
+        senderId: { not: userId },
+        deletedAt: null,
+        readAt: null,
+      },
+      data: { readAt: now },
     });
     return true;
+  }
+
+  private async markMessagesDelivered(userId: string, threadId: string) {
+    await this.prisma.message.updateMany({
+      where: {
+        threadId,
+        senderId: { not: userId },
+        deletedAt: null,
+        deliveredAt: null,
+      },
+      data: { deliveredAt: new Date() },
+    });
   }
 
   private isThreadUnread(
@@ -99,7 +121,7 @@ export class MessagingService {
 
   async getThreadMessages(userId: string, threadId: string) {
     await this.assertParticipant(userId, threadId);
-    await this.markThreadRead(userId, threadId);
+    await this.markMessagesDelivered(userId, threadId);
     return this.prisma.message.findMany({
       where: { threadId, deletedAt: null },
       include: { sender: true },
@@ -120,6 +142,7 @@ export class MessagingService {
         threadId,
         senderId: userId,
         body: trimmed,
+        sentAt: new Date(),
       },
       include: { sender: true },
     });

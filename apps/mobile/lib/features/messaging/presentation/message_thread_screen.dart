@@ -39,9 +39,9 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final list = await ref
-          .read(messagingRepositoryProvider)
-          .fetchMessages(widget.threadId);
+      final repo = ref.read(messagingRepositoryProvider);
+      final list = await repo.fetchMessages(widget.threadId);
+      await repo.markThreadRead(widget.threadId);
       if (mounted) {
         setState(() {
           _messages = list;
@@ -129,9 +129,18 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
                                   style: Theme.of(context).textTheme.labelSmall,
                                 ),
                               Text(m.body),
-                              Text(
-                                DateFormat.jm().format(m.sentAt),
-                                style: Theme.of(context).textTheme.labelSmall,
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    DateFormat.jm().format(m.sentAt),
+                                    style: Theme.of(context).textTheme.labelSmall,
+                                  ),
+                                  if (m.isMine && m.status != null) ...[
+                                    const SizedBox(width: 4),
+                                    _MessageStatusIcon(status: m.status!),
+                                  ],
+                                ],
                               ),
                             ],
                           ),
@@ -173,5 +182,23 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
         ],
       ),
     );
+  }
+}
+
+class _MessageStatusIcon extends StatelessWidget {
+  const _MessageStatusIcon({required this.status});
+
+  final MessageDeliveryStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final isRead = status == MessageDeliveryStatus.read;
+    final color = isRead
+        ? Theme.of(context).colorScheme.primary
+        : Theme.of(context).colorScheme.onSurfaceVariant;
+    final icon = status == MessageDeliveryStatus.sent
+        ? Icons.done
+        : Icons.done_all;
+    return Icon(icon, size: 14, color: color);
   }
 }
