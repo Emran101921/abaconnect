@@ -112,6 +112,11 @@ class AnalyticsScreeningDetailModel {
     this.score,
     this.riskLevel,
     this.responsesJson,
+    this.recommendationsJson,
+    this.consentGrantedAt,
+    this.evaluationRequestedAt,
+    this.childProfileSummaryJson,
+    this.sectionAnswersJson,
   });
 
   final String id;
@@ -121,6 +126,11 @@ class AnalyticsScreeningDetailModel {
   final double? score;
   final String? riskLevel;
   final String? responsesJson;
+  final String? recommendationsJson;
+  final DateTime? consentGrantedAt;
+  final DateTime? evaluationRequestedAt;
+  final String? childProfileSummaryJson;
+  final String? sectionAnswersJson;
 }
 
 class ScreeningFunnelDashboardModel {
@@ -371,6 +381,8 @@ class AdminRepository {
       query ScreeningDetail($screeningId: ID!) {
         adminAnalyticsScreeningDetail(screeningId: $screeningId) {
           id completedAt childName templateName score riskLevel responsesJson
+          recommendationsJson consentGrantedAt evaluationRequestedAt
+          childProfileSummaryJson sectionAnswersJson
         }
       }
     ''';
@@ -389,6 +401,15 @@ class AdminRepository {
       score: (e['score'] as num?)?.toDouble(),
       riskLevel: e['riskLevel'] as String?,
       responsesJson: e['responsesJson'] as String?,
+      recommendationsJson: e['recommendationsJson'] as String?,
+      consentGrantedAt: e['consentGrantedAt'] != null
+          ? DateTime.parse(e['consentGrantedAt'] as String)
+          : null,
+      evaluationRequestedAt: e['evaluationRequestedAt'] != null
+          ? DateTime.parse(e['evaluationRequestedAt'] as String)
+          : null,
+      childProfileSummaryJson: e['childProfileSummaryJson'] as String?,
+      sectionAnswersJson: e['sectionAnswersJson'] as String?,
     );
   }
 

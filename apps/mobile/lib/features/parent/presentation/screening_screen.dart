@@ -31,17 +31,12 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
   bool _loading = true;
   bool _autoStartHandled = false;
   bool _wizardActive = false;
+  bool _hasDraft = false;
 
   ScreeningTemplateModel? _activeTemplate;
   ChildModel? _activeChild;
   Map<String, dynamic> _draftAnswers = {};
   String? _draftId;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
 
   ChildModel? get _selectedChild {
     if (_children.isEmpty) return null;
@@ -60,8 +55,11 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
         return t;
       }
     }
-    return _templates.isNotEmpty ? _templates.first : null;
+    return null;
   }
+
+  List<ScreeningTemplateModel> get _legacyTemplates =>
+      _templates.where((t) => t.therapyType != 'EARLY_INTERVENTION').toList();
 
   Future<void> _load() async {
     setState(() => _loading = true);
@@ -79,6 +77,7 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
           _history = results[2] as List<ScreeningHistoryModel>;
           _loading = false;
         });
+        await _checkDraft();
         _maybeAutoStartQuestionnaire();
       }
     } catch (e) {
@@ -91,12 +90,55 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
     }
   }
 
-  void _maybeAutoStartQuestionnaire() {
-    if (!widget.autoStart || _autoStartHandled) return;
+  Future<void> _checkDraft() async {
     final template = _eiTemplate;
     final child = _selectedChild;
-    if (template == null || child == null) return;
+    if (template == null || child == null) {
+      if (mounted) setState(() => _hasDraft = false);
+      return;
+    }
+    try {
+      final draft = await ref.read(parentBookingRepositoryProvider).fetchScreeningDraft(
+            templateId: template.id,
+            childId: child.id,
+          );
+      if (mounted) setState(() => _hasDraft = draft != null);
+    } catch (_) {
+      if (mounted) setState(() => _hasDraft = false);
+    }
+  }
+
+  void _maybeAutoStartQuestionnaire() {
+    if (!widget.autoStart || _autoStartHandled) return;
     _autoStartHandled = true;
+
+    final child = _selectedChild;
+    if (child == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Add a child profile before screening')),
+        );
+        context.push(AppRoutes.parentChildren);
+      });
+      return;
+    }
+
+    final template = _eiTemplate;
+    if (template == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Early Intervention screening is loading — tap Start below when ready',
+            ),
+          ),
+        );
+      });
+      return;
+    }
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _startTemplate(template, child: child);
     });
@@ -111,6 +153,7 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Add a child before completing screening')),
       );
+      context.push(AppRoutes.parentChildren);
       return;
     }
 
@@ -136,6 +179,32 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
     });
   }
 
+  Future<void> _viewHistoryResult(ScreeningHistoryModel entry) async {
+    final child = _selectedChild ??
+        _children.cast<ChildModel?>().firstWhere(
+              (c) => c?.displayName == entry.childName,
+              orElse: () => _children.isNotEmpty ? _children.first : null,
+            );
+    if (child == null) return;
+
+    try {
+      final result =
+          await ref.read(parentBookingRepositoryProvider).fetchScreeningResult(entry.id);
+      if (!mounted) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => ScreeningResultsScreen(child: child, result: result),
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not load results: $e')),
+        );
+      }
+    }
+  }
+
   void _onSubmitted(ScreeningResultModel result) {
     setState(() => _wizardActive = false);
     final child = _activeChild;
@@ -149,9 +218,16 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final dateFmt = DateFormat.yMMMd();
     final selectedChild = _selectedChild;
+    final eiTemplate = _eiTemplate;
 
     if (_wizardActive && _activeTemplate != null && _activeChild != null) {
       return AppScaffold(
@@ -159,6 +235,7 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.close),
+            tooltip: 'Save and exit',
             onPressed: () => setState(() => _wizardActive = false),
           ),
         ],
@@ -173,7 +250,7 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
     }
 
     return AppScaffold(
-      title: 'Screening',
+      title: 'Early Intervention Screening',
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
@@ -182,27 +259,58 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
                 padding: const EdgeInsets.all(16),
                 children: [
                   Text(
-                    'Early Intervention Intake',
+                    'Parent screening questionnaire',
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   const SizedBox(height: 8),
                   Text(
                     selectedChild == null
-                        ? 'Add a child profile to complete the screening.'
+                        ? 'Complete your child\'s profile first, then continue to sections A–G.'
                         : 'Screening for ${selectedChild.displayName}',
                   ),
-                  if (selectedChild == null) ...[
-                    const SizedBox(height: 16),
-                    FilledButton.icon(
-                      onPressed: () => context.push(AppRoutes.parentChildren),
-                      icon: const Icon(Icons.child_care),
-                      label: const Text('Add child profile'),
+                  const SizedBox(height: 16),
+                  Card(
+                    color: Theme.of(context).colorScheme.primaryContainer,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            eiScreeningDisclaimer,
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  fontStyle: FontStyle.italic,
+                                ),
+                          ),
+                          const SizedBox(height: 16),
+                          if (selectedChild == null)
+                            FilledButton.icon(
+                              onPressed: () => context.push(AppRoutes.parentChildren),
+                              icon: const Icon(Icons.child_care),
+                              label: const Text('Add child profile'),
+                            )
+                          else if (eiTemplate == null)
+                            const Text(
+                              'Early Intervention template is not available. Pull to refresh.',
+                            )
+                          else
+                            FilledButton.icon(
+                              onPressed: () => _startTemplate(eiTemplate, child: selectedChild),
+                              icon: const Icon(Icons.play_arrow),
+                              label: Text(
+                                _hasDraft
+                                    ? 'Resume screening'
+                                    : 'Start screening (sections A–G)',
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
-                  ],
-                  const SizedBox(height: 24),
+                  ),
                   if (_history.isNotEmpty) ...[
+                    const SizedBox(height: 24),
                     Text(
-                      'Past screenings',
+                      'Completed screenings',
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: 8),
@@ -215,47 +323,37 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
                             '${h.childName} · ${dateFmt.format(h.completedAt)}'
                             '${h.riskLevel != null ? ' · ${h.riskLevel}' : ''}',
                           ),
-                          trailing: h.score != null
-                              ? Text(h.score!.toStringAsFixed(2))
+                          trailing: h.riskLevel != null
+                              ? Chip(label: Text(h.riskLevel!))
                               : null,
+                          onTap: () => _viewHistoryResult(h),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 24),
                   ],
-                  Text(
-                    'Available forms',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  if (_templates.isEmpty)
-                    const Text('No screening templates configured.')
-                  else
-                    ..._templates.map(
-                      (t) {
-                        final isEi = t.therapyType == 'EARLY_INTERVENTION';
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          child: ListTile(
-                            title: Text(t.name),
-                            subtitle: Text(
-                              isEi
-                                  ? 'Sections A–G · comprehensive developmental screening'
-                                  : '${t.therapyType} intake',
-                            ),
-                            trailing: FilledButton(
-                              onPressed: selectedChild == null
-                                  ? null
-                                  : () => _startTemplate(
-                                        t,
-                                        child: selectedChild,
-                                      ),
-                              child: const Text('Start'),
-                            ),
-                          ),
-                        );
-                      },
+                  if (_legacyTemplates.isNotEmpty) ...[
+                    const SizedBox(height: 24),
+                    Text(
+                      'Other therapy intake forms',
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
+                    const SizedBox(height: 8),
+                    ..._legacyTemplates.map(
+                      (t) => Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        child: ListTile(
+                          title: Text(t.name),
+                          subtitle: Text('${t.therapyType} intake'),
+                          trailing: FilledButton.tonal(
+                            onPressed: selectedChild == null
+                                ? null
+                                : () => _startTemplate(t, child: selectedChild),
+                            child: const Text('Start'),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

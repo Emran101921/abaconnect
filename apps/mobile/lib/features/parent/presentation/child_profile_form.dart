@@ -68,9 +68,14 @@ class ChildProfileFormData {
   bool get isValid =>
       firstName.trim().isNotEmpty &&
       lastName.trim().isNotEmpty &&
+      gender != null &&
+      primaryLanguage != null &&
       (guardianName?.trim().isNotEmpty ?? false) &&
       (guardianPhone?.trim().isNotEmpty ?? false) &&
-      (guardianEmail?.trim().isNotEmpty ?? false);
+      (guardianEmail?.trim().isNotEmpty ?? false) &&
+      (addressLine1?.trim().isNotEmpty ?? false) &&
+      (zipCode?.trim().isNotEmpty ?? false) &&
+      hadEarlyIntervention != null;
 }
 
 class ChildProfileForm extends StatefulWidget {

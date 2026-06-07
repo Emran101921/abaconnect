@@ -6,6 +6,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/app_providers.dart';
 import '../data/parent_booking_repository.dart';
 
+const eiScreeningDisclaimer =
+    'This screening tool is for informational purposes only and does not '
+    'replace evaluation by a licensed professional. It is not a medical diagnosis.';
+
 class EiSection {
   EiSection({
     required this.id,
@@ -90,6 +94,7 @@ class EiScreeningWizard extends ConsumerStatefulWidget {
 class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
   late final List<EiSection> _sections;
   late Map<String, dynamic> _answers;
+  late final Map<String, TextEditingController> _textControllers;
   int _step = 0;
   bool _saving = false;
   bool _consent = false;
@@ -101,15 +106,47 @@ class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
     _sections = parseEiSections(widget.template.questionsJson);
     _answers = Map<String, dynamic>.from(widget.initialAnswers);
     _draftId = widget.draftId;
+    _textControllers = {};
+    for (final section in _sections) {
+      for (final q in section.questions) {
+        if (q.type == 'text' || q.type == 'text_list') {
+          _textControllers[q.id] = TextEditingController(
+            text: _answers[q.id]?.toString() ?? '',
+          );
+        }
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final c in _textControllers.values) {
+      c.dispose();
+    }
+    super.dispose();
   }
 
   EiSection get _currentSection =>
-      _sections.isEmpty ? EiSection(id: '', title: '', questions: []) : _sections[_step];
+      _sections.isEmpty
+          ? EiSection(id: '', title: '', questions: [])
+          : _sections[_step];
 
   double get _progress =>
       _sections.isEmpty ? 0 : (_step + 1) / _sections.length;
 
   bool get _isLastStep => _step >= _sections.length - 1;
+
+  bool _isQuestionAnswered(EiQuestion q) {
+    final value = _answers[q.id];
+    if (q.type == 'text' || q.type == 'text_list') {
+      return value is String && value.trim().isNotEmpty;
+    }
+    return value != null;
+  }
+
+  bool _isSectionComplete(EiSection section) {
+    return section.questions.every(_isQuestionAnswered);
+  }
 
   Future<void> _saveDraft() async {
     setState(() => _saving = true);
@@ -123,7 +160,7 @@ class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
       _draftId = draft.id;
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Draft saved')),
+          const SnackBar(content: Text('Draft saved — you can edit and submit later')),
         );
       }
     } catch (e) {
@@ -146,6 +183,12 @@ class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
       );
       return;
     }
+    if (!_isSectionComplete(_currentSection)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please answer all questions in this section')),
+      );
+      return;
+    }
     setState(() => _saving = true);
     try {
       final result = await ref.read(parentBookingRepositoryProvider).submitScreening(
@@ -165,6 +208,16 @@ class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
     } finally {
       if (mounted) setState(() => _saving = false);
     }
+  }
+
+  void _goNext() {
+    if (!_isSectionComplete(_currentSection)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please answer all questions before continuing')),
+      );
+      return;
+    }
+    setState(() => _step += 1);
   }
 
   Widget _buildQuestion(EiQuestion q) {
@@ -202,19 +255,21 @@ class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
           ],
         );
       case 'text':
+      case 'text_list':
+        final controller = _textControllers.putIfAbsent(
+          q.id,
+          () => TextEditingController(text: value?.toString() ?? ''),
+        );
         return Padding(
           padding: const EdgeInsets.only(bottom: 16),
           child: TextField(
+            controller: controller,
             decoration: InputDecoration(
               labelText: q.text,
               border: const OutlineInputBorder(),
               alignLabelWithHint: true,
             ),
-            maxLines: 3,
-            controller: TextEditingController(text: value?.toString() ?? '')
-              ..selection = TextSelection.collapsed(
-                offset: (value?.toString() ?? '').length,
-              ),
+            maxLines: q.type == 'text_list' ? 4 : 3,
             onChanged: (v) => setState(() => _answers[q.id] = v),
           ),
         );
@@ -250,7 +305,27 @@ class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
   @override
   Widget build(BuildContext context) {
     if (_sections.isEmpty) {
-      return const Center(child: Text('No screening sections configured.'));
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, size: 48),
+              const SizedBox(height: 16),
+              const Text(
+                'Early Intervention screening is not configured yet.',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              FilledButton(
+                onPressed: () => Navigator.of(context).maybePop(),
+                child: const Text('Go back'),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     final section = _currentSection;
@@ -263,7 +338,7 @@ class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
           child: Row(
             children: [
               Text(
-                'Section ${section.id} of ${_sections.length}',
+                'Section ${section.id} · ${_step + 1} of ${_sections.length}',
                 style: Theme.of(context).textTheme.labelLarge,
               ),
               const Spacer(),
@@ -275,6 +350,20 @@ class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              if (_step == 0)
+                Card(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Text(
+                      eiScreeningDisclaimer,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            fontStyle: FontStyle.italic,
+                          ),
+                    ),
+                  ),
+                ),
+              if (_step == 0) const SizedBox(height: 16),
               Text(
                 section.title,
                 style: Theme.of(context).textTheme.headlineSmall,
@@ -285,7 +374,7 @@ class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
               ],
               const SizedBox(height: 8),
               Text(
-                'For ${widget.child.displayName}',
+                'Child: ${widget.child.displayName}',
                 style: Theme.of(context).textTheme.titleSmall,
               ),
               const SizedBox(height: 24),
@@ -300,6 +389,13 @@ class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
                   ),
                   controlAffinity: ListTileControlAffinity.leading,
                   contentPadding: EdgeInsets.zero,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  eiScreeningDisclaimer,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        fontStyle: FontStyle.italic,
+                      ),
                 ),
               ],
             ],
@@ -336,10 +432,10 @@ class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
                           if (_isLastStep) {
                             await _submit();
                           } else {
-                            setState(() => _step += 1);
+                            _goNext();
                           }
                         },
-                  child: Text(_isLastStep ? 'Submit' : 'Next'),
+                  child: Text(_isLastStep ? 'Submit screening' : 'Next section'),
                 ),
               ],
             ),

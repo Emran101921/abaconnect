@@ -92,13 +92,22 @@ export class MatchingService {
     therapyType?: string,
     latitude?: number,
     longitude?: number,
+    therapyTypes?: string[],
   ): Promise<ScoredProvider[]> {
+    const typeFilters = therapyTypes?.length
+      ? therapyTypes
+      : therapyType
+        ? [therapyType]
+        : [];
+
     const therapists = await this.prisma.therapist.findMany({
       where: {
         tenantId,
         isVerified: true,
         isAcceptingClients: true,
-        ...(therapyType ? { therapyTypes: { has: therapyType as never } } : {}),
+        ...(typeFilters.length
+          ? { therapyTypes: { hasSome: typeFilters as never[] } }
+          : {}),
       },
       include: { user: true },
       take: 50,

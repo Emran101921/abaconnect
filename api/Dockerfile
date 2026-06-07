@@ -16,6 +16,8 @@ COPY --from=builder /app/generated ./generated
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 COPY --from=builder /app/scripts ./scripts
+# Seed script imports EI template from src at runtime (prisma db seed).
+COPY --from=builder /app/src/screenings ./src/screenings
 RUN chmod +x scripts/docker-entrypoint.sh
 EXPOSE 3000
 CMD ["sh", "scripts/docker-entrypoint.sh"]

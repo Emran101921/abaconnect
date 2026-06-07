@@ -71,6 +71,38 @@ class ScreeningResultModel {
   final String? riskLevel;
   final List<ScreeningRecommendationModel> recommendations;
   final bool isDraft;
+
+  List<String> get recommendedTherapyTypes {
+    const codeMap = {
+      'SPEECH': 'SPEECH',
+      'ABA': 'ABA',
+      'OCCUPATIONAL': 'OCCUPATIONAL',
+      'PHYSICAL': 'PHYSICAL',
+      'FEEDING': 'OCCUPATIONAL',
+      'DEVELOPMENTAL': 'DEVELOPMENTAL_EVALUATION',
+    };
+    return recommendations
+        .map((rec) => codeMap[rec.code])
+        .whereType<String>()
+        .toSet()
+        .toList();
+  }
+}
+
+class EarlyInterventionEvaluationRequestModel {
+  const EarlyInterventionEvaluationRequestModel({
+    required this.id,
+    required this.screeningResponseId,
+    required this.childId,
+    required this.requestedAt,
+    required this.serviceCodes,
+  });
+
+  final String id;
+  final String screeningResponseId;
+  final String childId;
+  final DateTime requestedAt;
+  final List<String> serviceCodes;
 }
 
 class ScreeningDraftModel {
@@ -338,8 +370,8 @@ class ParentBookingRepository {
   ''';
 
   static const _recommendedTherapistsQuery = r'''
-    query Recommended($therapyType: TherapyType) {
-      recommendedTherapists(input: { therapyType: $therapyType }) {
+    query Recommended($therapyType: TherapyType, $therapyTypes: [TherapyType!]) {
+      recommendedTherapists(input: { therapyType: $therapyType, therapyTypes: $therapyTypes }) {
         id
         ratingAverage
         matchScore
@@ -531,10 +563,19 @@ class ParentBookingRepository {
     return list.map(_mapAppointment).toList();
   }
 
-  Future<List<TherapistModel>> fetchTherapists({String? therapyType}) async {
+  Future<List<TherapistModel>> fetchTherapists({
+    String? therapyType,
+    List<String>? therapyTypes,
+  }) async {
+    final variables = <String, dynamic>{};
+    if (therapyTypes != null && therapyTypes.isNotEmpty) {
+      variables['therapyTypes'] = therapyTypes;
+    } else if (therapyType != null) {
+      variables['therapyType'] = therapyType;
+    }
     final result = await _graphql.query(
       _recommendedTherapistsQuery,
-      variables: therapyType != null ? {'therapyType': therapyType} : null,
+      variables: variables.isEmpty ? null : variables,
     );
     final list =
         result['data']?['recommendedTherapists'] as List<dynamic>? ?? [];
@@ -709,6 +750,26 @@ class ParentBookingRepository {
     );
   }
 
+  Future<ScreeningResultModel> fetchScreeningResult(String id) async {
+    const query = r'''
+      query MyScreeningResult($id: ID!) {
+        myScreeningResult(id: $id) {
+          id
+          completedAt
+          score
+          riskLevel
+          recommendationsJson
+          isDraft
+          childName
+        }
+      }
+    ''';
+    final result = await _graphql.query(query, variables: {'id': id});
+    final e = result['data']?['myScreeningResult'] as Map<String, dynamic>?;
+    if (e == null) throw Exception('Screening result not found');
+    return _mapScreeningResult(e);
+  }
+
   Future<List<ScreeningHistoryModel>> fetchScreeningHistory() async {
     const query = r'''
       query {
@@ -777,6 +838,39 @@ class ParentBookingRepository {
       recommendations:
           _parseRecommendations(e['recommendationsJson'] as String?),
       isDraft: e['isDraft'] as bool? ?? false,
+    );
+  }
+
+  Future<EarlyInterventionEvaluationRequestModel>
+      requestEarlyInterventionEvaluation(String screeningResponseId) async {
+    const mutation = r'''
+      mutation RequestEvaluation($screeningResponseId: ID!) {
+        requestEarlyInterventionEvaluation(screeningResponseId: $screeningResponseId) {
+          id
+          screeningResponseId
+          childId
+          requestedAt
+          serviceCodes
+        }
+      }
+    ''';
+    final result = await _graphql.query(
+      mutation,
+      variables: {'screeningResponseId': screeningResponseId},
+    );
+    final e = result['data']?['requestEarlyInterventionEvaluation']
+        as Map<String, dynamic>?;
+    if (e == null) {
+      throw Exception('Failed to request evaluation');
+    }
+    return EarlyInterventionEvaluationRequestModel(
+      id: e['id'] as String,
+      screeningResponseId: e['screeningResponseId'] as String,
+      childId: e['childId'] as String,
+      requestedAt: DateTime.parse(e['requestedAt'] as String),
+      serviceCodes: (e['serviceCodes'] as List<dynamic>? ?? [])
+          .map((code) => code as String)
+          .toList(),
     );
   }
 

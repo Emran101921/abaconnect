@@ -233,3 +233,21 @@ export class ScreeningResponseType {
   @Field({ nullable: true })
   responsesJson?: string;
 }
+
+@ObjectType()
+export class EarlyInterventionEvaluationRequestType {
+  @Field(() => ID)
+  id: string;
+
+  @Field(() => ID)
+  screeningResponseId: string;
+
+  @Field(() => ID)
+  childId: string;
+
+  @Field()
+  requestedAt: Date;
+
+  @Field(() => [String])
+  serviceCodes: string[];
+}

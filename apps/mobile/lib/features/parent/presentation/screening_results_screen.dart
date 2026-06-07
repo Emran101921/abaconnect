@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../data/parent_booking_repository.dart';
 
-class ScreeningResultsScreen extends StatelessWidget {
+class ScreeningResultsScreen extends ConsumerStatefulWidget {
   const ScreeningResultsScreen({
     super.key,
     required this.child,
@@ -15,6 +17,17 @@ class ScreeningResultsScreen extends StatelessWidget {
 
   final ChildModel child;
   final ScreeningResultModel result;
+
+  @override
+  ConsumerState<ScreeningResultsScreen> createState() =>
+      _ScreeningResultsScreenState();
+}
+
+class _ScreeningResultsScreenState extends ConsumerState<ScreeningResultsScreen> {
+  bool _requestingEvaluation = false;
+
+  ChildModel get child => widget.child;
+  ScreeningResultModel get result => widget.result;
 
   String get _ageLabel {
     final now = DateTime.now();
@@ -41,6 +54,52 @@ class ScreeningResultsScreen extends StatelessWidget {
     }
   }
 
+  Future<void> _requestEvaluation() async {
+    setState(() => _requestingEvaluation = true);
+    try {
+      await ref
+          .read(parentBookingRepositoryProvider)
+          .requestEarlyInterventionEvaluation(result.id);
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          icon: const Icon(Icons.check_circle_outline),
+          title: const Text('Evaluation requested'),
+          content: const Text(
+            'Your request has been submitted. A care coordinator will follow up '
+            'to schedule an evaluation based on the screening recommendations.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      if (mounted) {
+        context.push(AppRoutes.parentAppointments);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not request evaluation: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _requestingEvaluation = false);
+    }
+  }
+
+  void _matchProviders() {
+    final therapyTypes = result.recommendedTherapyTypes;
+    final uri = therapyTypes.isEmpty
+        ? AppRoutes.matching
+        : '${AppRoutes.matching}?therapyTypes=${therapyTypes.join(',')}';
+    context.push(uri);
+  }
+
   @override
   Widget build(BuildContext context) {
     final risk = result.riskLevel ?? 'UNKNOWN';
@@ -60,9 +119,14 @@ class ScreeningResultsScreen extends StatelessWidget {
                     child.displayName,
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
-                  Text('Age $_ageLabel · DOB ${DateFormat.yMMMd().format(child.dateOfBirth)}'),
+                  Text(
+                    'Age $_ageLabel · DOB ${DateFormat.yMMMd().format(child.dateOfBirth)}',
+                  ),
                   const SizedBox(height: 16),
-                  Text('Overall risk level', style: Theme.of(context).textTheme.labelLarge),
+                  Text(
+                    'Overall risk level',
+                    style: Theme.of(context).textTheme.labelLarge,
+                  ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
@@ -131,9 +195,17 @@ class ScreeningResultsScreen extends StatelessWidget {
           Text('Next steps', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 12),
           FilledButton.icon(
-            onPressed: () => context.push(AppRoutes.parentBooking),
-            icon: const Icon(Icons.medical_services_outlined),
-            label: const Text('Request evaluation'),
+            onPressed: _requestingEvaluation ? null : _requestEvaluation,
+            icon: _requestingEvaluation
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.medical_services_outlined),
+            label: Text(
+              _requestingEvaluation ? 'Submitting…' : 'Request evaluation',
+            ),
           ),
           const SizedBox(height: 8),
           OutlinedButton.icon(
@@ -143,7 +215,7 @@ class ScreeningResultsScreen extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           OutlinedButton.icon(
-            onPressed: () => context.push(AppRoutes.matching),
+            onPressed: _matchProviders,
             icon: const Icon(Icons.people_outline),
             label: const Text('Match providers'),
           ),
@@ -152,6 +224,17 @@ class ScreeningResultsScreen extends StatelessWidget {
             onPressed: () => context.push(AppRoutes.messages),
             icon: const Icon(Icons.support_agent),
             label: const Text('Contact care coordinator'),
+          ),
+          const SizedBox(height: 16),
+          OutlinedButton.icon(
+            onPressed: () {
+              final childId = child.id;
+              context.push(
+                '${AppRoutes.parentScreening}?childId=$childId&autoStart=true',
+              );
+            },
+            icon: const Icon(Icons.edit_note),
+            label: const Text('Start new screening or edit via draft'),
           ),
           const SizedBox(height: 24),
           Center(
