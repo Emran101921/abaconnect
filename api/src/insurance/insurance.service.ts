@@ -276,6 +276,26 @@ export class InsuranceService {
     });
   }
 
+  async listAnalyticsClaimsForTenant(
+    tenantId: string,
+    filter: 'DRAFT' | 'SUBMITTED' | 'PENDING' | 'PAID' | 'DENIED',
+    limit = 50,
+  ) {
+    const status =
+      filter === 'PENDING'
+        ? { in: ['PENDING', 'UNDER_REVIEW', 'APPROVED'] as ClaimStatus[] }
+        : filter;
+    return this.prisma.insuranceClaim.findMany({
+      where: {
+        tenantId,
+        status,
+      },
+      include: { child: true },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+  }
+
   async getClaimsPipelineForTenant(tenantId: string) {
     const [
       draftCount,

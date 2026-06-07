@@ -50,6 +50,23 @@ final agencyAnalyticsScreeningDetailProvider =
       .fetchAnalyticsScreeningDetail(screeningId);
 });
 
+final agencyAnalyticsClaimsListProvider =
+    FutureProvider.family<List<AgencyClaimSummaryModel>, String>(
+        (ref, statusFilter) {
+  return ref
+      .watch(agencyRepositoryProvider)
+      .fetchAnalyticsClaimsList(statusFilter);
+});
+
+final agencyAnalyticsScreeningsListProvider =
+    FutureProvider.family<List<AgencyScreeningSummaryModel>, String>(
+        (ref, riskFilterKey) {
+  final riskLevel = riskFilterKey == 'all' ? null : riskFilterKey;
+  return ref
+      .watch(agencyRepositoryProvider)
+      .fetchAnalyticsScreeningsList(riskLevel: riskLevel);
+});
+
 Future<void> showInviteTherapist(BuildContext context, WidgetRef ref) async {
   final candidates = await ref.read(agencyInviteCandidatesProvider.future);
   if (!context.mounted) return;

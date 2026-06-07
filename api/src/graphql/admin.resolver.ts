@@ -1,4 +1,4 @@
-import { Args, ID, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, ID, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Roles } from '../common/decorators/roles.decorator';
 import {
   AuthUser,
@@ -23,7 +23,10 @@ import {
   PendingTherapistType,
 } from './types/admin.types';
 import {
+  AnalyticsClaimPipelineFilter,
+  AnalyticsClaimSummaryType,
   AnalyticsScreeningDetailType,
+  AnalyticsScreeningSummaryType,
   ClaimsPipelineDashboardType,
   ScreeningFunnelDashboardType,
 } from './types/dashboard.types';
@@ -224,6 +227,58 @@ export class AdminResolver {
         riskLevel: r.riskLevel ?? undefined,
       })),
     };
+  }
+
+  @Query(() => [AnalyticsClaimSummaryType], { name: 'adminAnalyticsClaims' })
+  async adminAnalyticsClaims(
+    @CurrentUser() user: AuthUser,
+    @Args('statusFilter', { type: () => AnalyticsClaimPipelineFilter })
+    statusFilter: AnalyticsClaimPipelineFilter,
+    @Args('limit', { type: () => Int, nullable: true, defaultValue: 50 })
+    limit: number,
+  ): Promise<AnalyticsClaimSummaryType[]> {
+    const rows = await this.insuranceService.listAnalyticsClaimsForTenant(
+      user.tenantId ?? '',
+      statusFilter,
+      limit,
+    );
+    return rows.map((c) => ({
+      id: c.id,
+      status: c.status,
+      payerName: c.payerName,
+      billedAmount: Number(c.billedAmount),
+      serviceDate: c.serviceDate,
+      childName: c.child
+        ? `${c.child.firstName} ${c.child.lastName}`
+        : undefined,
+      claimNumber: c.claimNumber ?? undefined,
+    }));
+  }
+
+  @Query(() => [AnalyticsScreeningSummaryType], {
+    name: 'adminAnalyticsScreenings',
+  })
+  async adminAnalyticsScreenings(
+    @CurrentUser() user: AuthUser,
+    @Args('limit', { type: () => Int, nullable: true, defaultValue: 50 })
+    limit: number,
+    @Args('riskLevel', { nullable: true }) riskLevel?: string,
+  ): Promise<AnalyticsScreeningSummaryType[]> {
+    const rows = await this.screeningsService.listAnalyticsScreeningsForTenant(
+      user.tenantId ?? '',
+      riskLevel,
+      limit,
+    );
+    return rows.map((r) => ({
+      id: r.id,
+      completedAt: r.completedAt,
+      childName: r.child
+        ? `${r.child.firstName} ${r.child.lastName}`
+        : undefined,
+      templateName: r.template?.name,
+      score: r.score != null ? Number(r.score) : undefined,
+      riskLevel: r.riskLevel ?? undefined,
+    }));
   }
 
   @Query(() => AdminInsuranceClaimType, { name: 'adminAnalyticsClaimDetail' })

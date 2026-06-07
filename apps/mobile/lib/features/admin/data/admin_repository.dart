@@ -359,6 +359,68 @@ class AdminRepository {
     );
   }
 
+  Future<List<AnalyticsClaimSummaryModel>> fetchAnalyticsClaimsList(
+    String statusFilter, {
+    int limit = 50,
+  }) async {
+    const query = r'''
+      query ClaimsList($statusFilter: AnalyticsClaimPipelineFilter!, $limit: Int) {
+        adminAnalyticsClaims(statusFilter: $statusFilter, limit: $limit) {
+          id status payerName billedAmount serviceDate childName claimNumber
+        }
+      }
+    ''';
+    final result = await _graphql.query(
+      query,
+      variables: {'statusFilter': statusFilter, 'limit': limit},
+    );
+    final list = result['data']?['adminAnalyticsClaims'] as List<dynamic>? ?? [];
+    return list
+        .map(
+          (e) => AnalyticsClaimSummaryModel(
+            id: e['id'] as String,
+            status: e['status'] as String? ?? '',
+            payerName: e['payerName'] as String? ?? '',
+            billedAmount: (e['billedAmount'] as num?)?.toDouble() ?? 0,
+            serviceDate: DateTime.parse(e['serviceDate'] as String),
+            childName: e['childName'] as String?,
+            claimNumber: e['claimNumber'] as String?,
+          ),
+        )
+        .toList();
+  }
+
+  Future<List<AnalyticsScreeningSummaryModel>> fetchAnalyticsScreeningsList({
+    String? riskLevel,
+    int limit = 50,
+  }) async {
+    const query = r'''
+      query ScreeningsList($riskLevel: String, $limit: Int) {
+        adminAnalyticsScreenings(riskLevel: $riskLevel, limit: $limit) {
+          id completedAt childName templateName score riskLevel
+        }
+      }
+    ''';
+    final result = await _graphql.query(
+      query,
+      variables: {'riskLevel': riskLevel, 'limit': limit},
+    );
+    final list =
+        result['data']?['adminAnalyticsScreenings'] as List<dynamic>? ?? [];
+    return list
+        .map(
+          (e) => AnalyticsScreeningSummaryModel(
+            id: e['id'] as String,
+            completedAt: DateTime.parse(e['completedAt'] as String),
+            childName: e['childName'] as String?,
+            templateName: e['templateName'] as String?,
+            score: (e['score'] as num?)?.toDouble(),
+            riskLevel: e['riskLevel'] as String?,
+          ),
+        )
+        .toList();
+  }
+
   Future<ScreeningFunnelDashboardModel> fetchScreeningFunnel() async {
     const query = r'''
       query {

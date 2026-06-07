@@ -1,4 +1,23 @@
-import { Field, Float, ID, Int, ObjectType } from '@nestjs/graphql';
+import {
+  Field,
+  Float,
+  ID,
+  Int,
+  ObjectType,
+  registerEnumType,
+} from '@nestjs/graphql';
+
+export enum AnalyticsClaimPipelineFilter {
+  DRAFT = 'DRAFT',
+  SUBMITTED = 'SUBMITTED',
+  PENDING = 'PENDING',
+  PAID = 'PAID',
+  DENIED = 'DENIED',
+}
+
+registerEnumType(AnalyticsClaimPipelineFilter, {
+  name: 'AnalyticsClaimPipelineFilter',
+});
 
 @ObjectType()
 export class ClaimsPipelineAnalyticsType {

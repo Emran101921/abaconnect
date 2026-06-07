@@ -73,3 +73,22 @@ final adminAnalyticsScreeningDetailProvider =
       .watch(adminRepositoryProvider)
       .fetchAnalyticsScreeningDetail(screeningId);
 });
+
+final adminAnalyticsClaimsListProvider =
+    FutureProvider.family<List<AnalyticsClaimSummaryModel>, String>(
+        (ref, statusFilter) {
+  return ref
+      .watch(adminRepositoryProvider)
+      .fetchAnalyticsClaimsList(statusFilter);
+});
+
+final adminAnalyticsScreeningsListProvider =
+    FutureProvider.family<List<AnalyticsScreeningSummaryModel>, String>(
+        (ref, riskFilterKey) {
+  final riskLevel = riskFilterKey == 'all'
+      ? null
+      : riskFilterKey;
+  return ref
+      .watch(adminRepositoryProvider)
+      .fetchAnalyticsScreeningsList(riskLevel: riskLevel);
+});

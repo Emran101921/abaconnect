@@ -82,6 +82,22 @@ export class ScreeningsService {
     return row;
   }
 
+  async listAnalyticsScreeningsForTenant(
+    tenantId: string,
+    riskLevel?: string,
+    limit = 50,
+  ) {
+    return this.prisma.screeningResponse.findMany({
+      where: {
+        tenantId,
+        ...(riskLevel ? { riskLevel } : {}),
+      },
+      include: { template: true, child: true },
+      orderBy: { completedAt: 'desc' },
+      take: limit,
+    });
+  }
+
   async getScreeningFunnelForTenant(tenantId: string) {
     const [
       completedCount,

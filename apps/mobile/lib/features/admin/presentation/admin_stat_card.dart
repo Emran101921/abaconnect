@@ -6,36 +6,46 @@ class AdminStatCard extends StatelessWidget {
     required this.label,
     required this.value,
     this.highlight = false,
+    this.onTap,
   });
 
   final String label;
   final Object value;
   final bool highlight;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
+    final child = Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: Theme.of(context).textTheme.labelLarge),
+          const SizedBox(height: 8),
+          Text(
+            '$value',
+            style: Theme.of(context).textTheme.headlineMedium,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+
     return SizedBox(
       width: 160,
       child: Card(
         color: highlight
             ? Theme.of(context).colorScheme.primaryContainer
             : null,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label, style: Theme.of(context).textTheme.labelLarge),
-              const SizedBox(height: 8),
-              Text(
-                '$value',
-                style: Theme.of(context).textTheme.headlineMedium,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+        clipBehavior: Clip.antiAlias,
+        child: onTap == null
+            ? child
+            : InkWell(
+                onTap: onTap,
+                child: child,
               ),
-            ],
-          ),
-        ),
       ),
     );
   }

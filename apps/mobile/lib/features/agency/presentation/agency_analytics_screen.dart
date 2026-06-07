@@ -124,23 +124,38 @@ class AgencyAnalyticsScreen extends ConsumerWidget {
                 AdminStatCard(
                   label: 'Draft',
                   value: pipeline.summary.draftCount,
+                  onTap: () => context.push(
+                    '${AppRoutes.agencyHome}/analytics/claims/filter/draft',
+                  ),
                 ),
                 AdminStatCard(
                   label: 'Submitted',
                   value: pipeline.summary.submittedCount,
+                  onTap: () => context.push(
+                    '${AppRoutes.agencyHome}/analytics/claims/filter/submitted',
+                  ),
                 ),
                 AdminStatCard(
                   label: 'Pending',
                   value: pipeline.summary.pendingCount,
+                  onTap: () => context.push(
+                    '${AppRoutes.agencyHome}/analytics/claims/filter/pending',
+                  ),
                 ),
                 AdminStatCard(
                   label: 'Paid',
                   value: pipeline.summary.paidCount,
                   highlight: true,
+                  onTap: () => context.push(
+                    '${AppRoutes.agencyHome}/analytics/claims/filter/paid',
+                  ),
                 ),
                 AdminStatCard(
                   label: 'Denied',
                   value: pipeline.summary.deniedCount,
+                  onTap: () => context.push(
+                    '${AppRoutes.agencyHome}/analytics/claims/filter/denied',
+                  ),
                 ),
               ],
             ),
@@ -166,19 +181,31 @@ class AgencyAnalyticsScreen extends ConsumerWidget {
                 AdminStatCard(
                   label: 'Completed',
                   value: funnel.summary.completedCount,
+                  onTap: () => context.push(
+                    '${AppRoutes.agencyHome}/analytics/screenings/filter/all',
+                  ),
                 ),
                 AdminStatCard(
                   label: 'Low risk',
                   value: funnel.summary.lowRiskCount,
+                  onTap: () => context.push(
+                    '${AppRoutes.agencyHome}/analytics/screenings/filter/low',
+                  ),
                 ),
                 AdminStatCard(
                   label: 'Medium risk',
                   value: funnel.summary.moderateRiskCount,
+                  onTap: () => context.push(
+                    '${AppRoutes.agencyHome}/analytics/screenings/filter/moderate',
+                  ),
                 ),
                 AdminStatCard(
                   label: 'High risk',
                   value: funnel.summary.highRiskCount,
                   highlight: funnel.summary.highRiskCount > 0,
+                  onTap: () => context.push(
+                    '${AppRoutes.agencyHome}/analytics/screenings/filter/high',
+                  ),
                 ),
               ],
             ),
