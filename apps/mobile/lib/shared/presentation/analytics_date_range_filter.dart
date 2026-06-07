@@ -7,9 +7,11 @@ class AnalyticsDateRangeBar extends ConsumerWidget {
   const AnalyticsDateRangeBar({
     super.key,
     required this.dateRangeProvider,
+    this.defaultSuppressedProvider,
   });
 
   final StateProvider<AnalyticsDateRange> dateRangeProvider;
+  final StateProvider<bool>? defaultSuppressedProvider;
 
   Future<void> _pickRange(BuildContext context, WidgetRef ref) async {
     final current = ref.read(dateRangeProvider);
@@ -54,6 +56,10 @@ class AnalyticsDateRangeBar extends ConsumerWidget {
                     icon: const Icon(Icons.clear, size: 20),
                     tooltip: 'Clear date range',
                     onPressed: () {
+                      if (defaultSuppressedProvider != null) {
+                        ref.read(defaultSuppressedProvider!.notifier).state =
+                            true;
+                      }
                       ref.read(dateRangeProvider.notifier).state =
                           const AnalyticsDateRange();
                     },

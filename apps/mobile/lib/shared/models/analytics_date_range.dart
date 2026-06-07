@@ -68,6 +68,8 @@ DateTime analyticsDateOnly(DateTime date) =>
 
 DateTime get analyticsToday => analyticsDateOnly(DateTime.now());
 
+const analyticsDefaultDateRangePreset = AnalyticsDateRangePreset.last30Days;
+
 enum AnalyticsDateRangePreset {
   last7Days('Last 7 days'),
   last30Days('Last 30 days'),

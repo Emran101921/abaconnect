@@ -8,6 +8,9 @@ import '../data/agency_repository.dart';
 final agencyAnalyticsDateRangeProvider =
     StateProvider<AnalyticsDateRange>((ref) => const AnalyticsDateRange());
 
+final agencyAnalyticsDateRangeDefaultSuppressedProvider =
+    StateProvider<bool>((ref) => false);
+
 final agencyDashboardProvider = FutureProvider<AgencyDashboardModel>((ref) {
   return ref.watch(agencyRepositoryProvider).fetchDashboard();
 });
