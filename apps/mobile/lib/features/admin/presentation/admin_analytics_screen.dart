@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/router/app_router.dart';
 
+import '../../../shared/models/analytics_date_range.dart';
 import '../../../shared/presentation/analytics_copy_link.dart';
 import '../../../shared/presentation/analytics_date_range_filter.dart';
 import '../../../shared/presentation/analytics_date_range_url.dart';
@@ -80,6 +81,9 @@ class AdminAnalyticsScreen extends ConsumerWidget {
 
     return AnalyticsDateRangeSync(
       dateRangeProvider: adminAnalyticsDateRangeProvider,
+      defaultPreset: analyticsDefaultDateRangePreset,
+      defaultSuppressedProvider:
+          adminAnalyticsDateRangeDefaultSuppressedProvider,
       child: AppScaffold(
         title: 'Analytics',
         actions: const [AnalyticsCopyLinkButton()],
@@ -95,6 +99,8 @@ class AdminAnalyticsScreen extends ConsumerWidget {
             const SizedBox(height: 16),
             AnalyticsDateRangeBar(
               dateRangeProvider: adminAnalyticsDateRangeProvider,
+              defaultSuppressedProvider:
+                  adminAnalyticsDateRangeDefaultSuppressedProvider,
             ),
             const SizedBox(height: 16),
             if (metricList.isNotEmpty) ...[

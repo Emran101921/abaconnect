@@ -17,16 +17,28 @@ Uri uriWithAnalyticsDateRange(Uri uri, AnalyticsDateRange range) {
   return uri.replace(queryParameters: params);
 }
 
+bool analyticsUriHasDateParams(Uri uri) {
+  final params = uri.queryParameters;
+  final from = params[analyticsFromDateParam];
+  final to = params[analyticsToDateParam];
+  return (from != null && from.isNotEmpty) ||
+      (to != null && to.isNotEmpty);
+}
+
 /// Keeps [dateRangeProvider] in sync with `fromDate` / `toDate` URL params.
 class AnalyticsDateRangeSync extends ConsumerStatefulWidget {
   const AnalyticsDateRangeSync({
     super.key,
     required this.dateRangeProvider,
     required this.child,
+    this.defaultPreset,
+    this.defaultSuppressedProvider,
   });
 
   final StateProvider<AnalyticsDateRange> dateRangeProvider;
   final Widget child;
+  final AnalyticsDateRangePreset? defaultPreset;
+  final StateProvider<bool>? defaultSuppressedProvider;
 
   @override
   ConsumerState<AnalyticsDateRangeSync> createState() =>
@@ -51,10 +63,42 @@ class _AnalyticsDateRangeSyncState extends ConsumerState<AnalyticsDateRangeSync>
 
     final fromUrl = _rangeFromUri(uri);
     final current = ref.read(widget.dateRangeProvider);
+    if (!fromUrl.isActive && current.isActive) {
+      _lastAppliedQueryKey = key;
+      return;
+    }
     if (!fromUrl.sameAs(current)) {
       ref.read(widget.dateRangeProvider.notifier).state = fromUrl;
     }
     _lastAppliedQueryKey = key;
+  }
+
+  void _maybeApplyDefaultPreset(Uri uri) {
+    final preset = widget.defaultPreset;
+    if (preset == null) return;
+
+    final suppressed = widget.defaultSuppressedProvider != null &&
+        ref.read(widget.defaultSuppressedProvider!);
+    if (suppressed) return;
+    if (analyticsUriHasDateParams(uri)) return;
+
+    final current = ref.read(widget.dateRangeProvider);
+    if (current.isActive) return;
+
+    final defaultRange = preset.range;
+    ref.read(widget.dateRangeProvider.notifier).state = defaultRange;
+    _lastAppliedQueryKey = _queryKey(uriWithAnalyticsDateRange(uri, defaultRange));
+  }
+
+  void _syncUriIntoState(Uri uri) {
+    if (analyticsUriHasDateParams(uri)) {
+      _syncFromUri(uri);
+    } else {
+      _maybeApplyDefaultPreset(uri);
+      if (!ref.read(widget.dateRangeProvider).isActive) {
+        _lastAppliedQueryKey = _queryKey(uri);
+      }
+    }
   }
 
   void _syncToUri(AnalyticsDateRange range) {
@@ -75,7 +119,7 @@ class _AnalyticsDateRangeSyncState extends ConsumerState<AnalyticsDateRangeSync>
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!_syncingToUrl) {
-      _syncFromUri(GoRouterState.of(context).uri);
+      _syncUriIntoState(GoRouterState.of(context).uri);
     }
   }
 
@@ -90,7 +134,7 @@ class _AnalyticsDateRangeSyncState extends ConsumerState<AnalyticsDateRangeSync>
     if (!_syncingToUrl && _queryKey(uri) != _lastAppliedQueryKey) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && !_syncingToUrl) {
-          _syncFromUri(GoRouterState.of(context).uri);
+          _syncUriIntoState(GoRouterState.of(context).uri);
         }
       });
     }

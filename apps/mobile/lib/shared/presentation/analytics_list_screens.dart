@@ -7,6 +7,8 @@ import '../../features/admin/data/admin_repository.dart';
 import '../../features/admin/presentation/admin_providers.dart';
 import '../../features/agency/data/agency_repository.dart';
 import '../../features/agency/presentation/agency_providers.dart';
+import '../models/analytics_date_range.dart';
+import '../presentation/analytics_copy_link.dart';
 import '../presentation/analytics_date_range_filter.dart';
 import '../presentation/analytics_date_range_url.dart';
 import '../utils/analytics_csv_export.dart';
@@ -22,6 +24,15 @@ List<Widget>? analyticsExportActions({
       tooltip: 'Export CSV',
       onPressed: onExport,
     ),
+  ];
+}
+
+List<Widget> analyticsListScreenActions({
+  required VoidCallback? onExport,
+}) {
+  return [
+    const AnalyticsCopyLinkButton(),
+    ...?analyticsExportActions(onExport: onExport),
   ];
 }
 
@@ -95,9 +106,12 @@ class AdminAnalyticsClaimsListScreen extends ConsumerWidget {
 
     return AnalyticsDateRangeSync(
       dateRangeProvider: adminAnalyticsDateRangeProvider,
+      defaultPreset: analyticsDefaultDateRangePreset,
+      defaultSuppressedProvider:
+          adminAnalyticsDateRangeDefaultSuppressedProvider,
       child: AppScaffold(
       title: analyticsClaimListTitle(statusFilter),
-      actions: analyticsExportActions(
+      actions: analyticsListScreenActions(
         onExport: claims.maybeWhen(
           data: (list) => () => exportAnalyticsCsv(
             context,
@@ -118,6 +132,8 @@ class AdminAnalyticsClaimsListScreen extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
             child: AnalyticsDateRangeBar(
               dateRangeProvider: adminAnalyticsDateRangeProvider,
+              defaultSuppressedProvider:
+                  adminAnalyticsDateRangeDefaultSuppressedProvider,
             ),
           ),
           Expanded(
@@ -170,9 +186,12 @@ class AgencyAnalyticsClaimsListScreen extends ConsumerWidget {
 
     return AnalyticsDateRangeSync(
       dateRangeProvider: agencyAnalyticsDateRangeProvider,
+      defaultPreset: analyticsDefaultDateRangePreset,
+      defaultSuppressedProvider:
+          agencyAnalyticsDateRangeDefaultSuppressedProvider,
       child: AppScaffold(
       title: analyticsClaimListTitle(statusFilter),
-      actions: analyticsExportActions(
+      actions: analyticsListScreenActions(
         onExport: claims.maybeWhen(
           data: (list) => () => exportAnalyticsCsv(
             context,
@@ -193,6 +212,8 @@ class AgencyAnalyticsClaimsListScreen extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
             child: AnalyticsDateRangeBar(
               dateRangeProvider: agencyAnalyticsDateRangeProvider,
+              defaultSuppressedProvider:
+                  agencyAnalyticsDateRangeDefaultSuppressedProvider,
             ),
           ),
           Expanded(
@@ -245,9 +266,12 @@ class AdminAnalyticsScreeningsListScreen extends ConsumerWidget {
 
     return AnalyticsDateRangeSync(
       dateRangeProvider: adminAnalyticsDateRangeProvider,
+      defaultPreset: analyticsDefaultDateRangePreset,
+      defaultSuppressedProvider:
+          adminAnalyticsDateRangeDefaultSuppressedProvider,
       child: AppScaffold(
       title: analyticsScreeningListTitle(riskFilter),
-      actions: analyticsExportActions(
+      actions: analyticsListScreenActions(
         onExport: screenings.maybeWhen(
           data: (list) => () => exportAnalyticsCsv(
             context,
@@ -268,6 +292,8 @@ class AdminAnalyticsScreeningsListScreen extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
             child: AnalyticsDateRangeBar(
               dateRangeProvider: adminAnalyticsDateRangeProvider,
+              defaultSuppressedProvider:
+                  adminAnalyticsDateRangeDefaultSuppressedProvider,
             ),
           ),
           Expanded(
@@ -319,9 +345,12 @@ class AgencyAnalyticsScreeningsListScreen extends ConsumerWidget {
 
     return AnalyticsDateRangeSync(
       dateRangeProvider: agencyAnalyticsDateRangeProvider,
+      defaultPreset: analyticsDefaultDateRangePreset,
+      defaultSuppressedProvider:
+          agencyAnalyticsDateRangeDefaultSuppressedProvider,
       child: AppScaffold(
       title: analyticsScreeningListTitle(riskFilter),
-      actions: analyticsExportActions(
+      actions: analyticsListScreenActions(
         onExport: screenings.maybeWhen(
           data: (list) => () => exportAnalyticsCsv(
             context,
@@ -342,6 +371,8 @@ class AgencyAnalyticsScreeningsListScreen extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
             child: AnalyticsDateRangeBar(
               dateRangeProvider: agencyAnalyticsDateRangeProvider,
+              defaultSuppressedProvider:
+                  agencyAnalyticsDateRangeDefaultSuppressedProvider,
             ),
           ),
           Expanded(

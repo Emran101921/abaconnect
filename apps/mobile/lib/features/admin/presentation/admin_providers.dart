@@ -45,6 +45,9 @@ final adminReviewsProvider =
 final adminAnalyticsDateRangeProvider =
     StateProvider<AnalyticsDateRange>((ref) => const AnalyticsDateRange());
 
+final adminAnalyticsDateRangeDefaultSuppressedProvider =
+    StateProvider<bool>((ref) => false);
+
 final adminAnalyticsProvider =
     FutureProvider<List<AnalyticsMetricModel>>((ref) async {
   return ref.watch(adminRepositoryProvider).fetchAnalytics();
