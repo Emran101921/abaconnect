@@ -7,6 +7,8 @@ import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/models/dashboard_action_model.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/app_section_header.dart';
+import '../../../shared/widgets/app_stat_card.dart';
 import '../../../shared/widgets/dashboard_action_inbox.dart';
 import '../../messaging/messaging_providers.dart';
 import '../../notifications/notification_providers.dart';
@@ -53,12 +55,12 @@ class AgencyHomeScreen extends ConsumerWidget {
           ref.invalidate(agencyUpcomingAppointmentsProvider);
           ref.invalidate(unreadNotificationsProvider);
         },
-        child: ListView(
-          padding: const EdgeInsets.all(16),
+        child: AppContentContainer(
+          child: ListView(
           children: [
-            Text(
-              'Overview',
-              style: Theme.of(context).textTheme.titleLarge,
+            const AppSectionHeader(
+              title: 'Overview',
+              subtitle: 'Agency operations at a glance',
             ),
             const SizedBox(height: 12),
             dashboard.when(
@@ -69,60 +71,65 @@ class AgencyHomeScreen extends ConsumerWidget {
                     spacing: 12,
                     runSpacing: 12,
                     children: [
-                      _StatCard(
+                      AppStatCard(
                         label: 'Therapists',
                         value: '${d.therapistCount}',
+                        icon: Icons.groups_outlined,
                         onTap: () =>
                             context.push('${AppRoutes.agencyHome}/roster'),
                       ),
-                      _StatCard(
+                      AppStatCard(
                         label: 'Active clients',
                         value: '${d.activeClients}',
+                        icon: Icons.people_outline,
                         onTap: () =>
                             context.push('${AppRoutes.agencyHome}/analytics'),
                       ),
-                      _StatCard(
+                      AppStatCard(
                         label: 'Sessions today',
                         value: '${d.appointmentsToday}',
+                        icon: Icons.event_outlined,
+                        accent: d.appointmentsToday > 0,
                         onTap: () => context
                             .push('${AppRoutes.agencyHome}/appointments'),
                       ),
-                      _StatCard(
+                      AppStatCard(
                         label: 'Pending verify',
                         value: '${d.pendingTherapists}',
                         highlight: d.pendingTherapists > 0,
+                        icon: Icons.verified_user_outlined,
                         onTap: () =>
                             context.push('${AppRoutes.agencyHome}/roster'),
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
-                  Text(
-                    'Operations board',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
+                  const AppSectionHeader(title: 'Operations board'),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 12,
                     runSpacing: 12,
                     children: [
-                      _StatCard(
+                      AppStatCard(
                         label: 'Missing EVV',
                         value: '${d.missingEvvCount}',
                         highlight: d.missingEvvCount > 0,
+                        icon: Icons.location_off_outlined,
                         onTap: () =>
                             context.push('${AppRoutes.agencyHome}/appointments'),
                       ),
-                      _StatCard(
+                      AppStatCard(
                         label: 'Draft claims',
                         value: '${d.draftClaimsCount}',
                         highlight: d.draftClaimsCount > 0,
+                        icon: Icons.receipt_long_outlined,
                         onTap: () =>
                             context.push('${AppRoutes.agencyHome}/analytics'),
                       ),
-                      _StatCard(
+                      AppStatCard(
                         label: 'Cancels today',
                         value: '${d.cancellationsToday}',
+                        icon: Icons.event_busy_outlined,
                         onTap: () =>
                             context.push('${AppRoutes.agencyHome}/appointments'),
                       ),
@@ -232,50 +239,6 @@ class AgencyHomeScreen extends ConsumerWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  const _StatCard({
-    required this.label,
-    required this.value,
-    this.highlight = false,
-    this.onTap,
-  });
-
-  final String label;
-  final String value;
-  final bool highlight;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return SizedBox(
-      width: 160,
-      child: Card(
-        color: highlight ? colorScheme.errorContainer : null,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-                const SizedBox(height: 4),
-                Text(label),
-              ],
-            ),
-          ),
         ),
       ),
     );

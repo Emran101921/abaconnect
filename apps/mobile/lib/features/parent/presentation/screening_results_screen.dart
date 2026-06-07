@@ -5,7 +5,9 @@ import 'package:intl/intl.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
+import '../../../shared/widgets/app_risk_badge.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/app_section_header.dart';
 import '../data/parent_booking_repository.dart';
 
 class ScreeningResultsScreen extends ConsumerStatefulWidget {
@@ -41,17 +43,6 @@ class _ScreeningResultsScreenState extends ConsumerState<ScreeningResultsScreen>
       return '$months mo';
     }
     return '$years yr';
-  }
-
-  Color _riskColor(BuildContext context) {
-    switch (result.riskLevel?.toUpperCase()) {
-      case 'HIGH':
-        return Colors.red.shade700;
-      case 'MODERATE':
-        return Colors.orange.shade800;
-      default:
-        return Colors.green.shade700;
-    }
   }
 
   Future<void> _requestEvaluation() async {
@@ -106,42 +97,44 @@ class _ScreeningResultsScreenState extends ConsumerState<ScreeningResultsScreen>
 
     return AppScaffold(
       title: 'Screening Results',
-      body: ListView(
-        padding: const EdgeInsets.all(16),
+      subtitle: 'Early Intervention summary',
+      body: AppContentContainer(
+        child: ListView(
         children: [
           Card(
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     child.displayName,
-                    style: Theme.of(context).textTheme.headlineSmall,
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
                   ),
+                  const SizedBox(height: 4),
                   Text(
                     'Age $_ageLabel · DOB ${DateFormat.yMMMd().format(child.dateOfBirth)}',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
                   Text(
                     'Overall risk level',
                     style: Theme.of(context).textTheme.labelLarge,
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 8),
                   Row(
                     children: [
-                      Icon(Icons.flag, color: _riskColor(context)),
-                      const SizedBox(width: 8),
-                      Text(
-                        risk,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              color: _riskColor(context),
-                              fontWeight: FontWeight.bold,
-                            ),
-                      ),
+                      AppRiskBadge(level: risk),
                       if (result.score != null) ...[
                         const Spacer(),
-                        Text('Score ${result.score!.toStringAsFixed(2)}'),
+                        Text(
+                          'Score ${result.score!.toStringAsFixed(1)}',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
                       ],
                     ],
                   ),
@@ -149,10 +142,10 @@ class _ScreeningResultsScreenState extends ConsumerState<ScreeningResultsScreen>
               ),
             ),
           ),
-          const SizedBox(height: 16),
-          Text(
-            'Recommended services',
-            style: Theme.of(context).textTheme.titleMedium,
+          const SizedBox(height: 20),
+          const AppSectionHeader(
+            title: 'Recommended services',
+            subtitle: 'Based on your screening responses',
           ),
           const SizedBox(height: 8),
           if (result.recommendations.isEmpty)
@@ -192,7 +185,7 @@ class _ScreeningResultsScreenState extends ConsumerState<ScreeningResultsScreen>
             ),
           ),
           const SizedBox(height: 24),
-          Text('Next steps', style: Theme.of(context).textTheme.titleMedium),
+          const AppSectionHeader(title: 'Next steps'),
           const SizedBox(height: 12),
           FilledButton.icon(
             onPressed: _requestingEvaluation ? null : _requestEvaluation,
@@ -244,6 +237,7 @@ class _ScreeningResultsScreenState extends ConsumerState<ScreeningResultsScreen>
             ),
           ),
         ],
+        ),
       ),
     );
   }

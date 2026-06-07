@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/app_section_header.dart';
 import '../../notifications/notification_providers.dart';
 import 'admin_providers.dart';
 import 'admin_stat_card.dart';
@@ -46,12 +47,12 @@ class AdminHomeScreen extends ConsumerWidget {
           ref.invalidate(adminComplaintsProvider);
           ref.invalidate(unreadNotificationsProvider);
         },
-        child: ListView(
-          padding: const EdgeInsets.all(16),
+        child: AppContentContainer(
+          child: ListView(
           children: [
-            Text(
-              'Overview',
-              style: Theme.of(context).textTheme.titleLarge,
+            const AppSectionHeader(
+              title: 'Overview',
+              subtitle: 'Platform operations dashboard',
             ),
             const SizedBox(height: 12),
             dashboard.when(
@@ -165,6 +166,7 @@ class AdminHomeScreen extends ConsumerWidget {
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
+        ),
         ),
       ),
     );

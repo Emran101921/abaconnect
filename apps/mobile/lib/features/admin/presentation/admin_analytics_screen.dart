@@ -11,6 +11,7 @@ import '../../../shared/presentation/analytics_copy_link.dart';
 import '../../../shared/presentation/analytics_date_range_filter.dart';
 import '../../../shared/presentation/analytics_date_range_url.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/app_section_header.dart';
 import '../data/admin_repository.dart';
 import 'admin_providers.dart';
 import 'admin_stat_card.dart';
@@ -81,12 +82,13 @@ class AdminAnalyticsScreen extends ConsumerWidget {
         actions: const [AnalyticsCopyLinkButton()],
         body: RefreshIndicator(
           onRefresh: refresh,
-          child: ListView(
-            padding: const EdgeInsets.all(16),
+          child: AppContentContainer(
+            child: ListView(
             children: [
-            Text(
-              'Platform metrics, claims pipeline, and screening funnel.',
-              style: Theme.of(context).textTheme.bodyMedium,
+            const AppSectionHeader(
+              title: 'Platform analytics',
+              subtitle:
+                  'Platform metrics, claims pipeline, and screening funnel.',
             ),
             const SizedBox(height: 16),
             AnalyticsDateRangeBar(
@@ -96,10 +98,7 @@ class AdminAnalyticsScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
             if (metricList.isNotEmpty) ...[
-              Text(
-                'Overview',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
+              const AppSectionHeader(title: 'Overview'),
               const SizedBox(height: 12),
               if (metricList.any(
                 (m) => m.metricKey == 'revenue_mismatch' && m.metricValue >= 1,
@@ -169,10 +168,7 @@ class AdminAnalyticsScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 24),
             ],
-            Text(
-              'Claims pipeline',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
+            const AppSectionHeader(title: 'Claims pipeline'),
             const SizedBox(height: 12),
             Wrap(
               spacing: 12,
@@ -272,10 +268,7 @@ class AdminAnalyticsScreen extends ConsumerWidget {
               },
             ),
             const SizedBox(height: 24),
-            Text(
-              'Screening funnel',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
+            const AppSectionHeader(title: 'Screening funnel'),
             const SizedBox(height: 12),
             Wrap(
               spacing: 12,
@@ -357,6 +350,7 @@ class AdminAnalyticsScreen extends ConsumerWidget {
               },
             ),
             ],
+          ),
           ),
         ),
       ),

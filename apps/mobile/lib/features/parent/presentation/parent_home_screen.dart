@@ -6,7 +6,10 @@ import 'package:intl/intl.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/models/dashboard_action_model.dart';
+import '../../../shared/widgets/app_bottom_nav.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/app_section_header.dart';
+import '../../../shared/widgets/app_stat_card.dart';
 import '../../../shared/widgets/dashboard_action_inbox.dart';
 import '../../messaging/messaging_providers.dart';
 import '../../messaging/presentation/messages_screen.dart';
@@ -46,6 +49,7 @@ class ParentHomeScreen extends ConsumerWidget {
 
     return AppScaffold(
       title: 'Parent',
+      bottomNavigationBar: const ParentBottomNav(current: ParentNavTab.home),
       actions: [
         IconButton(
           icon: unreadCount > 0
@@ -74,10 +78,13 @@ class ParentHomeScreen extends ConsumerWidget {
           ref.invalidate(messageThreadsProvider);
           ref.invalidate(sessionHistoryProvider);
         },
-        child: ListView(
-          padding: const EdgeInsets.all(16),
+        child: AppContentContainer(
+          child: ListView(
           children: [
-            Text('Overview', style: Theme.of(context).textTheme.titleLarge),
+            const AppSectionHeader(
+              title: 'Overview',
+              subtitle: 'Your family care at a glance',
+            ),
             const SizedBox(height: 12),
             dashboard.when(
               data: (d) {
@@ -150,27 +157,32 @@ class ParentHomeScreen extends ConsumerWidget {
                 spacing: 12,
                 runSpacing: 12,
                 children: [
-                  _StatCard(
+                  AppStatCard(
                     label: 'Children',
                     value: '${d.childrenCount}',
+                    icon: Icons.child_care_outlined,
                     onTap: () => context.push('${AppRoutes.parentHome}/children'),
                   ),
-                  _StatCard(
+                  AppStatCard(
                     label: 'Upcoming',
                     value: '${d.upcomingAppointments}',
+                    icon: Icons.event_outlined,
                     onTap: () =>
                         context.push('${AppRoutes.parentHome}/appointments'),
                   ),
-                  _StatCard(
+                  AppStatCard(
                     label: 'Today',
                     value: '${d.appointmentsToday}',
+                    icon: Icons.today_outlined,
+                    accent: d.appointmentsToday > 0,
                     onTap: () =>
                         context.push('${AppRoutes.parentHome}/appointments'),
                   ),
-                  _StatCard(
+                  AppStatCard(
                     label: 'Reviews due',
                     value: '${d.pendingReviews}',
                     highlight: d.pendingReviews > 0,
+                    icon: Icons.rate_review_outlined,
                     onTap: () => context.push('${AppRoutes.parentHome}/reviews'),
                   ),
                 ],
@@ -512,50 +524,6 @@ class ParentHomeScreen extends ConsumerWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  const _StatCard({
-    required this.label,
-    required this.value,
-    this.highlight = false,
-    this.onTap,
-  });
-
-  final String label;
-  final String value;
-  final bool highlight;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return SizedBox(
-      width: 160,
-      child: Card(
-        color: highlight ? colorScheme.errorContainer : null,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-                const SizedBox(height: 4),
-                Text(label),
-              ],
-            ),
-          ),
         ),
       ),
     );

@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/models/user_role.dart';
+import '../../../shared/widgets/app_bottom_nav.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../data/messaging_repository.dart';
 import '../messaging_providers.dart';
@@ -23,9 +24,15 @@ class MessagesScreen extends ConsumerWidget {
     final threads = ref.watch(messageThreadsProvider);
     final role = ref.watch(authStateProvider).valueOrNull?.user.role;
     final isTherapist = role == UserRole.therapist;
+    final isParent = role == UserRole.parent;
 
     return AppScaffold(
       title: 'Messages',
+      bottomNavigationBar: isParent
+          ? const ParentBottomNav(current: ParentNavTab.messages)
+          : isTherapist
+              ? const TherapistBottomNav(current: TherapistNavTab.messages)
+              : null,
       floatingActionButton: FloatingActionButton(
         onPressed: () => isTherapist
             ? _startParentChat(context, ref)

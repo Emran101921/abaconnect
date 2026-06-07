@@ -210,6 +210,27 @@ class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
     }
   }
 
+  IconData _sectionIcon(String id) {
+    switch (id.toUpperCase()) {
+      case 'A':
+        return Icons.medical_services_outlined;
+      case 'B':
+        return Icons.record_voice_over_outlined;
+      case 'C':
+        return Icons.groups_outlined;
+      case 'D':
+        return Icons.back_hand_outlined;
+      case 'E':
+        return Icons.directions_run_outlined;
+      case 'F':
+        return Icons.restaurant_outlined;
+      case 'G':
+        return Icons.chat_bubble_outline;
+      default:
+        return Icons.assignment_outlined;
+    }
+  }
+
   void _goNext() {
     if (!_isSectionComplete(_currentSection)) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -330,9 +351,19 @@ class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
 
     final section = _currentSection;
 
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Column(
       children: [
-        LinearProgressIndicator(value: _progress),
+        ClipRRect(
+          borderRadius: const BorderRadius.vertical(bottom: Radius.circular(4)),
+          child: LinearProgressIndicator(
+            value: _progress,
+            minHeight: 6,
+            backgroundColor: colorScheme.outlineVariant,
+            color: colorScheme.secondary,
+          ),
+        ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
           child: Row(
@@ -344,6 +375,37 @@ class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
               const Spacer(),
               Text('${(_progress * 100).round()}%'),
             ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: List.generate(_sections.length, (i) {
+                final s = _sections[i];
+                final isActive = i == _step;
+                final isDone = i < _step;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: FilterChip(
+                    avatar: Icon(
+                      _sectionIcon(s.id),
+                      size: 18,
+                      color: isActive
+                          ? colorScheme.onSecondaryContainer
+                          : colorScheme.onSurfaceVariant,
+                    ),
+                    label: Text(s.id),
+                    selected: isActive,
+                    onSelected: isDone
+                        ? (_) => setState(() => _step = i)
+                        : null,
+                    showCheckmark: false,
+                  ),
+                );
+              }),
+            ),
           ),
         ),
         Expanded(
@@ -364,9 +426,24 @@ class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
                   ),
                 ),
               if (_step == 0) const SizedBox(height: 16),
-              Text(
-                section.title,
-                style: Theme.of(context).textTheme.headlineSmall,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CircleAvatar(
+                    backgroundColor: colorScheme.secondaryContainer,
+                    child: Icon(
+                      _sectionIcon(section.id),
+                      color: colorScheme.onSecondaryContainer,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      section.title,
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                  ),
+                ],
               ),
               if (section.description != null) ...[
                 const SizedBox(height: 8),

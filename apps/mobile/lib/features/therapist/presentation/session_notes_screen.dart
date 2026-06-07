@@ -6,6 +6,7 @@ import '../../../core/location/location_service.dart';
 import '../../../core/providers/app_providers.dart';
 import '../data/therapist_repository.dart';
 import '../therapist_providers.dart';
+import '../../../shared/widgets/app_bottom_nav.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 
 final therapistSessionsProvider =
@@ -229,6 +230,9 @@ class SessionNotesScreen extends ConsumerWidget {
 
     return AppScaffold(
       title: 'Session Notes',
+      bottomNavigationBar: const TherapistBottomNav(
+        current: TherapistNavTab.sessions,
+      ),
       body: sessions.when(
         data: (list) {
           if (list.isEmpty) {

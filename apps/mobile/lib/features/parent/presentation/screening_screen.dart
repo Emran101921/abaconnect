@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
+import '../../../shared/widgets/app_bottom_nav.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../data/parent_booking_repository.dart';
 import 'ei_screening_wizard.dart';
@@ -251,6 +252,8 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
 
     return AppScaffold(
       title: 'Early Intervention Screening',
+      bottomNavigationBar:
+          const ParentBottomNav(current: ParentNavTab.screening),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
