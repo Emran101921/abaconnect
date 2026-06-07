@@ -41,8 +41,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.primary,
-      body: Center(
+      body: Container(
+        decoration: const BoxDecoration(gradient: AppColors.warmGradient),
+        child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -60,6 +61,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
               ),
             ),
           ],
+        ),
         ),
       ),
     );

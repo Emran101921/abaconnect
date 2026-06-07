@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 
 class AppBrandLogo extends StatelessWidget {
@@ -19,7 +20,7 @@ class AppBrandLogo extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final titleColor = lightOnDark ? Colors.white : colorScheme.onSurface;
     final subtitleColor = lightOnDark
-        ? Colors.white.withValues(alpha: 0.85)
+        ? Colors.white.withValues(alpha: 0.9)
         : colorScheme.onSurfaceVariant;
 
     final iconSize = switch (size) {
@@ -41,15 +42,29 @@ class AppBrandLogo extends StatelessWidget {
           width: iconSize + 12,
           height: iconSize + 12,
           decoration: BoxDecoration(
-            color: lightOnDark
-                ? Colors.white.withValues(alpha: 0.15)
-                : colorScheme.primary,
+            gradient: lightOnDark
+                ? LinearGradient(
+                    colors: [
+                      Colors.white.withValues(alpha: 0.25),
+                      Colors.white.withValues(alpha: 0.1),
+                    ],
+                  )
+                : AppColors.primaryGradient,
             borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+            boxShadow: lightOnDark
+                ? null
+                : [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
           ),
           child: Icon(
-            Icons.hub_outlined,
-            color: lightOnDark ? Colors.white : colorScheme.onPrimary,
-            size: iconSize * 0.55,
+            Icons.favorite_rounded,
+            color: lightOnDark ? Colors.white : Colors.white,
+            size: iconSize * 0.5,
           ),
         ),
         const SizedBox(width: AppSpacing.md),
@@ -61,7 +76,7 @@ class AppBrandLogo extends StatelessWidget {
               style: titleStyle?.copyWith(
                 fontWeight: FontWeight.w800,
                 color: titleColor,
-                letterSpacing: -0.3,
+                letterSpacing: -0.5,
               ),
             ),
             if (showTagline)

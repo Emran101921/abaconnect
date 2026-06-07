@@ -4,7 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/providers/app_providers.dart';
+import '../../../shared/widgets/app_dashboard_card.dart';
+import '../../../shared/widgets/app_healthcare_illustration.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/app_section_header.dart';
 import '../data/payments_repository.dart';
 
 final parentPaymentsProvider = FutureProvider<List<PaymentModel>>((ref) {
@@ -31,16 +34,34 @@ class PaymentsScreen extends ConsumerWidget {
         data: (list) {
           if (list.isEmpty) {
             return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text('No payments yet.'),
-                  const SizedBox(height: 12),
-                  FilledButton(
-                    onPressed: () => _paySession(context, ref),
-                    child: const Text('Pay for a session'),
-                  ),
-                ],
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const AppHealthcareIllustration(
+                      type: AppIllustrationType.progress,
+                      size: 120,
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      'No payments yet',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Session payments and receipts will appear here.',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 24),
+                    FilledButton.icon(
+                      onPressed: () => _paySession(context, ref),
+                      icon: const Icon(Icons.add_card),
+                      label: const Text('Pay for a session'),
+                    ),
+                  ],
+                ),
               ),
             );
           }
@@ -49,13 +70,19 @@ class PaymentsScreen extends ConsumerWidget {
               ref.invalidate(parentPaymentsProvider);
               await ref.read(parentPaymentsProvider.future);
             },
-            child: ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: list.length,
+            child: AppContentContainer(
+              child: ListView.separated(
+              itemCount: list.length + 1,
               separatorBuilder: (context, _) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
-                final p = list[index];
-                return Card(
+                if (index == 0) {
+                  return const AppSectionHeader(
+                    title: 'Payment history',
+                    subtitle: 'Secure billing for therapy sessions',
+                  );
+                }
+                final p = list[index - 1];
+                return AppDashboardCard(
                   child: ListTile(
                     title: Text(
                       p.description ?? 'Payment ${p.id.substring(0, 8)}',
@@ -72,6 +99,7 @@ class PaymentsScreen extends ConsumerWidget {
                   ),
                 );
               },
+            ),
             ),
           );
         },

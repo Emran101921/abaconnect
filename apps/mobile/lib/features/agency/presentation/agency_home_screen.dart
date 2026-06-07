@@ -9,6 +9,9 @@ import '../../../shared/models/dashboard_action_model.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_section_header.dart';
 import '../../../shared/widgets/app_stat_card.dart';
+import '../../../shared/widgets/app_welcome_banner.dart';
+import '../../../shared/widgets/app_healthcare_illustration.dart';
+import '../../../shared/widgets/app_theme_toggle.dart';
 import '../../../shared/widgets/dashboard_action_inbox.dart';
 import '../../messaging/messaging_providers.dart';
 import '../../notifications/notification_providers.dart';
@@ -30,6 +33,7 @@ class AgencyHomeScreen extends ConsumerWidget {
     return AppScaffold(
       title: 'Agency',
       actions: [
+        const AppThemeToggle(compact: true),
         IconButton(
           icon: unreadCount > 0
               ? Badge(
@@ -56,11 +60,20 @@ class AgencyHomeScreen extends ConsumerWidget {
           ref.invalidate(unreadNotificationsProvider);
         },
         child: AppContentContainer(
+          padding: EdgeInsets.zero,
           child: ListView(
           children: [
-            const AppSectionHeader(
-              title: 'Overview',
-              subtitle: 'Agency operations at a glance',
+            const AppWelcomeBanner(
+              greeting: 'Agency operations',
+              subtitle: 'Roster, scheduling, analytics, and parent communication.',
+              illustrationType: AppIllustrationType.scheduling,
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: AppSectionHeader(
+                title: 'Overview',
+                subtitle: 'Agency operations at a glance',
+              ),
             ),
             const SizedBox(height: 12),
             dashboard.when(

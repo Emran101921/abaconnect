@@ -4,6 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/app_providers.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../shared/widgets/app_animated_progress.dart';
+import '../../../shared/widgets/app_choice_tile.dart';
+import '../../../shared/widgets/app_dashboard_card.dart';
 import '../data/parent_booking_repository.dart';
 
 const eiScreeningDisclaimer =
@@ -36,6 +40,18 @@ class EiQuestion {
   final String text;
   final String type;
   final List<String> options;
+}
+
+class _FlatQuestion {
+  const _FlatQuestion({
+    required this.sectionIndex,
+    required this.section,
+    required this.question,
+  });
+
+  final int sectionIndex;
+  final EiSection section;
+  final EiQuestion question;
 }
 
 List<EiSection> parseEiSections(String? questionsJson) {
@@ -93,9 +109,10 @@ class EiScreeningWizard extends ConsumerStatefulWidget {
 
 class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
   late final List<EiSection> _sections;
+  late final List<_FlatQuestion> _flatQuestions;
   late Map<String, dynamic> _answers;
   late final Map<String, TextEditingController> _textControllers;
-  int _step = 0;
+  int _questionIndex = 0;
   bool _saving = false;
   bool _consent = false;
   String? _draftId;
@@ -104,18 +121,30 @@ class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
   void initState() {
     super.initState();
     _sections = parseEiSections(widget.template.questionsJson);
+    _flatQuestions = [
+      for (var si = 0; si < _sections.length; si++)
+        for (final q in _sections[si].questions)
+          _FlatQuestion(sectionIndex: si, section: _sections[si], question: q),
+    ];
     _answers = Map<String, dynamic>.from(widget.initialAnswers);
     _draftId = widget.draftId;
     _textControllers = {};
-    for (final section in _sections) {
-      for (final q in section.questions) {
-        if (q.type == 'text' || q.type == 'text_list') {
-          _textControllers[q.id] = TextEditingController(
-            text: _answers[q.id]?.toString() ?? '',
-          );
-        }
+    for (final fq in _flatQuestions) {
+      final q = fq.question;
+      if (q.type == 'text' || q.type == 'text_list') {
+        _textControllers[q.id] = TextEditingController(
+          text: _answers[q.id]?.toString() ?? '',
+        );
       }
     }
+    _questionIndex = _firstUnansweredIndex();
+  }
+
+  int _firstUnansweredIndex() {
+    for (var i = 0; i < _flatQuestions.length; i++) {
+      if (!_isQuestionAnswered(_flatQuestions[i].question)) return i;
+    }
+    return 0;
   }
 
   @override
@@ -126,15 +155,23 @@ class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
     super.dispose();
   }
 
-  EiSection get _currentSection =>
-      _sections.isEmpty
-          ? EiSection(id: '', title: '', questions: [])
-          : _sections[_step];
+  _FlatQuestion get _current {
+    if (_flatQuestions.isEmpty) {
+      return _FlatQuestion(
+        sectionIndex: 0,
+        section: EiSection(id: '', title: '', questions: []),
+        question: EiQuestion(id: '', text: '', type: 'yes_no'),
+      );
+    }
+    return _flatQuestions[_questionIndex];
+  }
 
-  double get _progress =>
-      _sections.isEmpty ? 0 : (_step + 1) / _sections.length;
+  double get _progress => _flatQuestions.isEmpty
+      ? 0
+      : (_questionIndex + 1) / _flatQuestions.length;
 
-  bool get _isLastStep => _step >= _sections.length - 1;
+  bool get _isLastQuestion =>
+      _questionIndex >= _flatQuestions.length - 1;
 
   bool _isQuestionAnswered(EiQuestion q) {
     final value = _answers[q.id];
@@ -144,23 +181,25 @@ class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
     return value != null;
   }
 
-  bool _isSectionComplete(EiSection section) {
-    return section.questions.every(_isQuestionAnswered);
-  }
+  bool get _allAnswered =>
+      _flatQuestions.every((fq) => _isQuestionAnswered(fq.question));
 
   Future<void> _saveDraft() async {
     setState(() => _saving = true);
     try {
-      final draft = await ref.read(parentBookingRepositoryProvider).saveScreeningDraft(
-            templateId: widget.template.id,
-            childId: widget.child.id,
-            responses: _answers,
-            draftId: _draftId,
-          );
+      final draft =
+          await ref.read(parentBookingRepositoryProvider).saveScreeningDraft(
+                templateId: widget.template.id,
+                childId: widget.child.id,
+                responses: _answers,
+                draftId: _draftId,
+              );
       _draftId = draft.id;
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Draft saved — you can edit and submit later')),
+          const SnackBar(
+            content: Text('Draft saved — continue anytime from Screening'),
+          ),
         );
       }
     } catch (e) {
@@ -183,21 +222,22 @@ class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
       );
       return;
     }
-    if (!_isSectionComplete(_currentSection)) {
+    if (!_allAnswered) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please answer all questions in this section')),
+        const SnackBar(content: Text('Please answer all questions')),
       );
       return;
     }
     setState(() => _saving = true);
     try {
-      final result = await ref.read(parentBookingRepositoryProvider).submitScreening(
-            templateId: widget.template.id,
-            childId: widget.child.id,
-            responses: _answers,
-            draftId: _draftId,
-            consentGranted: true,
-          );
+      final result =
+          await ref.read(parentBookingRepositoryProvider).submitScreening(
+                templateId: widget.template.id,
+                childId: widget.child.id,
+                responses: _answers,
+                draftId: _draftId,
+                consentGranted: true,
+              );
       widget.onSubmitted?.call(result);
     } catch (e) {
       if (mounted) {
@@ -232,13 +272,18 @@ class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
   }
 
   void _goNext() {
-    if (!_isSectionComplete(_currentSection)) {
+    if (!_isQuestionAnswered(_current.question)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please answer all questions before continuing')),
+        const SnackBar(content: Text('Please answer this question to continue')),
       );
       return;
     }
-    setState(() => _step += 1);
+    if (_isLastQuestion) return;
+    setState(() => _questionIndex += 1);
+  }
+
+  void _goBack() {
+    if (_questionIndex > 0) setState(() => _questionIndex -= 1);
   }
 
   Widget _buildQuestion(EiQuestion q) {
@@ -247,32 +292,18 @@ class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
     switch (q.type) {
       case 'yes_no':
         return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(q.text, style: Theme.of(context).textTheme.bodyLarge),
-            const SizedBox(height: 8),
-            SegmentedButton<bool>(
-              segments: const [
-                ButtonSegment(value: true, label: Text('Yes')),
-                ButtonSegment(value: false, label: Text('No')),
-              ],
-              selected: value == true
-                  ? {true}
-                  : value == false
-                      ? {false}
-                      : <bool>{},
-              emptySelectionAllowed: true,
-              onSelectionChanged: (sel) {
-                setState(() {
-                  if (sel.isEmpty) {
-                    _answers.remove(q.id);
-                  } else {
-                    _answers[q.id] = sel.first;
-                  }
-                });
-              },
+            AppChoiceTile(
+              label: 'Yes',
+              selected: value == true,
+              onTap: () => setState(() => _answers[q.id] = true),
             ),
-            const SizedBox(height: 16),
+            AppChoiceTile(
+              label: 'No',
+              selected: value == false,
+              onTap: () => setState(() => _answers[q.id] = false),
+            ),
           ],
         );
       case 'text':
@@ -281,51 +312,38 @@ class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
           q.id,
           () => TextEditingController(text: value?.toString() ?? ''),
         );
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 16),
-          child: TextField(
-            controller: controller,
-            decoration: InputDecoration(
-              labelText: q.text,
-              border: const OutlineInputBorder(),
-              alignLabelWithHint: true,
-            ),
-            maxLines: q.type == 'text_list' ? 4 : 3,
-            onChanged: (v) => setState(() => _answers[q.id] = v),
+        return TextField(
+          controller: controller,
+          decoration: InputDecoration(
+            labelText: q.text,
+            hintText: q.type == 'text_list'
+                ? 'Enter one item per line'
+                : 'Your response',
+            alignLabelWithHint: true,
           ),
+          maxLines: q.type == 'text_list' ? 5 : 3,
+          onChanged: (v) => setState(() => _answers[q.id] = v),
         );
       default:
         final options = q.options.isNotEmpty
             ? q.options
             : ['Never', 'Sometimes', 'Often', 'Always'];
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(q.text),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: options.map((opt) {
-                  final selected = value == opt;
-                  return ChoiceChip(
-                    label: Text(opt),
-                    selected: selected,
-                    onSelected: (_) => setState(() => _answers[q.id] = opt),
-                  );
-                }).toList(),
-              ),
-            ],
-          ),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: options.map((opt) {
+            return AppChoiceTile(
+              label: opt,
+              selected: value == opt,
+              onTap: () => setState(() => _answers[q.id] = opt),
+            );
+          }).toList(),
         );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_sections.isEmpty) {
+    if (_sections.isEmpty || _flatQuestions.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -349,32 +367,19 @@ class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
       );
     }
 
-    final section = _currentSection;
-
+    final current = _current;
+    final section = current.section;
+    final question = current.question;
     final colorScheme = Theme.of(context).colorScheme;
 
     return Column(
       children: [
-        ClipRRect(
-          borderRadius: const BorderRadius.vertical(bottom: Radius.circular(4)),
-          child: LinearProgressIndicator(
-            value: _progress,
-            minHeight: 6,
-            backgroundColor: colorScheme.outlineVariant,
-            color: colorScheme.secondary,
-          ),
-        ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-          child: Row(
-            children: [
-              Text(
-                'Section ${section.id} · ${_step + 1} of ${_sections.length}',
-                style: Theme.of(context).textTheme.labelLarge,
-              ),
-              const Spacer(),
-              Text('${(_progress * 100).round()}%'),
-            ],
+          child: AppAnimatedProgress(
+            value: _progress,
+            label:
+                'Question ${_questionIndex + 1} of ${_flatQuestions.length}',
           ),
         ),
         Padding(
@@ -384,8 +389,12 @@ class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
             child: Row(
               children: List.generate(_sections.length, (i) {
                 final s = _sections[i];
-                final isActive = i == _step;
-                final isDone = i < _step;
+                final isActive = i == current.sectionIndex;
+                final isDone = i < current.sectionIndex ||
+                    (i == current.sectionIndex &&
+                        _flatQuestions
+                            .where((fq) => fq.sectionIndex == i)
+                            .every((fq) => _isQuestionAnswered(fq.question)));
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: FilterChip(
@@ -393,13 +402,18 @@ class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
                       _sectionIcon(s.id),
                       size: 18,
                       color: isActive
-                          ? colorScheme.onSecondaryContainer
+                          ? colorScheme.primary
                           : colorScheme.onSurfaceVariant,
                     ),
-                    label: Text(s.id),
+                    label: Text('${s.id} · ${s.title.split(' ').first}'),
                     selected: isActive,
                     onSelected: isDone
-                        ? (_) => setState(() => _step = i)
+                        ? (_) {
+                            final idx = _flatQuestions.indexWhere(
+                              (fq) => fq.sectionIndex == i,
+                            );
+                            if (idx >= 0) setState(() => _questionIndex = idx);
+                          }
                         : null,
                     showCheckmark: false,
                   ),
@@ -410,69 +424,78 @@ class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
         ),
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AppSpacing.md),
             children: [
-              if (_step == 0)
-                Card(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Text(
-                      eiScreeningDisclaimer,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            fontStyle: FontStyle.italic,
-                          ),
-                    ),
+              if (_questionIndex == 0)
+                AppDashboardCard(
+                  color: colorScheme.surfaceContainerHighest,
+                  elevated: false,
+                  child: Text(
+                    eiScreeningDisclaimer,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          fontStyle: FontStyle.italic,
+                        ),
                   ),
                 ),
-              if (_step == 0) const SizedBox(height: 16),
+              if (_questionIndex == 0) const SizedBox(height: AppSpacing.md),
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   CircleAvatar(
-                    backgroundColor: colorScheme.secondaryContainer,
+                    backgroundColor: colorScheme.primaryContainer,
                     child: Icon(
                       _sectionIcon(section.id),
-                      color: colorScheme.onSecondaryContainer,
+                      color: colorScheme.primary,
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Text(
-                      section.title,
-                      style: Theme.of(context).textTheme.headlineSmall,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Section ${section.id}: ${section.title}',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        Text(
+                          'For ${widget.child.displayName}',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
-              if (section.description != null) ...[
-                const SizedBox(height: 8),
-                Text(section.description!),
-              ],
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.lg),
               Text(
-                'Child: ${widget.child.displayName}',
-                style: Theme.of(context).textTheme.titleSmall,
+                question.type == 'text' || question.type == 'text_list'
+                    ? 'Share your thoughts'
+                    : question.text,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
               ),
-              const SizedBox(height: 24),
-              ...section.questions.map(_buildQuestion),
-              if (_isLastStep) ...[
-                const Divider(height: 32),
-                CheckboxListTile(
-                  value: _consent,
-                  onChanged: (v) => setState(() => _consent = v ?? false),
-                  title: const Text(
-                    'I consent to sharing screening results with care providers',
-                  ),
-                  controlAffinity: ListTileControlAffinity.leading,
-                  contentPadding: EdgeInsets.zero,
-                ),
-                const SizedBox(height: 8),
+              if (question.type == 'text' || question.type == 'text_list') ...[
+                const SizedBox(height: AppSpacing.sm),
                 Text(
-                  eiScreeningDisclaimer,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        fontStyle: FontStyle.italic,
-                      ),
+                  question.text,
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+              ],
+              const SizedBox(height: AppSpacing.lg),
+              _buildQuestion(question),
+              if (_isLastQuestion) ...[
+                const SizedBox(height: AppSpacing.lg),
+                AppDashboardCard(
+                  elevated: false,
+                  child: CheckboxListTile(
+                    value: _consent,
+                    onChanged: (v) => setState(() => _consent = v ?? false),
+                    title: const Text(
+                      'I consent to sharing screening results with care providers',
+                    ),
+                    controlAffinity: ListTileControlAffinity.leading,
+                    contentPadding: EdgeInsets.zero,
+                  ),
                 ),
               ],
             ],
@@ -480,14 +503,12 @@ class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
         ),
         SafeArea(
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AppSpacing.md),
             child: Row(
               children: [
-                if (_step > 0)
+                if (_questionIndex > 0)
                   OutlinedButton(
-                    onPressed: _saving
-                        ? null
-                        : () => setState(() => _step -= 1),
+                    onPressed: _saving ? null : _goBack,
                     child: const Text('Back'),
                   ),
                 const SizedBox(width: 8),
@@ -499,20 +520,20 @@ class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
                           height: 16,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text('Save draft'),
+                      : const Text('Save & continue later'),
                 ),
                 const Spacer(),
                 FilledButton(
                   onPressed: _saving
                       ? null
                       : () async {
-                          if (_isLastStep) {
+                          if (_isLastQuestion) {
                             await _submit();
                           } else {
                             _goNext();
                           }
                         },
-                  child: Text(_isLastStep ? 'Submit screening' : 'Next section'),
+                  child: Text(_isLastQuestion ? 'Submit screening' : 'Next'),
                 ),
               ],
             ),

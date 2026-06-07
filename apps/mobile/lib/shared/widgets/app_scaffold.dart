@@ -12,6 +12,8 @@ class AppScaffold extends StatelessWidget {
     this.floatingActionButton,
     this.bottomNavigationBar,
     this.showBackButton,
+    this.header,
+    this.extendBodyBehindHeader = false,
   });
 
   final String title;
@@ -21,15 +23,56 @@ class AppScaffold extends StatelessWidget {
   final Widget? floatingActionButton;
   final Widget? bottomNavigationBar;
   final bool? showBackButton;
+  final Widget? header;
+  final bool extendBodyBehindHeader;
 
   @override
   Widget build(BuildContext context) {
     final canPop = Navigator.of(context).canPop();
     final colorScheme = Theme.of(context).colorScheme;
 
+    if (header != null) {
+      return Scaffold(
+        extendBodyBehindAppBar: extendBodyBehindHeader,
+        appBar: AppBar(
+          automaticallyImplyLeading:
+              showBackButton != null ? showBackButton! : canPop,
+          title: subtitle == null
+              ? Text(title)
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title),
+                    Text(
+                      subtitle!,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                    ),
+                  ],
+                ),
+          actions: actions,
+          backgroundColor: extendBodyBehindHeader
+              ? Colors.transparent
+              : colorScheme.surface,
+          surfaceTintColor: Colors.transparent,
+        ),
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (!extendBodyBehindHeader) header!,
+            Expanded(child: body),
+          ],
+        ),
+        floatingActionButton: floatingActionButton,
+        bottomNavigationBar: bottomNavigationBar,
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
-        automaticallyImplyLeading: showBackButton != null ? showBackButton! : canPop,
+        automaticallyImplyLeading:
+            showBackButton != null ? showBackButton! : canPop,
         title: subtitle == null
             ? Text(title)
             : Column(
@@ -45,10 +88,7 @@ class AppScaffold extends StatelessWidget {
                 ],
               ),
         actions: actions,
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Divider(height: 1, color: colorScheme.outlineVariant),
-        ),
+        surfaceTintColor: Colors.transparent,
       ),
       body: body,
       floatingActionButton: floatingActionButton,

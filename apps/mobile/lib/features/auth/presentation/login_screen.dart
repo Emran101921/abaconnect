@@ -8,6 +8,8 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/models/user_role.dart';
 import '../../../shared/widgets/app_brand_logo.dart';
+import '../../../shared/widgets/app_healthcare_illustration.dart';
+import '../../../shared/widgets/app_theme_toggle.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -101,16 +103,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       children: [
         Expanded(
           child: Container(
-            color: AppColors.primary,
+            decoration: const BoxDecoration(gradient: AppColors.warmGradient),
             padding: const EdgeInsets.all(AppSpacing.xxl),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const AppBrandLogo(
-                  size: AppBrandLogoSize.large,
-                  lightOnDark: true,
+                const Row(
+                  children: [
+                    AppBrandLogo(
+                      size: AppBrandLogoSize.large,
+                      lightOnDark: true,
+                    ),
+                    Spacer(),
+                    AppThemeToggle(compact: true),
+                  ],
                 ),
                 const Spacer(),
+                const AppHealthcareIllustration(
+                  type: AppIllustrationType.family,
+                  size: 140,
+                ),
+                const SizedBox(height: AppSpacing.lg),
                 Text(
                   'Care coordination\nfor every family',
                   style: Theme.of(context).textTheme.headlineLarge?.copyWith(
@@ -122,9 +135,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 const SizedBox(height: AppSpacing.md),
                 Text(
                   'Screening, therapy matching, sessions, billing, and '
-                  'clinical documentation — one secure platform.',
+                  'clinical documentation — one secure, family-friendly platform.',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: Colors.white.withValues(alpha: 0.9),
+                        color: Colors.white.withValues(alpha: 0.92),
                         height: 1.5,
                       ),
                 ),
@@ -135,7 +148,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   children: const [
                     _FeatureChip(label: 'Early Intervention'),
                     _FeatureChip(label: 'HIPAA-aware'),
-                    _FeatureChip(label: 'Multi-role'),
+                    _FeatureChip(label: 'Family-first'),
                   ],
                 ),
               ],
@@ -165,8 +178,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const SizedBox(height: AppSpacing.lg),
+            Row(
+              children: const [
+                Spacer(),
+                AppThemeToggle(compact: true),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
             const Center(
               child: AppBrandLogo(size: AppBrandLogoSize.large),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            const Center(
+              child: AppHealthcareIllustration(
+                type: AppIllustrationType.family,
+                size: 100,
+              ),
             ),
             const SizedBox(height: AppSpacing.xl),
             _buildForm(context),

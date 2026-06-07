@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_shadows.dart';
 import '../../core/theme/app_spacing.dart';
 
 class AppStatCard extends StatelessWidget {
@@ -29,6 +31,7 @@ class AppStatCard extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     Color? bg;
     var fg = colorScheme.onSurface;
+    List<BoxShadow>? shadows = AppShadows.card(context);
 
     if (highlight) {
       bg = colorScheme.errorContainer;
@@ -36,6 +39,7 @@ class AppStatCard extends StatelessWidget {
     } else if (accent) {
       bg = colorScheme.primary;
       fg = colorScheme.onPrimary;
+      shadows = AppShadows.elevated(context);
     }
 
     final content = Padding(
@@ -44,7 +48,20 @@ class AppStatCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 20, color: fg.withValues(alpha: 0.9)),
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              decoration: BoxDecoration(
+                color: accent
+                    ? Colors.white.withValues(alpha: 0.2)
+                    : colorScheme.primaryContainer.withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+              ),
+              child: Icon(
+                icon,
+                size: 20,
+                color: accent ? fg : colorScheme.primary,
+              ),
+            ),
             const SizedBox(height: AppSpacing.sm),
           ],
           Text(
@@ -80,20 +97,24 @@ class AppStatCard extends StatelessWidget {
 
     return SizedBox(
       width: width,
-      child: Material(
-        color: bg ?? colorScheme.surfaceContainerLow,
-        elevation: accent ? 2 : 0,
-        shadowColor: colorScheme.primary.withValues(alpha: 0.25),
-        shape: RoundedRectangleBorder(
+      child: Container(
+        decoration: BoxDecoration(
+          color: bg ?? colorScheme.surfaceContainerLow,
           borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-          side: accent
-              ? BorderSide.none
-              : BorderSide(color: colorScheme.outlineVariant),
+          border: accent
+              ? null
+              : Border.all(
+                  color: colorScheme.outlineVariant.withValues(alpha: 0.7),
+                ),
+          boxShadow: shadows,
         ),
         clipBehavior: Clip.antiAlias,
         child: onTap == null
             ? content
-            : InkWell(onTap: onTap, child: content),
+            : Material(
+                color: Colors.transparent,
+                child: InkWell(onTap: onTap, child: content),
+              ),
       ),
     );
   }
@@ -103,7 +124,7 @@ Color? _deltaColor(BuildContext context, String delta) {
   if (delta == '—') {
     return Theme.of(context).colorScheme.onSurfaceVariant;
   }
-  if (delta.startsWith('+')) return const Color(0xFF059669);
-  if (delta.startsWith('-')) return const Color(0xFFDC2626);
+  if (delta.startsWith('+')) return AppColors.success;
+  if (delta.startsWith('-')) return AppColors.error;
   return Theme.of(context).colorScheme.onSurfaceVariant;
 }

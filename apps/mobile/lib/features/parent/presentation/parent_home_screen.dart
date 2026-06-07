@@ -8,8 +8,12 @@ import '../../../core/router/app_router.dart';
 import '../../../shared/models/dashboard_action_model.dart';
 import '../../../shared/widgets/app_bottom_nav.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/app_dashboard_card.dart';
 import '../../../shared/widgets/app_section_header.dart';
 import '../../../shared/widgets/app_stat_card.dart';
+import '../../../shared/widgets/app_welcome_banner.dart';
+import '../../../shared/widgets/app_healthcare_illustration.dart';
+import '../../../shared/widgets/app_theme_toggle.dart';
 import '../../../shared/widgets/dashboard_action_inbox.dart';
 import '../../messaging/messaging_providers.dart';
 import '../../messaging/presentation/messages_screen.dart';
@@ -47,10 +51,16 @@ class ParentHomeScreen extends ConsumerWidget {
     final unreadMessageCount =
         unreadMessages.maybeWhen(data: (c) => c, orElse: () => 0);
 
+    final user = ref.watch(authStateProvider).valueOrNull?.user;
+    final greetingName = user?.fullName?.split(' ').first ??
+        user?.email.split('@').first ??
+        'there';
+
     return AppScaffold(
       title: 'Parent',
       bottomNavigationBar: const ParentBottomNav(current: ParentNavTab.home),
       actions: [
+        const AppThemeToggle(compact: true),
         IconButton(
           icon: unreadCount > 0
               ? Badge(
@@ -79,8 +89,49 @@ class ParentHomeScreen extends ConsumerWidget {
           ref.invalidate(sessionHistoryProvider);
         },
         child: AppContentContainer(
+          padding: EdgeInsets.zero,
           child: ListView(
           children: [
+            AppWelcomeBanner(
+              greeting: 'Welcome back, $greetingName',
+              subtitle: 'Your family care hub — screening, therapy, and progress in one place.',
+              trailing: dashboard.maybeWhen(
+                data: (d) => AppDashboardCard(
+                  child: Row(
+                    children: [
+                      const AppHealthcareIllustration(
+                        type: AppIllustrationType.progress,
+                        size: 56,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${d.childrenCount} child${d.childrenCount == 1 ? '' : 'ren'} · ${d.upcomingAppointments} upcoming',
+                              style: Theme.of(context).textTheme.titleSmall,
+                            ),
+                            Text(
+                              d.hasScreening
+                                  ? 'Screening complete — explore recommendations'
+                                  : 'Complete screening to unlock therapy matches',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                orElse: () => const SizedBox.shrink(),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
             const AppSectionHeader(
               title: 'Overview',
               subtitle: 'Your family care at a glance',
@@ -521,6 +572,9 @@ class ParentHomeScreen extends ConsumerWidget {
               subtitle: 'Report a concern',
               icon: Icons.report,
               onTap: () => context.push('${AppRoutes.parentHome}/complaints'),
+            ),
+                ],
+              ),
             ),
           ],
         ),

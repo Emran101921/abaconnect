@@ -5,6 +5,7 @@ import 'core/push/push_bootstrap.dart';
 import 'core/push/push_navigation.dart';
 import 'core/providers/app_providers.dart';
 import 'core/router/app_router.dart';
+import 'core/providers/theme_mode_provider.dart';
 import 'core/theme/app_theme.dart';
 
 final pendingPushPayloadProvider =
@@ -48,12 +49,14 @@ class _AbaConnectAppState extends ConsumerState<AbaConnectApp> {
       });
     }
 
+    final themeMode = ref.watch(themeModeProvider);
+
     return MaterialApp.router(
       title: 'ABA Connect',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
-      themeMode: ThemeMode.system,
+      themeMode: themeMode,
       routerConfig: router,
     );
   }

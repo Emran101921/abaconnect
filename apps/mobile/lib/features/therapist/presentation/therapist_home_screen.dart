@@ -10,6 +10,8 @@ import '../../../shared/widgets/app_bottom_nav.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_section_header.dart';
 import '../../../shared/widgets/app_stat_card.dart';
+import '../../../shared/widgets/app_welcome_banner.dart';
+import '../../../shared/widgets/app_healthcare_illustration.dart';
 import '../../../shared/widgets/dashboard_action_inbox.dart';
 import '../../messaging/messaging_providers.dart';
 import '../../messaging/presentation/messages_screen.dart';
@@ -87,14 +89,28 @@ class TherapistHomeScreen extends ConsumerWidget {
           ref.invalidate(therapistDashboardProvider);
         },
         child: AppContentContainer(
+          padding: EdgeInsets.zero,
           child: ListView(
           children: [
-            const AppSectionHeader(
-              title: 'Overview',
-              subtitle: 'Your clinical day at a glance',
+            AppWelcomeBanner(
+              greeting: 'Clinical dashboard',
+              subtitle: 'Sessions, documentation, and parent communication in one place.',
+              illustrationType: AppIllustrationType.therapy,
             ),
-            const SizedBox(height: 12),
-            dashboard.when(
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: AppSectionHeader(
+                title: 'Overview',
+                subtitle: 'Your clinical day at a glance',
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: SizedBox(height: 12),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: dashboard.when(
               data: (d) => Wrap(
                 spacing: 12,
                 runSpacing: 12,
@@ -135,6 +151,7 @@ class TherapistHomeScreen extends ConsumerWidget {
               ),
               loading: () => const LinearProgressIndicator(),
               error: (e, _) => Text('Overview error: $e'),
+            ),
             ),
             const SizedBox(height: 12),
             dashboard.when(
