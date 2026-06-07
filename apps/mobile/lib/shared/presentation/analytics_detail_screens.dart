@@ -4,7 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/providers/app_providers.dart';
+import '../../features/admin/data/admin_repository.dart';
 import '../../features/admin/presentation/admin_providers.dart';
+import '../../features/agency/data/agency_repository.dart';
 import '../../features/agency/presentation/agency_providers.dart';
 import '../models/analytics_date_range.dart';
 import '../presentation/analytics_copy_link.dart';
@@ -56,8 +59,10 @@ class AdminAnalyticsClaimDetailScreen extends ConsumerWidget {
                   sessionId: c.sessionId,
                   ediReady: c.ediReady,
                   clearinghouseStatus: c.clearinghouseStatus,
+                  actions: _adminClaimActions(context, ref, c, claimId),
                   onRefresh: () async {
                     ref.invalidate(adminAnalyticsClaimDetailProvider(claimId));
+                    ref.invalidate(adminClaimsPipelineProvider);
                     await ref
                         .read(adminAnalyticsClaimDetailProvider(claimId).future);
                   },
@@ -115,8 +120,10 @@ class AgencyAnalyticsClaimDetailScreen extends ConsumerWidget {
                   sessionId: c.sessionId,
                   ediReady: c.ediReady,
                   clearinghouseStatus: c.clearinghouseStatus,
+                  actions: _agencyClaimActions(context, ref, c, claimId),
                   onRefresh: () async {
                     ref.invalidate(agencyAnalyticsClaimDetailProvider(claimId));
+                    ref.invalidate(agencyClaimsPipelineProvider);
                     await ref
                         .read(agencyAnalyticsClaimDetailProvider(claimId).future);
                   },
@@ -246,6 +253,157 @@ class AgencyAnalyticsScreeningDetailScreen extends ConsumerWidget {
   }
 }
 
+Widget? _adminClaimActions(
+  BuildContext context,
+  WidgetRef ref,
+  AdminInsuranceClaimModel claim,
+  String claimId,
+) {
+  final actionable = [
+    'DRAFT',
+    'SUBMITTED',
+    'PENDING',
+    'UNDER_REVIEW',
+    'DENIED',
+    'APPROVED',
+  ].contains(claim.status);
+  if (!actionable) return null;
+
+  Future<void> refresh() async {
+    ref.invalidate(adminAnalyticsClaimDetailProvider(claimId));
+    ref.invalidate(adminClaimsPipelineProvider);
+  }
+
+  return Wrap(
+    spacing: 8,
+    runSpacing: 8,
+    children: [
+      if (claim.status == 'DENIED')
+        FilledButton(
+          onPressed: () async {
+            await ref.read(adminRepositoryProvider).updateInsuranceClaim(
+                  claimId: claimId,
+                  status: 'APPEALED',
+                  denialReason: 'Appeal filed — resubmitting for review',
+                );
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Claim marked as appealed')),
+              );
+            }
+            await refresh();
+          },
+          child: const Text('File appeal'),
+        ),
+      if (['SUBMITTED', 'PENDING', 'UNDER_REVIEW', 'APPROVED']
+          .contains(claim.status))
+        FilledButton.tonal(
+          onPressed: () async {
+            await ref
+                .read(adminRepositoryProvider)
+                .processClaimRemittance835(claimId);
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('835 remittance processed')),
+              );
+            }
+            await refresh();
+          },
+          child: const Text('Post 835 remittance'),
+        ),
+      if (claim.status != 'PAID')
+        FilledButton(
+          onPressed: () async {
+            await ref.read(adminRepositoryProvider).updateInsuranceClaim(
+                  claimId: claimId,
+                  status: 'PAID',
+                  approvedAmount: claim.billedAmount,
+                );
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Claim marked paid')),
+              );
+            }
+            await refresh();
+          },
+          child: const Text('Mark paid'),
+        ),
+      if (claim.status != 'DENIED')
+        OutlinedButton(
+          onPressed: () async {
+            await ref.read(adminRepositoryProvider).updateInsuranceClaim(
+                  claimId: claimId,
+                  status: 'DENIED',
+                  denialReason: 'Not covered under plan',
+                );
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Claim denied')),
+              );
+            }
+            await refresh();
+          },
+          child: const Text('Deny'),
+        ),
+    ],
+  );
+}
+
+Widget? _agencyClaimActions(
+  BuildContext context,
+  WidgetRef ref,
+  AgencyClaimDetailModel claim,
+  String claimId,
+) {
+  if (!['DENIED', 'SUBMITTED', 'PENDING', 'UNDER_REVIEW'].contains(claim.status)) {
+    return null;
+  }
+
+  Future<void> refresh() async {
+    ref.invalidate(agencyAnalyticsClaimDetailProvider(claimId));
+    ref.invalidate(agencyClaimsPipelineProvider);
+  }
+
+  return Wrap(
+    spacing: 8,
+    runSpacing: 8,
+    children: [
+      if (claim.status == 'DENIED')
+        FilledButton(
+          onPressed: () async {
+            await ref.read(agencyRepositoryProvider).updateInsuranceClaim(
+                  claimId: claimId,
+                  status: 'APPEALED',
+                  denialReason: 'Agency appeal — requesting reconsideration',
+                );
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Appeal filed')),
+              );
+            }
+            await refresh();
+          },
+          child: const Text('Appeal denial'),
+        ),
+      if (claim.status != 'DENIED')
+        FilledButton.tonal(
+          onPressed: () async {
+            await ref
+                .read(agencyRepositoryProvider)
+                .processClaimRemittance835(claimId);
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('835 remittance posted')),
+              );
+            }
+            await refresh();
+          },
+          child: const Text('Post 835 remittance'),
+        ),
+    ],
+  );
+}
+
 class AnalyticsClaimDetailBody extends StatelessWidget {
   const AnalyticsClaimDetailBody({
     super.key,
@@ -261,6 +419,7 @@ class AnalyticsClaimDetailBody extends StatelessWidget {
     this.sessionId,
     this.ediReady,
     this.clearinghouseStatus,
+    this.actions,
     required this.onRefresh,
   });
 
@@ -276,6 +435,7 @@ class AnalyticsClaimDetailBody extends StatelessWidget {
   final String? sessionId;
   final bool? ediReady;
   final String? clearinghouseStatus;
+  final Widget? actions;
   final Future<void> Function() onRefresh;
 
   @override
@@ -324,6 +484,10 @@ class AnalyticsClaimDetailBody extends StatelessWidget {
                   ),
                   if (denialReason != null)
                     _DetailRow(label: 'Denial reason', value: denialReason),
+                  if (actions != null) ...[
+                    const SizedBox(height: 16),
+                    actions!,
+                  ],
                 ],
               ),
             ),

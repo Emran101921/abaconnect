@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/models/user_role.dart';
@@ -89,6 +92,7 @@ class TelehealthScreen extends ConsumerWidget {
                                 id: a.id,
                                 title: '${a.childName} · ${a.therapyType}',
                                 subtitle: a.status,
+                                scheduledStart: a.scheduledStart,
                               ),
                             )
                             .toList(),
@@ -111,6 +115,7 @@ class TelehealthScreen extends ConsumerWidget {
                               id: a.id,
                               title: a.therapyType,
                               subtitle: '${a.childName} · ${a.status}',
+                              scheduledStart: a.scheduledStart,
                             ),
                           )
                           .toList(),
@@ -144,7 +149,17 @@ class TelehealthScreen extends ConsumerWidget {
         return Card(
           child: ListTile(
             title: Text(a.title),
-            subtitle: Text(a.subtitle),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(a.subtitle),
+                if (a.scheduledStart != null) ...[
+                  const SizedBox(height: 4),
+                  _TelehealthCountdown(start: a.scheduledStart!),
+                ],
+              ],
+            ),
+            isThreeLine: a.scheduledStart != null,
             trailing: FilledButton(
               onPressed: () => _join(context, ref, a.id),
               child: const Text('Join'),
@@ -208,9 +223,63 @@ class _TelehealthAppointmentRow {
     required this.id,
     required this.title,
     required this.subtitle,
+    this.scheduledStart,
   });
 
   final String id;
   final String title;
   final String subtitle;
+  final DateTime? scheduledStart;
+}
+
+class _TelehealthCountdown extends StatefulWidget {
+  const _TelehealthCountdown({required this.start});
+
+  final DateTime start;
+
+  @override
+  State<_TelehealthCountdown> createState() => _TelehealthCountdownState();
+}
+
+class _TelehealthCountdownState extends State<_TelehealthCountdown> {
+  late Timer _timer;
+  late Duration _remaining;
+
+  @override
+  void initState() {
+    super.initState();
+    _tick();
+    _timer = Timer.periodic(const Duration(seconds: 30), (_) => _tick());
+  }
+
+  void _tick() {
+    setState(() {
+      _remaining = widget.start.difference(DateTime.now());
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final fmt = DateFormat.jm();
+    if (_remaining.isNegative) {
+      return Text(
+        'Started ${fmt.format(widget.start)} · ready to join',
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Colors.green.shade700,
+            ),
+      );
+    }
+    final hours = _remaining.inHours;
+    final minutes = _remaining.inMinutes % 60;
+    return Text(
+      'Starts ${fmt.format(widget.start)} · in ${hours}h ${minutes}m',
+      style: Theme.of(context).textTheme.bodySmall,
+    );
+  }
 }

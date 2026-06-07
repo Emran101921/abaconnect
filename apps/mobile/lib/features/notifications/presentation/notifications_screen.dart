@@ -59,10 +59,18 @@ class NotificationsScreen extends ConsumerWidget {
         n.actionType!.startsWith('APPOINTMENT') &&
         n.appointmentId != null) {
       if (role == UserRole.therapist) {
-        context.push('${AppRoutes.therapistHome}/appointments');
+        context.push(
+          '${AppRoutes.therapistHome}/appointments?id=${n.appointmentId}',
+        );
       } else {
-        context.push('${AppRoutes.parentHome}/appointments');
+        context.push(
+          '${AppRoutes.parentHome}/appointments?id=${n.appointmentId}',
+        );
       }
+      return;
+    }
+    if (n.actionType == 'TELEHEALTH' && n.appointmentId != null) {
+      context.push('${AppRoutes.parentHome}/appointments?id=${n.appointmentId}');
       return;
     }
 

@@ -337,6 +337,20 @@ export class AdminResolver {
   }
 
   @Mutation(() => AdminInsuranceClaimType, {
+    name: 'processClaimRemittance835',
+  })
+  async processClaimRemittance835(
+    @CurrentUser() user: AuthUser,
+    @Args('claimId', { type: () => ID }) claimId: string,
+  ): Promise<AdminInsuranceClaimType> {
+    const row = await this.insuranceService.processRemittance835ForClaim(
+      user.tenantId ?? '',
+      claimId,
+    );
+    return this.mapInsuranceClaim(row);
+  }
+
+  @Mutation(() => AdminInsuranceClaimType, {
     name: 'submitInsuranceClaimToClearinghouse',
   })
   async submitInsuranceClaimToClearinghouse(

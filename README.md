@@ -21,6 +21,36 @@ HIPAA-oriented therapy marketplace connecting parents with licensed providers (A
 | **2** | Screenings, documents, sessions, SOAP notes, EVV fields, agency links |
 | **3** | Payments (Stripe), insurance claims model, analytics snapshots |
 | **4** | Telehealth, GPS tracking, AI stubs, badges, reviews, multi-tenant `Tenant` |
+| **5 (v1)** | Analytics reconciliation, 835 remittance demo, parent onboarding funnel, messaging/notification polish |
+
+## Feature matrix (v1 demo)
+
+| Area | Parent | Therapist | Agency | Admin |
+|------|--------|-----------|--------|-------|
+| Onboarding checklist | ✓ | — | — | — |
+| Screening → therapist match | ✓ | — | — | — |
+| Messaging + unread badges | ✓ | ✓ | ✓ | ✓ |
+| Telehealth join + countdown | ✓ | ✓ | — | — |
+| Payments (Stripe demo) | ✓ | Payouts | — | Disputes |
+| Insurance claims | ✓ | — | View + appeal | Full lifecycle + 835 |
+| Analytics + period comparison | — | — | ✓ | ✓ |
+| Revenue reconciliation | — | — | ✓ | ✓ |
+
+## Demo walkthrough
+
+1. **Parent** (`parent@demo.local` / `Parent123!`) — Home shows onboarding progress if incomplete. Add child → screening auto-starts → submit redirects to therapist matching → book session.
+2. **Therapist** — Confirm appointments, start session, document SOAP, EVV check-in (location permission dialog if denied).
+3. **Agency** — Operations hub: roster, analytics (claims pipeline with paid $ totals), denied-claim appeals from analytics detail.
+4. **Admin** — Insurance claims: submit 837 (stub clearinghouse auto-posts 835 remittance). Analytics overview flags revenue mismatch when session payments ≠ paid claims total.
+5. **Push** — Configure `flutterfire configure` + `FCM_SERVER_KEY` for production; demo uses in-app notifications with deep-links to threads and appointments.
+
+### Deferred (production credentials required)
+
+- Live Firebase / FCM production project
+- Real clearinghouse vendor (Change Healthcare, Availity, etc.)
+- Stripe live keys and production webhooks
+- S3/KMS document encryption at rest
+- WebAuthn MFA, HIPAA penetration test
 
 ## Quick start
 

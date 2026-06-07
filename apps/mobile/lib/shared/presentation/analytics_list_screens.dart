@@ -11,8 +11,61 @@ import '../models/analytics_date_range.dart';
 import '../presentation/analytics_copy_link.dart';
 import '../presentation/analytics_date_range_filter.dart';
 import '../presentation/analytics_date_range_url.dart';
+import '../presentation/analytics_list_header.dart';
 import '../utils/analytics_csv_export.dart';
 import '../widgets/app_scaffold.dart';
+
+(int, int) analyticsClaimListCounts(
+  String apiFilter, {
+  required int draftCount,
+  required int submittedCount,
+  required int pendingCount,
+  required int paidCount,
+  required int deniedCount,
+  required int priorDraftCount,
+  required int priorSubmittedCount,
+  required int priorPendingCount,
+  required int priorPaidCount,
+  required int priorDeniedCount,
+}) {
+  switch (apiFilter) {
+    case 'DRAFT':
+      return (draftCount, priorDraftCount);
+    case 'SUBMITTED':
+      return (submittedCount, priorSubmittedCount);
+    case 'PENDING':
+      return (pendingCount, priorPendingCount);
+    case 'PAID':
+      return (paidCount, priorPaidCount);
+    case 'DENIED':
+      return (deniedCount, priorDeniedCount);
+    default:
+      return (0, 0);
+  }
+}
+
+(int, int) analyticsScreeningListCounts(
+  String riskKey, {
+  required int completedCount,
+  required int lowRiskCount,
+  required int moderateRiskCount,
+  required int highRiskCount,
+  required int priorCompletedCount,
+  required int priorLowRiskCount,
+  required int priorModerateRiskCount,
+  required int priorHighRiskCount,
+}) {
+  switch (riskKey) {
+    case 'LOW':
+      return (lowRiskCount, priorLowRiskCount);
+    case 'MODERATE':
+      return (moderateRiskCount, priorModerateRiskCount);
+    case 'HIGH':
+      return (highRiskCount, priorHighRiskCount);
+    default:
+      return (completedCount, priorCompletedCount);
+  }
+}
 
 List<Widget>? analyticsExportActions({
   required VoidCallback? onExport,
@@ -101,8 +154,32 @@ class AdminAnalyticsClaimsListScreen extends ConsumerWidget {
     final apiFilter = analyticsClaimFilterFromPath(statusFilter);
     final dateRange = ref.watch(adminAnalyticsDateRangeProvider);
     final claims = ref.watch(adminAnalyticsClaimsListProvider(apiFilter));
+    final pipeline = ref.watch(adminClaimsPipelineProvider);
     final currency = NumberFormat.currency(symbol: '\$');
     final dateFormat = DateFormat.yMMMd();
+    final counts = pipeline.maybeWhen(
+      data: (p) => analyticsClaimListCounts(
+        apiFilter,
+        draftCount: p.summary.draftCount,
+        submittedCount: p.summary.submittedCount,
+        pendingCount: p.summary.pendingCount,
+        paidCount: p.summary.paidCount,
+        deniedCount: p.summary.deniedCount,
+        priorDraftCount: p.summary.priorDraftCount,
+        priorSubmittedCount: p.summary.priorSubmittedCount,
+        priorPendingCount: p.summary.priorPendingCount,
+        priorPaidCount: p.summary.priorPaidCount,
+        priorDeniedCount: p.summary.priorDeniedCount,
+      ),
+      orElse: () => (0, 0),
+    );
+    final amountLabel = apiFilter == 'PAID'
+        ? pipeline.maybeWhen(
+            data: (p) =>
+                'Paid amount: ${currency.format(p.summary.paidAmountTotal)}',
+            orElse: () => null,
+          )
+        : null;
 
     return AnalyticsDateRangeSync(
       dateRangeProvider: adminAnalyticsDateRangeProvider,
@@ -136,6 +213,11 @@ class AdminAnalyticsClaimsListScreen extends ConsumerWidget {
                   adminAnalyticsDateRangeDefaultSuppressedProvider,
             ),
           ),
+          AnalyticsListHeader(
+            count: counts.$1,
+            priorCount: counts.$2,
+            amountLabel: amountLabel,
+          ),
           Expanded(
             child: claims.when(
               loading: () => const Center(child: CircularProgressIndicator()),
@@ -153,6 +235,7 @@ class AdminAnalyticsClaimsListScreen extends ConsumerWidget {
                 },
                 onRefresh: () async {
                   ref.invalidate(adminAnalyticsClaimsListProvider(apiFilter));
+                  ref.invalidate(adminClaimsPipelineProvider);
                   await ref
                       .read(adminAnalyticsClaimsListProvider(apiFilter).future);
                 },
@@ -181,8 +264,32 @@ class AgencyAnalyticsClaimsListScreen extends ConsumerWidget {
     final apiFilter = analyticsClaimFilterFromPath(statusFilter);
     final dateRange = ref.watch(agencyAnalyticsDateRangeProvider);
     final claims = ref.watch(agencyAnalyticsClaimsListProvider(apiFilter));
+    final pipeline = ref.watch(agencyClaimsPipelineProvider);
     final currency = NumberFormat.currency(symbol: '\$');
     final dateFormat = DateFormat.yMMMd();
+    final counts = pipeline.maybeWhen(
+      data: (p) => analyticsClaimListCounts(
+        apiFilter,
+        draftCount: p.summary.draftCount,
+        submittedCount: p.summary.submittedCount,
+        pendingCount: p.summary.pendingCount,
+        paidCount: p.summary.paidCount,
+        deniedCount: p.summary.deniedCount,
+        priorDraftCount: p.summary.priorDraftCount,
+        priorSubmittedCount: p.summary.priorSubmittedCount,
+        priorPendingCount: p.summary.priorPendingCount,
+        priorPaidCount: p.summary.priorPaidCount,
+        priorDeniedCount: p.summary.priorDeniedCount,
+      ),
+      orElse: () => (0, 0),
+    );
+    final amountLabel = apiFilter == 'PAID'
+        ? pipeline.maybeWhen(
+            data: (p) =>
+                'Paid amount: ${currency.format(p.summary.paidAmountTotal)}',
+            orElse: () => null,
+          )
+        : null;
 
     return AnalyticsDateRangeSync(
       dateRangeProvider: agencyAnalyticsDateRangeProvider,
@@ -216,6 +323,11 @@ class AgencyAnalyticsClaimsListScreen extends ConsumerWidget {
                   agencyAnalyticsDateRangeDefaultSuppressedProvider,
             ),
           ),
+          AnalyticsListHeader(
+            count: counts.$1,
+            priorCount: counts.$2,
+            amountLabel: amountLabel,
+          ),
           Expanded(
             child: claims.when(
               loading: () => const Center(child: CircularProgressIndicator()),
@@ -233,6 +345,7 @@ class AgencyAnalyticsClaimsListScreen extends ConsumerWidget {
                 },
                 onRefresh: () async {
                   ref.invalidate(agencyAnalyticsClaimsListProvider(apiFilter));
+                  ref.invalidate(agencyClaimsPipelineProvider);
                   await ref
                       .read(agencyAnalyticsClaimsListProvider(apiFilter).future);
                 },
@@ -262,7 +375,22 @@ class AdminAnalyticsScreeningsListScreen extends ConsumerWidget {
     final riskKey = apiRisk ?? 'all';
     final dateRange = ref.watch(adminAnalyticsDateRangeProvider);
     final screenings = ref.watch(adminAnalyticsScreeningsListProvider(riskKey));
+    final funnel = ref.watch(adminScreeningFunnelProvider);
     final dateFormat = DateFormat.yMMMd();
+    final counts = funnel.maybeWhen(
+      data: (f) => analyticsScreeningListCounts(
+        riskKey,
+        completedCount: f.summary.completedCount,
+        lowRiskCount: f.summary.lowRiskCount,
+        moderateRiskCount: f.summary.moderateRiskCount,
+        highRiskCount: f.summary.highRiskCount,
+        priorCompletedCount: f.summary.priorCompletedCount,
+        priorLowRiskCount: f.summary.priorLowRiskCount,
+        priorModerateRiskCount: f.summary.priorModerateRiskCount,
+        priorHighRiskCount: f.summary.priorHighRiskCount,
+      ),
+      orElse: () => (0, 0),
+    );
 
     return AnalyticsDateRangeSync(
       dateRangeProvider: adminAnalyticsDateRangeProvider,
@@ -296,6 +424,10 @@ class AdminAnalyticsScreeningsListScreen extends ConsumerWidget {
                   adminAnalyticsDateRangeDefaultSuppressedProvider,
             ),
           ),
+          AnalyticsListHeader(
+            count: counts.$1,
+            priorCount: counts.$2,
+          ),
           Expanded(
             child: screenings.when(
               loading: () => const Center(child: CircularProgressIndicator()),
@@ -312,6 +444,7 @@ class AdminAnalyticsScreeningsListScreen extends ConsumerWidget {
                 },
                 onRefresh: () async {
                   ref.invalidate(adminAnalyticsScreeningsListProvider(riskKey));
+                  ref.invalidate(adminScreeningFunnelProvider);
                   await ref
                       .read(adminAnalyticsScreeningsListProvider(riskKey).future);
                 },
@@ -341,7 +474,22 @@ class AgencyAnalyticsScreeningsListScreen extends ConsumerWidget {
     final riskKey = apiRisk ?? 'all';
     final dateRange = ref.watch(agencyAnalyticsDateRangeProvider);
     final screenings = ref.watch(agencyAnalyticsScreeningsListProvider(riskKey));
+    final funnel = ref.watch(agencyScreeningFunnelProvider);
     final dateFormat = DateFormat.yMMMd();
+    final counts = funnel.maybeWhen(
+      data: (f) => analyticsScreeningListCounts(
+        riskKey,
+        completedCount: f.summary.completedCount,
+        lowRiskCount: f.summary.lowRiskCount,
+        moderateRiskCount: f.summary.moderateRiskCount,
+        highRiskCount: f.summary.highRiskCount,
+        priorCompletedCount: f.summary.priorCompletedCount,
+        priorLowRiskCount: f.summary.priorLowRiskCount,
+        priorModerateRiskCount: f.summary.priorModerateRiskCount,
+        priorHighRiskCount: f.summary.priorHighRiskCount,
+      ),
+      orElse: () => (0, 0),
+    );
 
     return AnalyticsDateRangeSync(
       dateRangeProvider: agencyAnalyticsDateRangeProvider,
@@ -375,6 +523,10 @@ class AgencyAnalyticsScreeningsListScreen extends ConsumerWidget {
                   agencyAnalyticsDateRangeDefaultSuppressedProvider,
             ),
           ),
+          AnalyticsListHeader(
+            count: counts.$1,
+            priorCount: counts.$2,
+          ),
           Expanded(
             child: screenings.when(
               loading: () => const Center(child: CircularProgressIndicator()),
@@ -391,6 +543,7 @@ class AgencyAnalyticsScreeningsListScreen extends ConsumerWidget {
                 },
                 onRefresh: () async {
                   ref.invalidate(agencyAnalyticsScreeningsListProvider(riskKey));
+                  ref.invalidate(agencyScreeningFunnelProvider);
                   await ref
                       .read(agencyAnalyticsScreeningsListProvider(riskKey).future);
                 },
