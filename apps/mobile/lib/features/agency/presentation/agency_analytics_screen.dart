@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../core/router/app_router.dart';
 
 import '../../../shared/models/analytics_date_range.dart';
+import '../../../shared/models/analytics_metric.dart';
 import '../../../shared/presentation/analytics_copy_link.dart';
 import '../../../shared/presentation/analytics_date_range_filter.dart';
 import '../../../shared/presentation/analytics_date_range_url.dart';
@@ -105,16 +106,26 @@ class AgencyAnalyticsScreen extends ConsumerWidget {
                 spacing: 12,
                 runSpacing: 12,
                 children: metricList.map((m) {
-                  final key = m['key'] as String? ?? '';
-                  final value = (m['value'] as num?)?.toDouble() ?? 0;
-                  final display = key == 'revenue_paid'
-                      ? currency.format(value)
-                      : value.toStringAsFixed(
-                          value == value.roundToDouble() ? 0 : 2,
+                  final isRevenue = m.metricKey == 'revenue_paid';
+                  final display = isRevenue
+                      ? currency.format(m.metricValue)
+                      : m.metricValue.toStringAsFixed(
+                          m.metricValue == m.metricValue.roundToDouble()
+                              ? 0
+                              : 2,
                         );
+                  final periodDelta = analyticsOverviewComparisonKeys
+                          .contains(m.metricKey)
+                      ? formatAnalyticsPeriodDelta(
+                          m.metricValue,
+                          m.priorPeriodValue,
+                          isCurrency: isRevenue,
+                        )
+                      : null;
                   return AdminStatCard(
-                    label: metricLabel(key),
+                    label: metricLabel(m.metricKey),
                     value: display,
+                    periodDelta: periodDelta,
                   );
                 }).toList(),
               ),

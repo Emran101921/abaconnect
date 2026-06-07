@@ -5,12 +5,14 @@ class AdminStatCard extends StatelessWidget {
     super.key,
     required this.label,
     required this.value,
+    this.periodDelta,
     this.highlight = false,
     this.onTap,
   });
 
   final String label;
   final Object value;
+  final String? periodDelta;
   final bool highlight;
   final VoidCallback? onTap;
 
@@ -29,6 +31,15 @@ class AdminStatCard extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
+          if (periodDelta != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              'vs prior period: $periodDelta',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: _deltaColor(context, periodDelta!),
+                  ),
+            ),
+          ],
         ],
       ),
     );
@@ -49,4 +60,17 @@ class AdminStatCard extends StatelessWidget {
       ),
     );
   }
+}
+
+Color? _deltaColor(BuildContext context, String delta) {
+  if (delta == '—') {
+    return Theme.of(context).colorScheme.onSurfaceVariant;
+  }
+  if (delta.startsWith('+')) {
+    return Colors.green.shade700;
+  }
+  if (delta.startsWith('-')) {
+    return Colors.red.shade700;
+  }
+  return Theme.of(context).colorScheme.onSurfaceVariant;
 }

@@ -1,4 +1,5 @@
 import '../../../core/network/graphql_client.dart';
+import '../../../shared/models/analytics_metric.dart';
 
 class AgencyDashboardModel {
   const AgencyDashboardModel({
@@ -349,14 +350,14 @@ class AgencyRepository {
     );
   }
 
-  Future<List<Map<String, dynamic>>> fetchTenantAnalytics({
+  Future<List<AnalyticsMetricModel>> fetchTenantAnalytics({
     String? fromDate,
     String? toDate,
   }) async {
     const query = r'''
       query TenantAnalytics($fromDate: DateTime, $toDate: DateTime) {
         tenantAnalytics(fromDate: $fromDate, toDate: $toDate) {
-          metricKey metricValue
+          metricKey metricValue priorPeriodValue
         }
       }
     ''';
@@ -367,10 +368,11 @@ class AgencyRepository {
     final list = result['data']?['tenantAnalytics'] as List<dynamic>? ?? [];
     return list
         .map(
-          (e) => {
-            'key': e['metricKey'] as String? ?? '',
-            'value': (e['metricValue'] as num?)?.toDouble() ?? 0,
-          },
+          (e) => AnalyticsMetricModel(
+            metricKey: e['metricKey'] as String? ?? '',
+            metricValue: (e['metricValue'] as num?)?.toDouble() ?? 0,
+            priorPeriodValue: (e['priorPeriodValue'] as num?)?.toDouble(),
+          ),
         )
         .toList();
   }

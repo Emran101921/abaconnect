@@ -1,74 +1,52 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import {
   DateRangeFilter,
-  prismaDateRange,
+  priorPeriodBounds,
+  resolveAnalyticsBounds,
+  startOfDay,
 } from '../common/date-range.util';
 import { PrismaService } from '../prisma/prisma.service';
+
+type MetricCounts = {
+  appointments: number;
+  sessionsCompleted: number;
+  revenuePaid: number;
+  activeChildren: number;
+};
 
 @Injectable()
 export class AnalyticsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getTenantMetrics(tenantId: string, dateRange?: DateRangeFilter) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const hasRange = Boolean(dateRange?.fromDate || dateRange?.toDate);
+    const today = startOfDay(new Date());
+    const hasExplicitRange = Boolean(dateRange?.fromDate || dateRange?.toDate);
+    const currentBounds = resolveAnalyticsBounds(dateRange);
+    const priorBounds = priorPeriodBounds(
+      currentBounds.from,
+      currentBounds.to,
+    );
 
-    const appointmentWhere = {
-      tenantId,
-      ...(hasRange
-        ? prismaDateRange('scheduledStart', dateRange ?? {})
-        : {
-            scheduledStart: { gte: new Date(Date.now() - 7 * 86400000) },
-          }),
-    };
-
-    const sessionWhere = {
-      tenantId,
-      status: 'COMPLETED' as const,
-      ...(hasRange ? prismaDateRange('checkOutAt', dateRange ?? {}) : {}),
-    };
-
-    const paymentWhere = {
-      tenantId,
-      status: 'SUCCEEDED' as const,
-      ...(hasRange ? prismaDateRange('paidAt', dateRange ?? {}) : {}),
-    };
-
-    const [
-      appointmentsCount,
-      sessionsCompleted,
-      revenuePaid,
-      activeChildren,
-    ] = await Promise.all([
-      this.prisma.appointment.count({ where: appointmentWhere }),
-      this.prisma.session.count({ where: sessionWhere }),
-      this.prisma.payment.aggregate({
-        where: paymentWhere,
-        _sum: { amount: true },
-      }),
-      hasRange
-        ? this.prisma.appointment
-            .findMany({
-              where: {
-                tenantId,
-                ...prismaDateRange('scheduledStart', dateRange ?? {}),
-              },
-              select: { childId: true },
-              distinct: ['childId'],
-            })
-            .then((rows) => rows.length)
-        : this.prisma.child.count({ where: { tenantId } }),
+    const [current, prior] = await Promise.all([
+      this.queryMetricCounts(tenantId, currentBounds),
+      this.queryMetricCounts(tenantId, priorBounds),
     ]);
 
     const metrics = [
-      { key: 'appointments_7d', value: appointmentsCount },
-      { key: 'sessions_completed', value: sessionsCompleted },
-      { key: 'revenue_paid', value: Number(revenuePaid._sum.amount ?? 0) },
-      { key: 'active_children', value: activeChildren },
+      { key: 'appointments_7d', value: current.appointments },
+      { key: 'sessions_completed', value: current.sessionsCompleted },
+      { key: 'revenue_paid', value: current.revenuePaid },
+      { key: 'active_children', value: current.activeChildren },
     ];
 
-    if (!hasRange) {
+    const priorByKey: Record<string, number> = {
+      appointments_7d: prior.appointments,
+      sessions_completed: prior.sessionsCompleted,
+      revenue_paid: prior.revenuePaid,
+      active_children: prior.activeChildren,
+    };
+
+    if (!hasExplicitRange) {
       for (const m of metrics) {
         await this.prisma.analyticsSnapshot.upsert({
           where: {
@@ -89,7 +67,61 @@ export class AnalyticsService {
       }
     }
 
-    return metrics.map((m) => ({ metricKey: m.key, metricValue: m.value }));
+    return metrics.map((m) => ({
+      metricKey: m.key,
+      metricValue: m.value,
+      priorPeriodValue: priorByKey[m.key] ?? 0,
+    }));
+  }
+
+  private async queryMetricCounts(
+    tenantId: string,
+    bounds: { from: Date; to: Date },
+  ): Promise<MetricCounts> {
+    const appointmentWhere = {
+      tenantId,
+      scheduledStart: { gte: bounds.from, lte: bounds.to },
+    };
+
+    const sessionWhere = {
+      tenantId,
+      status: 'COMPLETED' as const,
+      checkOutAt: { gte: bounds.from, lte: bounds.to },
+    };
+
+    const paymentWhere = {
+      tenantId,
+      status: 'SUCCEEDED' as const,
+      paidAt: { gte: bounds.from, lte: bounds.to },
+    };
+
+    const [
+      appointmentsCount,
+      sessionsCompleted,
+      revenuePaid,
+      activeChildren,
+    ] = await Promise.all([
+      this.prisma.appointment.count({ where: appointmentWhere }),
+      this.prisma.session.count({ where: sessionWhere }),
+      this.prisma.payment.aggregate({
+        where: paymentWhere,
+        _sum: { amount: true },
+      }),
+      this.prisma.appointment
+        .findMany({
+          where: appointmentWhere,
+          select: { childId: true },
+          distinct: ['childId'],
+        })
+        .then((rows) => rows.length),
+    ]);
+
+    return {
+      appointments: appointmentsCount,
+      sessionsCompleted,
+      revenuePaid: Number(revenuePaid._sum.amount ?? 0),
+      activeChildren,
+    };
   }
 
   async create(data: Record<string, unknown>) {
