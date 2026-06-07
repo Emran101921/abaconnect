@@ -15,7 +15,10 @@ import {
 } from '../common/date-range.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { EarlyInterventionScoringService } from './early-intervention-scoring.service';
-import { EARLY_INTERVENTION_TEMPLATE_NAME } from './early-intervention-template';
+import {
+  buildEarlyInterventionQuestionsJson,
+  EARLY_INTERVENTION_TEMPLATE_NAME,
+} from './early-intervention-template';
 
 @Injectable()
 export class ScreeningsService {
@@ -25,7 +28,32 @@ export class ScreeningsService {
     private readonly audit: AuditService,
   ) {}
 
+  async ensureEarlyInterventionTemplate(tenantId: string) {
+    const existing = await this.prisma.screeningTemplate.findFirst({
+      where: { tenantId, therapyType: 'EARLY_INTERVENTION', isActive: true },
+    });
+    if (existing) return existing;
+
+    const eiQuestions = buildEarlyInterventionQuestionsJson();
+    return this.prisma.screeningTemplate.create({
+      data: {
+        tenantId,
+        name: EARLY_INTERVENTION_TEMPLATE_NAME,
+        description:
+          'Comprehensive parent screening for Early Intervention services (sections A–G).',
+        therapyType: 'EARLY_INTERVENTION',
+        version: 1,
+        questions: JSON.parse(JSON.stringify(eiQuestions)) as Prisma.InputJsonValue,
+        scoringRules: {
+          engine: 'early_intervention_v1',
+        } as Prisma.InputJsonValue,
+        isActive: true,
+      },
+    });
+  }
+
   async listTemplatesForTenant(tenantId: string) {
+    await this.ensureEarlyInterventionTemplate(tenantId);
     return this.prisma.screeningTemplate.findMany({
       where: { tenantId, isActive: true },
       orderBy: [{ therapyType: 'asc' }, { version: 'desc' }],
@@ -195,6 +223,20 @@ export class ScreeningsService {
       orderBy: { completedAt: 'desc' },
       take: 50,
     });
+  }
+
+  async getResponseForParent(userId: string, responseId: string) {
+    const parent = await this.requireParent(userId);
+    const row = await this.prisma.screeningResponse.findFirst({
+      where: {
+        id: responseId,
+        parentId: parent.id,
+        isDraft: false,
+      },
+      include: { template: true, child: true },
+    });
+    if (!row) throw new NotFoundException('Screening not found');
+    return row;
   }
 
   async getDraftForParent(

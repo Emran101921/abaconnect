@@ -709,6 +709,26 @@ class ParentBookingRepository {
     );
   }
 
+  Future<ScreeningResultModel> fetchScreeningResult(String id) async {
+    const query = r'''
+      query MyScreeningResult($id: ID!) {
+        myScreeningResult(id: $id) {
+          id
+          completedAt
+          score
+          riskLevel
+          recommendationsJson
+          isDraft
+          childName
+        }
+      }
+    ''';
+    final result = await _graphql.query(query, variables: {'id': id});
+    final e = result['data']?['myScreeningResult'] as Map<String, dynamic>?;
+    if (e == null) throw Exception('Screening result not found');
+    return _mapScreeningResult(e);
+  }
+
   Future<List<ScreeningHistoryModel>> fetchScreeningHistory() async {
     const query = r'''
       query {

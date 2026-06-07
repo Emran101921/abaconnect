@@ -342,6 +342,15 @@ export class ParentBookingResolver {
     return rows.map((r) => this.mapScreeningResponse(r));
   }
 
+  @Query(() => ScreeningResponseType, { name: 'myScreeningResult' })
+  async myScreeningResult(
+    @CurrentUser() user: AuthUser,
+    @Args('id', { type: () => ID }) id: string,
+  ): Promise<ScreeningResponseType> {
+    const row = await this.screeningsService.getResponseForParent(user.id, id);
+    return this.mapScreeningResponse(row);
+  }
+
   @Query(() => ScreeningResponseType, {
     name: 'myScreeningDraft',
     nullable: true,

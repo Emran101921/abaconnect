@@ -1,6 +1,6 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
-import { PrismaClient } from '../generated/prisma/client';
+import { Prisma, PrismaClient } from '../generated/prisma/client';
 import {
   buildEarlyInterventionQuestionsJson,
   EARLY_INTERVENTION_TEMPLATE_NAME,
@@ -271,8 +271,10 @@ async function main() {
           'Comprehensive parent screening for Early Intervention services (sections A–G).',
         therapyType: 'EARLY_INTERVENTION',
         version: 1,
-        questions: eiQuestions,
-        scoringRules: { engine: 'early_intervention_v1' },
+        questions: JSON.parse(JSON.stringify(eiQuestions)) as Prisma.InputJsonValue,
+        scoringRules: JSON.parse(
+          JSON.stringify({ engine: 'early_intervention_v1' }),
+        ) as Prisma.InputJsonValue,
         isActive: true,
       },
     });

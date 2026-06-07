@@ -153,6 +153,17 @@ class ScreeningResultsScreen extends StatelessWidget {
             icon: const Icon(Icons.support_agent),
             label: const Text('Contact care coordinator'),
           ),
+          const SizedBox(height: 16),
+          OutlinedButton.icon(
+            onPressed: () {
+              final childId = child.id;
+              context.push(
+                '${AppRoutes.parentScreening}?childId=$childId&autoStart=true',
+              );
+            },
+            icon: const Icon(Icons.edit_note),
+            label: const Text('Start new screening or edit via draft'),
+          ),
           const SizedBox(height: 24),
           Center(
             child: TextButton(

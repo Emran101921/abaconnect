@@ -118,7 +118,7 @@ export const EARLY_INTERVENTION_SECTIONS: EISection[] = [
   },
   {
     id: 'C',
-    title: 'Social & Behavior',
+    title: 'Social & Behavior / ABA',
     description: 'How often does your child demonstrate the following?',
     questions: [
       {

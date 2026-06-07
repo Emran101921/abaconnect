@@ -121,11 +121,13 @@ class ParentHomeScreen extends ConsumerWidget {
                         ),
                         _OnboardingStep(
                           done: d.hasScreening,
-                          label: 'Complete screening',
+                          label: 'Complete Early Intervention screening',
                           onTap: d.hasScreening
                               ? null
                               : () => context.push(
-                                    '${AppRoutes.parentHome}/screening',
+                                    d.hasChild
+                                        ? '${AppRoutes.parentScreening}?autoStart=true'
+                                        : '${AppRoutes.parentChildren}',
                                   ),
                         ),
                         _OnboardingStep(
