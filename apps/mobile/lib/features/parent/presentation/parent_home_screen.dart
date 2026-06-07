@@ -13,6 +13,7 @@ import '../../messaging/presentation/messages_screen.dart';
 import '../../messaging/presentation/recent_messages_section.dart';
 import '../../notifications/notification_providers.dart';
 import '../data/parent_booking_repository.dart';
+import 'session_history_screen.dart';
 
 final parentDashboardProvider =
     FutureProvider<ParentDashboardModel>((ref) async {
@@ -62,6 +63,7 @@ class ParentHomeScreen extends ConsumerWidget {
           ref.invalidate(unreadNotificationsProvider);
           ref.invalidate(unreadMessageThreadsProvider);
           ref.invalidate(messageThreadsProvider);
+          ref.invalidate(sessionHistoryProvider);
         },
         child: ListView(
           padding: const EdgeInsets.all(16),
@@ -129,6 +131,10 @@ class ParentHomeScreen extends ConsumerWidget {
                               d.lastSessionSummary!,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
+                            ),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => context.push(
+                              '${AppRoutes.parentHome}/progress-notes',
                             ),
                           ),
                         ),
@@ -222,6 +228,70 @@ class ParentHomeScreen extends ConsumerWidget {
               loading: () => const LinearProgressIndicator(),
               error: (e, _) => Text('Appointments: $e'),
             ),
+            const SizedBox(height: 16),
+            Text('Recent visits', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            Consumer(
+              builder: (context, ref, _) {
+                final history = ref.watch(sessionHistoryProvider);
+                return history.when(
+                  data: (sessions) {
+                    final recent = sessions
+                        .where((s) => s.status == 'COMPLETED')
+                        .take(2)
+                        .toList();
+                    if (recent.isEmpty) {
+                      return const Card(
+                        child: ListTile(
+                          title: Text('No visit summaries yet'),
+                          subtitle: Text(
+                            'Completed sessions with therapist notes appear here',
+                          ),
+                        ),
+                      );
+                    }
+                    return Column(
+                      children: [
+                        ...recent.map(
+                          (s) => Card(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            child: ListTile(
+                              leading: Icon(
+                                s.hasProgressNote
+                                    ? Icons.summarize_outlined
+                                    : Icons.history,
+                              ),
+                              title: Text('${s.therapyType} · ${s.childName}'),
+                              subtitle: Text(
+                                s.progressNoteSummary ??
+                                    'Summary pending from ${s.therapistName}',
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () => context.push(
+                                '${AppRoutes.parentHome}/session-history',
+                              ),
+                            ),
+                          ),
+                        ),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: () => context.push(
+                              '${AppRoutes.parentHome}/session-history',
+                            ),
+                            child: const Text('View all sessions'),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                  loading: () => const LinearProgressIndicator(),
+                  error: (_, __) => const SizedBox.shrink(),
+                );
+              },
+            ),
             const SizedBox(height: 24),
             Text('Operations', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
@@ -286,6 +356,12 @@ class ParentHomeScreen extends ConsumerWidget {
               subtitle: 'Goals and care plans',
               icon: Icons.medical_information,
               onTap: () => context.push('${AppRoutes.parentHome}/treatment-plans'),
+            ),
+            _OpsTile(
+              title: 'Progress notes',
+              subtitle: 'Session summaries from your therapist',
+              icon: Icons.summarize_outlined,
+              onTap: () => context.push('${AppRoutes.parentHome}/progress-notes'),
             ),
             _OpsTile(
               title: 'Screening',

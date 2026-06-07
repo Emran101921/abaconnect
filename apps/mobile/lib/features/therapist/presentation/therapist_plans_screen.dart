@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../clinical/data/clinical_repository.dart';
+
 final therapistPlansProvider =
     FutureProvider<List<TreatmentPlanModel>>((ref) {
   return ref.watch(clinicalRepositoryProvider).fetchTherapistPlans();
@@ -25,18 +26,60 @@ class TherapistPlansScreen extends ConsumerWidget {
     }
     final a = appointments.first;
     final title = TextEditingController(text: 'Treatment plan — ${a.childName}');
+    final goalLabel = TextEditingController();
+    final goals = <TreatmentPlanGoalModel>[];
+
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('New treatment plan'),
-        content: TextField(
-          controller: title,
-          decoration: const InputDecoration(labelText: 'Title'),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: const Text('New treatment plan'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: title,
+                  decoration: const InputDecoration(labelText: 'Title'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: goalLabel,
+                  decoration: const InputDecoration(labelText: 'Add goal'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    final label = goalLabel.text.trim();
+                    if (label.isEmpty) return;
+                    setState(() {
+                      goals.add(TreatmentPlanGoalModel(
+                        id: 'g${goals.length + 1}',
+                        label: label,
+                        status: 'active',
+                      ));
+                      goalLabel.clear();
+                    });
+                  },
+                  child: const Text('Add goal'),
+                ),
+                ...goals.map((g) => ListTile(
+                      dense: true,
+                      title: Text(g.label),
+                    )),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Create'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Create')),
-        ],
       ),
     );
     if (ok != true) return;
@@ -45,11 +88,108 @@ class TherapistPlansScreen extends ConsumerWidget {
             childId: a.childId,
             therapyType: a.therapyType,
             title: title.text.trim(),
+            goals: goals,
           );
       ref.invalidate(therapistPlansProvider);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Plan created')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _editGoals(
+    BuildContext context,
+    WidgetRef ref,
+    TreatmentPlanModel plan,
+  ) async {
+    final goals = [...plan.goals];
+    final goalLabel = TextEditingController();
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: Text('Goals — ${plan.title}'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: goalLabel,
+                  decoration: const InputDecoration(labelText: 'New goal'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    final label = goalLabel.text.trim();
+                    if (label.isEmpty) return;
+                    setState(() {
+                      goals.add(TreatmentPlanGoalModel(
+                        id: 'g${DateTime.now().millisecondsSinceEpoch}',
+                        label: label,
+                        status: 'active',
+                      ));
+                      goalLabel.clear();
+                    });
+                  },
+                  child: const Text('Add'),
+                ),
+                ...goals.asMap().entries.map(
+                  (e) => ListTile(
+                    dense: true,
+                    title: Text(e.value.label),
+                    subtitle: Text(e.value.statusLabel),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.swap_horiz),
+                          tooltip: 'Cycle status',
+                          onPressed: () => setState(() {
+                            goals[e.key] = e.value.cycleStatus();
+                          }),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline),
+                          onPressed: () => setState(() => goals.removeAt(e.key)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await ref.read(clinicalRepositoryProvider).updatePlan(
+            planId: plan.id,
+            goals: goals,
+          );
+      ref.invalidate(therapistPlansProvider);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Goals updated')),
         );
       }
     } catch (e) {
@@ -85,9 +225,45 @@ class TherapistPlansScreen extends ConsumerWidget {
             itemBuilder: (context, index) {
               final p = list[index];
               return Card(
-                child: ListTile(
+                child: ExpansionTile(
                   title: Text(p.title),
-                  subtitle: Text('${p.childName} · ${p.therapyType}'),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('${p.childName} · ${p.therapyType}'),
+                      if (p.goalsTotalCount > 0) ...[
+                        const SizedBox(height: 6),
+                        LinearProgressIndicator(
+                          value: p.goalsProgress,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        Text(
+                          '${p.goalsDoneCount}/${p.goalsTotalCount} done',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                    ],
+                  ),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.edit_outlined),
+                    onPressed: () => _editGoals(context, ref, p),
+                  ),
+                  children: [
+                    if (p.goals.isEmpty)
+                      const ListTile(title: Text('No goals yet'))
+                    else
+                      ...p.goals.map(
+                        (g) => ListTile(
+                          leading: Icon(
+                            g.status == 'done'
+                                ? Icons.check_circle_outline
+                                : Icons.flag_outlined,
+                          ),
+                          title: Text(g.label),
+                          trailing: Chip(label: Text(g.statusLabel)),
+                        ),
+                      ),
+                  ],
                 ),
               );
             },

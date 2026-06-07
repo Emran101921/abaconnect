@@ -46,7 +46,49 @@ final adminAnalyticsProvider =
   return ref.watch(adminRepositoryProvider).fetchAnalytics();
 });
 
+final adminClaimsPipelineProvider =
+    FutureProvider<ClaimsPipelineDashboardModel>((ref) async {
+  return ref.watch(adminRepositoryProvider).fetchClaimsPipeline();
+});
+
+final adminScreeningFunnelProvider =
+    FutureProvider<ScreeningFunnelDashboardModel>((ref) async {
+  return ref.watch(adminRepositoryProvider).fetchScreeningFunnel();
+});
+
 final adminInsuranceClaimsProvider =
     FutureProvider<List<AdminInsuranceClaimModel>>((ref) async {
   return ref.watch(adminRepositoryProvider).fetchInsuranceClaims();
+});
+
+final adminAnalyticsClaimDetailProvider =
+    FutureProvider.family<AdminInsuranceClaimModel, String>((ref, claimId) {
+  return ref.watch(adminRepositoryProvider).fetchAnalyticsClaimDetail(claimId);
+});
+
+final adminAnalyticsScreeningDetailProvider =
+    FutureProvider.family<AnalyticsScreeningDetailModel, String>(
+        (ref, screeningId) {
+  return ref
+      .watch(adminRepositoryProvider)
+      .fetchAnalyticsScreeningDetail(screeningId);
+});
+
+final adminAnalyticsClaimsListProvider =
+    FutureProvider.family<List<AnalyticsClaimSummaryModel>, String>(
+        (ref, statusFilter) {
+  return ref
+      .watch(adminRepositoryProvider)
+      .fetchAnalyticsClaimsList(statusFilter);
+});
+
+final adminAnalyticsScreeningsListProvider =
+    FutureProvider.family<List<AnalyticsScreeningSummaryModel>, String>(
+        (ref, riskFilterKey) {
+  final riskLevel = riskFilterKey == 'all'
+      ? null
+      : riskFilterKey;
+  return ref
+      .watch(adminRepositoryProvider)
+      .fetchAnalyticsScreeningsList(riskLevel: riskLevel);
 });

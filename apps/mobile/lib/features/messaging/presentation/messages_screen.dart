@@ -9,6 +9,7 @@ import '../../../shared/models/user_role.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../data/messaging_repository.dart';
 import '../messaging_providers.dart';
+import 'message_status_badge.dart';
 
 final messageThreadsProvider = FutureProvider<List<MessageThreadModel>>((ref) {
   return ref.watch(messagingRepositoryProvider).fetchThreads();
@@ -72,10 +73,23 @@ class MessagesScreen extends ConsumerWidget {
                     child: Text(t.otherParticipantName.characters.first),
                   ),
                   title: Text(t.otherParticipantName),
-                  subtitle: Text(
-                    t.lastMessageBody ?? t.subject ?? 'No messages yet',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        t.lastMessageBody ?? t.subject ?? 'No messages yet',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (t.lastMessageIsMine && t.lastMessageStatus != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: MessageStatusBadge(
+                            status: t.lastMessageStatus!,
+                            compact: true,
+                          ),
+                        ),
+                    ],
                   ),
                   trailing: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -91,6 +105,16 @@ class MessagesScreen extends ConsumerWidget {
                           label: const Text('New'),
                           backgroundColor:
                               Theme.of(context).colorScheme.primary,
+                        ),
+                      ] else if (t.lastMessageIsMine &&
+                          t.lastMessageStatus == MessageDeliveryStatus.read) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          'Read',
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                color: Theme.of(context).colorScheme.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
                         ),
                       ],
                     ],

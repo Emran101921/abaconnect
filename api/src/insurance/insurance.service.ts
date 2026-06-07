@@ -276,6 +276,82 @@ export class InsuranceService {
     });
   }
 
+  async listAnalyticsClaimsForTenant(
+    tenantId: string,
+    filter: 'DRAFT' | 'SUBMITTED' | 'PENDING' | 'PAID' | 'DENIED',
+    limit = 50,
+  ) {
+    const status =
+      filter === 'PENDING'
+        ? { in: ['PENDING', 'UNDER_REVIEW', 'APPROVED'] as ClaimStatus[] }
+        : filter;
+    return this.prisma.insuranceClaim.findMany({
+      where: {
+        tenantId,
+        status,
+      },
+      include: { child: true },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+  }
+
+  async getClaimsPipelineForTenant(tenantId: string) {
+    const [
+      draftCount,
+      submittedCount,
+      pendingCount,
+      paidCount,
+      deniedCount,
+      recentClaims,
+    ] = await Promise.all([
+      this.prisma.insuranceClaim.count({
+        where: { tenantId, status: 'DRAFT' },
+      }),
+      this.prisma.insuranceClaim.count({
+        where: { tenantId, status: 'SUBMITTED' },
+      }),
+      this.prisma.insuranceClaim.count({
+        where: {
+          tenantId,
+          status: { in: ['PENDING', 'UNDER_REVIEW', 'APPROVED'] },
+        },
+      }),
+      this.prisma.insuranceClaim.count({
+        where: { tenantId, status: 'PAID' },
+      }),
+      this.prisma.insuranceClaim.count({
+        where: { tenantId, status: 'DENIED' },
+      }),
+      this.prisma.insuranceClaim.findMany({
+        where: { tenantId },
+        include: { child: true },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+      }),
+    ]);
+
+    return {
+      summary: {
+        draftCount,
+        submittedCount,
+        pendingCount,
+        paidCount,
+        deniedCount,
+      },
+      recentClaims,
+    };
+  }
+
+  async getClaimForTenant(tenantId: string, claimId: string) {
+    const claim = await this.prisma.insuranceClaim.findFirst({
+      where: { id: claimId, tenantId },
+      include: { child: true, parent: { include: { user: true } } },
+    });
+    if (!claim) throw new NotFoundException('Claim not found');
+    return claim;
+  }
+
   async updateClaimStatusForTenant(
     tenantId: string,
     claimId: string,

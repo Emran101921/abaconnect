@@ -9,6 +9,8 @@ class MessageThreadModel {
     this.lastMessageBody,
     this.lastMessageAt,
     this.hasUnread = false,
+    this.lastMessageIsMine = false,
+    this.lastMessageStatus,
   });
 
   final String id;
@@ -18,6 +20,8 @@ class MessageThreadModel {
   final DateTime? lastMessageAt;
   final DateTime updatedAt;
   final bool hasUnread;
+  final bool lastMessageIsMine;
+  final MessageDeliveryStatus? lastMessageStatus;
 }
 
 class ParentContactModel {
@@ -32,6 +36,8 @@ class ParentContactModel {
   final String? childSummary;
 }
 
+enum MessageDeliveryStatus { sent, delivered, read }
+
 class ChatMessageModel {
   const ChatMessageModel({
     required this.id,
@@ -39,6 +45,8 @@ class ChatMessageModel {
     required this.sentAt,
     required this.senderName,
     required this.isMine,
+    this.status,
+    this.readAt,
   });
 
   final String id;
@@ -46,6 +54,8 @@ class ChatMessageModel {
   final DateTime sentAt;
   final String senderName;
   final bool isMine;
+  final MessageDeliveryStatus? status;
+  final DateTime? readAt;
 }
 
 class MessagingRepository {
@@ -63,6 +73,8 @@ class MessagingRepository {
         lastMessageAt
         updatedAt
         hasUnread
+        lastMessageIsMine
+        lastMessageStatus
       }
     }
   ''';
@@ -81,6 +93,8 @@ class MessagingRepository {
         sentAt
         senderName
         isMine
+        status
+        readAt
       }
     }
   ''';
@@ -93,7 +107,14 @@ class MessagingRepository {
         sentAt
         senderName
         isMine
+        status
       }
+    }
+  ''';
+
+  static const _markReadMutation = r'''
+    mutation MarkThreadRead($threadId: ID!) {
+      markMessageThreadRead(threadId: $threadId)
     }
   ''';
 
@@ -143,6 +164,13 @@ class MessagingRepository {
     );
     final list = result['data']?['threadMessages'] as List<dynamic>? ?? [];
     return list.map(_mapMessage).toList();
+  }
+
+  Future<void> markThreadRead(String threadId) async {
+    await _graphql.query(
+      _markReadMutation,
+      variables: {'threadId': threadId},
+    );
   }
 
   Future<ChatMessageModel> sendMessage({
@@ -204,6 +232,8 @@ class MessagingRepository {
       lastMessageAt: DateTime.tryParse(e['lastMessageAt'] as String? ?? ''),
       updatedAt: DateTime.parse(e['updatedAt'] as String),
       hasUnread: e['hasUnread'] as bool? ?? false,
+      lastMessageIsMine: e['lastMessageIsMine'] as bool? ?? false,
+      lastMessageStatus: _mapStatus(e['lastMessageStatus'] as String?),
     );
   }
 
@@ -214,6 +244,21 @@ class MessagingRepository {
       sentAt: DateTime.parse(e['sentAt'] as String),
       senderName: e['senderName'] as String? ?? '',
       isMine: e['isMine'] as bool? ?? false,
+      status: _mapStatus(e['status'] as String?),
+      readAt: DateTime.tryParse(e['readAt'] as String? ?? ''),
     );
+  }
+
+  MessageDeliveryStatus? _mapStatus(String? raw) {
+    switch (raw) {
+      case 'SENT':
+        return MessageDeliveryStatus.sent;
+      case 'DELIVERED':
+        return MessageDeliveryStatus.delivered;
+      case 'READ':
+        return MessageDeliveryStatus.read;
+      default:
+        return null;
+    }
   }
 }

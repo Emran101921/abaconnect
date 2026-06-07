@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/admin/presentation/admin_analytics_screen.dart';
+import '../../shared/presentation/analytics_detail_screens.dart';
+import '../../shared/presentation/analytics_list_screens.dart';
 import '../../features/admin/presentation/admin_audit_screen.dart';
 import '../../features/admin/presentation/admin_complaints_screen.dart';
 import '../../features/admin/presentation/admin_disputes_screen.dart';
@@ -31,6 +33,7 @@ import '../../features/parent/presentation/children_list_screen.dart';
 import '../../features/parent/presentation/parent_appointments_screen.dart';
 import '../../features/parent/presentation/parent_home_screen.dart';
 import '../../features/parent/presentation/parent_profile_screen.dart';
+import '../../features/parent/presentation/progress_notes_screen.dart';
 import '../../features/parent/presentation/session_history_screen.dart';
 import '../../features/parent/presentation/complaints_screen.dart';
 import '../../features/parent/presentation/reviews_screen.dart';
@@ -144,7 +147,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'screening',
             name: 'parentScreening',
-            builder: (context, state) => const ScreeningScreen(),
+            builder: (context, state) => ScreeningScreen(
+              childId: state.uri.queryParameters['childId'],
+              autoStart: state.uri.queryParameters['autoStart'] == 'true',
+            ),
           ),
           GoRoute(
             path: 'reviews',
@@ -170,6 +176,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: 'session-history',
             name: 'sessionHistory',
             builder: (context, state) => const SessionHistoryScreen(),
+          ),
+          GoRoute(
+            path: 'progress-notes',
+            name: 'parentProgressNotes',
+            builder: (context, state) => const ProgressNotesScreen(),
           ),
         ],
       ),
@@ -224,6 +235,42 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: 'analytics',
             name: 'agencyAnalytics',
             builder: (context, state) => const AgencyAnalyticsScreen(),
+            routes: [
+              GoRoute(
+                path: 'claims/filter/:statusFilter',
+                name: 'agencyAnalyticsClaimsList',
+                builder: (context, state) => AgencyAnalyticsClaimsListScreen(
+                  statusFilter: state.pathParameters['statusFilter']!,
+                  detailBasePath:
+                      '${AppRoutes.agencyHome}/analytics/claims',
+                ),
+              ),
+              GoRoute(
+                path: 'claims/:claimId',
+                name: 'agencyAnalyticsClaimDetail',
+                builder: (context, state) => AgencyAnalyticsClaimDetailScreen(
+                  claimId: state.pathParameters['claimId']!,
+                ),
+              ),
+              GoRoute(
+                path: 'screenings/filter/:riskFilter',
+                name: 'agencyAnalyticsScreeningsList',
+                builder: (context, state) =>
+                    AgencyAnalyticsScreeningsListScreen(
+                  riskFilter: state.pathParameters['riskFilter']!,
+                  detailBasePath:
+                      '${AppRoutes.agencyHome}/analytics/screenings',
+                ),
+              ),
+              GoRoute(
+                path: 'screenings/:screeningId',
+                name: 'agencyAnalyticsScreeningDetail',
+                builder: (context, state) =>
+                    AgencyAnalyticsScreeningDetailScreen(
+                  screeningId: state.pathParameters['screeningId']!,
+                ),
+              ),
+            ],
           ),
           GoRoute(
             path: 'appointments',
@@ -271,6 +318,40 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: 'analytics',
             name: 'adminAnalytics',
             builder: (context, state) => const AdminAnalyticsScreen(),
+            routes: [
+              GoRoute(
+                path: 'claims/filter/:statusFilter',
+                name: 'adminAnalyticsClaimsList',
+                builder: (context, state) => AdminAnalyticsClaimsListScreen(
+                  statusFilter: state.pathParameters['statusFilter']!,
+                  detailBasePath: '${AppRoutes.adminHome}/analytics/claims',
+                ),
+              ),
+              GoRoute(
+                path: 'claims/:claimId',
+                name: 'adminAnalyticsClaimDetail',
+                builder: (context, state) => AdminAnalyticsClaimDetailScreen(
+                  claimId: state.pathParameters['claimId']!,
+                ),
+              ),
+              GoRoute(
+                path: 'screenings/filter/:riskFilter',
+                name: 'adminAnalyticsScreeningsList',
+                builder: (context, state) => AdminAnalyticsScreeningsListScreen(
+                  riskFilter: state.pathParameters['riskFilter']!,
+                  detailBasePath:
+                      '${AppRoutes.adminHome}/analytics/screenings',
+                ),
+              ),
+              GoRoute(
+                path: 'screenings/:screeningId',
+                name: 'adminAnalyticsScreeningDetail',
+                builder: (context, state) =>
+                    AdminAnalyticsScreeningDetailScreen(
+                  screeningId: state.pathParameters['screeningId']!,
+                ),
+              ),
+            ],
           ),
           GoRoute(
             path: 'users',

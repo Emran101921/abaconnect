@@ -1,4 +1,4 @@
-import { Field, ID, Int, ObjectType } from '@nestjs/graphql';
+import { Field, Float, ID, Int, ObjectType } from '@nestjs/graphql';
 import { TherapyType } from '../../../generated/prisma/client';
 import { TherapistUserType } from './parent-booking.types';
 import { DashboardActionItemType } from './dashboard.types';
@@ -94,6 +94,39 @@ export class SessionHistoryType {
 
   @Field(() => Int, { nullable: true })
   durationMinutes?: number;
+
+  @Field({ nullable: true })
+  progressNoteSummary?: string;
+
+  @Field()
+  hasProgressNote: boolean;
+
+  @Field({ nullable: true })
+  parentFeedback?: string;
+}
+
+@ObjectType()
+export class ParentProgressNoteType {
+  @Field(() => ID)
+  id: string;
+
+  @Field(() => ID)
+  sessionId: string;
+
+  @Field()
+  childName: string;
+
+  @Field()
+  therapistName: string;
+
+  @Field()
+  summary: string;
+
+  @Field({ nullable: true })
+  parentFeedback?: string;
+
+  @Field({ nullable: true })
+  signedAt?: Date;
 }
 
 @ObjectType()
@@ -145,4 +178,16 @@ export class ScreeningResponseType {
 
   @Field(() => ScreeningTemplateType, { nullable: true })
   template?: ScreeningTemplateType;
+
+  @Field({ nullable: true })
+  childName?: string;
+
+  @Field({ nullable: true })
+  templateName?: string;
+
+  @Field(() => Float, { nullable: true })
+  score?: number;
+
+  @Field({ nullable: true })
+  riskLevel?: string;
 }

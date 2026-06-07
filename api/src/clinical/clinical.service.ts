@@ -37,6 +37,46 @@ export class ClinicalService {
     });
   }
 
+  async updatePlanForTherapist(
+    userId: string,
+    planId: string,
+    data: {
+      title?: string;
+      isActive?: boolean;
+      goals?: unknown[];
+    },
+  ) {
+    const therapist = await this.prisma.therapist.findUnique({
+      where: { userId },
+    });
+    if (!therapist) {
+      throw new BadRequestException('Therapist profile not found');
+    }
+
+    const plan = await this.prisma.treatmentPlan.findFirst({
+      where: { id: planId, therapistId: therapist.id },
+    });
+    if (!plan) {
+      throw new NotFoundException('Treatment plan not found');
+    }
+
+    return this.prisma.treatmentPlan.update({
+      where: { id: planId },
+      data: {
+        title: data.title,
+        isActive: data.isActive,
+        goals:
+          data.goals !== undefined
+            ? (data.goals as Prisma.InputJsonValue)
+            : undefined,
+      },
+      include: {
+        child: true,
+        therapist: { include: { user: true } },
+      },
+    });
+  }
+
   async createPlanForTherapist(
     userId: string,
     data: {
@@ -108,6 +148,62 @@ export class ClinicalService {
         summary: data.summary,
         parentFeedback: data.parentFeedback,
         signedAt: new Date(),
+      },
+    });
+  }
+
+  async listProgressNotesForParentUser(userId: string) {
+    const parent = await this.prisma.parent.findUnique({ where: { userId } });
+    if (!parent) return [];
+
+    return this.prisma.progressNote.findMany({
+      where: {
+        signedAt: { not: null },
+        session: { child: { parentId: parent.id } },
+      },
+      include: {
+        session: {
+          include: {
+            child: true,
+            therapist: { include: { user: true } },
+          },
+        },
+      },
+      orderBy: { signedAt: 'desc' },
+      take: 50,
+    });
+  }
+
+  async submitSessionFeedback(
+    userId: string,
+    sessionId: string,
+    feedback: string,
+  ) {
+    const parent = await this.prisma.parent.findUnique({ where: { userId } });
+    if (!parent) {
+      throw new BadRequestException('Parent profile not found');
+    }
+
+    const note = await this.prisma.progressNote.findFirst({
+      where: {
+        sessionId,
+        session: { child: { parentId: parent.id } },
+      },
+    });
+    if (!note) {
+      throw new NotFoundException('Progress note not found for session');
+    }
+
+    return this.prisma.progressNote.update({
+      where: { id: note.id },
+      data: { parentFeedback: feedback },
+      include: {
+        session: {
+          include: {
+            child: true,
+            therapist: { include: { user: true } },
+          },
+        },
       },
     });
   }

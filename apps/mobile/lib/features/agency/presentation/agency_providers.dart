@@ -24,7 +24,47 @@ final agencyUpcomingAppointmentsProvider =
 
 final agencyAnalyticsProvider =
     FutureProvider<List<Map<String, dynamic>>>((ref) {
-  return ref.watch(platformRepositoryProvider).fetchTenantAnalytics();
+  return ref.watch(agencyRepositoryProvider).fetchTenantAnalytics();
+});
+
+final agencyClaimsPipelineProvider =
+    FutureProvider<AgencyClaimsPipelineModel>((ref) {
+  return ref.watch(agencyRepositoryProvider).fetchClaimsPipeline();
+});
+
+final agencyScreeningFunnelProvider =
+    FutureProvider<AgencyScreeningFunnelModel>((ref) {
+  return ref.watch(agencyRepositoryProvider).fetchScreeningFunnel();
+});
+
+final agencyAnalyticsClaimDetailProvider =
+    FutureProvider.family<AgencyClaimDetailModel, String>((ref, claimId) {
+  return ref.watch(agencyRepositoryProvider).fetchAnalyticsClaimDetail(claimId);
+});
+
+final agencyAnalyticsScreeningDetailProvider =
+    FutureProvider.family<AgencyScreeningDetailModel, String>(
+        (ref, screeningId) {
+  return ref
+      .watch(agencyRepositoryProvider)
+      .fetchAnalyticsScreeningDetail(screeningId);
+});
+
+final agencyAnalyticsClaimsListProvider =
+    FutureProvider.family<List<AgencyClaimSummaryModel>, String>(
+        (ref, statusFilter) {
+  return ref
+      .watch(agencyRepositoryProvider)
+      .fetchAnalyticsClaimsList(statusFilter);
+});
+
+final agencyAnalyticsScreeningsListProvider =
+    FutureProvider.family<List<AgencyScreeningSummaryModel>, String>(
+        (ref, riskFilterKey) {
+  final riskLevel = riskFilterKey == 'all' ? null : riskFilterKey;
+  return ref
+      .watch(agencyRepositoryProvider)
+      .fetchAnalyticsScreeningsList(riskLevel: riskLevel);
 });
 
 Future<void> showInviteTherapist(BuildContext context, WidgetRef ref) async {

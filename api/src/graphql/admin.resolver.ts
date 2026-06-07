@@ -1,4 +1,4 @@
-import { Args, ID, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, ID, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Roles } from '../common/decorators/roles.decorator';
 import {
   AuthUser,
@@ -8,6 +8,7 @@ import { AdminService } from '../admin/admin.service';
 import { ComplaintsService } from '../complaints/complaints.service';
 import { InsuranceService } from '../insurance/insurance.service';
 import { ReviewsService } from '../reviews/reviews.service';
+import { ScreeningsService } from '../screenings/screenings.service';
 import {
   SetUserActiveInput,
   UpdateInsuranceClaimInput,
@@ -21,6 +22,14 @@ import {
   AdminReviewType,
   PendingTherapistType,
 } from './types/admin.types';
+import {
+  AnalyticsClaimPipelineFilter,
+  AnalyticsClaimSummaryType,
+  AnalyticsScreeningDetailType,
+  AnalyticsScreeningSummaryType,
+  ClaimsPipelineDashboardType,
+  ScreeningFunnelDashboardType,
+} from './types/dashboard.types';
 
 @Resolver()
 @Roles('PLATFORM_ADMIN')
@@ -30,6 +39,7 @@ export class AdminResolver {
     private readonly complaintsService: ComplaintsService,
     private readonly reviewsService: ReviewsService,
     private readonly insuranceService: InsuranceService,
+    private readonly screeningsService: ScreeningsService,
   ) {}
 
   @Query(() => AdminDashboardType, { name: 'adminDashboard' })
@@ -174,6 +184,129 @@ export class AdminResolver {
     return rows.map((c) => this.mapInsuranceClaim(c));
   }
 
+  @Query(() => ClaimsPipelineDashboardType, { name: 'adminClaimsPipeline' })
+  async adminClaimsPipeline(
+    @CurrentUser() user: AuthUser,
+  ): Promise<ClaimsPipelineDashboardType> {
+    const pipeline = await this.insuranceService.getClaimsPipelineForTenant(
+      user.tenantId ?? '',
+    );
+    return {
+      summary: pipeline.summary,
+      recentClaims: pipeline.recentClaims.map((c) => ({
+        id: c.id,
+        status: c.status,
+        payerName: c.payerName,
+        billedAmount: Number(c.billedAmount),
+        serviceDate: c.serviceDate,
+        childName: c.child
+          ? `${c.child.firstName} ${c.child.lastName}`
+          : undefined,
+        claimNumber: c.claimNumber ?? undefined,
+      })),
+    };
+  }
+
+  @Query(() => ScreeningFunnelDashboardType, { name: 'adminScreeningFunnel' })
+  async adminScreeningFunnel(
+    @CurrentUser() user: AuthUser,
+  ): Promise<ScreeningFunnelDashboardType> {
+    const funnel = await this.screeningsService.getScreeningFunnelForTenant(
+      user.tenantId ?? '',
+    );
+    return {
+      summary: funnel.summary,
+      recentScreenings: funnel.recentScreenings.map((r) => ({
+        id: r.id,
+        completedAt: r.completedAt,
+        childName: r.child
+          ? `${r.child.firstName} ${r.child.lastName}`
+          : undefined,
+        templateName: r.template?.name,
+        score: r.score != null ? Number(r.score) : undefined,
+        riskLevel: r.riskLevel ?? undefined,
+      })),
+    };
+  }
+
+  @Query(() => [AnalyticsClaimSummaryType], { name: 'adminAnalyticsClaims' })
+  async adminAnalyticsClaims(
+    @CurrentUser() user: AuthUser,
+    @Args('statusFilter', { type: () => AnalyticsClaimPipelineFilter })
+    statusFilter: AnalyticsClaimPipelineFilter,
+    @Args('limit', { type: () => Int, nullable: true, defaultValue: 50 })
+    limit: number,
+  ): Promise<AnalyticsClaimSummaryType[]> {
+    const rows = await this.insuranceService.listAnalyticsClaimsForTenant(
+      user.tenantId ?? '',
+      statusFilter,
+      limit,
+    );
+    return rows.map((c) => ({
+      id: c.id,
+      status: c.status,
+      payerName: c.payerName,
+      billedAmount: Number(c.billedAmount),
+      serviceDate: c.serviceDate,
+      childName: c.child
+        ? `${c.child.firstName} ${c.child.lastName}`
+        : undefined,
+      claimNumber: c.claimNumber ?? undefined,
+    }));
+  }
+
+  @Query(() => [AnalyticsScreeningSummaryType], {
+    name: 'adminAnalyticsScreenings',
+  })
+  async adminAnalyticsScreenings(
+    @CurrentUser() user: AuthUser,
+    @Args('limit', { type: () => Int, nullable: true, defaultValue: 50 })
+    limit: number,
+    @Args('riskLevel', { nullable: true }) riskLevel?: string,
+  ): Promise<AnalyticsScreeningSummaryType[]> {
+    const rows = await this.screeningsService.listAnalyticsScreeningsForTenant(
+      user.tenantId ?? '',
+      riskLevel,
+      limit,
+    );
+    return rows.map((r) => ({
+      id: r.id,
+      completedAt: r.completedAt,
+      childName: r.child
+        ? `${r.child.firstName} ${r.child.lastName}`
+        : undefined,
+      templateName: r.template?.name,
+      score: r.score != null ? Number(r.score) : undefined,
+      riskLevel: r.riskLevel ?? undefined,
+    }));
+  }
+
+  @Query(() => AdminInsuranceClaimType, { name: 'adminAnalyticsClaimDetail' })
+  async adminAnalyticsClaimDetail(
+    @CurrentUser() user: AuthUser,
+    @Args('claimId', { type: () => ID }) claimId: string,
+  ): Promise<AdminInsuranceClaimType> {
+    const row = await this.insuranceService.getClaimForTenant(
+      user.tenantId ?? '',
+      claimId,
+    );
+    return this.mapInsuranceClaim(row);
+  }
+
+  @Query(() => AnalyticsScreeningDetailType, {
+    name: 'adminAnalyticsScreeningDetail',
+  })
+  async adminAnalyticsScreeningDetail(
+    @CurrentUser() user: AuthUser,
+    @Args('screeningId', { type: () => ID }) screeningId: string,
+  ): Promise<AnalyticsScreeningDetailType> {
+    const row = await this.screeningsService.getResponseForTenant(
+      user.tenantId ?? '',
+      screeningId,
+    );
+    return this.mapScreeningDetail(row);
+  }
+
   @Mutation(() => AdminInsuranceClaimType, { name: 'updateInsuranceClaim' })
   async updateInsuranceClaim(
     @CurrentUser() user: AuthUser,
@@ -240,6 +373,28 @@ export class AdminResolver {
         lastName: t.user.lastName,
         email: t.user.email,
       },
+    };
+  }
+
+  private mapScreeningDetail(r: {
+    id: string;
+    completedAt: Date;
+    score?: unknown | null;
+    riskLevel?: string | null;
+    responses: unknown;
+    template?: { name: string } | null;
+    child?: { firstName: string; lastName: string } | null;
+  }): AnalyticsScreeningDetailType {
+    return {
+      id: r.id,
+      completedAt: r.completedAt,
+      childName: r.child
+        ? `${r.child.firstName} ${r.child.lastName}`
+        : undefined,
+      templateName: r.template?.name,
+      score: r.score != null ? Number(r.score) : undefined,
+      riskLevel: r.riskLevel ?? undefined,
+      responsesJson: JSON.stringify(r.responses ?? {}),
     };
   }
 

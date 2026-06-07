@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/providers/app_providers.dart';
+import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../data/parent_booking_repository.dart';
 
@@ -102,7 +104,7 @@ class _ChildrenListScreenState extends ConsumerState<ChildrenListScreen> {
       return;
     }
     try {
-      await ref.read(parentBookingRepositoryProvider).addChild(
+      final child = await ref.read(parentBookingRepositoryProvider).addChild(
             firstName: firstName.text.trim(),
             lastName: lastName.text.trim(),
             dateOfBirth: dateOfBirth,
@@ -110,7 +112,12 @@ class _ChildrenListScreenState extends ConsumerState<ChildrenListScreen> {
       await _load();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Child added')),
+          const SnackBar(
+            content: Text('Child saved — opening intake screening…'),
+          ),
+        );
+        context.push(
+          '${AppRoutes.parentScreening}?childId=${child.id}&autoStart=true',
         );
       }
     } catch (e) {

@@ -134,18 +134,38 @@ class AuthRepository {
               TargetPlatform.android => 'android',
               _ => 'other',
             };
-      final token = await PushTokenService().resolveToken(userId: userId);
-      await _api.post(
-        '/auth/device',
-        data: {
-          'deviceToken': token,
-          'platform': platform,
-          'appVersion': '1.0.0',
-        },
+      final push = PushTokenService();
+      final token = await push.resolveToken(userId: userId);
+      await _registerDeviceToken(
+        userId: userId,
+        token: token,
+        platform: platform,
       );
+      push.listenForTokenRefresh((newToken) async {
+        await _registerDeviceToken(
+          userId: userId,
+          token: newToken,
+          platform: platform,
+        );
+      });
     } catch (_) {
       // Push registration is best-effort until FCM/APNs credentials are configured.
     }
+  }
+
+  Future<void> _registerDeviceToken({
+    required String userId,
+    required String token,
+    required String platform,
+  }) async {
+    await _api.post(
+      '/auth/device',
+      data: {
+        'deviceToken': token,
+        'platform': platform,
+        'appVersion': '1.0.0',
+      },
+    );
   }
 
   Future<bool> fetchMfaStatus() async {

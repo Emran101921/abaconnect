@@ -8,9 +8,47 @@ import { MessagingService } from '../messaging/messaging.service';
 import { SendMessageInput } from './inputs/messaging-payments.input';
 import {
   ChatMessageType,
+  MessageDeliveryStatus,
   MessageThreadType,
   ParentContactType,
 } from './types/messaging.types';
+
+type MessageRow = {
+  id: string;
+  body: string;
+  sentAt: Date;
+  deliveredAt: Date | null;
+  readAt: Date | null;
+  senderId: string;
+  sender: { firstName: string; lastName: string };
+};
+
+function toChatMessage(m: MessageRow, userId: string): ChatMessageType {
+  const isMine = m.senderId === userId;
+  return {
+    id: m.id,
+    body: m.body,
+    sentAt: m.sentAt,
+    senderName: `${m.sender.firstName} ${m.sender.lastName}`,
+    isMine,
+    deliveredAt: m.deliveredAt ?? undefined,
+    readAt: m.readAt ?? undefined,
+    status: isMine ? deliveryStatus(m) : undefined,
+  };
+}
+
+function deliveryStatus(m: {
+  deliveredAt: Date | null;
+  readAt: Date | null;
+}): MessageDeliveryStatus {
+  if (m.readAt) {
+    return MessageDeliveryStatus.READ;
+  }
+  if (m.deliveredAt) {
+    return MessageDeliveryStatus.DELIVERED;
+  }
+  return MessageDeliveryStatus.SENT;
+}
 
 @Resolver()
 @Roles('PARENT', 'THERAPIST')
@@ -40,13 +78,7 @@ export class MessagingResolver {
       user.id,
       threadId,
     );
-    return rows.map((m) => ({
-      id: m.id,
-      body: m.body,
-      sentAt: m.sentAt,
-      senderName: `${m.sender.firstName} ${m.sender.lastName}`,
-      isMine: m.senderId === user.id,
-    }));
+    return rows.map((m) => toChatMessage(m, user.id));
   }
 
   @Mutation(() => ChatMessageType, { name: 'sendMessage' })
@@ -59,13 +91,15 @@ export class MessagingResolver {
       input.threadId,
       input.body,
     );
-    return {
-      id: m.id,
-      body: m.body,
-      sentAt: m.sentAt,
-      senderName: `${m.sender.firstName} ${m.sender.lastName}`,
-      isMine: true,
-    };
+    return toChatMessage(m, user.id);
+  }
+
+  @Mutation(() => Boolean, { name: 'markMessageThreadRead' })
+  async markMessageThreadRead(
+    @CurrentUser() user: AuthUser,
+    @Args('threadId', { type: () => ID }) threadId: string,
+  ): Promise<boolean> {
+    return this.messagingService.markThreadRead(user.id, threadId);
   }
 
   @Query(() => [ParentContactType], { name: 'myTherapistParentContacts' })
