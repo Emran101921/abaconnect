@@ -1,10 +1,40 @@
 import 'package:intl/intl.dart';
 
+const analyticsFromDateParam = 'fromDate';
+const analyticsToDateParam = 'toDate';
+
 class AnalyticsDateRange {
   const AnalyticsDateRange({this.from, this.to});
 
   final DateTime? from;
   final DateTime? to;
+
+  factory AnalyticsDateRange.fromQueryParameters(
+    Map<String, String> params,
+  ) {
+    return AnalyticsDateRange(
+      from: _parseQueryDate(params[analyticsFromDateParam]),
+      to: _parseQueryDate(params[analyticsToDateParam]),
+    );
+  }
+
+  static DateTime? _parseQueryDate(String? value) {
+    if (value == null || value.isEmpty) return null;
+    return DateTime.tryParse(value);
+  }
+
+  Map<String, String> toQueryParameters() {
+    if (!isActive) return const {};
+    final params = <String, String>{};
+    final fromValue = graphqlFrom;
+    final toValue = graphqlTo;
+    if (fromValue != null) params[analyticsFromDateParam] = fromValue;
+    if (toValue != null) params[analyticsToDateParam] = toValue;
+    return params;
+  }
+
+  bool sameAs(AnalyticsDateRange other) =>
+      graphqlFrom == other.graphqlFrom && graphqlTo == other.graphqlTo;
 
   bool get isActive => from != null || to != null;
 

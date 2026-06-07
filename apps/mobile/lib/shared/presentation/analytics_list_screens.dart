@@ -8,6 +8,7 @@ import '../../features/admin/presentation/admin_providers.dart';
 import '../../features/agency/data/agency_repository.dart';
 import '../../features/agency/presentation/agency_providers.dart';
 import '../presentation/analytics_date_range_filter.dart';
+import '../presentation/analytics_date_range_url.dart';
 import '../utils/analytics_csv_export.dart';
 import '../widgets/app_scaffold.dart';
 
@@ -92,7 +93,9 @@ class AdminAnalyticsClaimsListScreen extends ConsumerWidget {
     final currency = NumberFormat.currency(symbol: '\$');
     final dateFormat = DateFormat.yMMMd();
 
-    return AppScaffold(
+    return AnalyticsDateRangeSync(
+      dateRangeProvider: adminAnalyticsDateRangeProvider,
+      child: AppScaffold(
       title: analyticsClaimListTitle(statusFilter),
       actions: analyticsExportActions(
         onExport: claims.maybeWhen(
@@ -125,7 +128,13 @@ class AdminAnalyticsClaimsListScreen extends ConsumerWidget {
                 claims: list,
                 currency: currency,
                 dateFormat: dateFormat,
-                onClaimTap: (id) => context.push('$detailBasePath/$id'),
+                onClaimTap: (id) {
+                  final range = ref.read(adminAnalyticsDateRangeProvider);
+                  context.push(analyticsPathWithDateRange(
+                    '$detailBasePath/$id',
+                    range,
+                  ));
+                },
                 onRefresh: () async {
                   ref.invalidate(adminAnalyticsClaimsListProvider(apiFilter));
                   await ref
@@ -136,6 +145,7 @@ class AdminAnalyticsClaimsListScreen extends ConsumerWidget {
           ),
         ],
       ),
+    ),
     );
   }
 }
@@ -158,7 +168,9 @@ class AgencyAnalyticsClaimsListScreen extends ConsumerWidget {
     final currency = NumberFormat.currency(symbol: '\$');
     final dateFormat = DateFormat.yMMMd();
 
-    return AppScaffold(
+    return AnalyticsDateRangeSync(
+      dateRangeProvider: agencyAnalyticsDateRangeProvider,
+      child: AppScaffold(
       title: analyticsClaimListTitle(statusFilter),
       actions: analyticsExportActions(
         onExport: claims.maybeWhen(
@@ -191,7 +203,13 @@ class AgencyAnalyticsClaimsListScreen extends ConsumerWidget {
                 claims: list,
                 currency: currency,
                 dateFormat: dateFormat,
-                onClaimTap: (id) => context.push('$detailBasePath/$id'),
+                onClaimTap: (id) {
+                  final range = ref.read(agencyAnalyticsDateRangeProvider);
+                  context.push(analyticsPathWithDateRange(
+                    '$detailBasePath/$id',
+                    range,
+                  ));
+                },
                 onRefresh: () async {
                   ref.invalidate(agencyAnalyticsClaimsListProvider(apiFilter));
                   await ref
@@ -202,6 +220,7 @@ class AgencyAnalyticsClaimsListScreen extends ConsumerWidget {
           ),
         ],
       ),
+    ),
     );
   }
 }
@@ -224,7 +243,9 @@ class AdminAnalyticsScreeningsListScreen extends ConsumerWidget {
     final screenings = ref.watch(adminAnalyticsScreeningsListProvider(riskKey));
     final dateFormat = DateFormat.yMMMd();
 
-    return AppScaffold(
+    return AnalyticsDateRangeSync(
+      dateRangeProvider: adminAnalyticsDateRangeProvider,
+      child: AppScaffold(
       title: analyticsScreeningListTitle(riskFilter),
       actions: analyticsExportActions(
         onExport: screenings.maybeWhen(
@@ -256,7 +277,13 @@ class AdminAnalyticsScreeningsListScreen extends ConsumerWidget {
               data: (list) => AnalyticsScreeningsListBody(
                 screenings: list,
                 dateFormat: dateFormat,
-                onScreeningTap: (id) => context.push('$detailBasePath/$id'),
+                onScreeningTap: (id) {
+                  final range = ref.read(adminAnalyticsDateRangeProvider);
+                  context.push(analyticsPathWithDateRange(
+                    '$detailBasePath/$id',
+                    range,
+                  ));
+                },
                 onRefresh: () async {
                   ref.invalidate(adminAnalyticsScreeningsListProvider(riskKey));
                   await ref
@@ -267,6 +294,7 @@ class AdminAnalyticsScreeningsListScreen extends ConsumerWidget {
           ),
         ],
       ),
+    ),
     );
   }
 }
@@ -289,7 +317,9 @@ class AgencyAnalyticsScreeningsListScreen extends ConsumerWidget {
     final screenings = ref.watch(agencyAnalyticsScreeningsListProvider(riskKey));
     final dateFormat = DateFormat.yMMMd();
 
-    return AppScaffold(
+    return AnalyticsDateRangeSync(
+      dateRangeProvider: agencyAnalyticsDateRangeProvider,
+      child: AppScaffold(
       title: analyticsScreeningListTitle(riskFilter),
       actions: analyticsExportActions(
         onExport: screenings.maybeWhen(
@@ -321,7 +351,13 @@ class AgencyAnalyticsScreeningsListScreen extends ConsumerWidget {
               data: (list) => AgencyAnalyticsScreeningsListBody(
                 screenings: list,
                 dateFormat: dateFormat,
-                onScreeningTap: (id) => context.push('$detailBasePath/$id'),
+                onScreeningTap: (id) {
+                  final range = ref.read(agencyAnalyticsDateRangeProvider);
+                  context.push(analyticsPathWithDateRange(
+                    '$detailBasePath/$id',
+                    range,
+                  ));
+                },
                 onRefresh: () async {
                   ref.invalidate(agencyAnalyticsScreeningsListProvider(riskKey));
                   await ref
@@ -332,6 +368,7 @@ class AgencyAnalyticsScreeningsListScreen extends ConsumerWidget {
           ),
         ],
       ),
+    ),
     );
   }
 }
