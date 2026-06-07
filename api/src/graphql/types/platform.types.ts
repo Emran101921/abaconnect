@@ -141,6 +141,9 @@ export class AnalyticsMetricType {
 
   @Field(() => Float)
   metricValue: number;
+
+  @Field(() => Float, { nullable: true })
+  priorPeriodValue?: number;
 }
 
 @ObjectType()

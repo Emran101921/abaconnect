@@ -104,16 +104,26 @@ class AdminAnalyticsScreen extends ConsumerWidget {
                 spacing: 12,
                 runSpacing: 12,
                 children: metricList.map((m) {
-                  final display = m.metricKey == 'revenue_paid'
+                  final isRevenue = m.metricKey == 'revenue_paid';
+                  final display = isRevenue
                       ? currency.format(m.metricValue)
                       : m.metricValue.toStringAsFixed(
                           m.metricValue == m.metricValue.roundToDouble()
                               ? 0
                               : 2,
                         );
+                  final periodDelta = analyticsOverviewComparisonKeys
+                          .contains(m.metricKey)
+                      ? formatAnalyticsPeriodDelta(
+                          m.metricValue,
+                          m.priorPeriodValue,
+                          isCurrency: isRevenue,
+                        )
+                      : null;
                   return AdminStatCard(
                     label: metricLabel(m.metricKey),
                     value: display,
+                    periodDelta: periodDelta,
                   );
                 }).toList(),
               ),

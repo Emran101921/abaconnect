@@ -119,7 +119,7 @@ String analyticsOverviewMetricLabel(
 }) {
   switch (key) {
     case 'appointments_7d':
-      return range.isActive ? 'Appointments' : 'Appointments (7d)';
+      return range.isActive ? 'Appointments' : 'Appointments (30d)';
     case 'sessions_completed':
       return 'Sessions completed';
     case 'revenue_paid':

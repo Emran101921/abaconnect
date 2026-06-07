@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/models/analytics_date_range.dart';
+import '../../../shared/models/analytics_metric.dart';
 import '../data/agency_repository.dart';
 
 final agencyAnalyticsDateRangeProvider =
@@ -30,7 +31,7 @@ final agencyUpcomingAppointmentsProvider =
 });
 
 final agencyAnalyticsProvider =
-    FutureProvider<List<Map<String, dynamic>>>((ref) {
+    FutureProvider<List<AnalyticsMetricModel>>((ref) {
   final range = ref.watch(agencyAnalyticsDateRangeProvider);
   return ref.watch(agencyRepositoryProvider).fetchTenantAnalytics(
         fromDate: range.graphqlFrom,

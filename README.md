@@ -152,7 +152,7 @@ Health check: `GET http://localhost:3000/api/v1/health`
 
 **Notifications:** `markAllNotificationsRead` — **Mark all read** on the notifications screen.
 
-**Admin analytics:** `tenantAnalytics` — appointments (7d), sessions, revenue, children on the admin dashboard.
+**Admin analytics:** `tenantAnalytics` — appointments (30d default), sessions, revenue, children on the admin dashboard, with prior-period comparison on overview cards.
 
 **Admin users:** `setUserActive` — activate/deactivate accounts on **Users** (platform admins protected).
 

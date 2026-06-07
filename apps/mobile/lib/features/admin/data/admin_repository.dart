@@ -1,14 +1,7 @@
 import '../../../core/network/graphql_client.dart';
+import '../../../shared/models/analytics_metric.dart';
 
-class AnalyticsMetricModel {
-  const AnalyticsMetricModel({
-    required this.metricKey,
-    required this.metricValue,
-  });
-
-  final String metricKey;
-  final double metricValue;
-}
+export '../../../shared/models/analytics_metric.dart';
 
 class ClaimsPipelineSummaryModel {
   const ClaimsPipelineSummaryModel({
@@ -268,7 +261,7 @@ class AdminRepository {
     const query = r'''
       query TenantAnalytics($fromDate: DateTime, $toDate: DateTime) {
         tenantAnalytics(fromDate: $fromDate, toDate: $toDate) {
-          metricKey metricValue
+          metricKey metricValue priorPeriodValue
         }
       }
     ''';
@@ -282,6 +275,7 @@ class AdminRepository {
           (e) => AnalyticsMetricModel(
             metricKey: e['metricKey'] as String? ?? '',
             metricValue: (e['metricValue'] as num?)?.toDouble() ?? 0,
+            priorPeriodValue: (e['priorPeriodValue'] as num?)?.toDouble(),
           ),
         )
         .toList();
