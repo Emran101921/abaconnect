@@ -7,7 +7,21 @@ import '../../features/admin/data/admin_repository.dart';
 import '../../features/admin/presentation/admin_providers.dart';
 import '../../features/agency/data/agency_repository.dart';
 import '../../features/agency/presentation/agency_providers.dart';
+import '../utils/analytics_csv_export.dart';
 import '../widgets/app_scaffold.dart';
+
+List<Widget>? analyticsExportActions({
+  required VoidCallback? onExport,
+}) {
+  if (onExport == null) return null;
+  return [
+    IconButton(
+      icon: const Icon(Icons.download),
+      tooltip: 'Export CSV',
+      onPressed: onExport,
+    ),
+  ];
+}
 
 String analyticsClaimFilterFromPath(String pathFilter) =>
     pathFilter.toUpperCase();
@@ -78,6 +92,16 @@ class AdminAnalyticsClaimsListScreen extends ConsumerWidget {
 
     return AppScaffold(
       title: analyticsClaimListTitle(statusFilter),
+      actions: analyticsExportActions(
+        onExport: claims.maybeWhen(
+          data: (list) => () => exportAnalyticsCsv(
+            context,
+            csv: claimsCsvFromAdmin(list),
+            filename: analyticsExportFilename('claims', statusFilter),
+          ),
+          orElse: () => null,
+        ),
+      ),
       body: claims.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
@@ -115,6 +139,16 @@ class AgencyAnalyticsClaimsListScreen extends ConsumerWidget {
 
     return AppScaffold(
       title: analyticsClaimListTitle(statusFilter),
+      actions: analyticsExportActions(
+        onExport: claims.maybeWhen(
+          data: (list) => () => exportAnalyticsCsv(
+            context,
+            csv: claimsCsvFromAgency(list),
+            filename: analyticsExportFilename('claims', statusFilter),
+          ),
+          orElse: () => null,
+        ),
+      ),
       body: claims.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
@@ -152,6 +186,16 @@ class AdminAnalyticsScreeningsListScreen extends ConsumerWidget {
 
     return AppScaffold(
       title: analyticsScreeningListTitle(riskFilter),
+      actions: analyticsExportActions(
+        onExport: screenings.maybeWhen(
+          data: (list) => () => exportAnalyticsCsv(
+            context,
+            csv: screeningsCsvFromAdmin(list),
+            filename: analyticsExportFilename('screenings', riskFilter),
+          ),
+          orElse: () => null,
+        ),
+      ),
       body: screenings.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
@@ -189,6 +233,16 @@ class AgencyAnalyticsScreeningsListScreen extends ConsumerWidget {
 
     return AppScaffold(
       title: analyticsScreeningListTitle(riskFilter),
+      actions: analyticsExportActions(
+        onExport: screenings.maybeWhen(
+          data: (list) => () => exportAnalyticsCsv(
+            context,
+            csv: screeningsCsvFromAgency(list),
+            filename: analyticsExportFilename('screenings', riskFilter),
+          ),
+          orElse: () => null,
+        ),
+      ),
       body: screenings.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
