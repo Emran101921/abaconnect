@@ -59,19 +59,45 @@ class DashboardActionInbox extends StatelessWidget {
   void _navigate(BuildContext context, DashboardActionModel item) {
     switch (item.actionType) {
       case 'MESSAGE':
-        context.push(AppRoutes.messages);
+        if (item.threadId != null) {
+          context.push('${AppRoutes.messages}/${item.threadId}');
+        } else {
+          context.push(AppRoutes.messages);
+        }
       case 'SOAP_DUE':
         context.push('${AppRoutes.therapistHome}/session-notes');
       case 'REVIEW':
         context.push('${AppRoutes.parentHome}/reviews');
       case 'APPOINTMENT':
-        context.push('${AppRoutes.therapistHome}/appointments');
+        if (item.appointmentId != null) {
+          context.push(
+            '${AppRoutes.therapistHome}/appointments?id=${item.appointmentId}',
+          );
+        } else {
+          context.push('${AppRoutes.therapistHome}/appointments');
+        }
       case 'TELEHEALTH':
         if (item.appointmentId != null) {
-          context.push('${AppRoutes.parentHome}/appointments');
+          context.push(
+            '${AppRoutes.parentHome}/appointments?id=${item.appointmentId}',
+          );
+        } else {
+          context.push(AppRoutes.telehealth);
         }
       case 'CLAIM':
-        context.push(AppRoutes.insurance);
+        if (item.claimId != null) {
+          context.push('${AppRoutes.insurance}?claimId=${item.claimId}');
+        } else {
+          context.push(AppRoutes.insurance);
+        }
+      case 'ONBOARDING':
+        if (item.id == 'onboard-child') {
+          context.push('${AppRoutes.parentHome}/children');
+        } else if (item.id == 'onboard-screening') {
+          context.push('${AppRoutes.parentHome}/screening');
+        } else {
+          context.push(AppRoutes.matching);
+        }
       case 'EVV':
         context.push('${AppRoutes.agencyHome}/appointments');
       case 'VERIFICATION':

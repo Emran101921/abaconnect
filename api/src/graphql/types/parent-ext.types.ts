@@ -28,6 +28,24 @@ export class ParentDashboardType {
 
   @Field(() => [DashboardActionItemType])
   actionItems: DashboardActionItemType[];
+
+  @Field(() => Int)
+  onboardingStepsCompleted: number;
+
+  @Field(() => Int)
+  onboardingStepsTotal: number;
+
+  @Field()
+  onboardingComplete: boolean;
+
+  @Field()
+  hasChild: boolean;
+
+  @Field()
+  hasScreening: boolean;
+
+  @Field()
+  hasBookedTherapist: boolean;
 }
 
 @ObjectType()

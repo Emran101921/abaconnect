@@ -15,6 +15,8 @@ class ClaimsPipelineSummaryModel {
     required this.priorPendingCount,
     required this.priorPaidCount,
     required this.priorDeniedCount,
+    required this.paidAmountTotal,
+    required this.priorPaidAmountTotal,
   });
 
   final int draftCount;
@@ -27,6 +29,8 @@ class ClaimsPipelineSummaryModel {
   final int priorPendingCount;
   final int priorPaidCount;
   final int priorDeniedCount;
+  final double paidAmountTotal;
+  final double priorPaidAmountTotal;
 }
 
 class AnalyticsClaimSummaryModel {
@@ -310,6 +314,7 @@ class AdminRepository {
             draftCount submittedCount pendingCount paidCount deniedCount
             priorDraftCount priorSubmittedCount priorPendingCount
             priorPaidCount priorDeniedCount
+            paidAmountTotal priorPaidAmountTotal
           }
           recentClaims {
             id status payerName billedAmount serviceDate childName claimNumber
@@ -505,6 +510,9 @@ class AdminRepository {
         priorPendingCount: summary['priorPendingCount'] as int? ?? 0,
         priorPaidCount: summary['priorPaidCount'] as int? ?? 0,
         priorDeniedCount: summary['priorDeniedCount'] as int? ?? 0,
+        paidAmountTotal: (summary['paidAmountTotal'] as num?)?.toDouble() ?? 0,
+        priorPaidAmountTotal:
+            (summary['priorPaidAmountTotal'] as num?)?.toDouble() ?? 0,
       ),
       recentClaims: claims
           .map(
@@ -793,6 +801,15 @@ class AdminRepository {
     const mutation = r'''
       mutation Submit($claimId: String!) {
         submitInsuranceClaimToClearinghouse(claimId: $claimId) { id status }
+      }
+    ''';
+    await _graphql.query(mutation, variables: {'claimId': claimId});
+  }
+
+  Future<void> processClaimRemittance835(String claimId) async {
+    const mutation = r'''
+      mutation Remit($claimId: ID!) {
+        processClaimRemittance835(claimId: $claimId) { id status }
       }
     ''';
     await _graphql.query(mutation, variables: {'claimId': claimId});

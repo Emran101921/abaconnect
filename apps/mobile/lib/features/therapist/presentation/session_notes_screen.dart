@@ -184,9 +184,20 @@ class SessionNotesScreen extends ConsumerWidget {
       final coords = await LocationService().getCurrentCoords();
       if (coords == null) {
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Location permission required for EVV check-in'),
+          await showDialog<void>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Location access needed'),
+              content: const Text(
+                'EVV check-in requires location permission. Enable location '
+                'for ABA Connect in device Settings, then try again.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('OK'),
+                ),
+              ],
             ),
           );
         }

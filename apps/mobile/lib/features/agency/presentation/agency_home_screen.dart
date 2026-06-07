@@ -8,6 +8,7 @@ import '../../../core/router/app_router.dart';
 import '../../../shared/models/dashboard_action_model.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/dashboard_action_inbox.dart';
+import '../../messaging/messaging_providers.dart';
 import '../../notifications/notification_providers.dart';
 import 'agency_providers.dart';
 
@@ -20,6 +21,9 @@ class AgencyHomeScreen extends ConsumerWidget {
     final upcoming = ref.watch(agencyUpcomingAppointmentsProvider);
     final unread = ref.watch(unreadNotificationsProvider);
     final unreadCount = unread.maybeWhen(data: (c) => c, orElse: () => 0);
+    final unreadMessages = ref.watch(unreadMessageThreadsProvider);
+    final unreadMessageCount =
+        unreadMessages.maybeWhen(data: (c) => c, orElse: () => 0);
 
     return AppScaffold(
       title: 'Agency',
@@ -210,6 +214,16 @@ class AgencyHomeScreen extends ConsumerWidget {
               subtitle: 'Today’s scheduled sessions across the agency',
               icon: Icons.event,
               onTap: () => context.push('${AppRoutes.agencyHome}/appointments'),
+            ),
+            _OpsTile(
+              title: unreadMessageCount > 0
+                  ? 'Messages ($unreadMessageCount unread)'
+                  : 'Messages',
+              subtitle: unreadMessageCount > 0
+                  ? 'Threads need a reply'
+                  : 'Chat with parents and therapists',
+              icon: Icons.message,
+              onTap: () => context.push(AppRoutes.messages),
             ),
             const SizedBox(height: 8),
             Text(

@@ -2,9 +2,11 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/providers/app_providers.dart';
+import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../data/parent_booking_repository.dart';
 
@@ -186,8 +188,15 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
           );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${template.name} submitted')),
+          SnackBar(
+            content: Text('${template.name} submitted'),
+            action: SnackBarAction(
+              label: 'Find therapist',
+              onPressed: () => context.push(AppRoutes.matching),
+            ),
+          ),
         );
+        context.push(AppRoutes.matching);
       }
       await _load();
     } catch (e) {

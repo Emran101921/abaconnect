@@ -48,6 +48,15 @@ class ParentHomeScreen extends ConsumerWidget {
       title: 'Parent',
       actions: [
         IconButton(
+          icon: unreadCount > 0
+              ? Badge(
+                  label: Text('$unreadCount'),
+                  child: const Icon(Icons.notifications),
+                )
+              : const Icon(Icons.notifications),
+          onPressed: () => context.push(AppRoutes.notifications),
+        ),
+        IconButton(
           icon: const Icon(Icons.logout),
           onPressed: () async {
             await ref.read(authStateProvider.notifier).logout();
@@ -70,6 +79,70 @@ class ParentHomeScreen extends ConsumerWidget {
           children: [
             Text('Overview', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 12),
+            dashboard.when(
+              data: (d) {
+                if (d.onboardingComplete) return const SizedBox.shrink();
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  color: Theme.of(context).colorScheme.primaryContainer,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Getting started',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 8),
+                        LinearProgressIndicator(
+                          value: d.onboardingStepsTotal > 0
+                              ? d.onboardingStepsCompleted /
+                                  d.onboardingStepsTotal
+                              : 0,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '${d.onboardingStepsCompleted} of ${d.onboardingStepsTotal} steps complete',
+                        ),
+                        const SizedBox(height: 12),
+                        _OnboardingStep(
+                          done: true,
+                          label: 'Create account',
+                        ),
+                        _OnboardingStep(
+                          done: d.hasChild,
+                          label: 'Add child profile',
+                          onTap: d.hasChild
+                              ? null
+                              : () => context.push(
+                                    '${AppRoutes.parentHome}/children',
+                                  ),
+                        ),
+                        _OnboardingStep(
+                          done: d.hasScreening,
+                          label: 'Complete screening',
+                          onTap: d.hasScreening
+                              ? null
+                              : () => context.push(
+                                    '${AppRoutes.parentHome}/screening',
+                                  ),
+                        ),
+                        _OnboardingStep(
+                          done: d.hasBookedTherapist,
+                          label: 'Book a therapist',
+                          onTap: d.hasBookedTherapist
+                              ? null
+                              : () => context.push(AppRoutes.matching),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+              loading: () => const SizedBox.shrink(),
+              error: (_, __) => const SizedBox.shrink(),
+            ),
             dashboard.when(
               data: (d) => Wrap(
                 spacing: 12,
@@ -190,10 +263,12 @@ class ParentHomeScreen extends ConsumerWidget {
             appointments.when(
               data: (list) {
                 if (list.isEmpty) {
-                  return const Card(
+                  return Card(
                     child: ListTile(
-                      title: Text('No upcoming appointments'),
-                      subtitle: Text('Book a session to get started'),
+                      title: const Text('No upcoming appointments'),
+                      subtitle: const Text('Book a session to get started'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => context.push(AppRoutes.matching),
                     ),
                   );
                 }
@@ -481,6 +556,34 @@ class _StatCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _OnboardingStep extends StatelessWidget {
+  const _OnboardingStep({
+    required this.done,
+    required this.label,
+    this.onTap,
+  });
+
+  final bool done;
+  final String label;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(
+        done ? Icons.check_circle : Icons.radio_button_unchecked,
+        color: done
+            ? Colors.green.shade700
+            : Theme.of(context).colorScheme.onSurfaceVariant,
+      ),
+      title: Text(label),
+      trailing: onTap != null ? const Icon(Icons.chevron_right) : null,
+      onTap: onTap,
     );
   }
 }

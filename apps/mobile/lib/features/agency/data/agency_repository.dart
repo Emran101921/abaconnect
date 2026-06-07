@@ -71,6 +71,8 @@ class AgencyClaimsPipelineSummaryModel {
     required this.priorPendingCount,
     required this.priorPaidCount,
     required this.priorDeniedCount,
+    required this.paidAmountTotal,
+    required this.priorPaidAmountTotal,
   });
 
   final int draftCount;
@@ -83,6 +85,8 @@ class AgencyClaimsPipelineSummaryModel {
   final int priorPendingCount;
   final int priorPaidCount;
   final int priorDeniedCount;
+  final double paidAmountTotal;
+  final double priorPaidAmountTotal;
 }
 
 class AgencyClaimSummaryModel {
@@ -406,6 +410,7 @@ class AgencyRepository {
             draftCount submittedCount pendingCount paidCount deniedCount
             priorDraftCount priorSubmittedCount priorPendingCount
             priorPaidCount priorDeniedCount
+            paidAmountTotal priorPaidAmountTotal
           }
           recentClaims {
             id status payerName billedAmount serviceDate childName claimNumber
@@ -604,6 +609,9 @@ class AgencyRepository {
         priorPendingCount: summary['priorPendingCount'] as int? ?? 0,
         priorPaidCount: summary['priorPaidCount'] as int? ?? 0,
         priorDeniedCount: summary['priorDeniedCount'] as int? ?? 0,
+        paidAmountTotal: (summary['paidAmountTotal'] as num?)?.toDouble() ?? 0,
+        priorPaidAmountTotal:
+            (summary['priorPaidAmountTotal'] as num?)?.toDouble() ?? 0,
       ),
       recentClaims: claims
           .map(
@@ -648,5 +656,38 @@ class AgencyRepository {
           )
           .toList(),
     );
+  }
+
+  Future<void> updateInsuranceClaim({
+    required String claimId,
+    required String status,
+    String? denialReason,
+    double? approvedAmount,
+  }) async {
+    const mutation = r'''
+      mutation Update($input: UpdateInsuranceClaimInput!) {
+        agencyUpdateInsuranceClaim(input: $input) { id status }
+      }
+    ''';
+    await _graphql.query(
+      mutation,
+      variables: {
+        'input': {
+          'claimId': claimId,
+          'status': status,
+          if (denialReason != null) 'denialReason': denialReason,
+          if (approvedAmount != null) 'approvedAmount': approvedAmount,
+        },
+      },
+    );
+  }
+
+  Future<void> processClaimRemittance835(String claimId) async {
+    const mutation = r'''
+      mutation Remit($claimId: ID!) {
+        agencyProcessClaimRemittance835(claimId: $claimId) { id status }
+      }
+    ''';
+    await _graphql.query(mutation, variables: {'claimId': claimId});
   }
 }

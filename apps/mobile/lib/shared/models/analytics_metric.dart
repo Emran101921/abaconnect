@@ -16,7 +16,14 @@ const analyticsOverviewComparisonKeys = {
   'appointments_7d',
   'sessions_completed',
   'revenue_paid',
+  'claims_paid_total',
   'active_children',
+};
+
+const analyticsReconciliationKeys = {
+  'revenue_paid',
+  'claims_paid_total',
+  'revenue_mismatch',
 };
 
 String formatCountPeriodDelta(int current, int prior) =>

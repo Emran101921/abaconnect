@@ -12,6 +12,7 @@ import {
   AgencyDashboardType,
   AgencyTherapistType,
 } from './types/agency.types';
+import { UpdateInsuranceClaimInput } from './inputs/admin.input';
 import { AdminInsuranceClaimType } from './types/admin.types';
 import {
   AnalyticsClaimPipelineFilter,
@@ -337,6 +338,43 @@ export class AgencyResolver {
       ediReady: Boolean(meta.ediReady),
       clearinghouseStatus: clearinghouse?.status,
     };
+  }
+
+  @Mutation(() => AdminInsuranceClaimType, { name: 'agencyUpdateInsuranceClaim' })
+  async agencyUpdateInsuranceClaim(
+    @CurrentUser() user: AuthUser,
+    @Args('input') input: UpdateInsuranceClaimInput,
+  ): Promise<AdminInsuranceClaimType> {
+    if (!user.tenantId) {
+      throw new Error('Tenant required');
+    }
+    const row = await this.insuranceService.updateClaimStatusForTenant(
+      user.tenantId,
+      input.claimId,
+      input.status,
+      {
+        denialReason: input.denialReason,
+        approvedAmount: input.approvedAmount,
+      },
+    );
+    return this.mapInsuranceClaim(row);
+  }
+
+  @Mutation(() => AdminInsuranceClaimType, {
+    name: 'agencyProcessClaimRemittance835',
+  })
+  async agencyProcessClaimRemittance835(
+    @CurrentUser() user: AuthUser,
+    @Args('claimId', { type: () => ID }) claimId: string,
+  ): Promise<AdminInsuranceClaimType> {
+    if (!user.tenantId) {
+      throw new Error('Tenant required');
+    }
+    const row = await this.insuranceService.processRemittance835ForClaim(
+      user.tenantId,
+      claimId,
+    );
+    return this.mapInsuranceClaim(row);
   }
 
   @Mutation(() => AgencyTherapistType, { name: 'inviteAgencyTherapist' })

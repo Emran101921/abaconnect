@@ -102,12 +102,46 @@ class AgencyAnalyticsScreen extends ConsumerWidget {
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 12),
+              if (metricList.any(
+                (m) => m.metricKey == 'revenue_mismatch' && m.metricValue >= 1,
+              )) ...[
+                Card(
+                  color: Theme.of(context).colorScheme.errorContainer,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.warning_amber,
+                          color: Theme.of(context).colorScheme.onErrorContainer,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Revenue mismatch: session payments do not align with '
+                            'paid claims total for this date range.',
+                            style: TextStyle(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onErrorContainer,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
               Wrap(
                 spacing: 12,
                 runSpacing: 12,
-                children: metricList.map((m) {
-                  final isRevenue = m.metricKey == 'revenue_paid';
-                  final display = isRevenue
+                children: metricList
+                    .where((m) => m.metricKey != 'revenue_mismatch')
+                    .map((m) {
+                  final isCurrency = m.metricKey == 'revenue_paid' ||
+                      m.metricKey == 'claims_paid_total';
+                  final display = isCurrency
                       ? currency.format(m.metricValue)
                       : m.metricValue.toStringAsFixed(
                           m.metricValue == m.metricValue.roundToDouble()
@@ -119,7 +153,7 @@ class AgencyAnalyticsScreen extends ConsumerWidget {
                       ? formatAnalyticsPeriodDelta(
                           m.metricValue,
                           m.priorPeriodValue,
-                          isCurrency: isRevenue,
+                          isCurrency: isCurrency,
                         )
                       : null;
                   return AdminStatCard(
@@ -187,10 +221,12 @@ class AgencyAnalyticsScreen extends ConsumerWidget {
                 ),
                 AdminStatCard(
                   label: 'Paid',
-                  value: pipeline.summary.paidCount,
-                  periodDelta: formatCountPeriodDelta(
-                    pipeline.summary.paidCount,
-                    pipeline.summary.priorPaidCount,
+                  value:
+                      '${pipeline.summary.paidCount} · ${currency.format(pipeline.summary.paidAmountTotal)}',
+                  periodDelta: formatAnalyticsPeriodDelta(
+                    pipeline.summary.paidAmountTotal,
+                    pipeline.summary.priorPaidAmountTotal,
+                    isCurrency: true,
                   ),
                   highlight: true,
                   onTap: () {

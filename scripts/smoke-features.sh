@@ -46,9 +46,10 @@ echo
 
 echo "=== Parent dashboards & messaging ==="
 PARENT=$(login parent@demo.local 'Parent123!')
-PD=$(gql "$PARENT" 'query { parentDashboard { childrenCount upcomingAppointments appointmentsToday pendingReviews } }')
+PD=$(gql "$PARENT" 'query { parentDashboard { childrenCount upcomingAppointments appointmentsToday pendingReviews onboardingStepsCompleted onboardingStepsTotal hasChild hasScreening hasBookedTherapist } }')
 check "parentDashboard query" "d.get('data',{}).get('parentDashboard') is not None" "$PD"
 check "parentDashboard childrenCount >= 0" "d['data']['parentDashboard']['childrenCount'] >= 0" "$PD"
+check "parentDashboard onboarding fields" "'onboardingStepsCompleted' in d['data']['parentDashboard']" "$PD"
 
 THREADS=$(gql "$PARENT" 'query { myMessageThreads { id hasUnread otherParticipantName } unreadMessageThreadCount }')
 check "myMessageThreads query" "isinstance(d.get('data',{}).get('myMessageThreads'), list)" "$THREADS"
@@ -92,6 +93,14 @@ check "parent appointments locationType" \
 
 TH_COUNT=$(echo "$PAPTS" | python3 -c "import sys,json; d=json.load(sys.stdin); print(sum(1 for a in d.get('data',{}).get('myAppointments',[]) if a.get('locationType')=='TELEHEALTH'))")
 echo "INFO: parent TELEHEALTH appointments: $TH_COUNT"
+
+echo
+echo "=== Analytics reconciliation ==="
+ANALYTICS=$(gql "$ADMIN" 'query { tenantAnalytics { metricKey metricValue } adminClaimsPipeline { summary { paidCount paidAmountTotal } } }')
+check "tenantAnalytics claims_paid_total" \
+  "any(m.get('metricKey')=='claims_paid_total' for m in d.get('data',{}).get('tenantAnalytics',[]))" "$ANALYTICS"
+check "claims pipeline paidAmountTotal" \
+  "'paidAmountTotal' in d.get('data',{}).get('adminClaimsPipeline',{}).get('summary',{})" "$ANALYTICS"
 
 echo
 echo "=== Summary: $pass passed, $fail failed ==="

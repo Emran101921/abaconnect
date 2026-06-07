@@ -12,6 +12,7 @@ type MetricCounts = {
   sessionsCompleted: number;
   revenuePaid: number;
   activeChildren: number;
+  claimsPaidTotal: number;
 };
 
 @Injectable()
@@ -32,10 +33,15 @@ export class AnalyticsService {
       this.queryMetricCounts(tenantId, priorBounds),
     ]);
 
+    const revenueMismatch =
+      Math.abs(current.revenuePaid - current.claimsPaidTotal) > 0.01 ? 1 : 0;
+
     const metrics = [
       { key: 'appointments_7d', value: current.appointments },
       { key: 'sessions_completed', value: current.sessionsCompleted },
       { key: 'revenue_paid', value: current.revenuePaid },
+      { key: 'claims_paid_total', value: current.claimsPaidTotal },
+      { key: 'revenue_mismatch', value: revenueMismatch },
       { key: 'active_children', value: current.activeChildren },
     ];
 
@@ -43,6 +49,8 @@ export class AnalyticsService {
       appointments_7d: prior.appointments,
       sessions_completed: prior.sessionsCompleted,
       revenue_paid: prior.revenuePaid,
+      claims_paid_total: prior.claimsPaidTotal,
+      revenue_mismatch: 0,
       active_children: prior.activeChildren,
     };
 
@@ -95,11 +103,18 @@ export class AnalyticsService {
       paidAt: { gte: bounds.from, lte: bounds.to },
     };
 
+    const paidClaimsWhere = {
+      tenantId,
+      status: 'PAID' as const,
+      serviceDate: { gte: bounds.from, lte: bounds.to },
+    };
+
     const [
       appointmentsCount,
       sessionsCompleted,
       revenuePaid,
       activeChildren,
+      paidClaims,
     ] = await Promise.all([
       this.prisma.appointment.count({ where: appointmentWhere }),
       this.prisma.session.count({ where: sessionWhere }),
@@ -114,13 +129,24 @@ export class AnalyticsService {
           distinct: ['childId'],
         })
         .then((rows) => rows.length),
+      this.prisma.insuranceClaim.findMany({
+        where: paidClaimsWhere,
+        select: { paidAmount: true, approvedAmount: true, billedAmount: true },
+      }),
     ]);
+
+    const claimsPaidTotal = paidClaims.reduce((sum, claim) => {
+      const amount =
+        claim.paidAmount ?? claim.approvedAmount ?? claim.billedAmount;
+      return sum + Number(amount ?? 0);
+    }, 0);
 
     return {
       appointments: appointmentsCount,
       sessionsCompleted,
       revenuePaid: Number(revenuePaid._sum.amount ?? 0),
       activeChildren,
+      claimsPaidTotal,
     };
   }
 

@@ -30,6 +30,8 @@ export class ParentsService {
       nextTelehealth,
       lastProgress,
       messageMemberships,
+      screeningCount,
+      bookedAppointmentCount,
     ] = await Promise.all([
       this.prisma.child.count({ where: { parentId: parent.id } }),
       this.prisma.appointment.count({
@@ -97,6 +99,15 @@ export class ParentsService {
           },
         },
       }),
+      this.prisma.screeningResponse.count({
+        where: { child: { parentId: parent.id } },
+      }),
+      this.prisma.appointment.count({
+        where: {
+          parentId: parent.id,
+          status: { notIn: ['CANCELLED'] },
+        },
+      }),
     ]);
 
     const reviewed = new Set(reviewedTherapistIds.map((r) => r.therapistId));
@@ -152,6 +163,42 @@ export class ParentsService {
       });
     }
 
+    const hasChild = childrenCount > 0;
+    const hasScreening = screeningCount > 0;
+    const hasBookedTherapist = bookedAppointmentCount > 0;
+    const onboardingStepsTotal = 4;
+    const onboardingStepsCompleted =
+      1 +
+      (hasChild ? 1 : 0) +
+      (hasScreening ? 1 : 0) +
+      (hasBookedTherapist ? 1 : 0);
+
+    if (!hasChild) {
+      actionItems.unshift({
+        id: 'onboard-child',
+        title: 'Add your child',
+        subtitle: 'Start onboarding with a child profile',
+        actionType: 'ONBOARDING',
+        priority: -1,
+      });
+    } else if (!hasScreening) {
+      actionItems.unshift({
+        id: 'onboard-screening',
+        title: 'Complete intake screening',
+        subtitle: 'Help us match the right therapist',
+        actionType: 'ONBOARDING',
+        priority: -1,
+      });
+    } else if (!hasBookedTherapist) {
+      actionItems.unshift({
+        id: 'onboard-book',
+        title: 'Book your first session',
+        subtitle: 'Browse matched therapists and schedule',
+        actionType: 'ONBOARDING',
+        priority: -1,
+      });
+    }
+
     return {
       childrenCount,
       upcomingAppointments,
@@ -160,6 +207,12 @@ export class ParentsService {
       lastSessionSummary: lastProgress?.summary ?? undefined,
       nextTelehealthAppointmentId: nextTelehealth?.id,
       actionItems,
+      onboardingStepsCompleted,
+      onboardingStepsTotal,
+      onboardingComplete: onboardingStepsCompleted >= onboardingStepsTotal,
+      hasChild,
+      hasScreening,
+      hasBookedTherapist,
     };
   }
 

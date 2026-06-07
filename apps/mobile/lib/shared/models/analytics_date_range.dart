@@ -124,6 +124,10 @@ String analyticsOverviewMetricLabel(
       return 'Sessions completed';
     case 'revenue_paid':
       return 'Revenue paid';
+    case 'claims_paid_total':
+      return 'Claims paid total';
+    case 'revenue_mismatch':
+      return 'Revenue mismatch';
     case 'active_children':
       return activeChildrenLabel;
     default:

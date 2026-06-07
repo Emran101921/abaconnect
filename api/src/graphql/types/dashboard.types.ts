@@ -50,6 +50,12 @@ export class ClaimsPipelineAnalyticsType {
 
   @Field(() => Int)
   priorDeniedCount: number;
+
+  @Field(() => Float)
+  paidAmountTotal: number;
+
+  @Field(() => Float)
+  priorPaidAmountTotal: number;
 }
 
 @ObjectType()

@@ -200,15 +200,31 @@ export class InsuranceService {
     const ediPayload = meta.ediPayload as Record<string, unknown>;
 
     const result = await this.clearinghouse.submit837(claimId, ediPayload);
-    const nextStatus: ClaimStatus =
-      result.status === 'ACCEPTED' ? 'SUBMITTED' : 'DENIED';
+    if (result.status !== 'ACCEPTED') {
+      return this.prisma.insuranceClaim.update({
+        where: { id: claimId },
+        data: {
+          status: 'DENIED',
+          denialReason: result.message,
+          metadata: {
+            ...meta,
+            clearinghouse: {
+              externalId: result.externalId,
+              status: result.status,
+              message: result.message,
+              submittedAt: new Date().toISOString(),
+            },
+          } as Prisma.InputJsonValue,
+        },
+        include: { child: true, parent: { include: { user: true } } },
+      });
+    }
 
-    return this.prisma.insuranceClaim.update({
+    await this.prisma.insuranceClaim.update({
       where: { id: claimId },
       data: {
-        status: nextStatus,
-        submittedAt: result.status === 'ACCEPTED' ? new Date() : undefined,
-        denialReason: result.status === 'REJECTED' ? result.message : undefined,
+        status: 'SUBMITTED',
+        submittedAt: new Date(),
         metadata: {
           ...meta,
           clearinghouse: {
@@ -219,8 +235,9 @@ export class InsuranceService {
           },
         } as Prisma.InputJsonValue,
       },
-      include: { child: true, parent: { include: { user: true } } },
     });
+
+    return this.processRemittance835ForClaim(tenantId, claimId);
   }
 
   async create(data: Record<string, unknown>) {
@@ -339,6 +356,7 @@ export class InsuranceService {
         priorPendingCount: prior.pendingCount,
         priorPaidCount: prior.paidCount,
         priorDeniedCount: prior.deniedCount,
+        priorPaidAmountTotal: prior.paidAmountTotal,
       },
       recentClaims,
     };
@@ -352,12 +370,15 @@ export class InsuranceService {
       tenantId,
       ...prismaBoundsRange('serviceDate', bounds),
     };
+    const paidWhere = { ...baseWhere, status: 'PAID' as ClaimStatus };
+
     const [
       draftCount,
       submittedCount,
       pendingCount,
       paidCount,
       deniedCount,
+      paidClaims,
     ] = await Promise.all([
       this.prisma.insuranceClaim.count({
         where: { ...baseWhere, status: 'DRAFT' },
@@ -371,13 +392,21 @@ export class InsuranceService {
           status: { in: ['PENDING', 'UNDER_REVIEW', 'APPROVED'] },
         },
       }),
-      this.prisma.insuranceClaim.count({
-        where: { ...baseWhere, status: 'PAID' },
-      }),
+      this.prisma.insuranceClaim.count({ where: paidWhere }),
       this.prisma.insuranceClaim.count({
         where: { ...baseWhere, status: 'DENIED' },
       }),
+      this.prisma.insuranceClaim.findMany({
+        where: paidWhere,
+        select: { paidAmount: true, approvedAmount: true, billedAmount: true },
+      }),
     ]);
+
+    const paidAmountTotal = paidClaims.reduce((sum, claim) => {
+      const amount =
+        claim.paidAmount ?? claim.approvedAmount ?? claim.billedAmount;
+      return sum + Number(amount ?? 0);
+    }, 0);
 
     return {
       draftCount,
@@ -385,6 +414,7 @@ export class InsuranceService {
       pendingCount,
       paidCount,
       deniedCount,
+      paidAmountTotal,
     };
   }
 
@@ -395,6 +425,71 @@ export class InsuranceService {
     });
     if (!claim) throw new NotFoundException('Claim not found');
     return claim;
+  }
+
+  async processRemittance835ForClaim(tenantId: string, claimId: string) {
+    const claim = await this.prisma.insuranceClaim.findFirst({
+      where: { id: claimId, tenantId },
+      include: { child: true, parent: { include: { user: true } } },
+    });
+    if (!claim) throw new NotFoundException('Claim not found');
+
+    const payableStatuses: ClaimStatus[] = [
+      'SUBMITTED',
+      'PENDING',
+      'UNDER_REVIEW',
+      'APPROVED',
+    ];
+    if (!payableStatuses.includes(claim.status)) {
+      throw new BadRequestException(
+        `Claim status ${claim.status} cannot receive 835 remittance`,
+      );
+    }
+
+    const meta = (claim.metadata ?? {}) as Record<string, unknown>;
+    const clearinghouse = meta.clearinghouse as
+      | { externalId?: string }
+      | undefined;
+    const externalId =
+      clearinghouse?.externalId ??
+      `STUB-${claim.id.slice(0, 8).toUpperCase()}`;
+
+    const remittance = await this.clearinghouse.poll835Remittance(
+      claim.id,
+      externalId,
+      Number(claim.billedAmount),
+    );
+
+    if (remittance.status !== 'PAID') {
+      return this.prisma.insuranceClaim.update({
+        where: { id: claimId },
+        data: {
+          status: 'DENIED',
+          denialReason: remittance.message,
+          resolvedAt: new Date(),
+          metadata: {
+            ...meta,
+            remittance835: remittance,
+          } as unknown as Prisma.InputJsonValue,
+        },
+        include: { child: true, parent: { include: { user: true } } },
+      });
+    }
+
+    return this.prisma.insuranceClaim.update({
+      where: { id: claimId },
+      data: {
+        status: 'PAID',
+        approvedAmount: remittance.paidAmount,
+        paidAmount: remittance.paidAmount,
+        resolvedAt: new Date(),
+        metadata: {
+          ...meta,
+          remittance835: remittance,
+        } as unknown as Prisma.InputJsonValue,
+      },
+      include: { child: true, parent: { include: { user: true } } },
+    });
   }
 
   async updateClaimStatusForTenant(

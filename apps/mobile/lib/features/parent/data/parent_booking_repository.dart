@@ -192,6 +192,12 @@ class ParentDashboardModel {
     this.lastSessionSummary,
     this.nextTelehealthAppointmentId,
     this.actionItems = const [],
+    this.onboardingStepsCompleted = 4,
+    this.onboardingStepsTotal = 4,
+    this.onboardingComplete = true,
+    this.hasChild = true,
+    this.hasScreening = true,
+    this.hasBookedTherapist = true,
   });
 
   final int childrenCount;
@@ -202,6 +208,12 @@ class ParentDashboardModel {
   final String? lastSessionSummary;
   final String? nextTelehealthAppointmentId;
   final List<Map<String, dynamic>> actionItems;
+  final int onboardingStepsCompleted;
+  final int onboardingStepsTotal;
+  final bool onboardingComplete;
+  final bool hasChild;
+  final bool hasScreening;
+  final bool hasBookedTherapist;
 }
 
 class ParentBookingRepository {
@@ -231,6 +243,8 @@ class ParentBookingRepository {
         openClaimsCount
         lastSessionSummary
         nextTelehealthAppointmentId
+        onboardingStepsCompleted onboardingStepsTotal onboardingComplete
+        hasChild hasScreening hasBookedTherapist
         actionItems {
           id title subtitle actionType priority
           threadId appointmentId sessionId claimId
@@ -419,6 +433,13 @@ class ParentBookingRepository {
       lastSessionSummary: d['lastSessionSummary'] as String?,
       nextTelehealthAppointmentId:
           d['nextTelehealthAppointmentId'] as String?,
+      onboardingStepsCompleted:
+          d['onboardingStepsCompleted'] as int? ?? 0,
+      onboardingStepsTotal: d['onboardingStepsTotal'] as int? ?? 4,
+      onboardingComplete: d['onboardingComplete'] as bool? ?? false,
+      hasChild: d['hasChild'] as bool? ?? false,
+      hasScreening: d['hasScreening'] as bool? ?? false,
+      hasBookedTherapist: d['hasBookedTherapist'] as bool? ?? false,
       actionItems: (d['actionItems'] as List<dynamic>? ?? [])
           .cast<Map<String, dynamic>>(),
     );
