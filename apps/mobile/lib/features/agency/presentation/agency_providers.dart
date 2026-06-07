@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/app_providers.dart';
+import '../../../shared/models/analytics_date_range.dart';
 import '../data/agency_repository.dart';
+
+final agencyAnalyticsDateRangeProvider =
+    StateProvider<AnalyticsDateRange>((ref) => const AnalyticsDateRange());
 
 final agencyDashboardProvider = FutureProvider<AgencyDashboardModel>((ref) {
   return ref.watch(agencyRepositoryProvider).fetchDashboard();
@@ -29,12 +33,20 @@ final agencyAnalyticsProvider =
 
 final agencyClaimsPipelineProvider =
     FutureProvider<AgencyClaimsPipelineModel>((ref) {
-  return ref.watch(agencyRepositoryProvider).fetchClaimsPipeline();
+  final range = ref.watch(agencyAnalyticsDateRangeProvider);
+  return ref.watch(agencyRepositoryProvider).fetchClaimsPipeline(
+        fromDate: range.graphqlFrom,
+        toDate: range.graphqlTo,
+      );
 });
 
 final agencyScreeningFunnelProvider =
     FutureProvider<AgencyScreeningFunnelModel>((ref) {
-  return ref.watch(agencyRepositoryProvider).fetchScreeningFunnel();
+  final range = ref.watch(agencyAnalyticsDateRangeProvider);
+  return ref.watch(agencyRepositoryProvider).fetchScreeningFunnel(
+        fromDate: range.graphqlFrom,
+        toDate: range.graphqlTo,
+      );
 });
 
 final agencyAnalyticsClaimDetailProvider =
@@ -53,18 +65,24 @@ final agencyAnalyticsScreeningDetailProvider =
 final agencyAnalyticsClaimsListProvider =
     FutureProvider.family<List<AgencyClaimSummaryModel>, String>(
         (ref, statusFilter) {
-  return ref
-      .watch(agencyRepositoryProvider)
-      .fetchAnalyticsClaimsList(statusFilter);
+  final range = ref.watch(agencyAnalyticsDateRangeProvider);
+  return ref.watch(agencyRepositoryProvider).fetchAnalyticsClaimsList(
+        statusFilter,
+        fromDate: range.graphqlFrom,
+        toDate: range.graphqlTo,
+      );
 });
 
 final agencyAnalyticsScreeningsListProvider =
     FutureProvider.family<List<AgencyScreeningSummaryModel>, String>(
         (ref, riskFilterKey) {
   final riskLevel = riskFilterKey == 'all' ? null : riskFilterKey;
-  return ref
-      .watch(agencyRepositoryProvider)
-      .fetchAnalyticsScreeningsList(riskLevel: riskLevel);
+  final range = ref.watch(agencyAnalyticsDateRangeProvider);
+  return ref.watch(agencyRepositoryProvider).fetchAnalyticsScreeningsList(
+        riskLevel: riskLevel,
+        fromDate: range.graphqlFrom,
+        toDate: range.graphqlTo,
+      );
 });
 
 Future<void> showInviteTherapist(BuildContext context, WidgetRef ref) async {

@@ -367,10 +367,13 @@ class AgencyRepository {
         .toList();
   }
 
-  Future<AgencyClaimsPipelineModel> fetchClaimsPipeline() async {
+  Future<AgencyClaimsPipelineModel> fetchClaimsPipeline({
+    String? fromDate,
+    String? toDate,
+  }) async {
     const query = r'''
-      query {
-        agencyClaimsPipeline {
+      query ClaimsPipeline($fromDate: DateTime, $toDate: DateTime) {
+        agencyClaimsPipeline(fromDate: $fromDate, toDate: $toDate) {
           summary {
             draftCount submittedCount pendingCount paidCount deniedCount
           }
@@ -380,7 +383,10 @@ class AgencyRepository {
         }
       }
     ''';
-    final result = await _graphql.query(query);
+    final result = await _graphql.query(
+      query,
+      variables: {'fromDate': fromDate, 'toDate': toDate},
+    );
     final data =
         result['data']?['agencyClaimsPipeline'] as Map<String, dynamic>? ?? {};
     return _mapClaimsPipeline(data);
@@ -451,17 +457,24 @@ class AgencyRepository {
   Future<List<AgencyClaimSummaryModel>> fetchAnalyticsClaimsList(
     String statusFilter, {
     int limit = 50,
+    String? fromDate,
+    String? toDate,
   }) async {
     const query = r'''
-      query ClaimsList($statusFilter: AnalyticsClaimPipelineFilter!, $limit: Int) {
-        agencyAnalyticsClaims(statusFilter: $statusFilter, limit: $limit) {
+      query ClaimsList($statusFilter: AnalyticsClaimPipelineFilter!, $limit: Int, $fromDate: DateTime, $toDate: DateTime) {
+        agencyAnalyticsClaims(statusFilter: $statusFilter, limit: $limit, fromDate: $fromDate, toDate: $toDate) {
           id status payerName billedAmount serviceDate childName claimNumber
         }
       }
     ''';
     final result = await _graphql.query(
       query,
-      variables: {'statusFilter': statusFilter, 'limit': limit},
+      variables: {
+        'statusFilter': statusFilter,
+        'limit': limit,
+        'fromDate': fromDate,
+        'toDate': toDate,
+      },
     );
     final list =
         result['data']?['agencyAnalyticsClaims'] as List<dynamic>? ?? [];
@@ -483,17 +496,24 @@ class AgencyRepository {
   Future<List<AgencyScreeningSummaryModel>> fetchAnalyticsScreeningsList({
     String? riskLevel,
     int limit = 50,
+    String? fromDate,
+    String? toDate,
   }) async {
     const query = r'''
-      query ScreeningsList($riskLevel: String, $limit: Int) {
-        agencyAnalyticsScreenings(riskLevel: $riskLevel, limit: $limit) {
+      query ScreeningsList($riskLevel: String, $limit: Int, $fromDate: DateTime, $toDate: DateTime) {
+        agencyAnalyticsScreenings(riskLevel: $riskLevel, limit: $limit, fromDate: $fromDate, toDate: $toDate) {
           id completedAt childName templateName score riskLevel
         }
       }
     ''';
     final result = await _graphql.query(
       query,
-      variables: {'riskLevel': riskLevel, 'limit': limit},
+      variables: {
+        'riskLevel': riskLevel,
+        'limit': limit,
+        'fromDate': fromDate,
+        'toDate': toDate,
+      },
     );
     final list =
         result['data']?['agencyAnalyticsScreenings'] as List<dynamic>? ?? [];
@@ -511,10 +531,13 @@ class AgencyRepository {
         .toList();
   }
 
-  Future<AgencyScreeningFunnelModel> fetchScreeningFunnel() async {
+  Future<AgencyScreeningFunnelModel> fetchScreeningFunnel({
+    String? fromDate,
+    String? toDate,
+  }) async {
     const query = r'''
-      query {
-        agencyScreeningFunnel {
+      query ScreeningFunnel($fromDate: DateTime, $toDate: DateTime) {
+        agencyScreeningFunnel(fromDate: $fromDate, toDate: $toDate) {
           summary {
             completedCount lowRiskCount moderateRiskCount highRiskCount
           }
@@ -524,7 +547,10 @@ class AgencyRepository {
         }
       }
     ''';
-    final result = await _graphql.query(query);
+    final result = await _graphql.query(
+      query,
+      variables: {'fromDate': fromDate, 'toDate': toDate},
+    );
     final data =
         result['data']?['agencyScreeningFunnel'] as Map<String, dynamic>? ??
             {};

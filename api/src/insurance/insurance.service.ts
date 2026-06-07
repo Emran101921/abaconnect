@@ -8,6 +8,7 @@ import {
   Prisma,
   TherapyType,
 } from '../../generated/prisma/client';
+import { prismaDateRange } from '../common/date-range.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { ClearinghouseService } from './clearinghouse.service';
 import { Edi837Service } from './edi837.service';
@@ -280,15 +281,18 @@ export class InsuranceService {
     tenantId: string,
     filter: 'DRAFT' | 'SUBMITTED' | 'PENDING' | 'PAID' | 'DENIED',
     limit = 50,
+    dateRange?: { fromDate?: Date; toDate?: Date },
   ) {
     const status =
       filter === 'PENDING'
         ? { in: ['PENDING', 'UNDER_REVIEW', 'APPROVED'] as ClaimStatus[] }
         : filter;
+    const serviceDate = prismaDateRange('serviceDate', dateRange ?? {});
     return this.prisma.insuranceClaim.findMany({
       where: {
         tenantId,
         status,
+        ...serviceDate,
       },
       include: { child: true },
       orderBy: { createdAt: 'desc' },
@@ -296,7 +300,12 @@ export class InsuranceService {
     });
   }
 
-  async getClaimsPipelineForTenant(tenantId: string) {
+  async getClaimsPipelineForTenant(
+    tenantId: string,
+    dateRange?: { fromDate?: Date; toDate?: Date },
+  ) {
+    const serviceDate = prismaDateRange('serviceDate', dateRange ?? {});
+    const baseWhere = { tenantId, ...serviceDate };
     const [
       draftCount,
       submittedCount,
@@ -306,25 +315,25 @@ export class InsuranceService {
       recentClaims,
     ] = await Promise.all([
       this.prisma.insuranceClaim.count({
-        where: { tenantId, status: 'DRAFT' },
+        where: { ...baseWhere, status: 'DRAFT' },
       }),
       this.prisma.insuranceClaim.count({
-        where: { tenantId, status: 'SUBMITTED' },
+        where: { ...baseWhere, status: 'SUBMITTED' },
       }),
       this.prisma.insuranceClaim.count({
         where: {
-          tenantId,
+          ...baseWhere,
           status: { in: ['PENDING', 'UNDER_REVIEW', 'APPROVED'] },
         },
       }),
       this.prisma.insuranceClaim.count({
-        where: { tenantId, status: 'PAID' },
+        where: { ...baseWhere, status: 'PAID' },
       }),
       this.prisma.insuranceClaim.count({
-        where: { tenantId, status: 'DENIED' },
+        where: { ...baseWhere, status: 'DENIED' },
       }),
       this.prisma.insuranceClaim.findMany({
-        where: { tenantId },
+        where: baseWhere,
         include: { child: true },
         orderBy: { createdAt: 'desc' },
         take: 10,

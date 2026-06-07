@@ -187,9 +187,12 @@ export class AdminResolver {
   @Query(() => ClaimsPipelineDashboardType, { name: 'adminClaimsPipeline' })
   async adminClaimsPipeline(
     @CurrentUser() user: AuthUser,
+    @Args('fromDate', { nullable: true }) fromDate?: Date,
+    @Args('toDate', { nullable: true }) toDate?: Date,
   ): Promise<ClaimsPipelineDashboardType> {
     const pipeline = await this.insuranceService.getClaimsPipelineForTenant(
       user.tenantId ?? '',
+      { fromDate, toDate },
     );
     return {
       summary: pipeline.summary,
@@ -210,9 +213,12 @@ export class AdminResolver {
   @Query(() => ScreeningFunnelDashboardType, { name: 'adminScreeningFunnel' })
   async adminScreeningFunnel(
     @CurrentUser() user: AuthUser,
+    @Args('fromDate', { nullable: true }) fromDate?: Date,
+    @Args('toDate', { nullable: true }) toDate?: Date,
   ): Promise<ScreeningFunnelDashboardType> {
     const funnel = await this.screeningsService.getScreeningFunnelForTenant(
       user.tenantId ?? '',
+      { fromDate, toDate },
     );
     return {
       summary: funnel.summary,
@@ -236,11 +242,14 @@ export class AdminResolver {
     statusFilter: AnalyticsClaimPipelineFilter,
     @Args('limit', { type: () => Int, nullable: true, defaultValue: 50 })
     limit: number,
+    @Args('fromDate', { nullable: true }) fromDate?: Date,
+    @Args('toDate', { nullable: true }) toDate?: Date,
   ): Promise<AnalyticsClaimSummaryType[]> {
     const rows = await this.insuranceService.listAnalyticsClaimsForTenant(
       user.tenantId ?? '',
       statusFilter,
       limit,
+      { fromDate, toDate },
     );
     return rows.map((c) => ({
       id: c.id,
@@ -263,11 +272,14 @@ export class AdminResolver {
     @Args('limit', { type: () => Int, nullable: true, defaultValue: 50 })
     limit: number,
     @Args('riskLevel', { nullable: true }) riskLevel?: string,
+    @Args('fromDate', { nullable: true }) fromDate?: Date,
+    @Args('toDate', { nullable: true }) toDate?: Date,
   ): Promise<AnalyticsScreeningSummaryType[]> {
     const rows = await this.screeningsService.listAnalyticsScreeningsForTenant(
       user.tenantId ?? '',
       riskLevel,
       limit,
+      { fromDate, toDate },
     );
     return rows.map((r) => ({
       id: r.id,

@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '../../generated/prisma/client';
+import { prismaDateRange } from '../common/date-range.util';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -86,11 +87,14 @@ export class ScreeningsService {
     tenantId: string,
     riskLevel?: string,
     limit = 50,
+    dateRange?: { fromDate?: Date; toDate?: Date },
   ) {
+    const completedAt = prismaDateRange('completedAt', dateRange ?? {});
     return this.prisma.screeningResponse.findMany({
       where: {
         tenantId,
         ...(riskLevel ? { riskLevel } : {}),
+        ...completedAt,
       },
       include: { template: true, child: true },
       orderBy: { completedAt: 'desc' },
@@ -98,7 +102,12 @@ export class ScreeningsService {
     });
   }
 
-  async getScreeningFunnelForTenant(tenantId: string) {
+  async getScreeningFunnelForTenant(
+    tenantId: string,
+    dateRange?: { fromDate?: Date; toDate?: Date },
+  ) {
+    const completedAt = prismaDateRange('completedAt', dateRange ?? {});
+    const baseWhere = { tenantId, ...completedAt };
     const [
       completedCount,
       lowRiskCount,
@@ -106,18 +115,18 @@ export class ScreeningsService {
       highRiskCount,
       recentScreenings,
     ] = await Promise.all([
-      this.prisma.screeningResponse.count({ where: { tenantId } }),
+      this.prisma.screeningResponse.count({ where: baseWhere }),
       this.prisma.screeningResponse.count({
-        where: { tenantId, riskLevel: 'LOW' },
+        where: { ...baseWhere, riskLevel: 'LOW' },
       }),
       this.prisma.screeningResponse.count({
-        where: { tenantId, riskLevel: 'MODERATE' },
+        where: { ...baseWhere, riskLevel: 'MODERATE' },
       }),
       this.prisma.screeningResponse.count({
-        where: { tenantId, riskLevel: 'HIGH' },
+        where: { ...baseWhere, riskLevel: 'HIGH' },
       }),
       this.prisma.screeningResponse.findMany({
-        where: { tenantId },
+        where: baseWhere,
         include: { template: true, child: true },
         orderBy: { completedAt: 'desc' },
         take: 10,

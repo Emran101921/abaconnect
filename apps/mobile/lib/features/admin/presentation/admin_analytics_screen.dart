@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 
 import '../../../core/router/app_router.dart';
 
+import '../../../shared/presentation/analytics_date_range_filter.dart';
+import '../../../shared/presentation/analytics_date_range_url.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../data/admin_repository.dart';
 import 'admin_providers.dart';
@@ -75,16 +77,22 @@ class AdminAnalyticsScreen extends ConsumerWidget {
       }
     }
 
-    return AppScaffold(
-      title: 'Analytics',
-      body: RefreshIndicator(
-        onRefresh: refresh,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
+    return AnalyticsDateRangeSync(
+      dateRangeProvider: adminAnalyticsDateRangeProvider,
+      child: AppScaffold(
+        title: 'Analytics',
+        body: RefreshIndicator(
+          onRefresh: refresh,
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
             Text(
               'Platform metrics, claims pipeline, and screening funnel.',
               style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 16),
+            AnalyticsDateRangeBar(
+              dateRangeProvider: adminAnalyticsDateRangeProvider,
             ),
             const SizedBox(height: 16),
             if (metricList.isNotEmpty) ...[
@@ -124,38 +132,58 @@ class AdminAnalyticsScreen extends ConsumerWidget {
                 AdminStatCard(
                   label: 'Draft',
                   value: pipeline.summary.draftCount,
-                  onTap: () => context.push(
-                    '${AppRoutes.adminHome}/analytics/claims/filter/draft',
-                  ),
+                  onTap: () {
+                    final range = ref.read(adminAnalyticsDateRangeProvider);
+                    context.push(analyticsPathWithDateRange(
+                      '${AppRoutes.adminHome}/analytics/claims/filter/draft',
+                      range,
+                    ));
+                  },
                 ),
                 AdminStatCard(
                   label: 'Submitted',
                   value: pipeline.summary.submittedCount,
-                  onTap: () => context.push(
-                    '${AppRoutes.adminHome}/analytics/claims/filter/submitted',
-                  ),
+                  onTap: () {
+                    final range = ref.read(adminAnalyticsDateRangeProvider);
+                    context.push(analyticsPathWithDateRange(
+                      '${AppRoutes.adminHome}/analytics/claims/filter/submitted',
+                      range,
+                    ));
+                  },
                 ),
                 AdminStatCard(
                   label: 'Pending',
                   value: pipeline.summary.pendingCount,
-                  onTap: () => context.push(
-                    '${AppRoutes.adminHome}/analytics/claims/filter/pending',
-                  ),
+                  onTap: () {
+                    final range = ref.read(adminAnalyticsDateRangeProvider);
+                    context.push(analyticsPathWithDateRange(
+                      '${AppRoutes.adminHome}/analytics/claims/filter/pending',
+                      range,
+                    ));
+                  },
                 ),
                 AdminStatCard(
                   label: 'Paid',
                   value: pipeline.summary.paidCount,
                   highlight: true,
-                  onTap: () => context.push(
-                    '${AppRoutes.adminHome}/analytics/claims/filter/paid',
-                  ),
+                  onTap: () {
+                    final range = ref.read(adminAnalyticsDateRangeProvider);
+                    context.push(analyticsPathWithDateRange(
+                      '${AppRoutes.adminHome}/analytics/claims/filter/paid',
+                      range,
+                    ));
+                  },
                 ),
                 AdminStatCard(
                   label: 'Denied',
                   value: pipeline.summary.deniedCount,
-                  onTap: () => context.push(
-                    '${AppRoutes.adminHome}/analytics/claims/filter/denied',
-                  ),
+                  onTap: () {
+                    final range = ref.read(adminAnalyticsDateRangeProvider);
+                    context.push(analyticsPathWithDateRange(
+                      '${AppRoutes.adminHome}/analytics/claims/filter/denied',
+                      range,
+                    ));
+                  },
                 ),
               ],
             ),
@@ -164,9 +192,13 @@ class AdminAnalyticsScreen extends ConsumerWidget {
               claims: pipeline.recentClaims,
               currency: currency,
               dateFormat: dateFormat,
-              onClaimTap: (id) => context.push(
-                '${AppRoutes.adminHome}/analytics/claims/$id',
-              ),
+              onClaimTap: (id) {
+                final range = ref.read(adminAnalyticsDateRangeProvider);
+                context.push(analyticsPathWithDateRange(
+                  '${AppRoutes.adminHome}/analytics/claims/$id',
+                  range,
+                ));
+              },
             ),
             const SizedBox(height: 24),
             Text(
@@ -181,31 +213,47 @@ class AdminAnalyticsScreen extends ConsumerWidget {
                 AdminStatCard(
                   label: 'Completed',
                   value: funnel.summary.completedCount,
-                  onTap: () => context.push(
-                    '${AppRoutes.adminHome}/analytics/screenings/filter/all',
-                  ),
+                  onTap: () {
+                    final range = ref.read(adminAnalyticsDateRangeProvider);
+                    context.push(analyticsPathWithDateRange(
+                      '${AppRoutes.adminHome}/analytics/screenings/filter/all',
+                      range,
+                    ));
+                  },
                 ),
                 AdminStatCard(
                   label: 'Low risk',
                   value: funnel.summary.lowRiskCount,
-                  onTap: () => context.push(
-                    '${AppRoutes.adminHome}/analytics/screenings/filter/low',
-                  ),
+                  onTap: () {
+                    final range = ref.read(adminAnalyticsDateRangeProvider);
+                    context.push(analyticsPathWithDateRange(
+                      '${AppRoutes.adminHome}/analytics/screenings/filter/low',
+                      range,
+                    ));
+                  },
                 ),
                 AdminStatCard(
                   label: 'Medium risk',
                   value: funnel.summary.moderateRiskCount,
-                  onTap: () => context.push(
-                    '${AppRoutes.adminHome}/analytics/screenings/filter/moderate',
-                  ),
+                  onTap: () {
+                    final range = ref.read(adminAnalyticsDateRangeProvider);
+                    context.push(analyticsPathWithDateRange(
+                      '${AppRoutes.adminHome}/analytics/screenings/filter/moderate',
+                      range,
+                    ));
+                  },
                 ),
                 AdminStatCard(
                   label: 'High risk',
                   value: funnel.summary.highRiskCount,
                   highlight: funnel.summary.highRiskCount > 0,
-                  onTap: () => context.push(
-                    '${AppRoutes.adminHome}/analytics/screenings/filter/high',
-                  ),
+                  onTap: () {
+                    final range = ref.read(adminAnalyticsDateRangeProvider);
+                    context.push(analyticsPathWithDateRange(
+                      '${AppRoutes.adminHome}/analytics/screenings/filter/high',
+                      range,
+                    ));
+                  },
                 ),
               ],
             ),
@@ -213,11 +261,16 @@ class AdminAnalyticsScreen extends ConsumerWidget {
             _RecentScreeningsList(
               screenings: funnel.recentScreenings,
               dateFormat: dateFormat,
-              onScreeningTap: (id) => context.push(
-                '${AppRoutes.adminHome}/analytics/screenings/$id',
-              ),
+              onScreeningTap: (id) {
+                final range = ref.read(adminAnalyticsDateRangeProvider);
+                context.push(analyticsPathWithDateRange(
+                  '${AppRoutes.adminHome}/analytics/screenings/$id',
+                  range,
+                ));
+              },
             ),
-          ],
+            ],
+          ),
         ),
       ),
     );
