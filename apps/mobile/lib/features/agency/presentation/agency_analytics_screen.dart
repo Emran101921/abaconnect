@@ -143,6 +143,10 @@ class AgencyAnalyticsScreen extends ConsumerWidget {
                 AdminStatCard(
                   label: 'Draft',
                   value: pipeline.summary.draftCount,
+                  periodDelta: formatCountPeriodDelta(
+                    pipeline.summary.draftCount,
+                    pipeline.summary.priorDraftCount,
+                  ),
                   onTap: () {
                     final range = ref.read(agencyAnalyticsDateRangeProvider);
                     context.push(analyticsPathWithDateRange(
@@ -154,6 +158,10 @@ class AgencyAnalyticsScreen extends ConsumerWidget {
                 AdminStatCard(
                   label: 'Submitted',
                   value: pipeline.summary.submittedCount,
+                  periodDelta: formatCountPeriodDelta(
+                    pipeline.summary.submittedCount,
+                    pipeline.summary.priorSubmittedCount,
+                  ),
                   onTap: () {
                     final range = ref.read(agencyAnalyticsDateRangeProvider);
                     context.push(analyticsPathWithDateRange(
@@ -165,6 +173,10 @@ class AgencyAnalyticsScreen extends ConsumerWidget {
                 AdminStatCard(
                   label: 'Pending',
                   value: pipeline.summary.pendingCount,
+                  periodDelta: formatCountPeriodDelta(
+                    pipeline.summary.pendingCount,
+                    pipeline.summary.priorPendingCount,
+                  ),
                   onTap: () {
                     final range = ref.read(agencyAnalyticsDateRangeProvider);
                     context.push(analyticsPathWithDateRange(
@@ -176,6 +188,10 @@ class AgencyAnalyticsScreen extends ConsumerWidget {
                 AdminStatCard(
                   label: 'Paid',
                   value: pipeline.summary.paidCount,
+                  periodDelta: formatCountPeriodDelta(
+                    pipeline.summary.paidCount,
+                    pipeline.summary.priorPaidCount,
+                  ),
                   highlight: true,
                   onTap: () {
                     final range = ref.read(agencyAnalyticsDateRangeProvider);
@@ -188,6 +204,10 @@ class AgencyAnalyticsScreen extends ConsumerWidget {
                 AdminStatCard(
                   label: 'Denied',
                   value: pipeline.summary.deniedCount,
+                  periodDelta: formatCountPeriodDelta(
+                    pipeline.summary.deniedCount,
+                    pipeline.summary.priorDeniedCount,
+                  ),
                   onTap: () {
                     final range = ref.read(agencyAnalyticsDateRangeProvider);
                     context.push(analyticsPathWithDateRange(
@@ -224,6 +244,10 @@ class AgencyAnalyticsScreen extends ConsumerWidget {
                 AdminStatCard(
                   label: 'Completed',
                   value: funnel.summary.completedCount,
+                  periodDelta: formatCountPeriodDelta(
+                    funnel.summary.completedCount,
+                    funnel.summary.priorCompletedCount,
+                  ),
                   onTap: () {
                     final range = ref.read(agencyAnalyticsDateRangeProvider);
                     context.push(analyticsPathWithDateRange(
@@ -235,6 +259,10 @@ class AgencyAnalyticsScreen extends ConsumerWidget {
                 AdminStatCard(
                   label: 'Low risk',
                   value: funnel.summary.lowRiskCount,
+                  periodDelta: formatCountPeriodDelta(
+                    funnel.summary.lowRiskCount,
+                    funnel.summary.priorLowRiskCount,
+                  ),
                   onTap: () {
                     final range = ref.read(agencyAnalyticsDateRangeProvider);
                     context.push(analyticsPathWithDateRange(
@@ -246,6 +274,10 @@ class AgencyAnalyticsScreen extends ConsumerWidget {
                 AdminStatCard(
                   label: 'Medium risk',
                   value: funnel.summary.moderateRiskCount,
+                  periodDelta: formatCountPeriodDelta(
+                    funnel.summary.moderateRiskCount,
+                    funnel.summary.priorModerateRiskCount,
+                  ),
                   onTap: () {
                     final range = ref.read(agencyAnalyticsDateRangeProvider);
                     context.push(analyticsPathWithDateRange(
@@ -257,6 +289,10 @@ class AgencyAnalyticsScreen extends ConsumerWidget {
                 AdminStatCard(
                   label: 'High risk',
                   value: funnel.summary.highRiskCount,
+                  periodDelta: formatCountPeriodDelta(
+                    funnel.summary.highRiskCount,
+                    funnel.summary.priorHighRiskCount,
+                  ),
                   highlight: funnel.summary.highRiskCount > 0,
                   onTap: () {
                     final range = ref.read(agencyAnalyticsDateRangeProvider);

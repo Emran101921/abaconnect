@@ -8,7 +8,14 @@ import {
   Prisma,
   TherapyType,
 } from '../../generated/prisma/client';
-import { prismaDateRange } from '../common/date-range.util';
+import {
+  DateRangeFilter,
+  priorPeriodBounds,
+  prismaBoundsRange,
+  prismaDateRange,
+  resolveAnalyticsBounds,
+  ResolvedDateBounds,
+} from '../common/date-range.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { ClearinghouseService } from './clearinghouse.service';
 import { Edi837Service } from './edi837.service';
@@ -302,17 +309,55 @@ export class InsuranceService {
 
   async getClaimsPipelineForTenant(
     tenantId: string,
-    dateRange?: { fromDate?: Date; toDate?: Date },
+    dateRange?: DateRangeFilter,
   ) {
-    const serviceDate = prismaDateRange('serviceDate', dateRange ?? {});
-    const baseWhere = { tenantId, ...serviceDate };
+    const currentBounds = resolveAnalyticsBounds(dateRange);
+    const priorBounds = priorPeriodBounds(
+      currentBounds.from,
+      currentBounds.to,
+    );
+
+    const [current, prior, recentClaims] = await Promise.all([
+      this.queryClaimsPipelineCounts(tenantId, currentBounds),
+      this.queryClaimsPipelineCounts(tenantId, priorBounds),
+      this.prisma.insuranceClaim.findMany({
+        where: {
+          tenantId,
+          ...prismaBoundsRange('serviceDate', currentBounds),
+        },
+        include: { child: true },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+      }),
+    ]);
+
+    return {
+      summary: {
+        ...current,
+        priorDraftCount: prior.draftCount,
+        priorSubmittedCount: prior.submittedCount,
+        priorPendingCount: prior.pendingCount,
+        priorPaidCount: prior.paidCount,
+        priorDeniedCount: prior.deniedCount,
+      },
+      recentClaims,
+    };
+  }
+
+  private async queryClaimsPipelineCounts(
+    tenantId: string,
+    bounds: ResolvedDateBounds,
+  ) {
+    const baseWhere = {
+      tenantId,
+      ...prismaBoundsRange('serviceDate', bounds),
+    };
     const [
       draftCount,
       submittedCount,
       pendingCount,
       paidCount,
       deniedCount,
-      recentClaims,
     ] = await Promise.all([
       this.prisma.insuranceClaim.count({
         where: { ...baseWhere, status: 'DRAFT' },
@@ -332,23 +377,14 @@ export class InsuranceService {
       this.prisma.insuranceClaim.count({
         where: { ...baseWhere, status: 'DENIED' },
       }),
-      this.prisma.insuranceClaim.findMany({
-        where: baseWhere,
-        include: { child: true },
-        orderBy: { createdAt: 'desc' },
-        take: 10,
-      }),
     ]);
 
     return {
-      summary: {
-        draftCount,
-        submittedCount,
-        pendingCount,
-        paidCount,
-        deniedCount,
-      },
-      recentClaims,
+      draftCount,
+      submittedCount,
+      pendingCount,
+      paidCount,
+      deniedCount,
     };
   }
 

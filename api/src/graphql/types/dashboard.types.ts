@@ -35,6 +35,21 @@ export class ClaimsPipelineAnalyticsType {
 
   @Field(() => Int)
   deniedCount: number;
+
+  @Field(() => Int)
+  priorDraftCount: number;
+
+  @Field(() => Int)
+  priorSubmittedCount: number;
+
+  @Field(() => Int)
+  priorPendingCount: number;
+
+  @Field(() => Int)
+  priorPaidCount: number;
+
+  @Field(() => Int)
+  priorDeniedCount: number;
 }
 
 @ObjectType()
@@ -83,6 +98,18 @@ export class ScreeningFunnelAnalyticsType {
 
   @Field(() => Int)
   highRiskCount: number;
+
+  @Field(() => Int)
+  priorCompletedCount: number;
+
+  @Field(() => Int)
+  priorLowRiskCount: number;
+
+  @Field(() => Int)
+  priorModerateRiskCount: number;
+
+  @Field(() => Int)
+  priorHighRiskCount: number;
 }
 
 @ObjectType()
