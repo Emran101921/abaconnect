@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+
+import '../../../core/router/app_router.dart';
 
 import '../../../shared/widgets/app_scaffold.dart';
 import '../data/admin_repository.dart';
@@ -146,6 +149,9 @@ class AdminAnalyticsScreen extends ConsumerWidget {
               claims: pipeline.recentClaims,
               currency: currency,
               dateFormat: dateFormat,
+              onClaimTap: (id) => context.push(
+                '${AppRoutes.adminHome}/analytics/claims/$id',
+              ),
             ),
             const SizedBox(height: 24),
             Text(
@@ -180,6 +186,9 @@ class AdminAnalyticsScreen extends ConsumerWidget {
             _RecentScreeningsList(
               screenings: funnel.recentScreenings,
               dateFormat: dateFormat,
+              onScreeningTap: (id) => context.push(
+                '${AppRoutes.adminHome}/analytics/screenings/$id',
+              ),
             ),
           ],
         ),
@@ -193,11 +202,13 @@ class _RecentClaimsList extends StatelessWidget {
     required this.claims,
     required this.currency,
     required this.dateFormat,
+    required this.onClaimTap,
   });
 
   final List<AnalyticsClaimSummaryModel> claims;
   final NumberFormat currency;
   final DateFormat dateFormat;
+  final void Function(String id) onClaimTap;
 
   @override
   Widget build(BuildContext context) {
@@ -225,6 +236,7 @@ class _RecentClaimsList extends StatelessWidget {
                 '${c.status} · ${dateFormat.format(c.serviceDate)}',
               ),
               trailing: Text(currency.format(c.billedAmount)),
+              onTap: () => onClaimTap(c.id),
             ),
           ),
         ],
@@ -237,10 +249,12 @@ class _RecentScreeningsList extends StatelessWidget {
   const _RecentScreeningsList({
     required this.screenings,
     required this.dateFormat,
+    required this.onScreeningTap,
   });
 
   final List<AnalyticsScreeningSummaryModel> screenings;
   final DateFormat dateFormat;
+  final void Function(String id) onScreeningTap;
 
   @override
   Widget build(BuildContext context) {
@@ -272,6 +286,7 @@ class _RecentScreeningsList extends StatelessWidget {
                 ].whereType<String>().join(' · '),
               ),
               trailing: s.score != null ? Text('${s.score}') : null,
+              onTap: () => onScreeningTap(s.id),
             ),
           ),
         ],

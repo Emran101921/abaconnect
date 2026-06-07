@@ -323,6 +323,15 @@ export class InsuranceService {
     };
   }
 
+  async getClaimForTenant(tenantId: string, claimId: string) {
+    const claim = await this.prisma.insuranceClaim.findFirst({
+      where: { id: claimId, tenantId },
+      include: { child: true, parent: { include: { user: true } } },
+    });
+    if (!claim) throw new NotFoundException('Claim not found');
+    return claim;
+  }
+
   async updateClaimStatusForTenant(
     tenantId: string,
     claimId: string,

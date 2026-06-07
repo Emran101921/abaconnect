@@ -23,6 +23,7 @@ import {
   PendingTherapistType,
 } from './types/admin.types';
 import {
+  AnalyticsScreeningDetailType,
   ClaimsPipelineDashboardType,
   ScreeningFunnelDashboardType,
 } from './types/dashboard.types';
@@ -225,6 +226,32 @@ export class AdminResolver {
     };
   }
 
+  @Query(() => AdminInsuranceClaimType, { name: 'adminAnalyticsClaimDetail' })
+  async adminAnalyticsClaimDetail(
+    @CurrentUser() user: AuthUser,
+    @Args('claimId', { type: () => ID }) claimId: string,
+  ): Promise<AdminInsuranceClaimType> {
+    const row = await this.insuranceService.getClaimForTenant(
+      user.tenantId ?? '',
+      claimId,
+    );
+    return this.mapInsuranceClaim(row);
+  }
+
+  @Query(() => AnalyticsScreeningDetailType, {
+    name: 'adminAnalyticsScreeningDetail',
+  })
+  async adminAnalyticsScreeningDetail(
+    @CurrentUser() user: AuthUser,
+    @Args('screeningId', { type: () => ID }) screeningId: string,
+  ): Promise<AnalyticsScreeningDetailType> {
+    const row = await this.screeningsService.getResponseForTenant(
+      user.tenantId ?? '',
+      screeningId,
+    );
+    return this.mapScreeningDetail(row);
+  }
+
   @Mutation(() => AdminInsuranceClaimType, { name: 'updateInsuranceClaim' })
   async updateInsuranceClaim(
     @CurrentUser() user: AuthUser,
@@ -291,6 +318,28 @@ export class AdminResolver {
         lastName: t.user.lastName,
         email: t.user.email,
       },
+    };
+  }
+
+  private mapScreeningDetail(r: {
+    id: string;
+    completedAt: Date;
+    score?: unknown | null;
+    riskLevel?: string | null;
+    responses: unknown;
+    template?: { name: string } | null;
+    child?: { firstName: string; lastName: string } | null;
+  }): AnalyticsScreeningDetailType {
+    return {
+      id: r.id,
+      completedAt: r.completedAt,
+      childName: r.child
+        ? `${r.child.firstName} ${r.child.lastName}`
+        : undefined,
+      templateName: r.template?.name,
+      score: r.score != null ? Number(r.score) : undefined,
+      riskLevel: r.riskLevel ?? undefined,
+      responsesJson: JSON.stringify(r.responses ?? {}),
     };
   }
 

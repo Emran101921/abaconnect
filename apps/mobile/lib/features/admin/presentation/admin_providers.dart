@@ -60,3 +60,16 @@ final adminInsuranceClaimsProvider =
     FutureProvider<List<AdminInsuranceClaimModel>>((ref) async {
   return ref.watch(adminRepositoryProvider).fetchInsuranceClaims();
 });
+
+final adminAnalyticsClaimDetailProvider =
+    FutureProvider.family<AdminInsuranceClaimModel, String>((ref, claimId) {
+  return ref.watch(adminRepositoryProvider).fetchAnalyticsClaimDetail(claimId);
+});
+
+final adminAnalyticsScreeningDetailProvider =
+    FutureProvider.family<AnalyticsScreeningDetailModel, String>(
+        (ref, screeningId) {
+  return ref
+      .watch(adminRepositoryProvider)
+      .fetchAnalyticsScreeningDetail(screeningId);
+});

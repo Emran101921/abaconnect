@@ -12,7 +12,9 @@ import {
   AgencyDashboardType,
   AgencyTherapistType,
 } from './types/agency.types';
+import { AdminInsuranceClaimType } from './types/admin.types';
 import {
+  AnalyticsScreeningDetailType,
   ClaimsPipelineDashboardType,
   ScreeningFunnelDashboardType,
 } from './types/dashboard.types';
@@ -171,6 +173,96 @@ export class AgencyResolver {
         score: r.score != null ? Number(r.score) : undefined,
         riskLevel: r.riskLevel ?? undefined,
       })),
+    };
+  }
+
+  @Query(() => AdminInsuranceClaimType, { name: 'agencyAnalyticsClaimDetail' })
+  async agencyAnalyticsClaimDetail(
+    @CurrentUser() user: AuthUser,
+    @Args('claimId', { type: () => ID }) claimId: string,
+  ): Promise<AdminInsuranceClaimType> {
+    if (!user.tenantId) {
+      throw new Error('Tenant required');
+    }
+    const row = await this.insuranceService.getClaimForTenant(
+      user.tenantId,
+      claimId,
+    );
+    return this.mapInsuranceClaim(row);
+  }
+
+  @Query(() => AnalyticsScreeningDetailType, {
+    name: 'agencyAnalyticsScreeningDetail',
+  })
+  async agencyAnalyticsScreeningDetail(
+    @CurrentUser() user: AuthUser,
+    @Args('screeningId', { type: () => ID }) screeningId: string,
+  ): Promise<AnalyticsScreeningDetailType> {
+    if (!user.tenantId) {
+      throw new Error('Tenant required');
+    }
+    const row = await this.screeningsService.getResponseForTenant(
+      user.tenantId,
+      screeningId,
+    );
+    return this.mapScreeningDetail(row);
+  }
+
+  private mapScreeningDetail(r: {
+    id: string;
+    completedAt: Date;
+    score?: unknown | null;
+    riskLevel?: string | null;
+    responses: unknown;
+    template?: { name: string } | null;
+    child?: { firstName: string; lastName: string } | null;
+  }): AnalyticsScreeningDetailType {
+    return {
+      id: r.id,
+      completedAt: r.completedAt,
+      childName: r.child
+        ? `${r.child.firstName} ${r.child.lastName}`
+        : undefined,
+      templateName: r.template?.name,
+      score: r.score != null ? Number(r.score) : undefined,
+      riskLevel: r.riskLevel ?? undefined,
+      responsesJson: JSON.stringify(r.responses ?? {}),
+    };
+  }
+
+  private mapInsuranceClaim(c: {
+    id: string;
+    status: string;
+    payerName: string;
+    billedAmount: unknown;
+    approvedAmount?: unknown | null;
+    serviceDate: Date;
+    denialReason?: string | null;
+    claimNumber?: string | null;
+    sessionId?: string | null;
+    metadata?: unknown;
+    child?: { firstName: string; lastName: string };
+    parent?: { user: { email: string } };
+  }): AdminInsuranceClaimType {
+    const meta = (c.metadata ?? {}) as Record<string, unknown>;
+    const clearinghouse = meta.clearinghouse as { status?: string } | undefined;
+    return {
+      id: c.id,
+      status: c.status,
+      payerName: c.payerName,
+      billedAmount: Number(c.billedAmount),
+      approvedAmount:
+        c.approvedAmount != null ? Number(c.approvedAmount) : undefined,
+      serviceDate: c.serviceDate,
+      childName: c.child
+        ? `${c.child.firstName} ${c.child.lastName}`
+        : undefined,
+      parentEmail: c.parent?.user.email,
+      denialReason: c.denialReason ?? undefined,
+      claimNumber: c.claimNumber ?? undefined,
+      sessionId: c.sessionId ?? undefined,
+      ediReady: Boolean(meta.ediReady),
+      clearinghouseStatus: clearinghouse?.status,
     };
   }
 

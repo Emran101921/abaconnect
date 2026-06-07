@@ -88,6 +88,26 @@ class AnalyticsScreeningSummaryModel {
   final String? riskLevel;
 }
 
+class AnalyticsScreeningDetailModel {
+  const AnalyticsScreeningDetailModel({
+    required this.id,
+    required this.completedAt,
+    this.childName,
+    this.templateName,
+    this.score,
+    this.riskLevel,
+    this.responsesJson,
+  });
+
+  final String id;
+  final DateTime completedAt;
+  final String? childName;
+  final String? templateName;
+  final double? score;
+  final String? riskLevel;
+  final String? responsesJson;
+}
+
 class ScreeningFunnelDashboardModel {
   const ScreeningFunnelDashboardModel({
     required this.summary,
@@ -276,6 +296,67 @@ class AdminRepository {
     final data =
         result['data']?['adminClaimsPipeline'] as Map<String, dynamic>? ?? {};
     return _mapClaimsPipeline(data);
+  }
+
+  Future<AdminInsuranceClaimModel> fetchAnalyticsClaimDetail(String claimId) async {
+    const query = r'''
+      query ClaimDetail($claimId: ID!) {
+        adminAnalyticsClaimDetail(claimId: $claimId) {
+          id status payerName billedAmount approvedAmount serviceDate
+          childName parentEmail denialReason claimNumber sessionId
+          ediReady clearinghouseStatus
+        }
+      }
+    ''';
+    final result = await _graphql.query(
+      query,
+      variables: {'claimId': claimId},
+    );
+    final e = result['data']?['adminAnalyticsClaimDetail'] as Map<String, dynamic>?;
+    if (e == null) throw Exception('Claim not found');
+    return AdminInsuranceClaimModel(
+      id: e['id'] as String,
+      status: e['status'] as String? ?? '',
+      payerName: e['payerName'] as String? ?? '',
+      billedAmount: (e['billedAmount'] as num?)?.toDouble() ?? 0,
+      approvedAmount: (e['approvedAmount'] as num?)?.toDouble(),
+      serviceDate: DateTime.parse(e['serviceDate'] as String),
+      childName: e['childName'] as String?,
+      parentEmail: e['parentEmail'] as String?,
+      denialReason: e['denialReason'] as String?,
+      claimNumber: e['claimNumber'] as String?,
+      sessionId: e['sessionId'] as String?,
+      ediReady: e['ediReady'] as bool?,
+      clearinghouseStatus: e['clearinghouseStatus'] as String?,
+    );
+  }
+
+  Future<AnalyticsScreeningDetailModel> fetchAnalyticsScreeningDetail(
+    String screeningId,
+  ) async {
+    const query = r'''
+      query ScreeningDetail($screeningId: ID!) {
+        adminAnalyticsScreeningDetail(screeningId: $screeningId) {
+          id completedAt childName templateName score riskLevel responsesJson
+        }
+      }
+    ''';
+    final result = await _graphql.query(
+      query,
+      variables: {'screeningId': screeningId},
+    );
+    final e =
+        result['data']?['adminAnalyticsScreeningDetail'] as Map<String, dynamic>?;
+    if (e == null) throw Exception('Screening not found');
+    return AnalyticsScreeningDetailModel(
+      id: e['id'] as String,
+      completedAt: DateTime.parse(e['completedAt'] as String),
+      childName: e['childName'] as String?,
+      templateName: e['templateName'] as String?,
+      score: (e['score'] as num?)?.toDouble(),
+      riskLevel: e['riskLevel'] as String?,
+      responsesJson: e['responsesJson'] as String?,
+    );
   }
 
   Future<ScreeningFunnelDashboardModel> fetchScreeningFunnel() async {

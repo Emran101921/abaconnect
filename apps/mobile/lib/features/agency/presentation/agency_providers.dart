@@ -37,6 +37,19 @@ final agencyScreeningFunnelProvider =
   return ref.watch(agencyRepositoryProvider).fetchScreeningFunnel();
 });
 
+final agencyAnalyticsClaimDetailProvider =
+    FutureProvider.family<AgencyClaimDetailModel, String>((ref, claimId) {
+  return ref.watch(agencyRepositoryProvider).fetchAnalyticsClaimDetail(claimId);
+});
+
+final agencyAnalyticsScreeningDetailProvider =
+    FutureProvider.family<AgencyScreeningDetailModel, String>(
+        (ref, screeningId) {
+  return ref
+      .watch(agencyRepositoryProvider)
+      .fetchAnalyticsScreeningDetail(screeningId);
+});
+
 Future<void> showInviteTherapist(BuildContext context, WidgetRef ref) async {
   final candidates = await ref.read(agencyInviteCandidatesProvider.future);
   if (!context.mounted) return;

@@ -97,6 +97,30 @@ export class ScreeningFunnelDashboardType {
 }
 
 @ObjectType()
+export class AnalyticsScreeningDetailType {
+  @Field(() => ID)
+  id: string;
+
+  @Field()
+  completedAt: Date;
+
+  @Field({ nullable: true })
+  childName?: string;
+
+  @Field({ nullable: true })
+  templateName?: string;
+
+  @Field(() => Float, { nullable: true })
+  score?: number;
+
+  @Field({ nullable: true })
+  riskLevel?: string;
+
+  @Field({ nullable: true })
+  responsesJson?: string;
+}
+
+@ObjectType()
 export class DashboardActionItemType {
   @Field()
   id: string;

@@ -73,6 +73,15 @@ export class ScreeningsService {
     });
   }
 
+  async getResponseForTenant(tenantId: string, responseId: string) {
+    const row = await this.prisma.screeningResponse.findFirst({
+      where: { id: responseId, tenantId },
+      include: { template: true, child: true },
+    });
+    if (!row) throw new NotFoundException('Screening not found');
+    return row;
+  }
+
   async getScreeningFunnelForTenant(tenantId: string) {
     const [
       completedCount,

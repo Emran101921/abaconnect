@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/admin/presentation/admin_analytics_screen.dart';
+import '../../shared/presentation/analytics_detail_screens.dart';
 import '../../features/admin/presentation/admin_audit_screen.dart';
 import '../../features/admin/presentation/admin_complaints_screen.dart';
 import '../../features/admin/presentation/admin_disputes_screen.dart';
@@ -233,6 +234,23 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: 'analytics',
             name: 'agencyAnalytics',
             builder: (context, state) => const AgencyAnalyticsScreen(),
+            routes: [
+              GoRoute(
+                path: 'claims/:claimId',
+                name: 'agencyAnalyticsClaimDetail',
+                builder: (context, state) => AgencyAnalyticsClaimDetailScreen(
+                  claimId: state.pathParameters['claimId']!,
+                ),
+              ),
+              GoRoute(
+                path: 'screenings/:screeningId',
+                name: 'agencyAnalyticsScreeningDetail',
+                builder: (context, state) =>
+                    AgencyAnalyticsScreeningDetailScreen(
+                  screeningId: state.pathParameters['screeningId']!,
+                ),
+              ),
+            ],
           ),
           GoRoute(
             path: 'appointments',
@@ -280,6 +298,23 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: 'analytics',
             name: 'adminAnalytics',
             builder: (context, state) => const AdminAnalyticsScreen(),
+            routes: [
+              GoRoute(
+                path: 'claims/:claimId',
+                name: 'adminAnalyticsClaimDetail',
+                builder: (context, state) => AdminAnalyticsClaimDetailScreen(
+                  claimId: state.pathParameters['claimId']!,
+                ),
+              ),
+              GoRoute(
+                path: 'screenings/:screeningId',
+                name: 'adminAnalyticsScreeningDetail',
+                builder: (context, state) =>
+                    AdminAnalyticsScreeningDetailScreen(
+                  screeningId: state.pathParameters['screeningId']!,
+                ),
+              ),
+            ],
           ),
           GoRoute(
             path: 'users',

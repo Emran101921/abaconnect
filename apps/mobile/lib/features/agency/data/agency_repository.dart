@@ -136,6 +136,58 @@ class AgencyScreeningSummaryModel {
   final String? riskLevel;
 }
 
+class AgencyClaimDetailModel {
+  const AgencyClaimDetailModel({
+    required this.id,
+    required this.status,
+    required this.payerName,
+    required this.billedAmount,
+    required this.serviceDate,
+    this.approvedAmount,
+    this.childName,
+    this.parentEmail,
+    this.denialReason,
+    this.claimNumber,
+    this.sessionId,
+    this.ediReady,
+    this.clearinghouseStatus,
+  });
+
+  final String id;
+  final String status;
+  final String payerName;
+  final double billedAmount;
+  final DateTime serviceDate;
+  final double? approvedAmount;
+  final String? childName;
+  final String? parentEmail;
+  final String? denialReason;
+  final String? claimNumber;
+  final String? sessionId;
+  final bool? ediReady;
+  final String? clearinghouseStatus;
+}
+
+class AgencyScreeningDetailModel {
+  const AgencyScreeningDetailModel({
+    required this.id,
+    required this.completedAt,
+    this.childName,
+    this.templateName,
+    this.score,
+    this.riskLevel,
+    this.responsesJson,
+  });
+
+  final String id;
+  final DateTime completedAt;
+  final String? childName;
+  final String? templateName;
+  final double? score;
+  final String? riskLevel;
+  final String? responsesJson;
+}
+
 class AgencyScreeningFunnelModel {
   const AgencyScreeningFunnelModel({
     required this.summary,
@@ -332,6 +384,68 @@ class AgencyRepository {
     final data =
         result['data']?['agencyClaimsPipeline'] as Map<String, dynamic>? ?? {};
     return _mapClaimsPipeline(data);
+  }
+
+  Future<AgencyClaimDetailModel> fetchAnalyticsClaimDetail(String claimId) async {
+    const query = r'''
+      query ClaimDetail($claimId: ID!) {
+        agencyAnalyticsClaimDetail(claimId: $claimId) {
+          id status payerName billedAmount approvedAmount serviceDate
+          childName parentEmail denialReason claimNumber sessionId
+          ediReady clearinghouseStatus
+        }
+      }
+    ''';
+    final result = await _graphql.query(
+      query,
+      variables: {'claimId': claimId},
+    );
+    final e =
+        result['data']?['agencyAnalyticsClaimDetail'] as Map<String, dynamic>?;
+    if (e == null) throw Exception('Claim not found');
+    return AgencyClaimDetailModel(
+      id: e['id'] as String,
+      status: e['status'] as String? ?? '',
+      payerName: e['payerName'] as String? ?? '',
+      billedAmount: (e['billedAmount'] as num?)?.toDouble() ?? 0,
+      approvedAmount: (e['approvedAmount'] as num?)?.toDouble(),
+      serviceDate: DateTime.parse(e['serviceDate'] as String),
+      childName: e['childName'] as String?,
+      parentEmail: e['parentEmail'] as String?,
+      denialReason: e['denialReason'] as String?,
+      claimNumber: e['claimNumber'] as String?,
+      sessionId: e['sessionId'] as String?,
+      ediReady: e['ediReady'] as bool?,
+      clearinghouseStatus: e['clearinghouseStatus'] as String?,
+    );
+  }
+
+  Future<AgencyScreeningDetailModel> fetchAnalyticsScreeningDetail(
+    String screeningId,
+  ) async {
+    const query = r'''
+      query ScreeningDetail($screeningId: ID!) {
+        agencyAnalyticsScreeningDetail(screeningId: $screeningId) {
+          id completedAt childName templateName score riskLevel responsesJson
+        }
+      }
+    ''';
+    final result = await _graphql.query(
+      query,
+      variables: {'screeningId': screeningId},
+    );
+    final e = result['data']?['agencyAnalyticsScreeningDetail']
+        as Map<String, dynamic>?;
+    if (e == null) throw Exception('Screening not found');
+    return AgencyScreeningDetailModel(
+      id: e['id'] as String,
+      completedAt: DateTime.parse(e['completedAt'] as String),
+      childName: e['childName'] as String?,
+      templateName: e['templateName'] as String?,
+      score: (e['score'] as num?)?.toDouble(),
+      riskLevel: e['riskLevel'] as String?,
+      responsesJson: e['responsesJson'] as String?,
+    );
   }
 
   Future<AgencyScreeningFunnelModel> fetchScreeningFunnel() async {
