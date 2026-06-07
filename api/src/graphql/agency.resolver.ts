@@ -5,16 +5,26 @@ import {
   CurrentUser,
 } from '../common/decorators/current-user.decorator';
 import { AgenciesService } from '../agencies/agencies.service';
+import { InsuranceService } from '../insurance/insurance.service';
+import { ScreeningsService } from '../screenings/screenings.service';
 import {
   AgencyAppointmentType,
   AgencyDashboardType,
   AgencyTherapistType,
 } from './types/agency.types';
+import {
+  ClaimsPipelineDashboardType,
+  ScreeningFunnelDashboardType,
+} from './types/dashboard.types';
 
 @Resolver()
 @Roles('AGENCY_ADMIN')
 export class AgencyResolver {
-  constructor(private readonly agenciesService: AgenciesService) {}
+  constructor(
+    private readonly agenciesService: AgenciesService,
+    private readonly insuranceService: InsuranceService,
+    private readonly screeningsService: ScreeningsService,
+  ) {}
 
   @Query(() => AgencyDashboardType, { name: 'agencyDashboard' })
   async agencyDashboard(
@@ -111,6 +121,57 @@ export class AgencyResolver {
       therapistId,
     );
     return true;
+  }
+
+  @Query(() => ClaimsPipelineDashboardType, { name: 'agencyClaimsPipeline' })
+  async agencyClaimsPipeline(
+    @CurrentUser() user: AuthUser,
+  ): Promise<ClaimsPipelineDashboardType> {
+    if (!user.tenantId) {
+      throw new Error('Tenant required');
+    }
+    const pipeline = await this.insuranceService.getClaimsPipelineForTenant(
+      user.tenantId,
+    );
+    return {
+      summary: pipeline.summary,
+      recentClaims: pipeline.recentClaims.map((c) => ({
+        id: c.id,
+        status: c.status,
+        payerName: c.payerName,
+        billedAmount: Number(c.billedAmount),
+        serviceDate: c.serviceDate,
+        childName: c.child
+          ? `${c.child.firstName} ${c.child.lastName}`
+          : undefined,
+        claimNumber: c.claimNumber ?? undefined,
+      })),
+    };
+  }
+
+  @Query(() => ScreeningFunnelDashboardType, { name: 'agencyScreeningFunnel' })
+  async agencyScreeningFunnel(
+    @CurrentUser() user: AuthUser,
+  ): Promise<ScreeningFunnelDashboardType> {
+    if (!user.tenantId) {
+      throw new Error('Tenant required');
+    }
+    const funnel = await this.screeningsService.getScreeningFunnelForTenant(
+      user.tenantId,
+    );
+    return {
+      summary: funnel.summary,
+      recentScreenings: funnel.recentScreenings.map((r) => ({
+        id: r.id,
+        completedAt: r.completedAt,
+        childName: r.child
+          ? `${r.child.firstName} ${r.child.lastName}`
+          : undefined,
+        templateName: r.template?.name,
+        score: r.score != null ? Number(r.score) : undefined,
+        riskLevel: r.riskLevel ?? undefined,
+      })),
+    };
   }
 
   @Mutation(() => AgencyTherapistType, { name: 'inviteAgencyTherapist' })

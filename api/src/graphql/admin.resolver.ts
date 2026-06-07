@@ -8,6 +8,7 @@ import { AdminService } from '../admin/admin.service';
 import { ComplaintsService } from '../complaints/complaints.service';
 import { InsuranceService } from '../insurance/insurance.service';
 import { ReviewsService } from '../reviews/reviews.service';
+import { ScreeningsService } from '../screenings/screenings.service';
 import {
   SetUserActiveInput,
   UpdateInsuranceClaimInput,
@@ -21,6 +22,10 @@ import {
   AdminReviewType,
   PendingTherapistType,
 } from './types/admin.types';
+import {
+  ClaimsPipelineDashboardType,
+  ScreeningFunnelDashboardType,
+} from './types/dashboard.types';
 
 @Resolver()
 @Roles('PLATFORM_ADMIN')
@@ -30,6 +35,7 @@ export class AdminResolver {
     private readonly complaintsService: ComplaintsService,
     private readonly reviewsService: ReviewsService,
     private readonly insuranceService: InsuranceService,
+    private readonly screeningsService: ScreeningsService,
   ) {}
 
   @Query(() => AdminDashboardType, { name: 'adminDashboard' })
@@ -172,6 +178,51 @@ export class AdminResolver {
       user.tenantId ?? '',
     );
     return rows.map((c) => this.mapInsuranceClaim(c));
+  }
+
+  @Query(() => ClaimsPipelineDashboardType, { name: 'adminClaimsPipeline' })
+  async adminClaimsPipeline(
+    @CurrentUser() user: AuthUser,
+  ): Promise<ClaimsPipelineDashboardType> {
+    const pipeline = await this.insuranceService.getClaimsPipelineForTenant(
+      user.tenantId ?? '',
+    );
+    return {
+      summary: pipeline.summary,
+      recentClaims: pipeline.recentClaims.map((c) => ({
+        id: c.id,
+        status: c.status,
+        payerName: c.payerName,
+        billedAmount: Number(c.billedAmount),
+        serviceDate: c.serviceDate,
+        childName: c.child
+          ? `${c.child.firstName} ${c.child.lastName}`
+          : undefined,
+        claimNumber: c.claimNumber ?? undefined,
+      })),
+    };
+  }
+
+  @Query(() => ScreeningFunnelDashboardType, { name: 'adminScreeningFunnel' })
+  async adminScreeningFunnel(
+    @CurrentUser() user: AuthUser,
+  ): Promise<ScreeningFunnelDashboardType> {
+    const funnel = await this.screeningsService.getScreeningFunnelForTenant(
+      user.tenantId ?? '',
+    );
+    return {
+      summary: funnel.summary,
+      recentScreenings: funnel.recentScreenings.map((r) => ({
+        id: r.id,
+        completedAt: r.completedAt,
+        childName: r.child
+          ? `${r.child.firstName} ${r.child.lastName}`
+          : undefined,
+        templateName: r.template?.name,
+        score: r.score != null ? Number(r.score) : undefined,
+        riskLevel: r.riskLevel ?? undefined,
+      })),
+    };
   }
 
   @Mutation(() => AdminInsuranceClaimType, { name: 'updateInsuranceClaim' })

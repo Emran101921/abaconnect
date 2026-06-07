@@ -73,6 +73,43 @@ export class ScreeningsService {
     });
   }
 
+  async getScreeningFunnelForTenant(tenantId: string) {
+    const [
+      completedCount,
+      lowRiskCount,
+      moderateRiskCount,
+      highRiskCount,
+      recentScreenings,
+    ] = await Promise.all([
+      this.prisma.screeningResponse.count({ where: { tenantId } }),
+      this.prisma.screeningResponse.count({
+        where: { tenantId, riskLevel: 'LOW' },
+      }),
+      this.prisma.screeningResponse.count({
+        where: { tenantId, riskLevel: 'MODERATE' },
+      }),
+      this.prisma.screeningResponse.count({
+        where: { tenantId, riskLevel: 'HIGH' },
+      }),
+      this.prisma.screeningResponse.findMany({
+        where: { tenantId },
+        include: { template: true, child: true },
+        orderBy: { completedAt: 'desc' },
+        take: 10,
+      }),
+    ]);
+
+    return {
+      summary: {
+        completedCount,
+        lowRiskCount,
+        moderateRiskCount,
+        highRiskCount,
+      },
+      recentScreenings,
+    };
+  }
+
   private scoreResponses(responses: Record<string, unknown>) {
     let total = 0;
     let count = 0;

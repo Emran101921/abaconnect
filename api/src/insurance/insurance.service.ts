@@ -276,6 +276,53 @@ export class InsuranceService {
     });
   }
 
+  async getClaimsPipelineForTenant(tenantId: string) {
+    const [
+      draftCount,
+      submittedCount,
+      pendingCount,
+      paidCount,
+      deniedCount,
+      recentClaims,
+    ] = await Promise.all([
+      this.prisma.insuranceClaim.count({
+        where: { tenantId, status: 'DRAFT' },
+      }),
+      this.prisma.insuranceClaim.count({
+        where: { tenantId, status: 'SUBMITTED' },
+      }),
+      this.prisma.insuranceClaim.count({
+        where: {
+          tenantId,
+          status: { in: ['PENDING', 'UNDER_REVIEW', 'APPROVED'] },
+        },
+      }),
+      this.prisma.insuranceClaim.count({
+        where: { tenantId, status: 'PAID' },
+      }),
+      this.prisma.insuranceClaim.count({
+        where: { tenantId, status: 'DENIED' },
+      }),
+      this.prisma.insuranceClaim.findMany({
+        where: { tenantId },
+        include: { child: true },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+      }),
+    ]);
+
+    return {
+      summary: {
+        draftCount,
+        submittedCount,
+        pendingCount,
+        paidCount,
+        deniedCount,
+      },
+      recentClaims,
+    };
+  }
+
   async updateClaimStatusForTenant(
     tenantId: string,
     claimId: string,

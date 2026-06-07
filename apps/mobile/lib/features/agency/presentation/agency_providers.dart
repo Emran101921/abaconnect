@@ -24,7 +24,17 @@ final agencyUpcomingAppointmentsProvider =
 
 final agencyAnalyticsProvider =
     FutureProvider<List<Map<String, dynamic>>>((ref) {
-  return ref.watch(platformRepositoryProvider).fetchTenantAnalytics();
+  return ref.watch(agencyRepositoryProvider).fetchTenantAnalytics();
+});
+
+final agencyClaimsPipelineProvider =
+    FutureProvider<AgencyClaimsPipelineModel>((ref) {
+  return ref.watch(agencyRepositoryProvider).fetchClaimsPipeline();
+});
+
+final agencyScreeningFunnelProvider =
+    FutureProvider<AgencyScreeningFunnelModel>((ref) {
+  return ref.watch(agencyRepositoryProvider).fetchScreeningFunnel();
 });
 
 Future<void> showInviteTherapist(BuildContext context, WidgetRef ref) async {
