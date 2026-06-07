@@ -145,7 +145,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'screening',
             name: 'parentScreening',
-            builder: (context, state) => const ScreeningScreen(),
+            builder: (context, state) => ScreeningScreen(
+              childId: state.uri.queryParameters['childId'],
+              autoStart: state.uri.queryParameters['autoStart'] == 'true',
+            ),
           ),
           GoRoute(
             path: 'reviews',

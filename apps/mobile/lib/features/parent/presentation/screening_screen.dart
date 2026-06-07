@@ -9,7 +9,14 @@ import '../../../shared/widgets/app_scaffold.dart';
 import '../data/parent_booking_repository.dart';
 
 class ScreeningScreen extends ConsumerStatefulWidget {
-  const ScreeningScreen({super.key});
+  const ScreeningScreen({
+    super.key,
+    this.childId,
+    this.autoStart = false,
+  });
+
+  final String? childId;
+  final bool autoStart;
 
   @override
   ConsumerState<ScreeningScreen> createState() => _ScreeningScreenState();
@@ -20,11 +27,22 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
   List<ScreeningHistoryModel> _history = [];
   List<ChildModel> _children = [];
   bool _loading = true;
+  bool _autoStartHandled = false;
 
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  ChildModel? get _selectedChild {
+    if (_children.isEmpty) return null;
+    if (widget.childId != null) {
+      for (final child in _children) {
+        if (child.id == widget.childId) return child;
+      }
+    }
+    return _children.first;
   }
 
   Future<void> _load() async {
@@ -43,6 +61,7 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
           _history = results[2] as List<ScreeningHistoryModel>;
           _loading = false;
         });
+        _maybeAutoStartQuestionnaire();
       }
     } catch (e) {
       if (mounted) {
@@ -52,6 +71,19 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
         );
       }
     }
+  }
+
+  void _maybeAutoStartQuestionnaire() {
+    if (!widget.autoStart || _autoStartHandled || _templates.isEmpty) {
+      return;
+    }
+    if (_selectedChild == null) return;
+    _autoStartHandled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _completeTemplate(_templates.first, childId: _selectedChild!.id);
+      }
+    });
   }
 
   List<Map<String, dynamic>> _parseQuestions(ScreeningTemplateModel template) {
@@ -65,13 +97,29 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
     return [];
   }
 
-  Future<void> _completeTemplate(ScreeningTemplateModel template) async {
-    if (_children.isEmpty) {
+  Future<void> _completeTemplate(
+    ScreeningTemplateModel template, {
+    String? childId,
+  }) async {
+    ChildModel? targetChild;
+    if (childId != null) {
+      for (final child in _children) {
+        if (child.id == childId) {
+          targetChild = child;
+          break;
+        }
+      }
+    } else {
+      targetChild = _selectedChild;
+    }
+
+    if (targetChild == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Add a child before completing screening')),
       );
       return;
     }
+    final child = targetChild;
 
     final questions = _parseQuestions(template);
     final answers = <String, dynamic>{};
@@ -79,33 +127,49 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
     if (questions.isNotEmpty) {
       final ok = await showDialog<bool>(
         context: context,
+        barrierDismissible: false,
         builder: (ctx) {
-          return AlertDialog(
-            title: Text(template.name),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: questions.map((q) {
-                  final key = q['id'] as String? ?? q['text'] as String? ?? '';
-                  final label = q['text'] as String? ?? key;
-                  return SwitchListTile(
-                    title: Text(label),
-                    value: answers[key] == true,
-                    onChanged: (v) => setState(() => answers[key] = v),
-                  );
-                }).toList(),
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Submit'),
-              ),
-            ],
+          return StatefulBuilder(
+            builder: (context, setDialogState) {
+              return AlertDialog(
+                title: Text(template.name),
+                content: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'For ${child.displayName}',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 12),
+                      ...questions.map((q) {
+                        final key =
+                            q['id'] as String? ?? q['text'] as String? ?? '';
+                        final label = q['text'] as String? ?? key;
+                        return SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(label),
+                          value: answers[key] == true,
+                          onChanged: (v) =>
+                              setDialogState(() => answers[key] = v),
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: const Text('Cancel'),
+                  ),
+                  FilledButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    child: const Text('Submit'),
+                  ),
+                ],
+              );
+            },
           );
         },
       );
@@ -117,7 +181,7 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
     try {
       await ref.read(parentBookingRepositoryProvider).submitScreening(
             templateId: template.id,
-            childId: _children.first.id,
+            childId: child.id,
             responses: answers,
           );
       if (mounted) {
@@ -138,6 +202,7 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
   @override
   Widget build(BuildContext context) {
     final dateFmt = DateFormat.yMMMd();
+    final selectedChild = _selectedChild;
 
     return AppScaffold(
       title: 'Screening',
@@ -154,9 +219,9 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    _children.isEmpty
+                    selectedChild == null
                         ? 'Add a child profile to complete forms.'
-                        : 'Forms for ${_children.first.displayName}',
+                        : 'Forms for ${selectedChild.displayName}',
                   ),
                   const SizedBox(height: 24),
                   if (_history.isNotEmpty) ...[
@@ -201,7 +266,12 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
                               '${t.therapyType} · $qCount question(s)',
                             ),
                             trailing: FilledButton(
-                              onPressed: () => _completeTemplate(t),
+                              onPressed: selectedChild == null
+                                  ? null
+                                  : () => _completeTemplate(
+                                        t,
+                                        childId: selectedChild.id,
+                                      ),
                               child: const Text('Start'),
                             ),
                           ),
