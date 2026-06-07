@@ -5,7 +5,13 @@ import 'package:intl/intl.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
+import '../../../shared/widgets/app_dashboard_card.dart';
+import '../../../shared/widgets/app_gradient_header.dart';
+import '../../../shared/widgets/app_healthcare_illustration.dart';
+import '../../../shared/widgets/app_welcome_banner.dart';
+import '../../../shared/widgets/app_risk_badge.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/app_section_header.dart';
 import '../data/parent_booking_repository.dart';
 
 class ScreeningResultsScreen extends ConsumerStatefulWidget {
@@ -41,17 +47,6 @@ class _ScreeningResultsScreenState extends ConsumerState<ScreeningResultsScreen>
       return '$months mo';
     }
     return '$years yr';
-  }
-
-  Color _riskColor(BuildContext context) {
-    switch (result.riskLevel?.toUpperCase()) {
-      case 'HIGH':
-        return Colors.red.shade700;
-      case 'MODERATE':
-        return Colors.orange.shade800;
-      default:
-        return Colors.green.shade700;
-    }
   }
 
   Future<void> _requestEvaluation() async {
@@ -106,135 +101,156 @@ class _ScreeningResultsScreenState extends ConsumerState<ScreeningResultsScreen>
 
     return AppScaffold(
       title: 'Screening Results',
-      body: ListView(
-        padding: const EdgeInsets.all(16),
+      subtitle: 'Early Intervention summary',
+      body: AppContentContainer(
+        padding: EdgeInsets.zero,
+        child: ListView(
         children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    child.displayName,
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  Text(
-                    'Age $_ageLabel · DOB ${DateFormat.yMMMd().format(child.dateOfBirth)}',
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Overall risk level',
-                    style: Theme.of(context).textTheme.labelLarge,
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
+          AppGradientHeader(
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.flag, color: _riskColor(context)),
-                      const SizedBox(width: 8),
                       Text(
-                        risk,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              color: _riskColor(context),
-                              fontWeight: FontWeight.bold,
+                        child.displayName,
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
                             ),
                       ),
-                      if (result.score != null) ...[
-                        const Spacer(),
-                        Text('Score ${result.score!.toStringAsFixed(2)}'),
-                      ],
+                      const SizedBox(height: 4),
+                      Text(
+                        'Age $_ageLabel · ${DateFormat.yMMMd().format(child.dateOfBirth)}',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Colors.white.withValues(alpha: 0.9),
+                            ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Overall risk level',
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                              color: Colors.white.withValues(alpha: 0.85),
+                            ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          AppRiskBadge(level: risk),
+                          if (result.score != null) ...[
+                            const Spacer(),
+                            Text(
+                              'Score ${result.score!.toStringAsFixed(1)}',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    color: Colors.white,
+                                  ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ],
                   ),
-                ],
-              ),
+                ),
+                const AppHealthcareIllustration(
+                  type: AppIllustrationType.screening,
+                  size: 80,
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 16),
-          Text(
-            'Recommended services',
-            style: Theme.of(context).textTheme.titleMedium,
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+          const AppSectionHeader(
+            title: 'Recommended services',
+            subtitle: 'Based on your screening responses',
           ),
           const SizedBox(height: 8),
           if (result.recommendations.isEmpty)
-            const Card(
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: Text(
-                  'No specific service recommendations at this time. '
-                  'Continue monitoring development and consult your pediatrician.',
-                ),
+            AppDashboardCard(
+              elevated: false,
+              child: Text(
+                'No specific service recommendations at this time. '
+                'Continue monitoring development and consult your pediatrician.',
+                style: Theme.of(context).textTheme.bodyMedium,
               ),
             )
           else
             ...result.recommendations.map(
-              (rec) => Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                child: ListTile(
-                  leading: CircleAvatar(
-                    child: Text(rec.service.characters.first),
+              (rec) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: AppDashboardCard(
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor:
+                          Theme.of(context).colorScheme.primaryContainer,
+                      child: Text(rec.service.characters.first),
+                    ),
+                    title: Text(rec.service),
+                    subtitle: Text(rec.explanation),
+                    isThreeLine: true,
                   ),
-                  title: Text(rec.service),
-                  subtitle: Text(rec.explanation),
-                  isThreeLine: true,
                 ),
               ),
             ),
           const SizedBox(height: 16),
-          Card(
+          AppDashboardCard(
+            elevated: false,
             color: Theme.of(context).colorScheme.surfaceContainerHighest,
-            child: const Padding(
-              padding: EdgeInsets.all(16),
-              child: Text(
-                'This screening tool is for informational purposes only and '
-                'does not replace evaluation by a licensed professional.',
-                style: TextStyle(fontStyle: FontStyle.italic),
-              ),
+            child: Text(
+              'This screening tool is for informational purposes only and '
+              'does not replace evaluation by a licensed professional.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    fontStyle: FontStyle.italic,
+                  ),
             ),
           ),
           const SizedBox(height: 24),
-          Text('Next steps', style: Theme.of(context).textTheme.titleMedium),
+          const AppSectionHeader(
+            title: 'Next steps',
+            subtitle: 'Take action on your screening results',
+          ),
           const SizedBox(height: 12),
-          FilledButton.icon(
-            onPressed: _requestingEvaluation ? null : _requestEvaluation,
-            icon: _requestingEvaluation
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.medical_services_outlined),
-            label: Text(
-              _requestingEvaluation ? 'Submitting…' : 'Request evaluation',
-            ),
+          AppQuickActionCard(
+            title: _requestingEvaluation ? 'Submitting…' : 'Request evaluation',
+            subtitle: 'Schedule a licensed professional evaluation',
+            icon: Icons.medical_services_outlined,
+            onTap: _requestingEvaluation ? null : _requestEvaluation,
           ),
           const SizedBox(height: 8),
-          OutlinedButton.icon(
-            onPressed: () => context.push(AppRoutes.documents),
-            icon: const Icon(Icons.upload_file),
-            label: const Text('Upload documents'),
+          AppQuickActionCard(
+            title: 'Match providers',
+            subtitle: 'Find therapists aligned with recommendations',
+            icon: Icons.people_outline,
+            onTap: _matchProviders,
           ),
           const SizedBox(height: 8),
-          OutlinedButton.icon(
-            onPressed: _matchProviders,
-            icon: const Icon(Icons.people_outline),
-            label: const Text('Match providers'),
+          AppQuickActionCard(
+            title: 'Upload documents',
+            subtitle: 'Share records with your care team',
+            icon: Icons.upload_file,
+            onTap: () => context.push(AppRoutes.documents),
           ),
           const SizedBox(height: 8),
-          OutlinedButton.icon(
-            onPressed: () => context.push(AppRoutes.messages),
-            icon: const Icon(Icons.support_agent),
-            label: const Text('Contact care coordinator'),
+          AppQuickActionCard(
+            title: 'Contact care coordinator',
+            subtitle: 'Get help navigating next steps',
+            icon: Icons.support_agent,
+            onTap: () => context.push(AppRoutes.messages),
           ),
-          const SizedBox(height: 16),
-          OutlinedButton.icon(
-            onPressed: () {
-              final childId = child.id;
+          const SizedBox(height: 8),
+          AppQuickActionCard(
+            title: 'Edit screening',
+            subtitle: 'Start new or continue from draft',
+            icon: Icons.edit_note,
+            onTap: () {
               context.push(
-                '${AppRoutes.parentScreening}?childId=$childId&autoStart=true',
+                '${AppRoutes.parentScreening}?childId=${child.id}&autoStart=true',
               );
             },
-            icon: const Icon(Icons.edit_note),
-            label: const Text('Start new screening or edit via draft'),
           ),
           const SizedBox(height: 24),
           Center(
@@ -243,7 +259,11 @@ class _ScreeningResultsScreenState extends ConsumerState<ScreeningResultsScreen>
               child: const Text('Back to home'),
             ),
           ),
+              ],
+            ),
+          ),
         ],
+        ),
       ),
     );
   }

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
+import '../../../shared/widgets/app_bottom_nav.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../data/parent_booking_repository.dart';
 import 'child_profile_form.dart';
@@ -244,6 +245,9 @@ class _ChildrenListScreenState extends ConsumerState<ChildrenListScreen> {
   Widget build(BuildContext context) {
     return AppScaffold(
       title: 'My Children',
+      subtitle: 'Child profiles for screening & care',
+      bottomNavigationBar:
+          const ParentBottomNav(current: ParentNavTab.children),
       floatingActionButton: FloatingActionButton(
         onPressed: _addChild,
         child: const Icon(Icons.add),
@@ -251,11 +255,32 @@ class _ChildrenListScreenState extends ConsumerState<ChildrenListScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _children.isEmpty
-              ? const Center(child: Text('No children yet. Tap + to add one.'))
+              ? AppContentContainer(
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.child_care_outlined,
+                          size: 56,
+                          color: Theme.of(context).colorScheme.outline,
+                        ),
+                        const SizedBox(height: 16),
+                        const Text('No children yet'),
+                        const SizedBox(height: 8),
+                        FilledButton.icon(
+                          onPressed: _addChild,
+                          icon: const Icon(Icons.add),
+                          label: const Text('Add child profile'),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
               : RefreshIndicator(
                   onRefresh: _load,
-                  child: ListView.separated(
-                    padding: const EdgeInsets.all(16),
+                  child: AppContentContainer(
+                    child: ListView.separated(
                     itemCount: _children.length,
                     separatorBuilder: (context, _) => const SizedBox(height: 12),
                     itemBuilder: (context, index) {
@@ -279,6 +304,7 @@ class _ChildrenListScreenState extends ConsumerState<ChildrenListScreen> {
                       );
                     },
                   ),
+                    ),
                 ),
     );
   }

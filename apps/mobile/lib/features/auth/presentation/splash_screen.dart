@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/app_providers.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../shared/widgets/app_brand_logo.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -19,7 +22,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   }
 
   Future<void> _navigate() async {
-    await Future<void>.delayed(const Duration(milliseconds: 800));
+    await Future<void>.delayed(const Duration(milliseconds: 900));
     if (!mounted) return;
 
     final auth = ref.read(authStateProvider);
@@ -37,24 +40,28 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
     return Scaffold(
-      body: Center(
+      body: Container(
+        decoration: const BoxDecoration(gradient: AppColors.warmGradient),
+        child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.health_and_safety, size: 72, color: colorScheme.primary),
-            const SizedBox(height: 24),
-            Text(
-              'ABA Connect',
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+            const AppBrandLogo(
+              size: AppBrandLogoSize.large,
+              lightOnDark: true,
             ),
-            const SizedBox(height: 32),
-            const CircularProgressIndicator(),
+            const SizedBox(height: AppSpacing.xxl),
+            SizedBox(
+              width: 28,
+              height: 28,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: Colors.white.withValues(alpha: 0.9),
+              ),
+            ),
           ],
+        ),
         ),
       ),
     );

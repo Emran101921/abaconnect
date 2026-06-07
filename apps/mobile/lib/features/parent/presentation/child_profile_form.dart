@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../../shared/widgets/app_dashboard_card.dart';
+import '../../../shared/widgets/app_section_header.dart';
 import '../data/parent_booking_repository.dart';
 
 Future<DateTime?> pickChildDateOfBirth(
@@ -119,16 +121,20 @@ class _ChildProfileFormState extends State<ChildProfileForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          'Child information',
-          style: Theme.of(context).textTheme.titleMedium,
+        const AppSectionHeader(
+          title: 'Child information',
+          subtitle: 'Basic details for screening and care',
         ),
-        const SizedBox(height: 12),
+        AppDashboardCard(
+          elevated: false,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
         TextField(
           enabled: !widget.readOnly,
           decoration: const InputDecoration(
             labelText: 'First name *',
-            border: OutlineInputBorder(),
+            prefixIcon: Icon(Icons.child_care_outlined),
           ),
           controller: TextEditingController(text: data.firstName)
             ..selection = TextSelection.collapsed(offset: data.firstName.length),
@@ -142,7 +148,6 @@ class _ChildProfileFormState extends State<ChildProfileForm> {
           enabled: !widget.readOnly,
           decoration: const InputDecoration(
             labelText: 'Last name *',
-            border: OutlineInputBorder(),
           ),
           controller: TextEditingController(text: data.lastName)
             ..selection = TextSelection.collapsed(offset: data.lastName.length),
@@ -171,10 +176,7 @@ class _ChildProfileFormState extends State<ChildProfileForm> {
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
           value: data.gender,
-          decoration: const InputDecoration(
-            labelText: 'Gender',
-            border: OutlineInputBorder(),
-          ),
+          decoration: const InputDecoration(labelText: 'Gender'),
           items: _genders
               .map((g) => DropdownMenuItem(value: g, child: Text(g)))
               .toList(),
@@ -188,10 +190,7 @@ class _ChildProfileFormState extends State<ChildProfileForm> {
         const SizedBox(height: 12),
         DropdownButtonFormField<String>(
           value: data.primaryLanguage,
-          decoration: const InputDecoration(
-            labelText: 'Primary language',
-            border: OutlineInputBorder(),
-          ),
+          decoration: const InputDecoration(labelText: 'Primary language'),
           items: _languages
               .map((l) => DropdownMenuItem(value: l, child: Text(l)))
               .toList(),
@@ -202,17 +201,24 @@ class _ChildProfileFormState extends State<ChildProfileForm> {
                   widget.onChanged();
                 },
         ),
-        const SizedBox(height: 24),
-        Text(
-          'Parent / guardian',
-          style: Theme.of(context).textTheme.titleMedium,
+            ],
+          ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 24),
+        const AppSectionHeader(
+          title: 'Parent / guardian',
+          subtitle: 'Primary contact for care coordination',
+        ),
+        AppDashboardCard(
+          elevated: false,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
         TextField(
           enabled: !widget.readOnly,
           decoration: const InputDecoration(
             labelText: 'Guardian name *',
-            border: OutlineInputBorder(),
+            prefixIcon: Icon(Icons.person_outline),
           ),
           controller: TextEditingController(text: data.guardianName ?? '')
             ..selection = TextSelection.collapsed(
@@ -229,7 +235,7 @@ class _ChildProfileFormState extends State<ChildProfileForm> {
           keyboardType: TextInputType.phone,
           decoration: const InputDecoration(
             labelText: 'Phone *',
-            border: OutlineInputBorder(),
+            prefixIcon: Icon(Icons.phone_outlined),
           ),
           controller: TextEditingController(text: data.guardianPhone ?? '')
             ..selection = TextSelection.collapsed(
@@ -246,7 +252,7 @@ class _ChildProfileFormState extends State<ChildProfileForm> {
           keyboardType: TextInputType.emailAddress,
           decoration: const InputDecoration(
             labelText: 'Email *',
-            border: OutlineInputBorder(),
+            prefixIcon: Icon(Icons.email_outlined),
           ),
           controller: TextEditingController(text: data.guardianEmail ?? '')
             ..selection = TextSelection.collapsed(
@@ -262,7 +268,7 @@ class _ChildProfileFormState extends State<ChildProfileForm> {
           enabled: !widget.readOnly,
           decoration: const InputDecoration(
             labelText: 'Address',
-            border: OutlineInputBorder(),
+            prefixIcon: Icon(Icons.home_outlined),
           ),
           controller: TextEditingController(text: data.addressLine1 ?? '')
             ..selection = TextSelection.collapsed(
@@ -278,7 +284,7 @@ class _ChildProfileFormState extends State<ChildProfileForm> {
           enabled: !widget.readOnly,
           decoration: const InputDecoration(
             labelText: 'ZIP code',
-            border: OutlineInputBorder(),
+            prefixIcon: Icon(Icons.pin_drop_outlined),
           ),
           controller: TextEditingController(text: data.zipCode ?? '')
             ..selection =
@@ -288,17 +294,24 @@ class _ChildProfileFormState extends State<ChildProfileForm> {
             widget.onChanged();
           },
         ),
-        const SizedBox(height: 24),
-        Text(
-          'Medical & insurance',
-          style: Theme.of(context).textTheme.titleMedium,
+            ],
+          ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 24),
+        const AppSectionHeader(
+          title: 'Medical & insurance',
+          subtitle: 'Helps match providers and coverage',
+        ),
+        AppDashboardCard(
+          elevated: false,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
         TextField(
           enabled: !widget.readOnly,
           decoration: const InputDecoration(
             labelText: 'Pediatrician name',
-            border: OutlineInputBorder(),
+            prefixIcon: Icon(Icons.medical_services_outlined),
           ),
           controller: TextEditingController(text: data.pediatricianName ?? '')
             ..selection = TextSelection.collapsed(
@@ -312,10 +325,7 @@ class _ChildProfileFormState extends State<ChildProfileForm> {
         const SizedBox(height: 12),
         DropdownButtonFormField<String>(
           value: data.insuranceType,
-          decoration: const InputDecoration(
-            labelText: 'Insurance type',
-            border: OutlineInputBorder(),
-          ),
+          decoration: const InputDecoration(labelText: 'Insurance type'),
           items: _insuranceTypes
               .map((t) => DropdownMenuItem(value: t, child: Text(t)))
               .toList(),
@@ -347,6 +357,9 @@ class _ChildProfileFormState extends State<ChildProfileForm> {
                   });
                   widget.onChanged();
                 },
+        ),
+            ],
+          ),
         ),
       ],
     );

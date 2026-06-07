@@ -3,7 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/app_providers.dart';
-import '../../../shared/widgets/app_scaffold.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../shared/widgets/app_brand_logo.dart';
+import '../../../shared/widgets/app_healthcare_illustration.dart';
+import '../../../shared/widgets/app_theme_toggle.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -55,48 +59,181 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return AppScaffold(
-      title: 'Create Account',
-      body: Padding(
-        padding: const EdgeInsets.all(24),
+    final wide = MediaQuery.sizeOf(context).width >= 900;
+
+    return Scaffold(
+      body: wide ? _buildWideLayout(context) : _buildNarrowLayout(context),
+    );
+  }
+
+  Widget _buildWideLayout(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Container(
+            decoration: const BoxDecoration(gradient: AppColors.warmGradient),
+            padding: const EdgeInsets.all(AppSpacing.xxl),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => context.go('/login'),
+                      icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    ),
+                    const Spacer(),
+                    const AppThemeToggle(compact: true),
+                  ],
+                ),
+                const Spacer(),
+                const AppHealthcareIllustration(
+                  type: AppIllustrationType.family,
+                  size: 140,
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Text(
+                  'Start your family\'s\ncare journey',
+                  style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                      ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  'Create a secure parent account to manage screening, '
+                  'therapy, appointments, and progress — all in one place.',
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: Colors.white.withValues(alpha: 0.92),
+                      ),
+                ),
+                const Spacer(),
+              ],
+            ),
+          ),
+        ),
+        Expanded(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(AppSpacing.xxl),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 440),
+                child: _buildForm(context),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNarrowLayout(BuildContext context) {
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TextField(
-              controller: _firstNameController,
-              decoration: const InputDecoration(labelText: 'First name'),
+            Row(
+              children: [
+                IconButton(
+                  onPressed: () => context.go('/login'),
+                  icon: const Icon(Icons.arrow_back),
+                ),
+                const Spacer(),
+                const AppThemeToggle(compact: true),
+              ],
             ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _lastNameController,
-              decoration: const InputDecoration(labelText: 'Last name'),
+            const Center(
+              child: AppBrandLogo(size: AppBrandLogoSize.medium),
             ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _emailController,
-              decoration: const InputDecoration(labelText: 'Email'),
-              keyboardType: TextInputType.emailAddress,
+            const SizedBox(height: AppSpacing.md),
+            const Center(
+              child: AppHealthcareIllustration(
+                type: AppIllustrationType.family,
+                size: 96,
+              ),
             ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _passwordController,
-              decoration: const InputDecoration(labelText: 'Password'),
-              obscureText: true,
-            ),
-            const SizedBox(height: 24),
-            FilledButton(
-              onPressed: _loading ? null : _register,
-              child: _loading
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Register'),
-            ),
+            const SizedBox(height: AppSpacing.lg),
+            _buildForm(context),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildForm(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Create account',
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          'Family-friendly care coordination for Early Intervention',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        TextField(
+          controller: _firstNameController,
+          decoration: const InputDecoration(
+            labelText: 'First name',
+            prefixIcon: Icon(Icons.person_outline),
+          ),
+          textInputAction: TextInputAction.next,
+        ),
+        const SizedBox(height: AppSpacing.md),
+        TextField(
+          controller: _lastNameController,
+          decoration: const InputDecoration(
+            labelText: 'Last name',
+            prefixIcon: Icon(Icons.person_outline),
+          ),
+          textInputAction: TextInputAction.next,
+        ),
+        const SizedBox(height: AppSpacing.md),
+        TextField(
+          controller: _emailController,
+          decoration: const InputDecoration(
+            labelText: 'Email',
+            prefixIcon: Icon(Icons.email_outlined),
+          ),
+          keyboardType: TextInputType.emailAddress,
+          textInputAction: TextInputAction.next,
+        ),
+        const SizedBox(height: AppSpacing.md),
+        TextField(
+          controller: _passwordController,
+          decoration: const InputDecoration(
+            labelText: 'Password',
+            prefixIcon: Icon(Icons.lock_outline),
+          ),
+          obscureText: true,
+          onSubmitted: (_) => _loading ? null : _register(),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        FilledButton(
+          onPressed: _loading ? null : _register,
+          child: _loading
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Create account'),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        TextButton(
+          onPressed: () => context.go('/login'),
+          child: const Text('Already have an account? Sign in'),
+        ),
+      ],
     );
   }
 }

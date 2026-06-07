@@ -3,7 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/app_providers.dart';
+import '../../../shared/widgets/app_dashboard_card.dart';
+import '../../../shared/widgets/app_healthcare_illustration.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/app_section_header.dart';
 import '../data/parent_booking_repository.dart';
 import 'parent_home_screen.dart';
 
@@ -146,11 +149,29 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
 
     return AppScaffold(
       title: 'Book Session',
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
+      body: AppContentContainer(
+        child: SingleChildScrollView(
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            const AppSectionHeader(
+              title: 'Schedule a session',
+              subtitle: 'Book therapy with a matched provider',
+            ),
+            const SizedBox(height: 12),
+            AppDashboardCard(
+              elevated: false,
+              child: const AppIllustrationRow(
+                type: AppIllustrationType.scheduling,
+                title: 'Flexible scheduling',
+                subtitle: 'In-home, clinic, school, or telehealth',
+              ),
+            ),
+            const SizedBox(height: 16),
+            AppDashboardCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
             DropdownMenu<String>(
               label: const Text('Child'),
               initialSelection: _childId,
@@ -251,18 +272,23 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                   if (v != null) setState(() => _recurringWeeks = v);
                 },
               ),
-            const Spacer(),
-            FilledButton(
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            FilledButton.icon(
               onPressed: _submitting ? null : _book,
-              child: _submitting
+              icon: _submitting
                   ? const SizedBox(
                       height: 20,
                       width: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('Confirm Booking'),
+                  : const Icon(Icons.event_available),
+              label: const Text('Confirm booking'),
             ),
           ],
+        ),
         ),
       ),
     );

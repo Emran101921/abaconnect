@@ -8,6 +8,7 @@ import '../../../core/providers/app_providers.dart';
 import '../data/therapist_repository.dart';
 import 'session_notes_screen.dart';
 import 'therapist_home_screen.dart';
+import '../../../shared/widgets/app_bottom_nav.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 
 class TherapistAppointmentsScreen extends ConsumerWidget {
@@ -141,6 +142,9 @@ class TherapistAppointmentsScreen extends ConsumerWidget {
 
     return AppScaffold(
       title: 'My Appointments',
+      bottomNavigationBar: const TherapistBottomNav(
+        current: TherapistNavTab.appointments,
+      ),
       actions: [
         IconButton(
           icon: const Icon(Icons.calendar_month),

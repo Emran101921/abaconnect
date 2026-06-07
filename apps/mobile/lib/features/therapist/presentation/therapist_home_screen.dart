@@ -6,7 +6,12 @@ import 'package:intl/intl.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/models/dashboard_action_model.dart';
+import '../../../shared/widgets/app_bottom_nav.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/app_section_header.dart';
+import '../../../shared/widgets/app_stat_card.dart';
+import '../../../shared/widgets/app_welcome_banner.dart';
+import '../../../shared/widgets/app_healthcare_illustration.dart';
 import '../../../shared/widgets/dashboard_action_inbox.dart';
 import '../../messaging/messaging_providers.dart';
 import '../../messaging/presentation/messages_screen.dart';
@@ -63,6 +68,8 @@ class TherapistHomeScreen extends ConsumerWidget {
 
     return AppScaffold(
       title: 'Therapist',
+      bottomNavigationBar:
+          const TherapistBottomNav(current: TherapistNavTab.home),
       actions: [
         IconButton(
           icon: const Icon(Icons.logout),
@@ -81,40 +88,62 @@ class TherapistHomeScreen extends ConsumerWidget {
           ref.invalidate(messageThreadsProvider);
           ref.invalidate(therapistDashboardProvider);
         },
-        child: ListView(
-          padding: const EdgeInsets.all(16),
+        child: AppContentContainer(
+          padding: EdgeInsets.zero,
+          child: ListView(
           children: [
-            Text('Overview', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 12),
-            dashboard.when(
+            AppWelcomeBanner(
+              greeting: 'Clinical dashboard',
+              subtitle: 'Sessions, documentation, and parent communication in one place.',
+              illustrationType: AppIllustrationType.therapy,
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: AppSectionHeader(
+                title: 'Overview',
+                subtitle: 'Your clinical day at a glance',
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: SizedBox(height: 12),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: dashboard.when(
               data: (d) => Wrap(
                 spacing: 12,
                 runSpacing: 12,
                 children: [
-                  _StatCard(
+                  AppStatCard(
                     label: 'Pending requests',
                     value: '${d.pendingRequests}',
                     highlight: d.pendingRequests > 0,
+                    icon: Icons.inbox_outlined,
                     onTap: () =>
                         context.push('${AppRoutes.therapistHome}/appointments'),
                   ),
-                  _StatCard(
+                  AppStatCard(
                     label: 'Today',
                     value: '${d.appointmentsToday}',
+                    icon: Icons.today_outlined,
+                    accent: d.appointmentsToday > 0,
                     onTap: () =>
                         context.push('${AppRoutes.therapistHome}/appointments'),
                   ),
-                  _StatCard(
+                  AppStatCard(
                     label: 'In progress',
                     value: '${d.inProgressSessions}',
                     highlight: d.inProgressSessions > 0,
+                    icon: Icons.play_circle_outline,
                     onTap: () =>
                         context.push('${AppRoutes.therapistHome}/session-notes'),
                   ),
-                  _StatCard(
+                  AppStatCard(
                     label: 'SOAP due',
                     value: '${d.pendingDocumentation}',
                     highlight: d.pendingDocumentation > 0,
+                    icon: Icons.edit_note_outlined,
                     onTap: () =>
                         context.push('${AppRoutes.therapistHome}/session-notes'),
                   ),
@@ -122,6 +151,7 @@ class TherapistHomeScreen extends ConsumerWidget {
               ),
               loading: () => const LinearProgressIndicator(),
               error: (e, _) => Text('Overview error: $e'),
+            ),
             ),
             const SizedBox(height: 12),
             dashboard.when(
@@ -293,50 +323,6 @@ class TherapistHomeScreen extends ConsumerWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  const _StatCard({
-    required this.label,
-    required this.value,
-    this.highlight = false,
-    this.onTap,
-  });
-
-  final String label;
-  final String value;
-  final bool highlight;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return SizedBox(
-      width: 160,
-      child: Card(
-        color: highlight ? colorScheme.primaryContainer : null,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-                const SizedBox(height: 4),
-                Text(label),
-              ],
-            ),
-          ),
         ),
       ),
     );

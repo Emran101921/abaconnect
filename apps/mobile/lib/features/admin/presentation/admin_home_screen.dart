@@ -4,6 +4,10 @@ import 'package:go_router/go_router.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/app_section_header.dart';
+import '../../../shared/widgets/app_welcome_banner.dart';
+import '../../../shared/widgets/app_healthcare_illustration.dart';
+import '../../../shared/widgets/app_theme_toggle.dart';
 import '../../notifications/notification_providers.dart';
 import 'admin_providers.dart';
 import 'admin_stat_card.dart';
@@ -22,6 +26,7 @@ class AdminHomeScreen extends ConsumerWidget {
     return AppScaffold(
       title: 'Admin',
       actions: [
+        const AppThemeToggle(compact: true),
         IconButton(
           icon: unreadCount > 0
               ? Badge(
@@ -46,12 +51,21 @@ class AdminHomeScreen extends ConsumerWidget {
           ref.invalidate(adminComplaintsProvider);
           ref.invalidate(unreadNotificationsProvider);
         },
-        child: ListView(
-          padding: const EdgeInsets.all(16),
+        child: AppContentContainer(
+          padding: EdgeInsets.zero,
+          child: ListView(
           children: [
-            Text(
-              'Overview',
-              style: Theme.of(context).textTheme.titleLarge,
+            const AppWelcomeBanner(
+              greeting: 'Platform administration',
+              subtitle: 'Secure oversight for users, claims, screenings, and compliance.',
+              illustrationType: AppIllustrationType.progress,
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: AppSectionHeader(
+                title: 'Overview',
+                subtitle: 'Platform operations dashboard',
+              ),
             ),
             const SizedBox(height: 12),
             dashboard.when(
@@ -165,6 +179,7 @@ class AdminHomeScreen extends ConsumerWidget {
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
+        ),
         ),
       ),
     );
