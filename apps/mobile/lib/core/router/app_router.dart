@@ -392,7 +392,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.matching,
         name: 'matching',
-        builder: (context, state) => const MatchResultsScreen(),
+        builder: (context, state) {
+          final therapyTypes = state.uri.queryParameters['therapyTypes']
+              ?.split(',')
+              .where((value) => value.isNotEmpty)
+              .toList();
+          return MatchResultsScreen(therapyTypes: therapyTypes);
+        },
       ),
       GoRoute(
         path: AppRoutes.notifications,

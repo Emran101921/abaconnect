@@ -319,7 +319,7 @@ export class AdminResolver {
       screeningId,
       user.id,
     );
-    return this.mapScreeningDetail(row);
+    return this.screeningsService.buildAnalyticsScreeningDetail(row);
   }
 
   @Mutation(() => AdminInsuranceClaimType, { name: 'updateInsuranceClaim' })
@@ -402,32 +402,6 @@ export class AdminResolver {
         lastName: t.user.lastName,
         email: t.user.email,
       },
-    };
-  }
-
-  private mapScreeningDetail(r: {
-    id: string;
-    completedAt: Date;
-    score?: unknown | null;
-    riskLevel?: string | null;
-    responses: unknown;
-    recommendations?: unknown;
-    consentGrantedAt?: Date | null;
-    template?: { name: string } | null;
-    child?: { firstName: string; lastName: string } | null;
-  }): AnalyticsScreeningDetailType {
-    return {
-      id: r.id,
-      completedAt: r.completedAt,
-      childName: r.child
-        ? `${r.child.firstName} ${r.child.lastName}`
-        : undefined,
-      templateName: r.template?.name,
-      score: r.score != null ? Number(r.score) : undefined,
-      riskLevel: r.riskLevel ?? undefined,
-      responsesJson: JSON.stringify(r.responses ?? {}),
-      recommendationsJson: JSON.stringify(r.recommendations ?? []),
-      consentGrantedAt: r.consentGrantedAt ?? undefined,
     };
   }
 

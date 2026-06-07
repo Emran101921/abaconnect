@@ -179,6 +179,15 @@ export class AnalyticsScreeningDetailType {
 
   @Field({ nullable: true })
   consentGrantedAt?: Date;
+
+  @Field({ nullable: true })
+  evaluationRequestedAt?: Date;
+
+  @Field({ nullable: true })
+  childProfileSummaryJson?: string;
+
+  @Field({ nullable: true })
+  sectionAnswersJson?: string;
 }
 
 @ObjectType()

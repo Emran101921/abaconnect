@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -13,10 +14,12 @@ import {
   resolveAnalyticsBounds,
   ResolvedDateBounds,
 } from '../common/date-range.util';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { EarlyInterventionScoringService } from './early-intervention-scoring.service';
 import {
   buildEarlyInterventionQuestionsJson,
+  buildSanitizedEiSectionAnswers,
   EARLY_INTERVENTION_TEMPLATE_NAME,
 } from './early-intervention-template';
 
@@ -26,6 +29,7 @@ export class ScreeningsService {
     private readonly prisma: PrismaService,
     private readonly eiScoring: EarlyInterventionScoringService,
     private readonly audit: AuditService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async ensureEarlyInterventionTemplate(tenantId: string) {
@@ -263,7 +267,21 @@ export class ScreeningsService {
   ) {
     const row = await this.prisma.screeningResponse.findFirst({
       where: { id: responseId, tenantId, isDraft: false },
-      include: { template: true, child: true },
+      include: {
+        template: true,
+        child: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            dateOfBirth: true,
+            gender: true,
+            primaryLanguage: true,
+            insuranceType: true,
+            hadEarlyIntervention: true,
+          },
+        },
+      },
     });
     if (!row) throw new NotFoundException('Screening not found');
 
@@ -282,6 +300,143 @@ export class ScreeningsService {
     }
 
     return row;
+  }
+
+  async requestEarlyInterventionEvaluation(
+    userId: string,
+    screeningResponseId: string,
+  ) {
+    const parent = await this.requireParent(userId);
+    const row = await this.prisma.screeningResponse.findFirst({
+      where: {
+        id: screeningResponseId,
+        parentId: parent.id,
+        isDraft: false,
+      },
+      include: { template: true, child: true },
+    });
+    if (!row) {
+      throw new NotFoundException('Screening not found');
+    }
+
+    if (row.evaluationRequestedAt) {
+      throw new ConflictException('Evaluation already requested for this screening');
+    }
+
+    const recommendations = Array.isArray(row.recommendations)
+      ? (row.recommendations as Array<{ code?: string }>)
+      : [];
+    const serviceCodes = recommendations
+      .map((rec) => rec.code)
+      .filter((code): code is string => Boolean(code));
+
+    const requestedAt = new Date();
+    const updated = await this.prisma.screeningResponse.update({
+      where: { id: row.id },
+      data: { evaluationRequestedAt: requestedAt },
+      include: { template: true, child: true },
+    });
+
+    await this.audit.log({
+      tenantId: parent.tenantId,
+      actorId: userId,
+      action: 'CREATE',
+      resourceType: 'EvaluationRequest',
+      resourceId: row.id,
+      metadata: {
+        screeningResponseId: row.id,
+        childId: row.childId,
+        serviceCodes,
+        riskLevel: row.riskLevel,
+      },
+    });
+
+    const staffUsers = await this.prisma.user.findMany({
+      where: {
+        tenantId: parent.tenantId,
+        role: { in: ['PLATFORM_ADMIN', 'AGENCY_ADMIN'] },
+        isActive: true,
+      },
+      select: { id: true },
+    });
+
+    await Promise.all(
+      staffUsers.map((staff) =>
+        this.notifications.createForUser(staff.id, {
+          title: 'Early Intervention evaluation requested',
+          body: 'A parent requested an evaluation following an EI screening. Review the screening in analytics.',
+          data: {
+            type: 'EI_EVALUATION_REQUEST',
+            screeningResponseId: row.id,
+            childId: row.childId,
+          },
+        }),
+      ),
+    );
+
+    return {
+      id: updated.id,
+      screeningResponseId: updated.id,
+      childId: updated.childId,
+      requestedAt,
+      serviceCodes,
+    };
+  }
+
+  buildAnalyticsScreeningDetail(row: {
+    id: string;
+    completedAt: Date;
+    score?: unknown | null;
+    riskLevel?: string | null;
+    responses: unknown;
+    recommendations?: unknown;
+    consentGrantedAt?: Date | null;
+    evaluationRequestedAt?: Date | null;
+    template?: { name: string; therapyType: string } | null;
+    child?: {
+      firstName: string;
+      lastName: string;
+      dateOfBirth: Date;
+      gender?: string | null;
+      primaryLanguage?: string | null;
+      insuranceType?: string | null;
+      hadEarlyIntervention?: boolean | null;
+    } | null;
+  }) {
+    const responses =
+      row.responses && typeof row.responses === 'object'
+        ? (row.responses as Record<string, unknown>)
+        : {};
+    const isEi =
+      row.template?.therapyType === 'EARLY_INTERVENTION' ||
+      row.template?.name === EARLY_INTERVENTION_TEMPLATE_NAME;
+
+    return {
+      id: row.id,
+      completedAt: row.completedAt,
+      childName: row.child
+        ? `${row.child.firstName} ${row.child.lastName}`
+        : undefined,
+      templateName: row.template?.name,
+      score: row.score != null ? Number(row.score) : undefined,
+      riskLevel: row.riskLevel ?? undefined,
+      responsesJson: JSON.stringify(row.responses ?? {}),
+      recommendationsJson: JSON.stringify(row.recommendations ?? []),
+      consentGrantedAt: row.consentGrantedAt ?? undefined,
+      evaluationRequestedAt: row.evaluationRequestedAt ?? undefined,
+      childProfileSummaryJson: row.child
+        ? JSON.stringify({
+            dateOfBirth: row.child.dateOfBirth.toISOString().slice(0, 10),
+            gender: row.child.gender ?? null,
+            primaryLanguage: row.child.primaryLanguage ?? null,
+            insuranceType: row.child.insuranceType ?? null,
+            hadEarlyIntervention: row.child.hadEarlyIntervention ?? null,
+          })
+        : undefined,
+      sectionAnswersJson: isEi
+        ? JSON.stringify(buildSanitizedEiSectionAnswers(responses))
+        : undefined,
+    };
   }
 
   async listAnalyticsScreeningsForTenant(

@@ -359,8 +359,9 @@ model ScreeningResponse {
   riskLevel        String?   @map("risk_level")
   recommendations  Json      @default("[]")
   isDraft          Boolean   @default(false) @map("is_draft")
-  consentGrantedAt DateTime? @map("consent_granted_at")
-  completedAt      DateTime  @default(now()) @map("completed_at")
+  consentGrantedAt       DateTime? @map("consent_granted_at")
+  evaluationRequestedAt  DateTime? @map("evaluation_requested_at")
+  completedAt            DateTime  @default(now()) @map("completed_at")
   createdAt        DateTime  @default(now()) @map("created_at")
   updatedAt        DateTime  @updatedAt @map("updated_at")
 

@@ -39,6 +39,7 @@ import {
   ScreeningResponseType,
   ScreeningTemplateType,
   SessionHistoryType,
+  EarlyInterventionEvaluationRequestType,
 } from './types/parent-ext.types';
 
 @Resolver()
@@ -130,6 +131,7 @@ export class ParentBookingResolver {
       input?.therapyType,
       input?.latitude,
       input?.longitude,
+      input?.therapyTypes,
     );
 
     const therapists = await this.prisma.therapist.findMany({
@@ -401,6 +403,26 @@ export class ParentBookingResolver {
       user.id,
     );
     return this.mapScreeningResponse(row);
+  }
+
+  @Mutation(() => EarlyInterventionEvaluationRequestType, {
+    name: 'requestEarlyInterventionEvaluation',
+  })
+  async requestEarlyInterventionEvaluation(
+    @CurrentUser() user: AuthUser,
+    @Args('screeningResponseId', { type: () => ID }) screeningResponseId: string,
+  ): Promise<EarlyInterventionEvaluationRequestType> {
+    const result = await this.screeningsService.requestEarlyInterventionEvaluation(
+      user.id,
+      screeningResponseId,
+    );
+    return {
+      id: result.id,
+      screeningResponseId: result.screeningResponseId,
+      childId: result.childId,
+      requestedAt: result.requestedAt,
+      serviceCodes: result.serviceCodes,
+    };
   }
 
   private parseResponsesJson(responsesJson: string) {

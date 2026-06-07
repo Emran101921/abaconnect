@@ -372,3 +372,53 @@ export function buildEarlyInterventionQuestionsJson() {
     sections: EARLY_INTERVENTION_SECTIONS,
   };
 }
+
+export interface SanitizedSectionAnswer {
+  sectionId: string;
+  sectionTitle: string;
+  answers: Array<{
+    questionId: string;
+    question: string;
+    answer: string;
+  }>;
+}
+
+function formatEiAnswer(
+  question: EIQuestion,
+  value: unknown,
+): string | null {
+  if (value == null || value === '') return null;
+  if (question.type === 'yes_no') {
+    if (value === true || value === 'yes') return 'Yes';
+    if (value === false || value === 'no') return 'No';
+  }
+  if (question.type === 'text_list' && Array.isArray(value)) {
+    const items = value.filter((item) => String(item).trim().length > 0);
+    return items.length > 0 ? items.join(', ') : null;
+  }
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+  if (typeof value === 'number' && question.options?.[value] != null) {
+    return question.options[value];
+  }
+  return String(value);
+}
+
+export function buildSanitizedEiSectionAnswers(
+  responses: Record<string, unknown>,
+): SanitizedSectionAnswer[] {
+  return EARLY_INTERVENTION_SECTIONS.map((section) => ({
+    sectionId: section.id,
+    sectionTitle: section.title,
+    answers: section.questions
+      .map((question) => {
+        const answer = formatEiAnswer(question, responses[question.id]);
+        if (answer == null) return null;
+        return {
+          questionId: question.id,
+          question: question.text,
+          answer,
+        };
+      })
+      .filter((entry): entry is NonNullable<typeof entry> => entry != null),
+  })).filter((section) => section.answers.length > 0);
+}

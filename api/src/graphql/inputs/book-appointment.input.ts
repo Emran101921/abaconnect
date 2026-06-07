@@ -48,6 +48,9 @@ export class TherapistDiscoveryInput {
   @Field(() => TherapyType, { nullable: true })
   therapyType?: TherapyType;
 
+  @Field(() => [TherapyType], { nullable: true })
+  therapyTypes?: TherapyType[];
+
   @Field({ nullable: true })
   latitude?: number;
 

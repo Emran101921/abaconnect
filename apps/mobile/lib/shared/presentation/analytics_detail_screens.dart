@@ -179,6 +179,11 @@ class AdminAnalyticsScreeningDetailScreen extends ConsumerWidget {
                   score: s.score,
                   riskLevel: s.riskLevel,
                   responsesJson: s.responsesJson,
+                  recommendationsJson: s.recommendationsJson,
+                  consentGrantedAt: s.consentGrantedAt,
+                  evaluationRequestedAt: s.evaluationRequestedAt,
+                  childProfileSummaryJson: s.childProfileSummaryJson,
+                  sectionAnswersJson: s.sectionAnswersJson,
                   onRefresh: () async {
                     ref.invalidate(
                         adminAnalyticsScreeningDetailProvider(screeningId));
@@ -237,6 +242,11 @@ class AgencyAnalyticsScreeningDetailScreen extends ConsumerWidget {
                   score: s.score,
                   riskLevel: s.riskLevel,
                   responsesJson: s.responsesJson,
+                  recommendationsJson: s.recommendationsJson,
+                  consentGrantedAt: s.consentGrantedAt,
+                  evaluationRequestedAt: s.evaluationRequestedAt,
+                  childProfileSummaryJson: s.childProfileSummaryJson,
+                  sectionAnswersJson: s.sectionAnswersJson,
                   onRefresh: () async {
                     ref.invalidate(
                         agencyAnalyticsScreeningDetailProvider(screeningId));
@@ -507,6 +517,11 @@ class AnalyticsScreeningDetailBody extends StatelessWidget {
     this.score,
     this.riskLevel,
     this.responsesJson,
+    this.recommendationsJson,
+    this.consentGrantedAt,
+    this.evaluationRequestedAt,
+    this.childProfileSummaryJson,
+    this.sectionAnswersJson,
     required this.onRefresh,
   });
 
@@ -516,12 +531,20 @@ class AnalyticsScreeningDetailBody extends StatelessWidget {
   final double? score;
   final String? riskLevel;
   final String? responsesJson;
+  final String? recommendationsJson;
+  final DateTime? consentGrantedAt;
+  final DateTime? evaluationRequestedAt;
+  final String? childProfileSummaryJson;
+  final String? sectionAnswersJson;
   final Future<void> Function() onRefresh;
 
   @override
   Widget build(BuildContext context) {
     final dateFormat = DateFormat.yMMMd().add_jm();
-    final responses = _parseResponses(responsesJson);
+    final childProfile = _parseMap(childProfileSummaryJson);
+    final recommendations = _parseRecommendations(recommendationsJson);
+    final sectionAnswers = _parseSectionAnswers(sectionAnswersJson);
+    final rawResponses = _parseResponses(responsesJson);
 
     return RefreshIndicator(
       onRefresh: onRefresh,
@@ -549,11 +572,124 @@ class AnalyticsScreeningDetailBody extends StatelessWidget {
                     value: score?.toStringAsFixed(2),
                   ),
                   _DetailRow(label: 'Risk level', value: riskLevel),
+                  _DetailRow(
+                    label: 'Consent granted',
+                    value: consentGrantedAt != null
+                        ? dateFormat.format(consentGrantedAt!)
+                        : null,
+                  ),
+                  _DetailRow(
+                    label: 'Evaluation requested',
+                    value: evaluationRequestedAt != null
+                        ? dateFormat.format(evaluationRequestedAt!)
+                        : null,
+                  ),
                 ],
               ),
             ),
           ),
-          if (responses.isNotEmpty) ...[
+          if (childProfile.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              'Child profile',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            Card(
+              child: Column(
+                children: [
+                  if (childProfile['dateOfBirth'] != null)
+                    ListTile(
+                      dense: true,
+                      title: const Text('Date of birth'),
+                      trailing: Text('${childProfile['dateOfBirth']}'),
+                    ),
+                  if (childProfile['gender'] != null)
+                    ListTile(
+                      dense: true,
+                      title: const Text('Gender'),
+                      trailing: Text('${childProfile['gender']}'),
+                    ),
+                  if (childProfile['primaryLanguage'] != null)
+                    ListTile(
+                      dense: true,
+                      title: const Text('Primary language'),
+                      trailing: Text('${childProfile['primaryLanguage']}'),
+                    ),
+                  if (childProfile['insuranceType'] != null)
+                    ListTile(
+                      dense: true,
+                      title: const Text('Insurance type'),
+                      trailing: Text('${childProfile['insuranceType']}'),
+                    ),
+                  if (childProfile['hadEarlyIntervention'] != null)
+                    ListTile(
+                      dense: true,
+                      title: const Text('Prior Early Intervention'),
+                      trailing: Text(
+                        childProfile['hadEarlyIntervention'] == true
+                            ? 'Yes'
+                            : 'No',
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+          if (recommendations.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              'Recommendations',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            ...recommendations.map(
+              (rec) => Card(
+                margin: const EdgeInsets.only(bottom: 8),
+                child: ListTile(
+                  title: Text('${rec['service'] ?? 'Service'}'),
+                  subtitle: Text('${rec['explanation'] ?? ''}'),
+                  isThreeLine: true,
+                ),
+              ),
+            ),
+          ],
+          if (sectionAnswers.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              'Section answers',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            ...sectionAnswers.map((section) {
+              final answers = section['answers'] as List<dynamic>? ?? [];
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${section['sectionId']}: ${section['sectionTitle']}',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 8),
+                      ...answers.map((answer) {
+                        final item = answer as Map<String, dynamic>;
+                        return ListTile(
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          title: Text('${item['question']}'),
+                          trailing: Text('${item['answer']}'),
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ] else if (rawResponses.isNotEmpty) ...[
             const SizedBox(height: 12),
             Text(
               'Responses',
@@ -562,7 +698,7 @@ class AnalyticsScreeningDetailBody extends StatelessWidget {
             const SizedBox(height: 8),
             Card(
               child: Column(
-                children: responses.entries.map((entry) {
+                children: rawResponses.entries.map((entry) {
                   return ListTile(
                     dense: true,
                     title: Text(entry.key),
@@ -575,6 +711,43 @@ class AnalyticsScreeningDetailBody extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Map<String, dynamic> _parseMap(String? json) {
+    if (json == null || json.isEmpty) return {};
+    try {
+      final decoded = jsonDecode(json);
+      if (decoded is Map<String, dynamic>) return decoded;
+    } catch (_) {}
+    return {};
+  }
+
+  List<Map<String, dynamic>> _parseRecommendations(String? json) {
+    if (json == null || json.isEmpty) return [];
+    try {
+      final decoded = jsonDecode(json);
+      if (decoded is List) {
+        return decoded
+            .whereType<Map<String, dynamic>>()
+            .map((item) => Map<String, dynamic>.from(item))
+            .toList();
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  List<Map<String, dynamic>> _parseSectionAnswers(String? json) {
+    if (json == null || json.isEmpty) return [];
+    try {
+      final decoded = jsonDecode(json);
+      if (decoded is List) {
+        return decoded
+            .whereType<Map<String, dynamic>>()
+            .map((item) => Map<String, dynamic>.from(item))
+            .toList();
+      }
+    } catch (_) {}
+    return [];
   }
 
   Map<String, dynamic> _parseResponses(String? json) {
