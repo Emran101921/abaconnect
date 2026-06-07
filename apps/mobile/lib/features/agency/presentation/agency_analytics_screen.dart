@@ -22,6 +22,7 @@ class AgencyAnalyticsScreen extends ConsumerWidget {
     final metrics = ref.watch(agencyAnalyticsProvider);
     final claims = ref.watch(agencyClaimsPipelineProvider);
     final screenings = ref.watch(agencyScreeningFunnelProvider);
+    final dateRange = ref.watch(agencyAnalyticsDateRangeProvider);
     final currency = NumberFormat.currency(symbol: '\$');
     final dateFormat = DateFormat.yMMMd();
 
@@ -64,20 +65,11 @@ class AgencyAnalyticsScreen extends ConsumerWidget {
     final pipeline = claims.requireValue;
     final funnel = screenings.requireValue;
 
-    String metricLabel(String key) {
-      switch (key) {
-        case 'appointments_7d':
-          return 'Appointments (7d)';
-        case 'sessions_completed':
-          return 'Sessions completed';
-        case 'revenue_paid':
-          return 'Revenue paid';
-        case 'active_children':
-          return 'Active clients';
-        default:
-          return key;
-      }
-    }
+    String metricLabel(String key) => analyticsOverviewMetricLabel(
+          key,
+          dateRange,
+          activeChildrenLabel: 'Active clients',
+        );
 
     return AnalyticsDateRangeSync(
       dateRangeProvider: agencyAnalyticsDateRangeProvider,

@@ -270,9 +270,14 @@ export class PlatformResolver {
   @Roles('PLATFORM_ADMIN', 'AGENCY_ADMIN')
   async tenantAnalytics(
     @CurrentUser() user: AuthUser,
+    @Args('fromDate', { nullable: true }) fromDate?: Date,
+    @Args('toDate', { nullable: true }) toDate?: Date,
   ): Promise<AnalyticsMetricType[]> {
     if (!user.tenantId) return [];
-    const rows = await this.analytics.getTenantMetrics(user.tenantId);
+    const rows = await this.analytics.getTenantMetrics(user.tenantId, {
+      fromDate,
+      toDate,
+    });
     return rows;
   }
 

@@ -349,13 +349,21 @@ class AgencyRepository {
     );
   }
 
-  Future<List<Map<String, dynamic>>> fetchTenantAnalytics() async {
+  Future<List<Map<String, dynamic>>> fetchTenantAnalytics({
+    String? fromDate,
+    String? toDate,
+  }) async {
     const query = r'''
-      query {
-        tenantAnalytics { metricKey metricValue }
+      query TenantAnalytics($fromDate: DateTime, $toDate: DateTime) {
+        tenantAnalytics(fromDate: $fromDate, toDate: $toDate) {
+          metricKey metricValue
+        }
       }
     ''';
-    final result = await _graphql.query(query);
+    final result = await _graphql.query(
+      query,
+      variables: {'fromDate': fromDate, 'toDate': toDate},
+    );
     final list = result['data']?['tenantAnalytics'] as List<dynamic>? ?? [];
     return list
         .map(

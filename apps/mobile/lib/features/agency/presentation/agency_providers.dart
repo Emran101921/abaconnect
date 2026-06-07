@@ -31,7 +31,11 @@ final agencyUpcomingAppointmentsProvider =
 
 final agencyAnalyticsProvider =
     FutureProvider<List<Map<String, dynamic>>>((ref) {
-  return ref.watch(agencyRepositoryProvider).fetchTenantAnalytics();
+  final range = ref.watch(agencyAnalyticsDateRangeProvider);
+  return ref.watch(agencyRepositoryProvider).fetchTenantAnalytics(
+        fromDate: range.graphqlFrom,
+        toDate: range.graphqlTo,
+      );
 });
 
 final agencyClaimsPipelineProvider =
