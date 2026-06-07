@@ -6,6 +6,10 @@ import 'package:intl/intl.dart';
 
 import '../../features/admin/presentation/admin_providers.dart';
 import '../../features/agency/presentation/agency_providers.dart';
+import '../models/analytics_date_range.dart';
+import '../presentation/analytics_copy_link.dart';
+import '../presentation/analytics_date_range_filter.dart';
+import '../presentation/analytics_date_range_url.dart';
 import '../widgets/app_scaffold.dart';
 
 class AdminAnalyticsClaimDetailScreen extends ConsumerWidget {
@@ -16,28 +20,51 @@ class AdminAnalyticsClaimDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final claim = ref.watch(adminAnalyticsClaimDetailProvider(claimId));
-    return AppScaffold(
-      title: 'Claim detail',
-      body: claim.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
-        data: (c) => AnalyticsClaimDetailBody(
-          status: c.status,
-          payerName: c.payerName,
-          billedAmount: c.billedAmount,
-          approvedAmount: c.approvedAmount,
-          serviceDate: c.serviceDate,
-          childName: c.childName,
-          parentEmail: c.parentEmail,
-          denialReason: c.denialReason,
-          claimNumber: c.claimNumber,
-          sessionId: c.sessionId,
-          ediReady: c.ediReady,
-          clearinghouseStatus: c.clearinghouseStatus,
-          onRefresh: () async {
-            ref.invalidate(adminAnalyticsClaimDetailProvider(claimId));
-            await ref.read(adminAnalyticsClaimDetailProvider(claimId).future);
-          },
+    return AnalyticsDateRangeSync(
+      dateRangeProvider: adminAnalyticsDateRangeProvider,
+      defaultPreset: analyticsDefaultDateRangePreset,
+      defaultSuppressedProvider:
+          adminAnalyticsDateRangeDefaultSuppressedProvider,
+      child: AppScaffold(
+        title: 'Claim detail',
+        actions: const [AnalyticsCopyLinkButton()],
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: AnalyticsDateRangeBar(
+                dateRangeProvider: adminAnalyticsDateRangeProvider,
+                defaultSuppressedProvider:
+                    adminAnalyticsDateRangeDefaultSuppressedProvider,
+              ),
+            ),
+            Expanded(
+              child: claim.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(child: Text('Error: $e')),
+                data: (c) => AnalyticsClaimDetailBody(
+                  status: c.status,
+                  payerName: c.payerName,
+                  billedAmount: c.billedAmount,
+                  approvedAmount: c.approvedAmount,
+                  serviceDate: c.serviceDate,
+                  childName: c.childName,
+                  parentEmail: c.parentEmail,
+                  denialReason: c.denialReason,
+                  claimNumber: c.claimNumber,
+                  sessionId: c.sessionId,
+                  ediReady: c.ediReady,
+                  clearinghouseStatus: c.clearinghouseStatus,
+                  onRefresh: () async {
+                    ref.invalidate(adminAnalyticsClaimDetailProvider(claimId));
+                    await ref
+                        .read(adminAnalyticsClaimDetailProvider(claimId).future);
+                  },
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -52,28 +79,51 @@ class AgencyAnalyticsClaimDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final claim = ref.watch(agencyAnalyticsClaimDetailProvider(claimId));
-    return AppScaffold(
-      title: 'Claim detail',
-      body: claim.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
-        data: (c) => AnalyticsClaimDetailBody(
-          status: c.status,
-          payerName: c.payerName,
-          billedAmount: c.billedAmount,
-          approvedAmount: c.approvedAmount,
-          serviceDate: c.serviceDate,
-          childName: c.childName,
-          parentEmail: c.parentEmail,
-          denialReason: c.denialReason,
-          claimNumber: c.claimNumber,
-          sessionId: c.sessionId,
-          ediReady: c.ediReady,
-          clearinghouseStatus: c.clearinghouseStatus,
-          onRefresh: () async {
-            ref.invalidate(agencyAnalyticsClaimDetailProvider(claimId));
-            await ref.read(agencyAnalyticsClaimDetailProvider(claimId).future);
-          },
+    return AnalyticsDateRangeSync(
+      dateRangeProvider: agencyAnalyticsDateRangeProvider,
+      defaultPreset: analyticsDefaultDateRangePreset,
+      defaultSuppressedProvider:
+          agencyAnalyticsDateRangeDefaultSuppressedProvider,
+      child: AppScaffold(
+        title: 'Claim detail',
+        actions: const [AnalyticsCopyLinkButton()],
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: AnalyticsDateRangeBar(
+                dateRangeProvider: agencyAnalyticsDateRangeProvider,
+                defaultSuppressedProvider:
+                    agencyAnalyticsDateRangeDefaultSuppressedProvider,
+              ),
+            ),
+            Expanded(
+              child: claim.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(child: Text('Error: $e')),
+                data: (c) => AnalyticsClaimDetailBody(
+                  status: c.status,
+                  payerName: c.payerName,
+                  billedAmount: c.billedAmount,
+                  approvedAmount: c.approvedAmount,
+                  serviceDate: c.serviceDate,
+                  childName: c.childName,
+                  parentEmail: c.parentEmail,
+                  denialReason: c.denialReason,
+                  claimNumber: c.claimNumber,
+                  sessionId: c.sessionId,
+                  ediReady: c.ediReady,
+                  clearinghouseStatus: c.clearinghouseStatus,
+                  onRefresh: () async {
+                    ref.invalidate(agencyAnalyticsClaimDetailProvider(claimId));
+                    await ref
+                        .read(agencyAnalyticsClaimDetailProvider(claimId).future);
+                  },
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -92,23 +142,46 @@ class AdminAnalyticsScreeningDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final screening =
         ref.watch(adminAnalyticsScreeningDetailProvider(screeningId));
-    return AppScaffold(
-      title: 'Screening detail',
-      body: screening.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
-        data: (s) => AnalyticsScreeningDetailBody(
-          completedAt: s.completedAt,
-          childName: s.childName,
-          templateName: s.templateName,
-          score: s.score,
-          riskLevel: s.riskLevel,
-          responsesJson: s.responsesJson,
-          onRefresh: () async {
-            ref.invalidate(adminAnalyticsScreeningDetailProvider(screeningId));
-            await ref
-                .read(adminAnalyticsScreeningDetailProvider(screeningId).future);
-          },
+    return AnalyticsDateRangeSync(
+      dateRangeProvider: adminAnalyticsDateRangeProvider,
+      defaultPreset: analyticsDefaultDateRangePreset,
+      defaultSuppressedProvider:
+          adminAnalyticsDateRangeDefaultSuppressedProvider,
+      child: AppScaffold(
+        title: 'Screening detail',
+        actions: const [AnalyticsCopyLinkButton()],
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: AnalyticsDateRangeBar(
+                dateRangeProvider: adminAnalyticsDateRangeProvider,
+                defaultSuppressedProvider:
+                    adminAnalyticsDateRangeDefaultSuppressedProvider,
+              ),
+            ),
+            Expanded(
+              child: screening.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(child: Text('Error: $e')),
+                data: (s) => AnalyticsScreeningDetailBody(
+                  completedAt: s.completedAt,
+                  childName: s.childName,
+                  templateName: s.templateName,
+                  score: s.score,
+                  riskLevel: s.riskLevel,
+                  responsesJson: s.responsesJson,
+                  onRefresh: () async {
+                    ref.invalidate(
+                        adminAnalyticsScreeningDetailProvider(screeningId));
+                    await ref.read(
+                        adminAnalyticsScreeningDetailProvider(screeningId).future);
+                  },
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -127,23 +200,46 @@ class AgencyAnalyticsScreeningDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final screening =
         ref.watch(agencyAnalyticsScreeningDetailProvider(screeningId));
-    return AppScaffold(
-      title: 'Screening detail',
-      body: screening.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
-        data: (s) => AnalyticsScreeningDetailBody(
-          completedAt: s.completedAt,
-          childName: s.childName,
-          templateName: s.templateName,
-          score: s.score,
-          riskLevel: s.riskLevel,
-          responsesJson: s.responsesJson,
-          onRefresh: () async {
-            ref.invalidate(agencyAnalyticsScreeningDetailProvider(screeningId));
-            await ref
-                .read(agencyAnalyticsScreeningDetailProvider(screeningId).future);
-          },
+    return AnalyticsDateRangeSync(
+      dateRangeProvider: agencyAnalyticsDateRangeProvider,
+      defaultPreset: analyticsDefaultDateRangePreset,
+      defaultSuppressedProvider:
+          agencyAnalyticsDateRangeDefaultSuppressedProvider,
+      child: AppScaffold(
+        title: 'Screening detail',
+        actions: const [AnalyticsCopyLinkButton()],
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: AnalyticsDateRangeBar(
+                dateRangeProvider: agencyAnalyticsDateRangeProvider,
+                defaultSuppressedProvider:
+                    agencyAnalyticsDateRangeDefaultSuppressedProvider,
+              ),
+            ),
+            Expanded(
+              child: screening.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(child: Text('Error: $e')),
+                data: (s) => AnalyticsScreeningDetailBody(
+                  completedAt: s.completedAt,
+                  childName: s.childName,
+                  templateName: s.templateName,
+                  score: s.score,
+                  riskLevel: s.riskLevel,
+                  responsesJson: s.responsesJson,
+                  onRefresh: () async {
+                    ref.invalidate(
+                        agencyAnalyticsScreeningDetailProvider(screeningId));
+                    await ref.read(
+                        agencyAnalyticsScreeningDetailProvider(screeningId).future);
+                  },
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
