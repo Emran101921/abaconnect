@@ -50,7 +50,11 @@ final adminAnalyticsDateRangeDefaultSuppressedProvider =
 
 final adminAnalyticsProvider =
     FutureProvider<List<AnalyticsMetricModel>>((ref) async {
-  return ref.watch(adminRepositoryProvider).fetchAnalytics();
+  final range = ref.watch(adminAnalyticsDateRangeProvider);
+  return ref.watch(adminRepositoryProvider).fetchAnalytics(
+        fromDate: range.graphqlFrom,
+        toDate: range.graphqlTo,
+      );
 });
 
 final adminClaimsPipelineProvider =

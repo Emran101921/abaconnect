@@ -111,3 +111,22 @@ enum AnalyticsDateRangePreset {
 
   bool matches(AnalyticsDateRange range) => range.sameAs(this.range);
 }
+
+String analyticsOverviewMetricLabel(
+  String key,
+  AnalyticsDateRange range, {
+  String activeChildrenLabel = 'Active children',
+}) {
+  switch (key) {
+    case 'appointments_7d':
+      return range.isActive ? 'Appointments' : 'Appointments (7d)';
+    case 'sessions_completed':
+      return 'Sessions completed';
+    case 'revenue_paid':
+      return 'Revenue paid';
+    case 'active_children':
+      return activeChildrenLabel;
+    default:
+      return key;
+  }
+}
