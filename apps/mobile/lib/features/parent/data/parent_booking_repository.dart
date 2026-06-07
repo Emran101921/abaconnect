@@ -13,14 +13,74 @@ class ChildModel {
     required this.firstName,
     required this.lastName,
     required this.dateOfBirth,
+    this.gender,
+    this.primaryLanguage,
+    this.guardianName,
+    this.guardianPhone,
+    this.guardianEmail,
+    this.addressLine1,
+    this.zipCode,
+    this.pediatricianName,
+    this.insuranceType,
+    this.hadEarlyIntervention,
   });
 
   final String id;
   final String firstName;
   final String lastName;
   final DateTime dateOfBirth;
+  final String? gender;
+  final String? primaryLanguage;
+  final String? guardianName;
+  final String? guardianPhone;
+  final String? guardianEmail;
+  final String? addressLine1;
+  final String? zipCode;
+  final String? pediatricianName;
+  final String? insuranceType;
+  final bool? hadEarlyIntervention;
 
   String get displayName => '$firstName $lastName';
+}
+
+class ScreeningRecommendationModel {
+  const ScreeningRecommendationModel({
+    required this.service,
+    required this.code,
+    required this.explanation,
+  });
+
+  final String service;
+  final String code;
+  final String explanation;
+}
+
+class ScreeningResultModel {
+  const ScreeningResultModel({
+    required this.id,
+    required this.completedAt,
+    this.score,
+    this.riskLevel,
+    this.recommendations = const [],
+    this.isDraft = false,
+  });
+
+  final String id;
+  final DateTime completedAt;
+  final double? score;
+  final String? riskLevel;
+  final List<ScreeningRecommendationModel> recommendations;
+  final bool isDraft;
+}
+
+class ScreeningDraftModel {
+  const ScreeningDraftModel({
+    required this.id,
+    required this.responses,
+  });
+
+  final String id;
+  final Map<String, dynamic> responses;
 }
 
 class TherapistModel {
@@ -229,6 +289,16 @@ class ParentBookingRepository {
         firstName
         lastName
         dateOfBirth
+        gender
+        primaryLanguage
+        guardianName
+        guardianPhone
+        guardianEmail
+        addressLine1
+        zipCode
+        pediatricianName
+        insuranceType
+        hadEarlyIntervention
       }
     }
   ''';
@@ -415,6 +485,16 @@ class ParentBookingRepository {
       dateOfBirth: dobRaw != null
           ? DateTime.parse(dobRaw)
           : DateTime(2018, 1, 1),
+      gender: e['gender'] as String?,
+      primaryLanguage: e['primaryLanguage'] as String?,
+      guardianName: e['guardianName'] as String?,
+      guardianPhone: e['guardianPhone'] as String?,
+      guardianEmail: e['guardianEmail'] as String?,
+      addressLine1: e['addressLine1'] as String?,
+      zipCode: e['zipCode'] as String?,
+      pediatricianName: e['pediatricianName'] as String?,
+      insuranceType: e['insuranceType'] as String?,
+      hadEarlyIntervention: e['hadEarlyIntervention'] as bool?,
     );
   }
 
@@ -521,6 +601,29 @@ class ParentBookingRepository {
       submitScreening(input: $input) {
         id
         completedAt
+        score
+        riskLevel
+        recommendationsJson
+        isDraft
+      }
+    }
+  ''';
+
+  static const _saveDraftMutation = r'''
+    mutation SaveDraft($input: SaveScreeningDraftInput!) {
+      saveScreeningDraft(input: $input) {
+        id
+        isDraft
+      }
+    }
+  ''';
+
+  static const _myDraftQuery = r'''
+    query MyDraft($templateId: ID!, $childId: ID!) {
+      myScreeningDraft(templateId: $templateId, childId: $childId) {
+        id
+        responsesJson
+        isDraft
       }
     }
   ''';
@@ -530,6 +633,15 @@ class ParentBookingRepository {
     required String lastName,
     required DateTime dateOfBirth,
     String? gender,
+    String? primaryLanguage,
+    String? guardianName,
+    String? guardianPhone,
+    String? guardianEmail,
+    String? addressLine1,
+    String? zipCode,
+    String? pediatricianName,
+    String? insuranceType,
+    bool? hadEarlyIntervention,
   }) async {
     final result = await _graphql.query(
       _addChildMutation,
@@ -539,6 +651,16 @@ class ParentBookingRepository {
           'lastName': lastName,
           'dateOfBirth': _dateOnlyIso(dateOfBirth),
           if (gender != null) 'gender': gender,
+          if (primaryLanguage != null) 'primaryLanguage': primaryLanguage,
+          if (guardianName != null) 'guardianName': guardianName,
+          if (guardianPhone != null) 'guardianPhone': guardianPhone,
+          if (guardianEmail != null) 'guardianEmail': guardianEmail,
+          if (addressLine1 != null) 'addressLine1': addressLine1,
+          if (zipCode != null) 'zipCode': zipCode,
+          if (pediatricianName != null) 'pediatricianName': pediatricianName,
+          if (insuranceType != null) 'insuranceType': insuranceType,
+          if (hadEarlyIntervention != null)
+            'hadEarlyIntervention': hadEarlyIntervention,
         },
       },
     );
@@ -627,21 +749,107 @@ class ParentBookingRepository {
         .toList();
   }
 
-  Future<void> submitScreening({
+  List<ScreeningRecommendationModel> _parseRecommendations(String? json) {
+    if (json == null || json.isEmpty) return [];
+    try {
+      final list = jsonDecode(json) as List<dynamic>;
+      return list.map((e) {
+        final m = e as Map<String, dynamic>;
+        return ScreeningRecommendationModel(
+          service: m['service'] as String? ?? '',
+          code: m['code'] as String? ?? '',
+          explanation: m['explanation'] as String? ?? '',
+        );
+      }).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  ScreeningResultModel _mapScreeningResult(Map<String, dynamic> e) {
+    final completed = e['completedAt'] as String?;
+    return ScreeningResultModel(
+      id: e['id'] as String,
+      completedAt:
+          completed != null ? DateTime.parse(completed) : DateTime.now(),
+      score: (e['score'] as num?)?.toDouble(),
+      riskLevel: e['riskLevel'] as String?,
+      recommendations:
+          _parseRecommendations(e['recommendationsJson'] as String?),
+      isDraft: e['isDraft'] as bool? ?? false,
+    );
+  }
+
+  Future<ScreeningDraftModel?> fetchScreeningDraft({
+    required String templateId,
+    required String childId,
+  }) async {
+    final result = await _graphql.query(
+      _myDraftQuery,
+      variables: {'templateId': templateId, 'childId': childId},
+    );
+    final e = result['data']?['myScreeningDraft'] as Map<String, dynamic>?;
+    if (e == null) return null;
+    Map<String, dynamic> responses = {};
+    final raw = e['responsesJson'] as String?;
+    if (raw != null) {
+      try {
+        responses = Map<String, dynamic>.from(jsonDecode(raw) as Map);
+      } catch (_) {}
+    }
+    return ScreeningDraftModel(
+      id: e['id'] as String,
+      responses: responses,
+    );
+  }
+
+  Future<ScreeningResultModel> saveScreeningDraft({
     required String templateId,
     required String childId,
     required Map<String, dynamic> responses,
+    String? draftId,
   }) async {
-    await _graphql.query(
+    final result = await _graphql.query(
+      _saveDraftMutation,
+      variables: {
+        'input': {
+          'templateId': templateId,
+          'childId': childId,
+          'responsesJson': jsonEncode(responses),
+          if (draftId != null) 'draftId': draftId,
+        },
+      },
+    );
+    final e = result['data']?['saveScreeningDraft'] as Map<String, dynamic>?;
+    if (e == null) throw Exception('Failed to save draft');
+    return _mapScreeningResult({
+      ...e,
+      'completedAt': DateTime.now().toIso8601String(),
+    });
+  }
+
+  Future<ScreeningResultModel> submitScreening({
+    required String templateId,
+    required String childId,
+    required Map<String, dynamic> responses,
+    String? draftId,
+    bool consentGranted = false,
+  }) async {
+    final result = await _graphql.query(
       _submitScreeningMutation,
       variables: {
         'input': {
           'templateId': templateId,
           'childId': childId,
           'responsesJson': jsonEncode(responses),
+          if (draftId != null) 'draftId': draftId,
+          'consentGranted': consentGranted,
         },
       },
     );
+    final e = result['data']?['submitScreening'] as Map<String, dynamic>?;
+    if (e == null) throw Exception('Failed to submit screening');
+    return _mapScreeningResult(e);
   }
 
   Future<void> bookAppointment({
@@ -749,6 +957,16 @@ class ParentBookingRepository {
     String? firstName,
     String? lastName,
     DateTime? dateOfBirth,
+    String? gender,
+    String? primaryLanguage,
+    String? guardianName,
+    String? guardianPhone,
+    String? guardianEmail,
+    String? addressLine1,
+    String? zipCode,
+    String? pediatricianName,
+    String? insuranceType,
+    bool? hadEarlyIntervention,
   }) async {
     await _graphql.query(
       r'''
@@ -763,6 +981,17 @@ class ParentBookingRepository {
           if (lastName != null) 'lastName': lastName,
           if (dateOfBirth != null)
             'dateOfBirth': _dateOnlyIso(dateOfBirth),
+          if (gender != null) 'gender': gender,
+          if (primaryLanguage != null) 'primaryLanguage': primaryLanguage,
+          if (guardianName != null) 'guardianName': guardianName,
+          if (guardianPhone != null) 'guardianPhone': guardianPhone,
+          if (guardianEmail != null) 'guardianEmail': guardianEmail,
+          if (addressLine1 != null) 'addressLine1': addressLine1,
+          if (zipCode != null) 'zipCode': zipCode,
+          if (pediatricianName != null) 'pediatricianName': pediatricianName,
+          if (insuranceType != null) 'insuranceType': insuranceType,
+          if (hadEarlyIntervention != null)
+            'hadEarlyIntervention': hadEarlyIntervention,
         },
       },
     );

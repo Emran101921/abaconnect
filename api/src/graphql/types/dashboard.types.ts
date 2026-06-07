@@ -137,6 +137,9 @@ export class AnalyticsScreeningSummaryType {
 
   @Field({ nullable: true })
   riskLevel?: string;
+
+  @Field({ nullable: true })
+  recommendationsJson?: string;
 }
 
 @ObjectType()
@@ -170,6 +173,12 @@ export class AnalyticsScreeningDetailType {
 
   @Field({ nullable: true })
   responsesJson?: string;
+
+  @Field({ nullable: true })
+  recommendationsJson?: string;
+
+  @Field({ nullable: true })
+  consentGrantedAt?: Date;
 }
 
 @ObjectType()

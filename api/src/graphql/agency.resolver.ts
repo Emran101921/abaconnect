@@ -182,6 +182,7 @@ export class AgencyResolver {
         templateName: r.template?.name,
         score: r.score != null ? Number(r.score) : undefined,
         riskLevel: r.riskLevel ?? undefined,
+        recommendationsJson: JSON.stringify(r.recommendations ?? []),
       })),
     };
   }
@@ -247,6 +248,7 @@ export class AgencyResolver {
       templateName: r.template?.name,
       score: r.score != null ? Number(r.score) : undefined,
       riskLevel: r.riskLevel ?? undefined,
+      recommendationsJson: JSON.stringify(r.recommendations ?? []),
     }));
   }
 
@@ -278,6 +280,7 @@ export class AgencyResolver {
     const row = await this.screeningsService.getResponseForTenant(
       user.tenantId,
       screeningId,
+      user.id,
     );
     return this.mapScreeningDetail(row);
   }
@@ -288,6 +291,8 @@ export class AgencyResolver {
     score?: unknown | null;
     riskLevel?: string | null;
     responses: unknown;
+    recommendations?: unknown;
+    consentGrantedAt?: Date | null;
     template?: { name: string } | null;
     child?: { firstName: string; lastName: string } | null;
   }): AnalyticsScreeningDetailType {
@@ -301,6 +306,8 @@ export class AgencyResolver {
       score: r.score != null ? Number(r.score) : undefined,
       riskLevel: r.riskLevel ?? undefined,
       responsesJson: JSON.stringify(r.responses ?? {}),
+      recommendationsJson: JSON.stringify(r.recommendations ?? []),
+      consentGrantedAt: r.consentGrantedAt ?? undefined,
     };
   }
 

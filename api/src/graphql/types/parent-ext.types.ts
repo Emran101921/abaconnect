@@ -187,6 +187,18 @@ export class ScreeningTemplateType {
 }
 
 @ObjectType()
+export class ScreeningRecommendationType {
+  @Field()
+  service: string;
+
+  @Field()
+  code: string;
+
+  @Field()
+  explanation: string;
+}
+
+@ObjectType()
 export class ScreeningResponseType {
   @Field(() => ID)
   id: string;
@@ -208,4 +220,16 @@ export class ScreeningResponseType {
 
   @Field({ nullable: true })
   riskLevel?: string;
+
+  @Field({ nullable: true })
+  recommendationsJson?: string;
+
+  @Field()
+  isDraft: boolean;
+
+  @Field({ nullable: true })
+  consentGrantedAt?: Date;
+
+  @Field({ nullable: true })
+  responsesJson?: string;
 }

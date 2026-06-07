@@ -5,6 +5,23 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
+export type ChildProfileInput = {
+  firstName?: string;
+  lastName?: string;
+  dateOfBirth?: Date;
+  gender?: string;
+  primaryLanguage?: string;
+  guardianName?: string;
+  guardianPhone?: string;
+  guardianEmail?: string;
+  addressLine1?: string;
+  zipCode?: string;
+  pediatricianName?: string;
+  insuranceType?: string;
+  hadEarlyIntervention?: boolean;
+  notes?: string;
+};
+
 @Injectable()
 export class ChildrenService {
   constructor(private readonly prisma: PrismaService) {}
@@ -23,13 +40,7 @@ export class ChildrenService {
   async updateForParentUserId(
     userId: string,
     childId: string,
-    data: {
-      firstName?: string;
-      lastName?: string;
-      dateOfBirth?: Date;
-      gender?: string;
-      notes?: string;
-    },
+    data: ChildProfileInput,
   ) {
     const parent = await this.prisma.parent.findUnique({ where: { userId } });
     if (!parent) {
@@ -49,11 +60,10 @@ export class ChildrenService {
 
   async createForParentUserId(
     userId: string,
-    data: {
+    data: ChildProfileInput & {
       firstName: string;
       lastName: string;
       dateOfBirth: Date;
-      gender?: string;
     },
   ) {
     const parent = await this.prisma.parent.findUnique({ where: { userId } });
@@ -68,6 +78,16 @@ export class ChildrenService {
         lastName: data.lastName,
         dateOfBirth: data.dateOfBirth,
         gender: data.gender,
+        primaryLanguage: data.primaryLanguage,
+        guardianName: data.guardianName,
+        guardianPhone: data.guardianPhone,
+        guardianEmail: data.guardianEmail,
+        addressLine1: data.addressLine1,
+        zipCode: data.zipCode,
+        pediatricianName: data.pediatricianName,
+        insuranceType: data.insuranceType,
+        hadEarlyIntervention: data.hadEarlyIntervention,
+        notes: data.notes,
       },
     });
   }

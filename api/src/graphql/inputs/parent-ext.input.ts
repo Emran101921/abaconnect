@@ -51,6 +51,33 @@ export class UpdateChildInput {
   gender?: string;
 
   @Field({ nullable: true })
+  primaryLanguage?: string;
+
+  @Field({ nullable: true })
+  guardianName?: string;
+
+  @Field({ nullable: true })
+  guardianPhone?: string;
+
+  @Field({ nullable: true })
+  guardianEmail?: string;
+
+  @Field({ nullable: true })
+  addressLine1?: string;
+
+  @Field({ nullable: true })
+  zipCode?: string;
+
+  @Field({ nullable: true })
+  pediatricianName?: string;
+
+  @Field({ nullable: true })
+  insuranceType?: string;
+
+  @Field({ nullable: true })
+  hadEarlyIntervention?: boolean;
+
+  @Field({ nullable: true })
   notes?: string;
 }
 
@@ -67,6 +94,33 @@ export class AddChildInput {
 
   @Field({ nullable: true })
   gender?: string;
+
+  @Field({ nullable: true })
+  primaryLanguage?: string;
+
+  @Field({ nullable: true })
+  guardianName?: string;
+
+  @Field({ nullable: true })
+  guardianPhone?: string;
+
+  @Field({ nullable: true })
+  guardianEmail?: string;
+
+  @Field({ nullable: true })
+  addressLine1?: string;
+
+  @Field({ nullable: true })
+  zipCode?: string;
+
+  @Field({ nullable: true })
+  pediatricianName?: string;
+
+  @Field({ nullable: true })
+  insuranceType?: string;
+
+  @Field({ nullable: true })
+  hadEarlyIntervention?: boolean;
 }
 
 @InputType()
@@ -85,6 +139,21 @@ export class SubmitReviewInput {
 }
 
 @InputType()
+export class SaveScreeningDraftInput {
+  @Field(() => ID)
+  templateId: string;
+
+  @Field(() => ID)
+  childId: string;
+
+  @Field()
+  responsesJson: string;
+
+  @Field(() => ID, { nullable: true })
+  draftId?: string;
+}
+
+@InputType()
 export class SubmitScreeningInput {
   @Field(() => ID)
   templateId: string;
@@ -94,4 +163,10 @@ export class SubmitScreeningInput {
 
   @Field()
   responsesJson: string;
+
+  @Field(() => ID, { nullable: true })
+  draftId?: string;
+
+  @Field({ nullable: true })
+  consentGranted?: boolean;
 }
