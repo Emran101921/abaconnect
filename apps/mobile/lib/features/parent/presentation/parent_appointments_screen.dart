@@ -6,7 +6,10 @@ import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/app_providers.dart';
+import '../../../shared/widgets/app_dashboard_card.dart';
+import '../../../shared/widgets/app_healthcare_illustration.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/app_section_header.dart';
 import '../data/parent_booking_repository.dart';
 import 'parent_home_screen.dart';
 
@@ -174,36 +177,66 @@ class ParentAppointmentsScreen extends ConsumerWidget {
       body: appointments.when(
         data: (list) {
           if (list.isEmpty) {
-            return const Center(child: Text('No appointments yet'));
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const AppHealthcareIllustration(
+                      type: AppIllustrationType.scheduling,
+                      size: 120,
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      'No appointments yet',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Book a session to get started with therapy',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                ),
+              ),
+            );
           }
           return RefreshIndicator(
             onRefresh: () async {
               ref.invalidate(parentAppointmentsProvider);
               await ref.read(parentAppointmentsProvider.future);
             },
-            child: ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: list.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 8),
+            child: AppContentContainer(
+              child: ListView.separated(
+              itemCount: list.length + 1,
+              separatorBuilder: (_, index) =>
+                  index == 0 ? const SizedBox.shrink() : const SizedBox(height: 8),
               itemBuilder: (context, index) {
-                final a = list[index];
+                if (index == 0) {
+                  return const AppSectionHeader(
+                    title: 'Upcoming appointments',
+                    subtitle: 'Reschedule, join telehealth, or cancel',
+                  );
+                }
+                final a = list[index - 1];
                 final canChange = !['COMPLETED', 'CANCELLED', 'NO_SHOW']
                     .contains(a.status);
                 final loc = a.locationType ?? 'IN_HOME';
-                return Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+                return AppDashboardCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                         Text(
                           '${a.therapyType} · ${a.childName}',
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
+                        const SizedBox(height: 4),
                         Text('${a.therapistName} · $loc'),
                         Text(
                           DateFormat.yMMMd().add_jm().format(a.scheduledStart),
                         ),
+                        const SizedBox(height: 8),
                         Chip(label: Text(a.status)),
                         if (a.isTelehealth &&
                             !['COMPLETED', 'CANCELLED'].contains(a.status))
@@ -240,9 +273,9 @@ class ParentAppointmentsScreen extends ConsumerWidget {
                           ),
                       ],
                     ),
-                  ),
                 );
               },
+            ),
             ),
           );
         },

@@ -7,7 +7,10 @@ import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/models/user_role.dart';
 import '../../../shared/widgets/app_bottom_nav.dart';
+import '../../../shared/widgets/app_dashboard_card.dart';
+import '../../../shared/widgets/app_healthcare_illustration.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/app_section_header.dart';
 import '../data/messaging_repository.dart';
 import '../messaging_providers.dart';
 import 'message_status_badge.dart';
@@ -45,20 +48,40 @@ class MessagesScreen extends ConsumerWidget {
         data: (list) {
           if (list.isEmpty) {
             return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text('No conversations yet.'),
-                  const SizedBox(height: 12),
-                  FilledButton(
-                    onPressed: () => isTherapist
-                        ? _startParentChat(context, ref)
-                        : _startTherapistChat(context, ref),
-                    child: Text(
-                      isTherapist ? 'Message a parent' : 'Message your therapist',
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const AppHealthcareIllustration(
+                      type: AppIllustrationType.messaging,
+                      size: 120,
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 24),
+                    Text(
+                      'No conversations yet',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      isTherapist
+                          ? 'Connect with parents on your caseload'
+                          : 'Message your therapist or care coordinator',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 24),
+                    FilledButton.icon(
+                      onPressed: () => isTherapist
+                          ? _startParentChat(context, ref)
+                          : _startTherapistChat(context, ref),
+                      icon: const Icon(Icons.add_comment),
+                      label: Text(
+                        isTherapist ? 'Message a parent' : 'Start a conversation',
+                      ),
+                    ),
+                  ],
+                ),
               ),
             );
           }
@@ -68,67 +91,84 @@ class MessagesScreen extends ConsumerWidget {
               ref.invalidate(unreadMessageThreadsProvider);
               await ref.read(messageThreadsProvider.future);
             },
-            child: ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: list.length,
-              separatorBuilder: (context, _) => const Divider(height: 1),
+            child: AppContentContainer(
+              child: ListView.separated(
+              itemCount: list.length + 1,
+              separatorBuilder: (context, index) =>
+                  index == 0 ? const SizedBox.shrink() : const SizedBox(height: 8),
               itemBuilder: (context, index) {
-                final t = list[index];
+                if (index == 0) {
+                  return const AppSectionHeader(
+                    title: 'Conversations',
+                    subtitle: 'Secure messaging with your care team',
+                  );
+                }
+                final t = list[index - 1];
                 final time = t.lastMessageAt ?? t.updatedAt;
-                return ListTile(
-                  leading: CircleAvatar(
-                    child: Text(t.otherParticipantName.characters.first),
-                  ),
-                  title: Text(t.otherParticipantName),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        t.lastMessageBody ?? t.subject ?? 'No messages yet',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      if (t.lastMessageIsMine && t.lastMessageStatus != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 2),
-                          child: MessageStatusBadge(
-                            status: t.lastMessageStatus!,
-                            compact: true,
-                          ),
-                        ),
-                    ],
-                  ),
-                  trailing: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        DateFormat.MMMd().format(time),
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                      if (t.hasUnread) ...[
-                        const SizedBox(height: 4),
-                        Badge(
-                          label: const Text('New'),
-                          backgroundColor:
-                              Theme.of(context).colorScheme.primary,
-                        ),
-                      ] else if (t.lastMessageIsMine &&
-                          t.lastMessageStatus == MessageDeliveryStatus.read) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          'Read',
-                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                color: Theme.of(context).colorScheme.primary,
-                                fontWeight: FontWeight.w600,
-                              ),
-                        ),
-                      ],
-                    ],
-                  ),
+                return AppDashboardCard(
                   onTap: () => context.push('${AppRoutes.messages}/${t.id}'),
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: CircleAvatar(
+                      backgroundColor:
+                          Theme.of(context).colorScheme.primaryContainer,
+                      child: Text(t.otherParticipantName.characters.first),
+                    ),
+                    title: Text(t.otherParticipantName),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          t.lastMessageBody ?? t.subject ?? 'No messages yet',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (t.lastMessageIsMine && t.lastMessageStatus != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: MessageStatusBadge(
+                              status: t.lastMessageStatus!,
+                              compact: true,
+                            ),
+                          ),
+                      ],
+                    ),
+                    trailing: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          DateFormat.MMMd().format(time),
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        if (t.hasUnread) ...[
+                          const SizedBox(height: 4),
+                          Badge(
+                            label: const Text('New'),
+                            backgroundColor:
+                                Theme.of(context).colorScheme.primary,
+                          ),
+                        ] else if (t.lastMessageIsMine &&
+                            t.lastMessageStatus ==
+                                MessageDeliveryStatus.read) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'Read',
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelSmall
+                                ?.copyWith(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
                 );
               },
+            ),
             ),
           );
         },

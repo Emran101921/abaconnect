@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/providers/app_providers.dart';
+import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../notifications/notification_providers.dart';
 import '../data/messaging_repository.dart';
@@ -137,16 +138,32 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
                         child: Container(
                           margin: const EdgeInsets.only(bottom: 8),
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
+                            horizontal: 14,
+                            vertical: 10,
                           ),
                           decoration: BoxDecoration(
                             color: m.isMine
-                                ? Theme.of(context).colorScheme.primaryContainer
+                                ? Theme.of(context).colorScheme.primary
                                 : Theme.of(context)
                                     .colorScheme
-                                    .surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(12),
+                                    .surfaceContainerLow,
+                            borderRadius: BorderRadius.only(
+                              topLeft: const Radius.circular(AppSpacing.radiusLg),
+                              topRight: const Radius.circular(AppSpacing.radiusLg),
+                              bottomLeft: Radius.circular(
+                                m.isMine ? AppSpacing.radiusLg : AppSpacing.radiusSm,
+                              ),
+                              bottomRight: Radius.circular(
+                                m.isMine ? AppSpacing.radiusSm : AppSpacing.radiusLg,
+                              ),
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.06),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
                           ),
                           constraints: BoxConstraints(
                             maxWidth: MediaQuery.sizeOf(context).width * 0.75,
@@ -157,16 +174,34 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
                               if (!m.isMine)
                                 Text(
                                   m.senderName,
-                                  style: Theme.of(context).textTheme.labelSmall,
+                                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                 ),
-                              Text(m.body),
+                              Text(
+                                m.body,
+                                style: TextStyle(
+                                  color: m.isMine
+                                      ? Theme.of(context).colorScheme.onPrimary
+                                      : Theme.of(context).colorScheme.onSurface,
+                                ),
+                              ),
                               Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Text(
                                     DateFormat.jm().format(m.sentAt),
-                                    style:
-                                        Theme.of(context).textTheme.labelSmall,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall
+                                        ?.copyWith(
+                                          color: m.isMine
+                                              ? Theme.of(context)
+                                                  .colorScheme
+                                                  .onPrimary
+                                                  .withValues(alpha: 0.8)
+                                              : null,
+                                        ),
                                   ),
                                   if (m.isMine) ...[
                                     const SizedBox(width: 6),
@@ -185,16 +220,24 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
                   ),
           ),
           SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(8),
+            child: Container(
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                border: Border(
+                  top: BorderSide(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
+                ),
+              ),
               child: Row(
                 children: [
                   Expanded(
                     child: TextField(
                       controller: _controller,
                       decoration: const InputDecoration(
-                        hintText: 'Type a message…',
-                        border: OutlineInputBorder(),
+                        hintText: 'Type a secure message…',
+                        filled: true,
                       ),
                       onSubmitted: (_) => _send(),
                     ),
@@ -208,7 +251,7 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
                             height: 20,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Icon(Icons.send),
+                        : const Icon(Icons.send_rounded),
                   ),
                 ],
               ),
