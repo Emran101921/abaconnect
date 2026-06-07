@@ -20,6 +20,8 @@ import '../../messaging/presentation/messages_screen.dart';
 import '../../messaging/presentation/recent_messages_section.dart';
 import '../../notifications/notification_providers.dart';
 import '../data/parent_booking_repository.dart';
+import 'parent_category_box.dart';
+import 'parent_operations_category_screen.dart';
 import 'session_history_screen.dart';
 
 final parentDashboardProvider =
@@ -433,146 +435,39 @@ class ParentHomeScreen extends ConsumerWidget {
               },
             ),
             const SizedBox(height: 24),
-            Text('Operations', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 8),
-            const Text('Scheduling, care team, billing, and account settings.'),
-            const SizedBox(height: 16),
-            Text(
-              'Scheduling',
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-            const SizedBox(height: 8),
-            _OpsTile(
-              title: 'Book session',
-              subtitle: 'Schedule therapy appointments',
-              icon: Icons.calendar_month,
-              onTap: () => context.push('${AppRoutes.parentHome}/booking'),
-            ),
-            _OpsTile(
-              title: 'My appointments',
-              subtitle: 'Reschedule, cancel, export calendar',
-              icon: Icons.event_note,
-              onTap: () => context.push('${AppRoutes.parentHome}/appointments'),
-            ),
-            _OpsTile(
-              title: 'Telehealth',
-              subtitle: 'Join virtual sessions',
-              icon: Icons.video_call,
-              onTap: () => context.push(AppRoutes.telehealth),
+            const AppSectionHeader(
+              title: 'Operations',
+              subtitle: 'Tap a category to see all options',
             ),
             const SizedBox(height: 12),
-            Text('Care team', style: Theme.of(context).textTheme.titleSmall),
-            const SizedBox(height: 8),
-            _OpsTile(
-              title: unreadMessageCount > 0
-                  ? 'Messages ($unreadMessageCount unread)'
-                  : 'Messages',
-              subtitle: unreadMessageCount > 0
-                  ? 'New replies from your care team'
-                  : 'Chat with therapists',
-              icon: Icons.message,
-              onTap: () => context.push(AppRoutes.messages),
-            ),
-            _OpsTile(
-              title: 'Find therapist',
-              subtitle: 'Browse matched providers',
-              icon: Icons.search,
-              onTap: () => context.push(AppRoutes.matching),
-            ),
-            _OpsTile(
-              title: 'My children',
-              subtitle: 'Profiles and date of birth',
-              icon: Icons.child_care,
-              onTap: () => context.push('${AppRoutes.parentHome}/children'),
-            ),
-            _OpsTile(
-              title: 'Session history',
-              subtitle: 'Past completed sessions',
-              icon: Icons.history,
-              onTap: () => context.push('${AppRoutes.parentHome}/session-history'),
-            ),
-            _OpsTile(
-              title: 'Treatment plans',
-              subtitle: 'Goals and care plans',
-              icon: Icons.medical_information,
-              onTap: () => context.push('${AppRoutes.parentHome}/treatment-plans'),
-            ),
-            _OpsTile(
-              title: 'Progress notes',
-              subtitle: 'Session summaries from your therapist',
-              icon: Icons.summarize_outlined,
-              onTap: () => context.push('${AppRoutes.parentHome}/progress-notes'),
-            ),
-            _OpsTile(
-              title: 'Screening',
-              subtitle: 'Intake assessments',
-              icon: Icons.assignment,
-              onTap: () => context.push('${AppRoutes.parentHome}/screening'),
-            ),
-            const SizedBox(height: 12),
-            Text('Billing', style: Theme.of(context).textTheme.titleSmall),
-            const SizedBox(height: 8),
-            _OpsTile(
-              title: 'Payments',
-              subtitle: 'Invoices and Stripe checkout',
-              icon: Icons.payment,
-              onTap: () => context.push(AppRoutes.payments),
-            ),
-            _OpsTile(
-              title: 'Insurance',
-              subtitle: 'Claims and coverage',
-              icon: Icons.health_and_safety,
-              onTap: () => context.push(AppRoutes.insurance),
-            ),
-            _OpsTile(
-              title: 'Documents',
-              subtitle: 'Upload insurance cards and reports',
-              icon: Icons.folder,
-              onTap: () => context.push(AppRoutes.documents),
-            ),
-            const SizedBox(height: 12),
-            Text('Account', style: Theme.of(context).textTheme.titleSmall),
-            const SizedBox(height: 8),
-            _OpsTile(
-              title: unreadCount > 0
-                  ? 'Notifications ($unreadCount)'
-                  : 'Notifications',
-              subtitle: unreadCount > 0
-                  ? 'Tap message alerts to open the conversation'
-                  : 'Alerts and reminders',
-              icon: Icons.notifications,
-              onTap: () => context.push(AppRoutes.notifications),
-            ),
-            _OpsTile(
-              title: 'My profile',
-              subtitle: 'Address and emergency contact',
-              icon: Icons.person,
-              onTap: () => context.push('${AppRoutes.parentHome}/profile'),
-            ),
-            _OpsTile(
-              title: 'Reviews',
-              subtitle: 'Rate your therapists',
-              icon: Icons.star,
-              onTap: () => context.push('${AppRoutes.parentHome}/reviews'),
-            ),
-            _OpsTile(
-              title: 'Security',
-              subtitle: 'Two-factor authentication',
-              icon: Icons.security,
-              onTap: () => context.push(AppRoutes.security),
-            ),
-            _OpsTile(
-              title: 'Privacy',
-              subtitle: 'HIPAA consent',
-              icon: Icons.privacy_tip,
-              onTap: () => context.push(AppRoutes.consent),
-            ),
-            _OpsTile(
-              title: 'File complaint',
-              subtitle: 'Report a concern',
-              icon: Icons.report,
-              onTap: () => context.push('${AppRoutes.parentHome}/complaints'),
-            ),
+            ...ParentOperationsCategory.all.map((category) {
+              final itemCount = switch (category.id) {
+                'scheduling' => 3,
+                'care-team' => 7,
+                'billing' => 3,
+                'account' => 6,
+                _ => 0,
+              };
+              final badge = switch (category.id) {
+                'care-team' when unreadMessageCount > 0 =>
+                  '$unreadMessageCount unread',
+                'account' when unreadCount > 0 => '$unreadCount new',
+                _ => null,
+              };
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: ParentCategoryBox(
+                  title: category.title,
+                  subtitle: category.subtitle,
+                  icon: category.icon,
+                  itemCount: itemCount,
+                  badge: badge,
+                  onTap: () => context.push(
+                    '${AppRoutes.parentHome}/operations/${category.id}',
+                  ),
+                ),
+              );
+            }),
                 ],
               ),
             ),
@@ -612,30 +507,3 @@ class _OnboardingStep extends StatelessWidget {
   }
 }
 
-class _OpsTile extends StatelessWidget {
-  const _OpsTile({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.onTap,
-  });
-
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        leading: Icon(icon, size: 32),
-        title: Text(title),
-        subtitle: Text(subtitle),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: onTap,
-      ),
-    );
-  }
-}
