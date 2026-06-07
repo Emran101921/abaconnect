@@ -131,12 +131,15 @@ export class AgencyResolver {
   @Query(() => ClaimsPipelineDashboardType, { name: 'agencyClaimsPipeline' })
   async agencyClaimsPipeline(
     @CurrentUser() user: AuthUser,
+    @Args('fromDate', { nullable: true }) fromDate?: Date,
+    @Args('toDate', { nullable: true }) toDate?: Date,
   ): Promise<ClaimsPipelineDashboardType> {
     if (!user.tenantId) {
       throw new Error('Tenant required');
     }
     const pipeline = await this.insuranceService.getClaimsPipelineForTenant(
       user.tenantId,
+      { fromDate, toDate },
     );
     return {
       summary: pipeline.summary,
@@ -157,12 +160,15 @@ export class AgencyResolver {
   @Query(() => ScreeningFunnelDashboardType, { name: 'agencyScreeningFunnel' })
   async agencyScreeningFunnel(
     @CurrentUser() user: AuthUser,
+    @Args('fromDate', { nullable: true }) fromDate?: Date,
+    @Args('toDate', { nullable: true }) toDate?: Date,
   ): Promise<ScreeningFunnelDashboardType> {
     if (!user.tenantId) {
       throw new Error('Tenant required');
     }
     const funnel = await this.screeningsService.getScreeningFunnelForTenant(
       user.tenantId,
+      { fromDate, toDate },
     );
     return {
       summary: funnel.summary,
@@ -186,6 +192,8 @@ export class AgencyResolver {
     statusFilter: AnalyticsClaimPipelineFilter,
     @Args('limit', { type: () => Int, nullable: true, defaultValue: 50 })
     limit: number,
+    @Args('fromDate', { nullable: true }) fromDate?: Date,
+    @Args('toDate', { nullable: true }) toDate?: Date,
   ): Promise<AnalyticsClaimSummaryType[]> {
     if (!user.tenantId) {
       throw new Error('Tenant required');
@@ -194,6 +202,7 @@ export class AgencyResolver {
       user.tenantId,
       statusFilter,
       limit,
+      { fromDate, toDate },
     );
     return rows.map((c) => ({
       id: c.id,
@@ -216,6 +225,8 @@ export class AgencyResolver {
     @Args('limit', { type: () => Int, nullable: true, defaultValue: 50 })
     limit: number,
     @Args('riskLevel', { nullable: true }) riskLevel?: string,
+    @Args('fromDate', { nullable: true }) fromDate?: Date,
+    @Args('toDate', { nullable: true }) toDate?: Date,
   ): Promise<AnalyticsScreeningSummaryType[]> {
     if (!user.tenantId) {
       throw new Error('Tenant required');
@@ -224,6 +235,7 @@ export class AgencyResolver {
       user.tenantId,
       riskLevel,
       limit,
+      { fromDate, toDate },
     );
     return rows.map((r) => ({
       id: r.id,

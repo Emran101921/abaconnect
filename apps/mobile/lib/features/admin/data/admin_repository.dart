@@ -279,10 +279,13 @@ class AdminRepository {
         .toList();
   }
 
-  Future<ClaimsPipelineDashboardModel> fetchClaimsPipeline() async {
+  Future<ClaimsPipelineDashboardModel> fetchClaimsPipeline({
+    String? fromDate,
+    String? toDate,
+  }) async {
     const query = r'''
-      query {
-        adminClaimsPipeline {
+      query ClaimsPipeline($fromDate: DateTime, $toDate: DateTime) {
+        adminClaimsPipeline(fromDate: $fromDate, toDate: $toDate) {
           summary {
             draftCount submittedCount pendingCount paidCount deniedCount
           }
@@ -292,7 +295,10 @@ class AdminRepository {
         }
       }
     ''';
-    final result = await _graphql.query(query);
+    final result = await _graphql.query(
+      query,
+      variables: {'fromDate': fromDate, 'toDate': toDate},
+    );
     final data =
         result['data']?['adminClaimsPipeline'] as Map<String, dynamic>? ?? {};
     return _mapClaimsPipeline(data);
@@ -362,17 +368,24 @@ class AdminRepository {
   Future<List<AnalyticsClaimSummaryModel>> fetchAnalyticsClaimsList(
     String statusFilter, {
     int limit = 50,
+    String? fromDate,
+    String? toDate,
   }) async {
     const query = r'''
-      query ClaimsList($statusFilter: AnalyticsClaimPipelineFilter!, $limit: Int) {
-        adminAnalyticsClaims(statusFilter: $statusFilter, limit: $limit) {
+      query ClaimsList($statusFilter: AnalyticsClaimPipelineFilter!, $limit: Int, $fromDate: DateTime, $toDate: DateTime) {
+        adminAnalyticsClaims(statusFilter: $statusFilter, limit: $limit, fromDate: $fromDate, toDate: $toDate) {
           id status payerName billedAmount serviceDate childName claimNumber
         }
       }
     ''';
     final result = await _graphql.query(
       query,
-      variables: {'statusFilter': statusFilter, 'limit': limit},
+      variables: {
+        'statusFilter': statusFilter,
+        'limit': limit,
+        'fromDate': fromDate,
+        'toDate': toDate,
+      },
     );
     final list = result['data']?['adminAnalyticsClaims'] as List<dynamic>? ?? [];
     return list
@@ -393,17 +406,24 @@ class AdminRepository {
   Future<List<AnalyticsScreeningSummaryModel>> fetchAnalyticsScreeningsList({
     String? riskLevel,
     int limit = 50,
+    String? fromDate,
+    String? toDate,
   }) async {
     const query = r'''
-      query ScreeningsList($riskLevel: String, $limit: Int) {
-        adminAnalyticsScreenings(riskLevel: $riskLevel, limit: $limit) {
+      query ScreeningsList($riskLevel: String, $limit: Int, $fromDate: DateTime, $toDate: DateTime) {
+        adminAnalyticsScreenings(riskLevel: $riskLevel, limit: $limit, fromDate: $fromDate, toDate: $toDate) {
           id completedAt childName templateName score riskLevel
         }
       }
     ''';
     final result = await _graphql.query(
       query,
-      variables: {'riskLevel': riskLevel, 'limit': limit},
+      variables: {
+        'riskLevel': riskLevel,
+        'limit': limit,
+        'fromDate': fromDate,
+        'toDate': toDate,
+      },
     );
     final list =
         result['data']?['adminAnalyticsScreenings'] as List<dynamic>? ?? [];
@@ -421,10 +441,13 @@ class AdminRepository {
         .toList();
   }
 
-  Future<ScreeningFunnelDashboardModel> fetchScreeningFunnel() async {
+  Future<ScreeningFunnelDashboardModel> fetchScreeningFunnel({
+    String? fromDate,
+    String? toDate,
+  }) async {
     const query = r'''
-      query {
-        adminScreeningFunnel {
+      query ScreeningFunnel($fromDate: DateTime, $toDate: DateTime) {
+        adminScreeningFunnel(fromDate: $fromDate, toDate: $toDate) {
           summary {
             completedCount lowRiskCount moderateRiskCount highRiskCount
           }
@@ -434,7 +457,10 @@ class AdminRepository {
         }
       }
     ''';
-    final result = await _graphql.query(query);
+    final result = await _graphql.query(
+      query,
+      variables: {'fromDate': fromDate, 'toDate': toDate},
+    );
     final data =
         result['data']?['adminScreeningFunnel'] as Map<String, dynamic>? ?? {};
     return _mapScreeningFunnel(data);

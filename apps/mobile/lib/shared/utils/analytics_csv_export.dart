@@ -118,10 +118,14 @@ String screeningsCsvFromAgency(List<AgencyScreeningSummaryModel> screenings) {
   );
 }
 
-String analyticsExportFilename(String prefix, String filter) {
+String analyticsExportFilename(
+  String prefix,
+  String filter, {
+  String dateRangeSuffix = '',
+}) {
   final slug = filter.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-');
   final date = DateFormat('yyyy-MM-dd').format(DateTime.now());
-  return '$prefix-$slug-$date.csv';
+  return '$prefix-$slug$dateRangeSuffix-$date.csv';
 }
 
 Future<void> exportAnalyticsCsv(

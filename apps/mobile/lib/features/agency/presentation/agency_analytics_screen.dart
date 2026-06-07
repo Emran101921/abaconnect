@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/router/app_router.dart';
 
+import '../../../shared/presentation/analytics_date_range_filter.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../admin/presentation/admin_stat_card.dart';
 import '../data/agency_repository.dart';
@@ -85,6 +86,10 @@ class AgencyAnalyticsScreen extends ConsumerWidget {
             Text(
               'Agency metrics, claims pipeline, and screening funnel.',
               style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 16),
+            AnalyticsDateRangeBar(
+              dateRangeProvider: agencyAnalyticsDateRangeProvider,
             ),
             const SizedBox(height: 16),
             if (metricList.isNotEmpty) ...[

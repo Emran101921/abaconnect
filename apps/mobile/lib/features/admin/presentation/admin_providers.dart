@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/app_providers.dart';
+import '../../../shared/models/analytics_date_range.dart';
 import '../../payments/data/billing_repository.dart';
 import '../data/admin_repository.dart';
 
@@ -41,6 +42,9 @@ final adminReviewsProvider =
   return ref.watch(adminRepositoryProvider).fetchReviews();
 });
 
+final adminAnalyticsDateRangeProvider =
+    StateProvider<AnalyticsDateRange>((ref) => const AnalyticsDateRange());
+
 final adminAnalyticsProvider =
     FutureProvider<List<AnalyticsMetricModel>>((ref) async {
   return ref.watch(adminRepositoryProvider).fetchAnalytics();
@@ -48,12 +52,20 @@ final adminAnalyticsProvider =
 
 final adminClaimsPipelineProvider =
     FutureProvider<ClaimsPipelineDashboardModel>((ref) async {
-  return ref.watch(adminRepositoryProvider).fetchClaimsPipeline();
+  final range = ref.watch(adminAnalyticsDateRangeProvider);
+  return ref.watch(adminRepositoryProvider).fetchClaimsPipeline(
+        fromDate: range.graphqlFrom,
+        toDate: range.graphqlTo,
+      );
 });
 
 final adminScreeningFunnelProvider =
     FutureProvider<ScreeningFunnelDashboardModel>((ref) async {
-  return ref.watch(adminRepositoryProvider).fetchScreeningFunnel();
+  final range = ref.watch(adminAnalyticsDateRangeProvider);
+  return ref.watch(adminRepositoryProvider).fetchScreeningFunnel(
+        fromDate: range.graphqlFrom,
+        toDate: range.graphqlTo,
+      );
 });
 
 final adminInsuranceClaimsProvider =
@@ -77,18 +89,22 @@ final adminAnalyticsScreeningDetailProvider =
 final adminAnalyticsClaimsListProvider =
     FutureProvider.family<List<AnalyticsClaimSummaryModel>, String>(
         (ref, statusFilter) {
-  return ref
-      .watch(adminRepositoryProvider)
-      .fetchAnalyticsClaimsList(statusFilter);
+  final range = ref.watch(adminAnalyticsDateRangeProvider);
+  return ref.watch(adminRepositoryProvider).fetchAnalyticsClaimsList(
+        statusFilter,
+        fromDate: range.graphqlFrom,
+        toDate: range.graphqlTo,
+      );
 });
 
 final adminAnalyticsScreeningsListProvider =
     FutureProvider.family<List<AnalyticsScreeningSummaryModel>, String>(
         (ref, riskFilterKey) {
-  final riskLevel = riskFilterKey == 'all'
-      ? null
-      : riskFilterKey;
-  return ref
-      .watch(adminRepositoryProvider)
-      .fetchAnalyticsScreeningsList(riskLevel: riskLevel);
+  final riskLevel = riskFilterKey == 'all' ? null : riskFilterKey;
+  final range = ref.watch(adminAnalyticsDateRangeProvider);
+  return ref.watch(adminRepositoryProvider).fetchAnalyticsScreeningsList(
+        riskLevel: riskLevel,
+        fromDate: range.graphqlFrom,
+        toDate: range.graphqlTo,
+      );
 });

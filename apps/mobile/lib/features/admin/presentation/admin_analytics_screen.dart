@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/router/app_router.dart';
 
+import '../../../shared/presentation/analytics_date_range_filter.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../data/admin_repository.dart';
 import 'admin_providers.dart';
@@ -85,6 +86,10 @@ class AdminAnalyticsScreen extends ConsumerWidget {
             Text(
               'Platform metrics, claims pipeline, and screening funnel.',
               style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 16),
+            AnalyticsDateRangeBar(
+              dateRangeProvider: adminAnalyticsDateRangeProvider,
             ),
             const SizedBox(height: 16),
             if (metricList.isNotEmpty) ...[
