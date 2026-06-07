@@ -35,29 +35,48 @@ class AnalyticsDateRangeBar extends ConsumerWidget {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        child: Row(
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.date_range, size: 20),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                range.label,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
+            Row(
+              children: [
+                const Icon(Icons.date_range, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    range.label,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ),
+                if (range.isActive)
+                  IconButton(
+                    icon: const Icon(Icons.clear, size: 20),
+                    tooltip: 'Clear date range',
+                    onPressed: () {
+                      ref.read(dateRangeProvider.notifier).state =
+                          const AnalyticsDateRange();
+                    },
+                  ),
+                TextButton(
+                  onPressed: () => _pickRange(context, ref),
+                  child: Text(range.isActive ? 'Change' : 'Set range'),
+                ),
+              ],
             ),
-            if (range.isActive)
-              IconButton(
-                icon: const Icon(Icons.clear, size: 20),
-                tooltip: 'Clear date range',
-                onPressed: () {
-                  ref.read(dateRangeProvider.notifier).state =
-                      const AnalyticsDateRange();
-                },
-              ),
-            TextButton(
-              onPressed: () => _pickRange(context, ref),
-              child: Text(range.isActive ? 'Change' : 'Set range'),
+            const SizedBox(height: 4),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: AnalyticsDateRangePreset.values.map((preset) {
+                return FilterChip(
+                  label: Text(preset.label),
+                  selected: preset.matches(range),
+                  onSelected: (_) {
+                    ref.read(dateRangeProvider.notifier).state = preset.range;
+                  },
+                );
+              }).toList(),
             ),
           ],
         ),

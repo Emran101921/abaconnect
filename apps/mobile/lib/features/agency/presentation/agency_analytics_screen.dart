@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/router/app_router.dart';
 
+import '../../../shared/presentation/analytics_copy_link.dart';
 import '../../../shared/presentation/analytics_date_range_filter.dart';
 import '../../../shared/presentation/analytics_date_range_url.dart';
 import '../../../shared/widgets/app_scaffold.dart';
@@ -81,6 +82,7 @@ class AgencyAnalyticsScreen extends ConsumerWidget {
       dateRangeProvider: agencyAnalyticsDateRangeProvider,
       child: AppScaffold(
         title: 'Analytics',
+        actions: const [AnalyticsCopyLinkButton()],
         body: RefreshIndicator(
           onRefresh: refresh,
           child: ListView(

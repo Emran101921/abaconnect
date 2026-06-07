@@ -62,3 +62,50 @@ class AnalyticsDateRange {
     return '-$fromPart-$toPart';
   }
 }
+
+DateTime analyticsDateOnly(DateTime date) =>
+    DateTime(date.year, date.month, date.day);
+
+DateTime get analyticsToday => analyticsDateOnly(DateTime.now());
+
+enum AnalyticsDateRangePreset {
+  last7Days('Last 7 days'),
+  last30Days('Last 30 days'),
+  thisMonth('This month'),
+  lastMonth('Last month');
+
+  const AnalyticsDateRangePreset(this.label);
+
+  final String label;
+
+  AnalyticsDateRange get range {
+    final today = analyticsToday;
+    switch (this) {
+      case AnalyticsDateRangePreset.last7Days:
+        return AnalyticsDateRange(
+          from: today.subtract(const Duration(days: 6)),
+          to: today,
+        );
+      case AnalyticsDateRangePreset.last30Days:
+        return AnalyticsDateRange(
+          from: today.subtract(const Duration(days: 29)),
+          to: today,
+        );
+      case AnalyticsDateRangePreset.thisMonth:
+        return AnalyticsDateRange(
+          from: DateTime(today.year, today.month),
+          to: today,
+        );
+      case AnalyticsDateRangePreset.lastMonth:
+        final firstOfThisMonth = DateTime(today.year, today.month);
+        final lastOfLastMonth =
+            firstOfThisMonth.subtract(const Duration(days: 1));
+        return AnalyticsDateRange(
+          from: DateTime(lastOfLastMonth.year, lastOfLastMonth.month),
+          to: lastOfLastMonth,
+        );
+    }
+  }
+
+  bool matches(AnalyticsDateRange range) => range.sameAs(this.range);
+}
