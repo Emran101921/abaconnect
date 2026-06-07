@@ -69,6 +69,24 @@ class ScreeningTemplateModel {
   final String? questionsJson;
 }
 
+class ScreeningHistoryModel {
+  const ScreeningHistoryModel({
+    required this.id,
+    required this.completedAt,
+    required this.templateName,
+    required this.childName,
+    this.score,
+    this.riskLevel,
+  });
+
+  final String id;
+  final DateTime completedAt;
+  final String templateName;
+  final String childName;
+  final double? score;
+  final String? riskLevel;
+}
+
 class ParentProfileModel {
   const ParentProfileModel({
     required this.id,
@@ -112,6 +130,9 @@ class SessionHistoryModel {
     required this.therapyType,
     this.completedAt,
     this.durationMinutes,
+    this.progressNoteSummary,
+    this.hasProgressNote = false,
+    this.parentFeedback,
   });
 
   final String id;
@@ -121,6 +142,22 @@ class SessionHistoryModel {
   final String therapyType;
   final DateTime? completedAt;
   final int? durationMinutes;
+  final String? progressNoteSummary;
+  final bool hasProgressNote;
+  final String? parentFeedback;
+
+  String get statusLabel {
+    switch (status) {
+      case 'COMPLETED':
+        return 'Completed';
+      case 'IN_PROGRESS':
+        return 'In progress';
+      case 'PENDING_DOCUMENTATION':
+        return 'Awaiting notes';
+      default:
+        return status;
+    }
+  }
 }
 
 class AppointmentModel {
@@ -327,6 +364,7 @@ class ParentBookingRepository {
         mySessionHistory {
           id status childName therapistName therapyType
           completedAt durationMinutes
+          progressNoteSummary hasProgressNote parentFeedback
         }
       }
     ''';
@@ -341,6 +379,9 @@ class ParentBookingRepository {
         therapyType: e['therapyType'] as String? ?? '',
         completedAt: DateTime.tryParse(e['completedAt'] as String? ?? ''),
         durationMinutes: e['durationMinutes'] as int?,
+        progressNoteSummary: e['progressNoteSummary'] as String?,
+        hasProgressNote: e['hasProgressNote'] as bool? ?? false,
+        parentFeedback: e['parentFeedback'] as String?,
       );
     }).toList();
   }
@@ -523,6 +564,31 @@ class ParentBookingRepository {
         },
       },
     );
+  }
+
+  Future<List<ScreeningHistoryModel>> fetchScreeningHistory() async {
+    const query = r'''
+      query {
+        myScreeningHistory {
+          id completedAt childName templateName score riskLevel
+        }
+      }
+    ''';
+    final result = await _graphql.query(query);
+    final list = result['data']?['myScreeningHistory'] as List<dynamic>? ?? [];
+    return list.map((e) {
+      final completed = e['completedAt'] as String?;
+      return ScreeningHistoryModel(
+        id: e['id'] as String,
+        completedAt: completed != null
+            ? DateTime.parse(completed)
+            : DateTime.now(),
+        templateName: e['templateName'] as String? ?? 'Screening',
+        childName: e['childName'] as String? ?? '',
+        score: (e['score'] as num?)?.toDouble(),
+        riskLevel: e['riskLevel'] as String?,
+      );
+    }).toList();
   }
 
   Future<List<ScreeningTemplateModel>> fetchScreeningTemplates() async {

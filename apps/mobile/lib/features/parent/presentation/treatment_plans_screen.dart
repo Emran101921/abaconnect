@@ -40,19 +40,86 @@ class TreatmentPlansScreen extends ConsumerWidget {
               itemBuilder: (context, index) {
                 final p = list[index];
                 return Card(
-                  child: ListTile(
+                  child: ExpansionTile(
                     title: Text(p.title),
-                    subtitle: Text(
-                      '${p.childName} · ${p.therapyType}\n'
-                      'Therapist: ${p.therapistName ?? '—'}',
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${p.childName} · ${p.therapyType}\n'
+                          'Therapist: ${p.therapistName ?? '—'}',
+                        ),
+                        if (p.goalsTotalCount > 0) ...[
+                          const SizedBox(height: 8),
+                          LinearProgressIndicator(
+                            value: p.goalsProgress,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${p.goalsDoneCount} of ${p.goalsTotalCount} goals completed',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      ],
                     ),
-                    isThreeLine: true,
+                    children: [
+                      if (p.goals.isEmpty)
+                        const ListTile(title: Text('No goals listed yet'))
+                      else
+                        ...p.goals.map(
+                          (g) => ListTile(
+                            leading: Icon(
+                              _goalIcon(g.status),
+                              color: _goalColor(context, g.status),
+                            ),
+                            title: Text(g.label),
+                            trailing: _GoalStatusChip(goal: g),
+                          ),
+                        ),
+                    ],
                   ),
                 );
               },
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+IconData _goalIcon(String? status) {
+  return switch (status) {
+    'done' => Icons.check_circle_outline,
+    'in_progress' => Icons.trending_up,
+    _ => Icons.flag_outlined,
+  };
+}
+
+Color? _goalColor(BuildContext context, String? status) {
+  return switch (status) {
+    'done' => Colors.green,
+    'in_progress' => Theme.of(context).colorScheme.primary,
+    'active' => Theme.of(context).colorScheme.tertiary,
+    _ => null,
+  };
+}
+
+class _GoalStatusChip extends StatelessWidget {
+  const _GoalStatusChip({required this.goal});
+
+  final TreatmentPlanGoalModel goal;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _goalColor(context, goal.status);
+    return Chip(
+      label: Text(goal.statusLabel),
+      backgroundColor: color?.withValues(alpha: 0.12),
+      labelStyle: TextStyle(
+        color: color ?? Theme.of(context).colorScheme.onSurface,
+        fontSize: 12,
       ),
     );
   }

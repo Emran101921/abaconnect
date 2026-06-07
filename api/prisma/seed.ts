@@ -423,8 +423,21 @@ async function main() {
       therapyType: 'ABA',
       title: 'ABA Goals — Q2 2026',
       goals: [
-        { id: 'communication', label: 'Increase functional communication' },
-        { id: 'behavior', label: 'Reduce challenging behaviors' },
+        {
+          id: 'communication',
+          label: 'Increase functional communication',
+          status: 'done',
+        },
+        {
+          id: 'behavior',
+          label: 'Reduce challenging behaviors',
+          status: 'in_progress',
+        },
+        {
+          id: 'social',
+          label: 'Initiate peer interactions',
+          status: 'active',
+        },
       ],
       startDate: new Date(),
       isActive: true,

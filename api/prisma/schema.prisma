@@ -697,9 +697,11 @@ model Message {
   channel   MessageChannel @default(IN_APP)
   body      String
   metadata  Json           @default("{}")
-  sentAt    DateTime       @default(now()) @map("sent_at")
-  editedAt  DateTime?      @map("edited_at")
-  deletedAt DateTime?      @map("deleted_at")
+  sentAt      DateTime  @default(now()) @map("sent_at")
+  deliveredAt DateTime? @map("delivered_at")
+  readAt      DateTime? @map("read_at")
+  editedAt    DateTime? @map("edited_at")
+  deletedAt   DateTime? @map("deleted_at")
 
   thread MessageThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
   sender User          @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)

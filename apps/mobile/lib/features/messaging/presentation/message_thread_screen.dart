@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -7,6 +9,7 @@ import '../../../shared/widgets/app_scaffold.dart';
 import '../../notifications/notification_providers.dart';
 import '../data/messaging_repository.dart';
 import '../messaging_providers.dart';
+import 'message_status_badge.dart';
 import 'messages_screen.dart' show messageThreadsProvider;
 
 class MessageThreadScreen extends ConsumerStatefulWidget {
@@ -23,15 +26,21 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
   List<ChatMessageModel> _messages = [];
   bool _loading = true;
   bool _sending = false;
+  Timer? _statusPoll;
 
   @override
   void initState() {
     super.initState();
     _load();
+    _statusPoll = Timer.periodic(
+      const Duration(seconds: 5),
+      (_) => _refreshStatuses(),
+    );
   }
 
   @override
   void dispose() {
+    _statusPoll?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -39,16 +48,23 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final list = await ref
-          .read(messagingRepositoryProvider)
-          .fetchMessages(widget.threadId);
+      final repo = ref.read(messagingRepositoryProvider);
+      final list = await repo.fetchMessages(widget.threadId);
       if (mounted) {
         setState(() {
           _messages = list;
           _loading = false;
         });
-        ref.invalidate(messageThreadsProvider);
-        ref.invalidate(unreadMessageThreadsProvider);
+      }
+      try {
+        await repo.markThreadRead(widget.threadId);
+        if (mounted) {
+          ref.invalidate(messageThreadsProvider);
+          ref.invalidate(unreadMessageThreadsProvider);
+        }
+        await _refreshStatuses();
+      } catch (_) {
+        // Read receipt is best-effort; messages are already visible.
       }
     } catch (e) {
       if (mounted) {
@@ -58,6 +74,17 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
         );
       }
     }
+  }
+
+  Future<void> _refreshStatuses() async {
+    if (_loading || !mounted) return;
+    try {
+      final list =
+          await ref.read(messagingRepositoryProvider).fetchMessages(widget.threadId);
+      if (mounted) {
+        setState(() => _messages = list);
+      }
+    } catch (_) {}
   }
 
   Future<void> _send() async {
@@ -101,6 +128,8 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
                     itemCount: _messages.length,
                     itemBuilder: (context, index) {
                       final m = _messages[index];
+                      final status =
+                          m.status ?? MessageDeliveryStatus.sent;
                       return Align(
                         alignment: m.isMine
                             ? Alignment.centerRight
@@ -114,7 +143,9 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
                           decoration: BoxDecoration(
                             color: m.isMine
                                 ? Theme.of(context).colorScheme.primaryContainer
-                                : Theme.of(context).colorScheme.surfaceContainerHighest,
+                                : Theme.of(context)
+                                    .colorScheme
+                                    .surfaceContainerHighest,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           constraints: BoxConstraints(
@@ -129,9 +160,22 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
                                   style: Theme.of(context).textTheme.labelSmall,
                                 ),
                               Text(m.body),
-                              Text(
-                                DateFormat.jm().format(m.sentAt),
-                                style: Theme.of(context).textTheme.labelSmall,
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    DateFormat.jm().format(m.sentAt),
+                                    style:
+                                        Theme.of(context).textTheme.labelSmall,
+                                  ),
+                                  if (m.isMine) ...[
+                                    const SizedBox(width: 6),
+                                    MessageStatusBadge(
+                                      status: status,
+                                      readAt: m.readAt,
+                                    ),
+                                  ],
+                                ],
                               ),
                             ],
                           ),

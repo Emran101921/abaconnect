@@ -44,6 +44,9 @@ export class ScreeningsService {
       throw new NotFoundException('Screening template not found');
     }
 
+    const score = this.scoreResponses(data.responses);
+    const riskLevel = this.riskLevelFromScore(score);
+
     return this.prisma.screeningResponse.create({
       data: {
         templateId: template.id,
@@ -51,9 +54,85 @@ export class ScreeningsService {
         parentId: parent.id,
         tenantId: parent.tenantId,
         responses: data.responses as Prisma.InputJsonValue,
+        score,
+        riskLevel,
       },
       include: { template: true, child: true },
     });
+  }
+
+  async listHistoryForParentUser(userId: string) {
+    const parent = await this.prisma.parent.findUnique({ where: { userId } });
+    if (!parent) return [];
+
+    return this.prisma.screeningResponse.findMany({
+      where: { parentId: parent.id },
+      include: { template: true, child: true },
+      orderBy: { completedAt: 'desc' },
+      take: 50,
+    });
+  }
+
+  async getScreeningFunnelForTenant(tenantId: string) {
+    const [
+      completedCount,
+      lowRiskCount,
+      moderateRiskCount,
+      highRiskCount,
+      recentScreenings,
+    ] = await Promise.all([
+      this.prisma.screeningResponse.count({ where: { tenantId } }),
+      this.prisma.screeningResponse.count({
+        where: { tenantId, riskLevel: 'LOW' },
+      }),
+      this.prisma.screeningResponse.count({
+        where: { tenantId, riskLevel: 'MODERATE' },
+      }),
+      this.prisma.screeningResponse.count({
+        where: { tenantId, riskLevel: 'HIGH' },
+      }),
+      this.prisma.screeningResponse.findMany({
+        where: { tenantId },
+        include: { template: true, child: true },
+        orderBy: { completedAt: 'desc' },
+        take: 10,
+      }),
+    ]);
+
+    return {
+      summary: {
+        completedCount,
+        lowRiskCount,
+        moderateRiskCount,
+        highRiskCount,
+      },
+      recentScreenings,
+    };
+  }
+
+  private scoreResponses(responses: Record<string, unknown>) {
+    let total = 0;
+    let count = 0;
+    for (const value of Object.values(responses)) {
+      if (typeof value === 'number') {
+        total += value;
+        count += 1;
+      } else if (value === true) {
+        total += 1;
+        count += 1;
+      } else if (value === false) {
+        count += 1;
+      }
+    }
+    if (count === 0) return null;
+    return Number((total / count).toFixed(2));
+  }
+
+  private riskLevelFromScore(score: number | null) {
+    if (score == null) return null;
+    if (score >= 0.7) return 'HIGH';
+    if (score >= 0.4) return 'MODERATE';
+    return 'LOW';
   }
 
   async create(data: Record<string, unknown>) {

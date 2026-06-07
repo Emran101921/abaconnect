@@ -10,6 +10,94 @@ class AnalyticsMetricModel {
   final double metricValue;
 }
 
+class ClaimsPipelineSummaryModel {
+  const ClaimsPipelineSummaryModel({
+    required this.draftCount,
+    required this.submittedCount,
+    required this.pendingCount,
+    required this.paidCount,
+    required this.deniedCount,
+  });
+
+  final int draftCount;
+  final int submittedCount;
+  final int pendingCount;
+  final int paidCount;
+  final int deniedCount;
+}
+
+class AnalyticsClaimSummaryModel {
+  const AnalyticsClaimSummaryModel({
+    required this.id,
+    required this.status,
+    required this.payerName,
+    required this.billedAmount,
+    required this.serviceDate,
+    this.childName,
+    this.claimNumber,
+  });
+
+  final String id;
+  final String status;
+  final String payerName;
+  final double billedAmount;
+  final DateTime serviceDate;
+  final String? childName;
+  final String? claimNumber;
+}
+
+class ClaimsPipelineDashboardModel {
+  const ClaimsPipelineDashboardModel({
+    required this.summary,
+    required this.recentClaims,
+  });
+
+  final ClaimsPipelineSummaryModel summary;
+  final List<AnalyticsClaimSummaryModel> recentClaims;
+}
+
+class ScreeningFunnelSummaryModel {
+  const ScreeningFunnelSummaryModel({
+    required this.completedCount,
+    required this.lowRiskCount,
+    required this.moderateRiskCount,
+    required this.highRiskCount,
+  });
+
+  final int completedCount;
+  final int lowRiskCount;
+  final int moderateRiskCount;
+  final int highRiskCount;
+}
+
+class AnalyticsScreeningSummaryModel {
+  const AnalyticsScreeningSummaryModel({
+    required this.id,
+    required this.completedAt,
+    this.childName,
+    this.templateName,
+    this.score,
+    this.riskLevel,
+  });
+
+  final String id;
+  final DateTime completedAt;
+  final String? childName;
+  final String? templateName;
+  final double? score;
+  final String? riskLevel;
+}
+
+class ScreeningFunnelDashboardModel {
+  const ScreeningFunnelDashboardModel({
+    required this.summary,
+    required this.recentScreenings,
+  });
+
+  final ScreeningFunnelSummaryModel summary;
+  final List<AnalyticsScreeningSummaryModel> recentScreenings;
+}
+
 class AdminDashboardModel {
   const AdminDashboardModel({
     required this.userCount,
@@ -169,6 +257,96 @@ class AdminRepository {
           ),
         )
         .toList();
+  }
+
+  Future<ClaimsPipelineDashboardModel> fetchClaimsPipeline() async {
+    const query = r'''
+      query {
+        adminClaimsPipeline {
+          summary {
+            draftCount submittedCount pendingCount paidCount deniedCount
+          }
+          recentClaims {
+            id status payerName billedAmount serviceDate childName claimNumber
+          }
+        }
+      }
+    ''';
+    final result = await _graphql.query(query);
+    final data =
+        result['data']?['adminClaimsPipeline'] as Map<String, dynamic>? ?? {};
+    return _mapClaimsPipeline(data);
+  }
+
+  Future<ScreeningFunnelDashboardModel> fetchScreeningFunnel() async {
+    const query = r'''
+      query {
+        adminScreeningFunnel {
+          summary {
+            completedCount lowRiskCount moderateRiskCount highRiskCount
+          }
+          recentScreenings {
+            id completedAt childName templateName score riskLevel
+          }
+        }
+      }
+    ''';
+    final result = await _graphql.query(query);
+    final data =
+        result['data']?['adminScreeningFunnel'] as Map<String, dynamic>? ?? {};
+    return _mapScreeningFunnel(data);
+  }
+
+  ClaimsPipelineDashboardModel _mapClaimsPipeline(Map<String, dynamic> data) {
+    final summary = data['summary'] as Map<String, dynamic>? ?? {};
+    final claims = data['recentClaims'] as List<dynamic>? ?? [];
+    return ClaimsPipelineDashboardModel(
+      summary: ClaimsPipelineSummaryModel(
+        draftCount: summary['draftCount'] as int? ?? 0,
+        submittedCount: summary['submittedCount'] as int? ?? 0,
+        pendingCount: summary['pendingCount'] as int? ?? 0,
+        paidCount: summary['paidCount'] as int? ?? 0,
+        deniedCount: summary['deniedCount'] as int? ?? 0,
+      ),
+      recentClaims: claims
+          .map(
+            (e) => AnalyticsClaimSummaryModel(
+              id: e['id'] as String,
+              status: e['status'] as String? ?? '',
+              payerName: e['payerName'] as String? ?? '',
+              billedAmount: (e['billedAmount'] as num?)?.toDouble() ?? 0,
+              serviceDate: DateTime.parse(e['serviceDate'] as String),
+              childName: e['childName'] as String?,
+              claimNumber: e['claimNumber'] as String?,
+            ),
+          )
+          .toList(),
+    );
+  }
+
+  ScreeningFunnelDashboardModel _mapScreeningFunnel(Map<String, dynamic> data) {
+    final summary = data['summary'] as Map<String, dynamic>? ?? {};
+    final screenings = data['recentScreenings'] as List<dynamic>? ?? [];
+    return ScreeningFunnelDashboardModel(
+      summary: ScreeningFunnelSummaryModel(
+        completedCount: summary['completedCount'] as int? ?? 0,
+        lowRiskCount: summary['lowRiskCount'] as int? ?? 0,
+        moderateRiskCount: summary['moderateRiskCount'] as int? ?? 0,
+        highRiskCount: summary['highRiskCount'] as int? ?? 0,
+      ),
+      recentScreenings: screenings
+          .map(
+            (e) => AnalyticsScreeningSummaryModel(
+              id: e['id'] as String,
+              completedAt: DateTime.parse(e['completedAt'] as String),
+              childName: e['childName'] as String?,
+              templateName: e['templateName'] as String?,
+              score: (e['score'] as num?)?.toDouble(),
+              riskLevel: e['riskLevel'] as String?,
+            ),
+          )
+          .toList(),
+    );
   }
 
   Future<AdminDashboardModel> fetchDashboard() async {

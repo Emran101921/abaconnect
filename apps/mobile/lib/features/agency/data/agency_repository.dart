@@ -58,6 +58,94 @@ class AgencyTherapistModel {
   final String? licenseNumber;
 }
 
+class AgencyClaimsPipelineSummaryModel {
+  const AgencyClaimsPipelineSummaryModel({
+    required this.draftCount,
+    required this.submittedCount,
+    required this.pendingCount,
+    required this.paidCount,
+    required this.deniedCount,
+  });
+
+  final int draftCount;
+  final int submittedCount;
+  final int pendingCount;
+  final int paidCount;
+  final int deniedCount;
+}
+
+class AgencyClaimSummaryModel {
+  const AgencyClaimSummaryModel({
+    required this.id,
+    required this.status,
+    required this.payerName,
+    required this.billedAmount,
+    required this.serviceDate,
+    this.childName,
+    this.claimNumber,
+  });
+
+  final String id;
+  final String status;
+  final String payerName;
+  final double billedAmount;
+  final DateTime serviceDate;
+  final String? childName;
+  final String? claimNumber;
+}
+
+class AgencyClaimsPipelineModel {
+  const AgencyClaimsPipelineModel({
+    required this.summary,
+    required this.recentClaims,
+  });
+
+  final AgencyClaimsPipelineSummaryModel summary;
+  final List<AgencyClaimSummaryModel> recentClaims;
+}
+
+class AgencyScreeningFunnelSummaryModel {
+  const AgencyScreeningFunnelSummaryModel({
+    required this.completedCount,
+    required this.lowRiskCount,
+    required this.moderateRiskCount,
+    required this.highRiskCount,
+  });
+
+  final int completedCount;
+  final int lowRiskCount;
+  final int moderateRiskCount;
+  final int highRiskCount;
+}
+
+class AgencyScreeningSummaryModel {
+  const AgencyScreeningSummaryModel({
+    required this.id,
+    required this.completedAt,
+    this.childName,
+    this.templateName,
+    this.score,
+    this.riskLevel,
+  });
+
+  final String id;
+  final DateTime completedAt;
+  final String? childName;
+  final String? templateName;
+  final double? score;
+  final String? riskLevel;
+}
+
+class AgencyScreeningFunnelModel {
+  const AgencyScreeningFunnelModel({
+    required this.summary,
+    required this.recentScreenings,
+  });
+
+  final AgencyScreeningFunnelSummaryModel summary;
+  final List<AgencyScreeningSummaryModel> recentScreenings;
+}
+
 class AgencyRepository {
   AgencyRepository(this._graphql);
 
@@ -206,6 +294,115 @@ class AgencyRepository {
       displayName: name,
       isVerified: e['isVerified'] as bool? ?? false,
       licenseNumber: e['licenseNumber'] as String?,
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> fetchTenantAnalytics() async {
+    const query = r'''
+      query {
+        tenantAnalytics { metricKey metricValue }
+      }
+    ''';
+    final result = await _graphql.query(query);
+    final list = result['data']?['tenantAnalytics'] as List<dynamic>? ?? [];
+    return list
+        .map(
+          (e) => {
+            'key': e['metricKey'] as String? ?? '',
+            'value': (e['metricValue'] as num?)?.toDouble() ?? 0,
+          },
+        )
+        .toList();
+  }
+
+  Future<AgencyClaimsPipelineModel> fetchClaimsPipeline() async {
+    const query = r'''
+      query {
+        agencyClaimsPipeline {
+          summary {
+            draftCount submittedCount pendingCount paidCount deniedCount
+          }
+          recentClaims {
+            id status payerName billedAmount serviceDate childName claimNumber
+          }
+        }
+      }
+    ''';
+    final result = await _graphql.query(query);
+    final data =
+        result['data']?['agencyClaimsPipeline'] as Map<String, dynamic>? ?? {};
+    return _mapClaimsPipeline(data);
+  }
+
+  Future<AgencyScreeningFunnelModel> fetchScreeningFunnel() async {
+    const query = r'''
+      query {
+        agencyScreeningFunnel {
+          summary {
+            completedCount lowRiskCount moderateRiskCount highRiskCount
+          }
+          recentScreenings {
+            id completedAt childName templateName score riskLevel
+          }
+        }
+      }
+    ''';
+    final result = await _graphql.query(query);
+    final data =
+        result['data']?['agencyScreeningFunnel'] as Map<String, dynamic>? ??
+            {};
+    return _mapScreeningFunnel(data);
+  }
+
+  AgencyClaimsPipelineModel _mapClaimsPipeline(Map<String, dynamic> data) {
+    final summary = data['summary'] as Map<String, dynamic>? ?? {};
+    final claims = data['recentClaims'] as List<dynamic>? ?? [];
+    return AgencyClaimsPipelineModel(
+      summary: AgencyClaimsPipelineSummaryModel(
+        draftCount: summary['draftCount'] as int? ?? 0,
+        submittedCount: summary['submittedCount'] as int? ?? 0,
+        pendingCount: summary['pendingCount'] as int? ?? 0,
+        paidCount: summary['paidCount'] as int? ?? 0,
+        deniedCount: summary['deniedCount'] as int? ?? 0,
+      ),
+      recentClaims: claims
+          .map(
+            (e) => AgencyClaimSummaryModel(
+              id: e['id'] as String,
+              status: e['status'] as String? ?? '',
+              payerName: e['payerName'] as String? ?? '',
+              billedAmount: (e['billedAmount'] as num?)?.toDouble() ?? 0,
+              serviceDate: DateTime.parse(e['serviceDate'] as String),
+              childName: e['childName'] as String?,
+              claimNumber: e['claimNumber'] as String?,
+            ),
+          )
+          .toList(),
+    );
+  }
+
+  AgencyScreeningFunnelModel _mapScreeningFunnel(Map<String, dynamic> data) {
+    final summary = data['summary'] as Map<String, dynamic>? ?? {};
+    final screenings = data['recentScreenings'] as List<dynamic>? ?? [];
+    return AgencyScreeningFunnelModel(
+      summary: AgencyScreeningFunnelSummaryModel(
+        completedCount: summary['completedCount'] as int? ?? 0,
+        lowRiskCount: summary['lowRiskCount'] as int? ?? 0,
+        moderateRiskCount: summary['moderateRiskCount'] as int? ?? 0,
+        highRiskCount: summary['highRiskCount'] as int? ?? 0,
+      ),
+      recentScreenings: screenings
+          .map(
+            (e) => AgencyScreeningSummaryModel(
+              id: e['id'] as String,
+              completedAt: DateTime.parse(e['completedAt'] as String),
+              childName: e['childName'] as String?,
+              templateName: e['templateName'] as String?,
+              score: (e['score'] as num?)?.toDouble(),
+              riskLevel: e['riskLevel'] as String?,
+            ),
+          )
+          .toList(),
     );
   }
 }

@@ -4,8 +4,22 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { MessageDeliveryStatus } from '../graphql/types/messaging.types';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
+
+function messageDeliveryStatus(m: {
+  deliveredAt: Date | null;
+  readAt: Date | null;
+}): MessageDeliveryStatus {
+  if (m.readAt) {
+    return MessageDeliveryStatus.READ;
+  }
+  if (m.deliveredAt) {
+    return MessageDeliveryStatus.DELIVERED;
+  }
+  return MessageDeliveryStatus.SENT;
+}
 
 @Injectable()
 export class MessagingService {
@@ -38,6 +52,7 @@ export class MessagingService {
           .filter((p) => p.userId !== userId)
           .map((p) => p.user);
         const last = m.thread.messages[0];
+        const lastMessageIsMine = last?.senderId === userId;
         return {
           id: m.thread.id,
           subject: m.thread.subject ?? undefined,
@@ -48,6 +63,11 @@ export class MessagingService {
           lastMessageBody: last?.body ?? undefined,
           lastMessageAt: last?.sentAt ?? undefined,
           hasUnread: this.isThreadUnread(last, m.lastReadAt, userId),
+          lastMessageIsMine,
+          lastMessageStatus:
+            last && lastMessageIsMine
+              ? messageDeliveryStatus(last)
+              : undefined,
         };
       })
       .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
@@ -76,11 +96,33 @@ export class MessagingService {
 
   async markThreadRead(userId: string, threadId: string) {
     await this.assertParticipant(userId, threadId);
+    const now = new Date();
     await this.prisma.messageParticipant.update({
       where: { threadId_userId: { threadId, userId } },
-      data: { lastReadAt: new Date() },
+      data: { lastReadAt: now },
+    });
+    await this.prisma.message.updateMany({
+      where: {
+        threadId,
+        senderId: { not: userId },
+        deletedAt: null,
+        readAt: null,
+      },
+      data: { readAt: now },
     });
     return true;
+  }
+
+  private async markMessagesDelivered(userId: string, threadId: string) {
+    await this.prisma.message.updateMany({
+      where: {
+        threadId,
+        senderId: { not: userId },
+        deletedAt: null,
+        deliveredAt: null,
+      },
+      data: { deliveredAt: new Date() },
+    });
   }
 
   private isThreadUnread(
@@ -99,7 +141,7 @@ export class MessagingService {
 
   async getThreadMessages(userId: string, threadId: string) {
     await this.assertParticipant(userId, threadId);
-    await this.markThreadRead(userId, threadId);
+    await this.markMessagesDelivered(userId, threadId);
     return this.prisma.message.findMany({
       where: { threadId, deletedAt: null },
       include: { sender: true },
@@ -120,6 +162,7 @@ export class MessagingService {
         threadId,
         senderId: userId,
         body: trimmed,
+        sentAt: new Date(),
       },
       include: { sender: true },
     });

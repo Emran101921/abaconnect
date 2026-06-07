@@ -10,6 +10,7 @@ import { MatchingService } from '../matching/matching.service';
 import { ParentsService } from '../parents/parents.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ReviewsService } from '../reviews/reviews.service';
+import { TherapyType } from '../../generated/prisma/client';
 import { ScreeningsService } from '../screenings/screenings.service';
 import { SessionsService } from '../sessions/sessions.service';
 import {
@@ -97,6 +98,9 @@ export class ParentBookingResolver {
       therapyType: s.appointment.therapyType,
       completedAt: s.checkOutAt ?? s.checkInAt ?? undefined,
       durationMinutes: s.durationMinutes ?? undefined,
+      progressNoteSummary: s.progressNote?.summary ?? undefined,
+      hasProgressNote: Boolean(s.progressNote?.signedAt),
+      parentFeedback: s.progressNote?.parentFeedback ?? undefined,
     }));
   }
 
@@ -320,6 +324,14 @@ export class ParentBookingResolver {
     }));
   }
 
+  @Query(() => [ScreeningResponseType], { name: 'myScreeningHistory' })
+  async myScreeningHistory(
+    @CurrentUser() user: AuthUser,
+  ): Promise<ScreeningResponseType[]> {
+    const rows = await this.screeningsService.listHistoryForParentUser(user.id);
+    return rows.map((r) => this.mapScreeningResponse(r));
+  }
+
   @Mutation(() => ScreeningResponseType, { name: 'submitScreening' })
   async submitScreening(
     @CurrentUser() user: AuthUser,
@@ -336,10 +348,32 @@ export class ParentBookingResolver {
       childId: input.childId,
       responses,
     });
-    const template = 'template' in row ? row.template : null;
+    return this.mapScreeningResponse(row);
+  }
+
+  private mapScreeningResponse(r: {
+    id: string;
+    completedAt: Date;
+    score?: unknown | null;
+    riskLevel?: string | null;
+    template?: {
+      id: string;
+      name: string;
+      therapyType: TherapyType;
+      version: number | string;
+    } | null;
+    child?: { firstName: string; lastName: string } | null;
+  }): ScreeningResponseType {
+    const template = r.template;
     return {
-      id: row.id,
-      completedAt: row.completedAt,
+      id: r.id,
+      completedAt: r.completedAt,
+      score: r.score != null ? Number(r.score) : undefined,
+      riskLevel: r.riskLevel ?? undefined,
+      childName: r.child
+        ? `${r.child.firstName} ${r.child.lastName}`
+        : undefined,
+      templateName: template?.name,
       template: template
         ? {
             id: template.id,

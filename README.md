@@ -138,7 +138,7 @@ Health check: `GET http://localhost:3000/api/v1/health`
 
 **Booking location:** Parents choose session location (in-home, clinic, telehealth, etc.) when booking.
 
-**Push notifications:** `POST /api/v1/auth/device` registers tokens in `user_devices`. `createForUser` enqueues a Bull `push` job; `PushService` sends via FCM when `FCM_SERVER_KEY` is set (otherwise logs in dev). Set `FCM_SERVER_KEY` in `api/.env` for real mobile push.
+**Push notifications:** `POST /api/v1/auth/device` registers tokens in `user_devices`. `createForUser` enqueues a Bull `push` job; `PushService` sends via FCM when `FCM_SERVER_KEY` is set (otherwise logs in dev). Flutter uses `firebase_messaging` with demo `firebase_options.dart` — run `flutterfire configure` and set `FCM_SERVER_KEY` for production push.
 
 **Insurance claims:** Completed sessions auto-create `DRAFT` claims linked by `sessionId`. SOAP finalization generates an 837 stub in `metadata.ediPayload`. Admins submit via `submitInsuranceClaimToClearinghouse` (stub vendor when `CLEARINGHOUSE_VENDOR=stub`).
 

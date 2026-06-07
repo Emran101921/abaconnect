@@ -46,6 +46,16 @@ final adminAnalyticsProvider =
   return ref.watch(adminRepositoryProvider).fetchAnalytics();
 });
 
+final adminClaimsPipelineProvider =
+    FutureProvider<ClaimsPipelineDashboardModel>((ref) async {
+  return ref.watch(adminRepositoryProvider).fetchClaimsPipeline();
+});
+
+final adminScreeningFunnelProvider =
+    FutureProvider<ScreeningFunnelDashboardModel>((ref) async {
+  return ref.watch(adminRepositoryProvider).fetchScreeningFunnel();
+});
+
 final adminInsuranceClaimsProvider =
     FutureProvider<List<AdminInsuranceClaimModel>>((ref) async {
   return ref.watch(adminRepositoryProvider).fetchInsuranceClaims();
