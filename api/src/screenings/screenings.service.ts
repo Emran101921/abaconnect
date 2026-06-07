@@ -4,7 +4,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '../../generated/prisma/client';
-import { prismaDateRange } from '../common/date-range.util';
+import {
+  DateRangeFilter,
+  priorPeriodBounds,
+  prismaBoundsRange,
+  prismaDateRange,
+  resolveAnalyticsBounds,
+  ResolvedDateBounds,
+} from '../common/date-range.util';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -104,16 +111,53 @@ export class ScreeningsService {
 
   async getScreeningFunnelForTenant(
     tenantId: string,
-    dateRange?: { fromDate?: Date; toDate?: Date },
+    dateRange?: DateRangeFilter,
   ) {
-    const completedAt = prismaDateRange('completedAt', dateRange ?? {});
-    const baseWhere = { tenantId, ...completedAt };
+    const currentBounds = resolveAnalyticsBounds(dateRange);
+    const priorBounds = priorPeriodBounds(
+      currentBounds.from,
+      currentBounds.to,
+    );
+
+    const [current, prior, recentScreenings] = await Promise.all([
+      this.queryScreeningFunnelCounts(tenantId, currentBounds),
+      this.queryScreeningFunnelCounts(tenantId, priorBounds),
+      this.prisma.screeningResponse.findMany({
+        where: {
+          tenantId,
+          ...prismaBoundsRange('completedAt', currentBounds),
+        },
+        include: { template: true, child: true },
+        orderBy: { completedAt: 'desc' },
+        take: 10,
+      }),
+    ]);
+
+    return {
+      summary: {
+        ...current,
+        priorCompletedCount: prior.completedCount,
+        priorLowRiskCount: prior.lowRiskCount,
+        priorModerateRiskCount: prior.moderateRiskCount,
+        priorHighRiskCount: prior.highRiskCount,
+      },
+      recentScreenings,
+    };
+  }
+
+  private async queryScreeningFunnelCounts(
+    tenantId: string,
+    bounds: ResolvedDateBounds,
+  ) {
+    const baseWhere = {
+      tenantId,
+      ...prismaBoundsRange('completedAt', bounds),
+    };
     const [
       completedCount,
       lowRiskCount,
       moderateRiskCount,
       highRiskCount,
-      recentScreenings,
     ] = await Promise.all([
       this.prisma.screeningResponse.count({ where: baseWhere }),
       this.prisma.screeningResponse.count({
@@ -125,22 +169,13 @@ export class ScreeningsService {
       this.prisma.screeningResponse.count({
         where: { ...baseWhere, riskLevel: 'HIGH' },
       }),
-      this.prisma.screeningResponse.findMany({
-        where: baseWhere,
-        include: { template: true, child: true },
-        orderBy: { completedAt: 'desc' },
-        take: 10,
-      }),
     ]);
 
     return {
-      summary: {
-        completedCount,
-        lowRiskCount,
-        moderateRiskCount,
-        highRiskCount,
-      },
-      recentScreenings,
+      completedCount,
+      lowRiskCount,
+      moderateRiskCount,
+      highRiskCount,
     };
   }
 

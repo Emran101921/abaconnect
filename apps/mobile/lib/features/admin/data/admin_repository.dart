@@ -10,6 +10,11 @@ class ClaimsPipelineSummaryModel {
     required this.pendingCount,
     required this.paidCount,
     required this.deniedCount,
+    required this.priorDraftCount,
+    required this.priorSubmittedCount,
+    required this.priorPendingCount,
+    required this.priorPaidCount,
+    required this.priorDeniedCount,
   });
 
   final int draftCount;
@@ -17,6 +22,11 @@ class ClaimsPipelineSummaryModel {
   final int pendingCount;
   final int paidCount;
   final int deniedCount;
+  final int priorDraftCount;
+  final int priorSubmittedCount;
+  final int priorPendingCount;
+  final int priorPaidCount;
+  final int priorDeniedCount;
 }
 
 class AnalyticsClaimSummaryModel {
@@ -55,12 +65,20 @@ class ScreeningFunnelSummaryModel {
     required this.lowRiskCount,
     required this.moderateRiskCount,
     required this.highRiskCount,
+    required this.priorCompletedCount,
+    required this.priorLowRiskCount,
+    required this.priorModerateRiskCount,
+    required this.priorHighRiskCount,
   });
 
   final int completedCount;
   final int lowRiskCount;
   final int moderateRiskCount;
   final int highRiskCount;
+  final int priorCompletedCount;
+  final int priorLowRiskCount;
+  final int priorModerateRiskCount;
+  final int priorHighRiskCount;
 }
 
 class AnalyticsScreeningSummaryModel {
@@ -290,6 +308,8 @@ class AdminRepository {
         adminClaimsPipeline(fromDate: $fromDate, toDate: $toDate) {
           summary {
             draftCount submittedCount pendingCount paidCount deniedCount
+            priorDraftCount priorSubmittedCount priorPendingCount
+            priorPaidCount priorDeniedCount
           }
           recentClaims {
             id status payerName billedAmount serviceDate childName claimNumber
@@ -452,6 +472,8 @@ class AdminRepository {
         adminScreeningFunnel(fromDate: $fromDate, toDate: $toDate) {
           summary {
             completedCount lowRiskCount moderateRiskCount highRiskCount
+            priorCompletedCount priorLowRiskCount priorModerateRiskCount
+            priorHighRiskCount
           }
           recentScreenings {
             id completedAt childName templateName score riskLevel
@@ -478,6 +500,11 @@ class AdminRepository {
         pendingCount: summary['pendingCount'] as int? ?? 0,
         paidCount: summary['paidCount'] as int? ?? 0,
         deniedCount: summary['deniedCount'] as int? ?? 0,
+        priorDraftCount: summary['priorDraftCount'] as int? ?? 0,
+        priorSubmittedCount: summary['priorSubmittedCount'] as int? ?? 0,
+        priorPendingCount: summary['priorPendingCount'] as int? ?? 0,
+        priorPaidCount: summary['priorPaidCount'] as int? ?? 0,
+        priorDeniedCount: summary['priorDeniedCount'] as int? ?? 0,
       ),
       recentClaims: claims
           .map(
@@ -504,6 +531,10 @@ class AdminRepository {
         lowRiskCount: summary['lowRiskCount'] as int? ?? 0,
         moderateRiskCount: summary['moderateRiskCount'] as int? ?? 0,
         highRiskCount: summary['highRiskCount'] as int? ?? 0,
+        priorCompletedCount: summary['priorCompletedCount'] as int? ?? 0,
+        priorLowRiskCount: summary['priorLowRiskCount'] as int? ?? 0,
+        priorModerateRiskCount: summary['priorModerateRiskCount'] as int? ?? 0,
+        priorHighRiskCount: summary['priorHighRiskCount'] as int? ?? 0,
       ),
       recentScreenings: screenings
           .map(

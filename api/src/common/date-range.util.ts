@@ -63,6 +63,13 @@ export function priorPeriodBounds(
   return { from: priorStart, to: priorEnd };
 }
 
+export function prismaBoundsRange(
+  field: string,
+  bounds: ResolvedDateBounds,
+): Record<string, { gte: Date; lte: Date }> {
+  return { [field]: { gte: bounds.from, lte: bounds.to } };
+}
+
 export function prismaDateRange(
   field: string,
   { fromDate, toDate }: DateRangeFilter,

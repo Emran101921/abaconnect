@@ -19,6 +19,9 @@ const analyticsOverviewComparisonKeys = {
   'active_children',
 };
 
+String formatCountPeriodDelta(int current, int prior) =>
+    formatAnalyticsPeriodDelta(current.toDouble(), prior.toDouble());
+
 String formatAnalyticsPeriodDelta(
   double current,
   double? prior, {
