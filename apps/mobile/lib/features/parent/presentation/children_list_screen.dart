@@ -7,18 +7,175 @@ import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../data/parent_booking_repository.dart';
+import 'child_profile_form.dart';
 
-Future<DateTime?> pickChildDateOfBirth(
-  BuildContext context,
-  DateTime initial,
-) {
-  return showDatePicker(
+Future<ChildModel?> showChildProfileSheet(
+  BuildContext context, {
+  ChildModel? existing,
+}) {
+  return showModalBottomSheet<ChildModel>(
     context: context,
-    initialDate: initial,
-    firstDate: DateTime(1990),
-    lastDate: DateTime.now(),
-    helpText: 'Date of birth',
+    isScrollControlled: true,
+    useSafeArea: true,
+    builder: (ctx) => _ChildProfileSheet(existing: existing),
   );
+}
+
+class _ChildProfileSheet extends ConsumerStatefulWidget {
+  const _ChildProfileSheet({this.existing});
+
+  final ChildModel? existing;
+
+  @override
+  ConsumerState<_ChildProfileSheet> createState() => _ChildProfileSheetState();
+}
+
+class _ChildProfileSheetState extends ConsumerState<_ChildProfileSheet> {
+  late final ChildProfileFormData _data;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _data = widget.existing != null
+        ? ChildProfileFormData.fromChild(widget.existing!)
+        : ChildProfileFormData();
+  }
+
+  Future<void> _save() async {
+    if (!_data.isValid) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please complete required fields')),
+      );
+      return;
+    }
+    setState(() => _saving = true);
+    final repo = ref.read(parentBookingRepositoryProvider);
+    try {
+      ChildModel child;
+      if (widget.existing != null) {
+        await repo.updateChild(
+          childId: widget.existing!.id,
+          firstName: _data.firstName.trim(),
+          lastName: _data.lastName.trim(),
+          dateOfBirth: _data.dateOfBirth,
+          gender: _data.gender,
+          primaryLanguage: _data.primaryLanguage,
+          guardianName: _data.guardianName?.trim(),
+          guardianPhone: _data.guardianPhone?.trim(),
+          guardianEmail: _data.guardianEmail?.trim(),
+          addressLine1: _data.addressLine1?.trim(),
+          zipCode: _data.zipCode?.trim(),
+          pediatricianName: _data.pediatricianName?.trim(),
+          insuranceType: _data.insuranceType,
+          hadEarlyIntervention: _data.hadEarlyIntervention,
+        );
+        child = ChildModel(
+          id: widget.existing!.id,
+          firstName: _data.firstName.trim(),
+          lastName: _data.lastName.trim(),
+          dateOfBirth: _data.dateOfBirth,
+          gender: _data.gender,
+          primaryLanguage: _data.primaryLanguage,
+          guardianName: _data.guardianName,
+          guardianPhone: _data.guardianPhone,
+          guardianEmail: _data.guardianEmail,
+          addressLine1: _data.addressLine1,
+          zipCode: _data.zipCode,
+          pediatricianName: _data.pediatricianName,
+          insuranceType: _data.insuranceType,
+          hadEarlyIntervention: _data.hadEarlyIntervention,
+        );
+      } else {
+        child = await repo.addChild(
+          firstName: _data.firstName.trim(),
+          lastName: _data.lastName.trim(),
+          dateOfBirth: _data.dateOfBirth,
+          gender: _data.gender,
+          primaryLanguage: _data.primaryLanguage,
+          guardianName: _data.guardianName?.trim(),
+          guardianPhone: _data.guardianPhone?.trim(),
+          guardianEmail: _data.guardianEmail?.trim(),
+          addressLine1: _data.addressLine1?.trim(),
+          zipCode: _data.zipCode?.trim(),
+          pediatricianName: _data.pediatricianName?.trim(),
+          insuranceType: _data.insuranceType,
+          hadEarlyIntervention: _data.hadEarlyIntervention,
+        );
+      }
+      if (mounted) Navigator.pop(context, child);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Save failed: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.92,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      builder: (context, scrollController) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.viewInsetsOf(context).bottom,
+          ),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Text(
+                      widget.existing == null ? 'Add child' : 'Edit child',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  controller: scrollController,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: ChildProfileForm(
+                    data: _data,
+                    onChanged: () => setState(() {}),
+                  ),
+                ),
+              ),
+              SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: FilledButton(
+                    onPressed: _saving ? null : _save,
+                    child: _saving
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Text(widget.existing == null ? 'Save & continue' : 'Save'),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 }
 
 class ChildrenListScreen extends ConsumerStatefulWidget {
@@ -59,138 +216,27 @@ class _ChildrenListScreenState extends ConsumerState<ChildrenListScreen> {
   }
 
   Future<void> _addChild() async {
-    final firstName = TextEditingController();
-    final lastName = TextEditingController();
-    var dateOfBirth = DateTime(2018, 1, 1);
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Add child'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: firstName,
-                decoration: const InputDecoration(labelText: 'First name'),
-              ),
-              TextField(
-                controller: lastName,
-                decoration: const InputDecoration(labelText: 'Last name'),
-              ),
-              const SizedBox(height: 8),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Date of birth'),
-                subtitle: Text(DateFormat.yMMMd().format(dateOfBirth)),
-                trailing: const Icon(Icons.calendar_today),
-                onTap: () async {
-                  final picked = await pickChildDateOfBirth(context, dateOfBirth);
-                  if (picked != null) {
-                    setDialogState(() => dateOfBirth = picked);
-                  }
-                },
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Save')),
-          ],
-        ),
-      ),
-    );
-    if (ok != true || firstName.text.isEmpty || lastName.text.isEmpty) {
-      return;
-    }
-    try {
-      final child = await ref.read(parentBookingRepositoryProvider).addChild(
-            firstName: firstName.text.trim(),
-            lastName: lastName.text.trim(),
-            dateOfBirth: dateOfBirth,
-          );
-      await _load();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Child saved — opening intake screening…'),
-          ),
-        );
-        context.push(
-          '${AppRoutes.parentScreening}?childId=${child.id}&autoStart=true',
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Add failed: $e')),
-        );
-      }
+    final child = await showChildProfileSheet(context);
+    if (child == null) return;
+    await _load();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Child saved — opening intake screening…')),
+      );
+      context.push(
+        '${AppRoutes.parentScreening}?childId=${child.id}&autoStart=true',
+      );
     }
   }
 
   Future<void> _editChild(ChildModel child) async {
-    final firstName = TextEditingController(text: child.firstName);
-    final lastName = TextEditingController(text: child.lastName);
-    var dateOfBirth = child.dateOfBirth;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Edit child'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: firstName,
-                decoration: const InputDecoration(labelText: 'First name'),
-              ),
-              TextField(
-                controller: lastName,
-                decoration: const InputDecoration(labelText: 'Last name'),
-              ),
-              const SizedBox(height: 8),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Date of birth'),
-                subtitle: Text(DateFormat.yMMMd().format(dateOfBirth)),
-                trailing: const Icon(Icons.calendar_today),
-                onTap: () async {
-                  final picked = await pickChildDateOfBirth(context, dateOfBirth);
-                  if (picked != null) {
-                    setDialogState(() => dateOfBirth = picked);
-                  }
-                },
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Save')),
-          ],
-        ),
-      ),
-    );
-    if (ok != true) return;
-    try {
-      await ref.read(parentBookingRepositoryProvider).updateChild(
-            childId: child.id,
-            firstName: firstName.text.trim(),
-            lastName: lastName.text.trim(),
-            dateOfBirth: dateOfBirth,
-          );
-      await _load();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Child updated')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Update failed: $e')),
-        );
-      }
+    final updated = await showChildProfileSheet(context, existing: child);
+    if (updated == null) return;
+    await _load();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Child updated')),
+      );
     }
   }
 
@@ -221,7 +267,8 @@ class _ChildrenListScreenState extends ConsumerState<ChildrenListScreen> {
                           ),
                           title: Text(child.displayName),
                           subtitle: Text(
-                            'DOB ${DateFormat.yMMMd().format(child.dateOfBirth)}',
+                            'DOB ${DateFormat.yMMMd().format(child.dateOfBirth)}'
+                            '${child.primaryLanguage != null ? ' · ${child.primaryLanguage}' : ''}',
                           ),
                           trailing: IconButton(
                             icon: const Icon(Icons.edit),

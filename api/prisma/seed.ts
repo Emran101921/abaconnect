@@ -1,6 +1,10 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 import { PrismaClient } from '../generated/prisma/client';
+import {
+  buildEarlyInterventionQuestionsJson,
+  EARLY_INTERVENTION_TEMPLATE_NAME,
+} from '../src/screenings/early-intervention-template';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
@@ -248,6 +252,30 @@ async function main() {
         },
       });
     }
+  }
+
+  const eiQuestions = buildEarlyInterventionQuestionsJson();
+  const eiExisting = await prisma.screeningTemplate.findFirst({
+    where: {
+      tenantId: tenant.id,
+      therapyType: 'EARLY_INTERVENTION',
+      name: EARLY_INTERVENTION_TEMPLATE_NAME,
+    },
+  });
+  if (!eiExisting) {
+    await prisma.screeningTemplate.create({
+      data: {
+        tenantId: tenant.id,
+        name: EARLY_INTERVENTION_TEMPLATE_NAME,
+        description:
+          'Comprehensive parent screening for Early Intervention services (sections A–G).',
+        therapyType: 'EARLY_INTERVENTION',
+        version: 1,
+        questions: eiQuestions,
+        scoringRules: { engine: 'early_intervention_v1' },
+        isActive: true,
+      },
+    });
   }
 
   const pendingHash = await bcrypt.hash('Pending123!', 10);

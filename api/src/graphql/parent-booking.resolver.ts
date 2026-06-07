@@ -21,6 +21,7 @@ import {
 } from './inputs/book-appointment.input';
 import {
   AddChildInput,
+  SaveScreeningDraftInput,
   SubmitReviewInput,
   SubmitScreeningInput,
   UpdateChildInput,
@@ -106,7 +107,8 @@ export class ParentBookingResolver {
 
   @Query(() => [ChildType], { name: 'myChildren' })
   async myChildren(@CurrentUser() user: AuthUser): Promise<ChildType[]> {
-    return this.childrenService.findByParentUserId(user.id);
+    const rows = await this.childrenService.findByParentUserId(user.id);
+    return rows.map((child) => this.mapChild(child));
   }
 
   @Query(() => [AppointmentType], { name: 'myAppointments' })
@@ -238,15 +240,19 @@ export class ParentBookingResolver {
         lastName: input.lastName,
         dateOfBirth: input.dateOfBirth,
         gender: input.gender,
+        primaryLanguage: input.primaryLanguage,
+        guardianName: input.guardianName,
+        guardianPhone: input.guardianPhone,
+        guardianEmail: input.guardianEmail,
+        addressLine1: input.addressLine1,
+        zipCode: input.zipCode,
+        pediatricianName: input.pediatricianName,
+        insuranceType: input.insuranceType,
+        hadEarlyIntervention: input.hadEarlyIntervention,
         notes: input.notes,
       },
     );
-    return {
-      id: child.id,
-      firstName: child.firstName,
-      lastName: child.lastName,
-      dateOfBirth: child.dateOfBirth,
-    };
+    return this.mapChild(child);
   }
 
   @Mutation(() => ChildType, { name: 'addChild' })
@@ -259,13 +265,17 @@ export class ParentBookingResolver {
       lastName: input.lastName,
       dateOfBirth: input.dateOfBirth,
       gender: input.gender,
+      primaryLanguage: input.primaryLanguage,
+      guardianName: input.guardianName,
+      guardianPhone: input.guardianPhone,
+      guardianEmail: input.guardianEmail,
+      addressLine1: input.addressLine1,
+      zipCode: input.zipCode,
+      pediatricianName: input.pediatricianName,
+      insuranceType: input.insuranceType,
+      hadEarlyIntervention: input.hadEarlyIntervention,
     });
-    return {
-      id: child.id,
-      firstName: child.firstName,
-      lastName: child.lastName,
-      dateOfBirth: child.dateOfBirth,
-    };
+    return this.mapChild(child);
   }
 
   @Query(() => [ReviewType], { name: 'myReviews' })
@@ -332,23 +342,98 @@ export class ParentBookingResolver {
     return rows.map((r) => this.mapScreeningResponse(r));
   }
 
+  @Query(() => ScreeningResponseType, {
+    name: 'myScreeningDraft',
+    nullable: true,
+  })
+  async myScreeningDraft(
+    @CurrentUser() user: AuthUser,
+    @Args('templateId', { type: () => ID }) templateId: string,
+    @Args('childId', { type: () => ID }) childId: string,
+  ): Promise<ScreeningResponseType | null> {
+    const row = await this.screeningsService.getDraftForParent(
+      user.id,
+      templateId,
+      childId,
+    );
+    return row ? this.mapScreeningResponse(row) : null;
+  }
+
+  @Mutation(() => ScreeningResponseType, { name: 'saveScreeningDraft' })
+  async saveScreeningDraft(
+    @CurrentUser() user: AuthUser,
+    @Args('input') input: SaveScreeningDraftInput,
+  ): Promise<ScreeningResponseType> {
+    const responses = this.parseResponsesJson(input.responsesJson);
+    const row = await this.screeningsService.saveDraftForParent(user.id, {
+      templateId: input.templateId,
+      childId: input.childId,
+      responses,
+      draftId: input.draftId,
+    });
+    return this.mapScreeningResponse(row);
+  }
+
   @Mutation(() => ScreeningResponseType, { name: 'submitScreening' })
   async submitScreening(
     @CurrentUser() user: AuthUser,
     @Args('input') input: SubmitScreeningInput,
   ): Promise<ScreeningResponseType> {
-    let responses: Record<string, unknown> = {};
-    try {
-      responses = JSON.parse(input.responsesJson) as Record<string, unknown>;
-    } catch {
-      responses = { raw: input.responsesJson };
-    }
-    const row = await this.screeningsService.submitResponseForParent(user.id, {
-      templateId: input.templateId,
-      childId: input.childId,
-      responses,
-    });
+    const responses = this.parseResponsesJson(input.responsesJson);
+    const row = await this.screeningsService.submitResponseForParent(
+      user.id,
+      {
+        templateId: input.templateId,
+        childId: input.childId,
+        responses,
+        consentGranted: input.consentGranted,
+        draftId: input.draftId,
+      },
+      user.id,
+    );
     return this.mapScreeningResponse(row);
+  }
+
+  private parseResponsesJson(responsesJson: string) {
+    try {
+      return JSON.parse(responsesJson) as Record<string, unknown>;
+    } catch {
+      return { raw: responsesJson };
+    }
+  }
+
+  private mapChild(child: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    dateOfBirth: Date;
+    gender?: string | null;
+    primaryLanguage?: string | null;
+    guardianName?: string | null;
+    guardianPhone?: string | null;
+    guardianEmail?: string | null;
+    addressLine1?: string | null;
+    zipCode?: string | null;
+    pediatricianName?: string | null;
+    insuranceType?: string | null;
+    hadEarlyIntervention?: boolean | null;
+  }): ChildType {
+    return {
+      id: child.id,
+      firstName: child.firstName,
+      lastName: child.lastName,
+      dateOfBirth: child.dateOfBirth,
+      gender: child.gender ?? undefined,
+      primaryLanguage: child.primaryLanguage ?? undefined,
+      guardianName: child.guardianName ?? undefined,
+      guardianPhone: child.guardianPhone ?? undefined,
+      guardianEmail: child.guardianEmail ?? undefined,
+      addressLine1: child.addressLine1 ?? undefined,
+      zipCode: child.zipCode ?? undefined,
+      pediatricianName: child.pediatricianName ?? undefined,
+      insuranceType: child.insuranceType ?? undefined,
+      hadEarlyIntervention: child.hadEarlyIntervention ?? undefined,
+    };
   }
 
   private mapScreeningResponse(r: {
@@ -356,6 +441,10 @@ export class ParentBookingResolver {
     completedAt: Date;
     score?: unknown | null;
     riskLevel?: string | null;
+    recommendations?: unknown;
+    responses?: unknown;
+    isDraft?: boolean;
+    consentGrantedAt?: Date | null;
     template?: {
       id: string;
       name: string;
@@ -370,6 +459,10 @@ export class ParentBookingResolver {
       completedAt: r.completedAt,
       score: r.score != null ? Number(r.score) : undefined,
       riskLevel: r.riskLevel ?? undefined,
+      recommendationsJson: JSON.stringify(r.recommendations ?? []),
+      responsesJson: JSON.stringify(r.responses ?? {}),
+      isDraft: r.isDraft ?? false,
+      consentGrantedAt: r.consentGrantedAt ?? undefined,
       childName: r.child
         ? `${r.child.firstName} ${r.child.lastName}`
         : undefined,

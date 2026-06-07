@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,6 +7,8 @@ import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../data/parent_booking_repository.dart';
+import 'ei_screening_wizard.dart';
+import 'screening_results_screen.dart';
 
 class ScreeningScreen extends ConsumerStatefulWidget {
   const ScreeningScreen({
@@ -30,6 +30,12 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
   List<ChildModel> _children = [];
   bool _loading = true;
   bool _autoStartHandled = false;
+  bool _wizardActive = false;
+
+  ScreeningTemplateModel? _activeTemplate;
+  ChildModel? _activeChild;
+  Map<String, dynamic> _draftAnswers = {};
+  String? _draftId;
 
   @override
   void initState() {
@@ -45,6 +51,16 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
       }
     }
     return _children.first;
+  }
+
+  ScreeningTemplateModel? get _eiTemplate {
+    for (final t in _templates) {
+      if (t.therapyType == 'EARLY_INTERVENTION' ||
+          t.name.toLowerCase().contains('early intervention')) {
+        return t;
+      }
+    }
+    return _templates.isNotEmpty ? _templates.first : null;
   }
 
   Future<void> _load() async {
@@ -76,142 +92,85 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
   }
 
   void _maybeAutoStartQuestionnaire() {
-    if (!widget.autoStart || _autoStartHandled || _templates.isEmpty) {
-      return;
-    }
-    if (_selectedChild == null) return;
+    if (!widget.autoStart || _autoStartHandled) return;
+    final template = _eiTemplate;
+    final child = _selectedChild;
+    if (template == null || child == null) return;
     _autoStartHandled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        _completeTemplate(_templates.first, childId: _selectedChild!.id);
-      }
+      if (mounted) _startTemplate(template, child: child);
     });
   }
 
-  List<Map<String, dynamic>> _parseQuestions(ScreeningTemplateModel template) {
-    if (template.questionsJson == null) return [];
-    try {
-      final decoded = jsonDecode(template.questionsJson!);
-      if (decoded is List) {
-        return decoded.cast<Map<String, dynamic>>();
-      }
-    } catch (_) {}
-    return [];
-  }
-
-  Future<void> _completeTemplate(
+  Future<void> _startTemplate(
     ScreeningTemplateModel template, {
-    String? childId,
+    ChildModel? child,
   }) async {
-    ChildModel? targetChild;
-    if (childId != null) {
-      for (final child in _children) {
-        if (child.id == childId) {
-          targetChild = child;
-          break;
-        }
-      }
-    } else {
-      targetChild = _selectedChild;
-    }
-
+    final targetChild = child ?? _selectedChild;
     if (targetChild == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Add a child before completing screening')),
       );
       return;
     }
-    final child = targetChild;
 
-    final questions = _parseQuestions(template);
-    final answers = <String, dynamic>{};
-
-    if (questions.isNotEmpty) {
-      final ok = await showDialog<bool>(
-        context: context,
-        barrierDismissible: false,
-        builder: (ctx) {
-          return StatefulBuilder(
-            builder: (context, setDialogState) {
-              return AlertDialog(
-                title: Text(template.name),
-                content: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'For ${child.displayName}',
-                        style: Theme.of(context).textTheme.titleSmall,
-                      ),
-                      const SizedBox(height: 12),
-                      ...questions.map((q) {
-                        final key =
-                            q['id'] as String? ?? q['text'] as String? ?? '';
-                        final label = q['text'] as String? ?? key;
-                        return SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(label),
-                          value: answers[key] == true,
-                          onChanged: (v) =>
-                              setDialogState(() => answers[key] = v),
-                        );
-                      }),
-                    ],
-                  ),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(ctx, false),
-                    child: const Text('Cancel'),
-                  ),
-                  FilledButton(
-                    onPressed: () => Navigator.pop(ctx, true),
-                    child: const Text('Submit'),
-                  ),
-                ],
-              );
-            },
-          );
-        },
-      );
-      if (ok != true) return;
-    } else {
-      answers['completed'] = true;
-    }
-
+    Map<String, dynamic> answers = {};
+    String? draftId;
     try {
-      await ref.read(parentBookingRepositoryProvider).submitScreening(
+      final draft = await ref.read(parentBookingRepositoryProvider).fetchScreeningDraft(
             templateId: template.id,
-            childId: child.id,
-            responses: answers,
+            childId: targetChild.id,
           );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${template.name} submitted'),
-            action: SnackBarAction(
-              label: 'Find therapist',
-              onPressed: () => context.push(AppRoutes.matching),
-            ),
-          ),
-        );
-        context.push(AppRoutes.matching);
+      if (draft != null) {
+        answers = draft.responses;
+        draftId = draft.id;
       }
-      await _load();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Submit failed: $e')),
-        );
-      }
-    }
+    } catch (_) {}
+
+    setState(() {
+      _activeTemplate = template;
+      _activeChild = targetChild;
+      _draftAnswers = answers;
+      _draftId = draftId;
+      _wizardActive = true;
+    });
+  }
+
+  void _onSubmitted(ScreeningResultModel result) {
+    setState(() => _wizardActive = false);
+    final child = _activeChild;
+    if (child == null) return;
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ScreeningResultsScreen(child: child, result: result),
+      ),
+    );
+    _load();
   }
 
   @override
   Widget build(BuildContext context) {
     final dateFmt = DateFormat.yMMMd();
     final selectedChild = _selectedChild;
+
+    if (_wizardActive && _activeTemplate != null && _activeChild != null) {
+      return AppScaffold(
+        title: 'Early Intervention Screening',
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.close),
+            onPressed: () => setState(() => _wizardActive = false),
+          ),
+        ],
+        body: EiScreeningWizard(
+          template: _activeTemplate!,
+          child: _activeChild!,
+          initialAnswers: _draftAnswers,
+          draftId: _draftId,
+          onSubmitted: _onSubmitted,
+        ),
+      );
+    }
 
     return AppScaffold(
       title: 'Screening',
@@ -223,15 +182,23 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
                 padding: const EdgeInsets.all(16),
                 children: [
                   Text(
-                    'Intake Assessment',
+                    'Early Intervention Intake',
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   const SizedBox(height: 8),
                   Text(
                     selectedChild == null
-                        ? 'Add a child profile to complete forms.'
-                        : 'Forms for ${selectedChild.displayName}',
+                        ? 'Add a child profile to complete the screening.'
+                        : 'Screening for ${selectedChild.displayName}',
                   ),
+                  if (selectedChild == null) ...[
+                    const SizedBox(height: 16),
+                    FilledButton.icon(
+                      onPressed: () => context.push(AppRoutes.parentChildren),
+                      icon: const Icon(Icons.child_care),
+                      label: const Text('Add child profile'),
+                    ),
+                  ],
                   const SizedBox(height: 24),
                   if (_history.isNotEmpty) ...[
                     Text(
@@ -266,20 +233,22 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
                   else
                     ..._templates.map(
                       (t) {
-                        final qCount = _parseQuestions(t).length;
+                        final isEi = t.therapyType == 'EARLY_INTERVENTION';
                         return Card(
                           margin: const EdgeInsets.only(bottom: 12),
                           child: ListTile(
                             title: Text(t.name),
                             subtitle: Text(
-                              '${t.therapyType} · $qCount question(s)',
+                              isEi
+                                  ? 'Sections A–G · comprehensive developmental screening'
+                                  : '${t.therapyType} intake',
                             ),
                             trailing: FilledButton(
                               onPressed: selectedChild == null
                                   ? null
-                                  : () => _completeTemplate(
+                                  : () => _startTemplate(
                                         t,
-                                        childId: selectedChild.id,
+                                        child: selectedChild,
                                       ),
                               child: const Text('Start'),
                             ),

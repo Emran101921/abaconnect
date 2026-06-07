@@ -23,6 +23,36 @@ export class ChildType {
 
   @Field()
   dateOfBirth: Date;
+
+  @Field({ nullable: true })
+  gender?: string;
+
+  @Field({ nullable: true })
+  primaryLanguage?: string;
+
+  @Field({ nullable: true })
+  guardianName?: string;
+
+  @Field({ nullable: true })
+  guardianPhone?: string;
+
+  @Field({ nullable: true })
+  guardianEmail?: string;
+
+  @Field({ nullable: true })
+  addressLine1?: string;
+
+  @Field({ nullable: true })
+  zipCode?: string;
+
+  @Field({ nullable: true })
+  pediatricianName?: string;
+
+  @Field({ nullable: true })
+  insuranceType?: string;
+
+  @Field({ nullable: true })
+  hadEarlyIntervention?: boolean;
 }
 
 @ObjectType()
