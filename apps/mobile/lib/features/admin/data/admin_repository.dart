@@ -1,5 +1,9 @@
+import 'dart:convert';
+
 import '../../../core/network/graphql_client.dart';
 import '../../../shared/models/analytics_metric.dart';
+import '../../agency/data/agency_repository.dart';
+import '../../therapist/models/eip_session_note_model.dart';
 
 export '../../../shared/models/analytics_metric.dart';
 
@@ -861,6 +865,74 @@ class AdminRepository {
           'status': status,
           'denialReason': ?denialReason,
           'approvedAmount': ?approvedAmount,
+        },
+      },
+    );
+  }
+
+  Future<List<StaffSessionNoteSummaryModel>> fetchSessionNotes() async {
+    const query = r'''
+      query {
+        adminSessionNotes {
+          sessionId childName therapistName sessionDate isFullySigned
+        }
+      }
+    ''';
+    final result = await _graphql.query(query);
+    final list = result['data']?['adminSessionNotes'] as List<dynamic>? ?? [];
+    return list
+        .map(
+          (e) => StaffSessionNoteSummaryModel(
+            sessionId: e['sessionId'] as String,
+            childName: e['childName'] as String? ?? '',
+            therapistName: e['therapistName'] as String? ?? '',
+            sessionDate: e['sessionDate'] as String?,
+            isFullySigned: e['isFullySigned'] as bool? ?? false,
+          ),
+        )
+        .toList();
+  }
+
+  Future<Map<String, dynamic>> fetchSessionNoteFormContext(
+    String sessionId,
+  ) async {
+    final result = await _graphql.query(
+      r'''
+      query Context($sessionId: ID!) {
+        adminSessionNoteFormContext(sessionId: $sessionId) {
+          sessionId childName childDob childSex eiNumber
+          interventionistName credentials npi licenseNumber licenseState
+          serviceType
+          sessionDate ifspServiceLocation timeFrom timeTo
+          sessionDelivered icd10Code existingEipFormData isFullySigned
+        }
+      }
+    ''',
+      variables: {'sessionId': sessionId},
+    );
+    final data = result['data']?['adminSessionNoteFormContext'];
+    if (data is! Map<String, dynamic>) {
+      throw Exception('Could not load session note context');
+    }
+    return data;
+  }
+
+  Future<void> saveEipSessionNote(EipSessionNoteModel form) async {
+    const mutation = r'''
+      mutation Save($input: SaveSoapNoteInput!) {
+        adminSaveSoapNote(input: $input) { id }
+      }
+    ''';
+    await _graphql.query(
+      mutation,
+      variables: {
+        'input': {
+          'sessionId': form.sessionId,
+          'subjective': form.toSoapSubjective(),
+          'objective': form.toSoapObjective(),
+          'assessment': form.toSoapAssessment(),
+          'plan': form.toSoapPlan(),
+          'eipFormData': jsonEncode(form.toJson()),
         },
       },
     );

@@ -245,6 +245,13 @@ class AgencyHomeScreen extends ConsumerWidget {
                     context.push('${AppRoutes.agencyHome}/appointments'),
               ),
               _OpsTile(
+                title: 'Session notes',
+                subtitle: 'Review and edit signed therapist documentation',
+                icon: Icons.assignment_outlined,
+                onTap: () =>
+                    context.push('${AppRoutes.agencyHome}/session-notes'),
+              ),
+              _OpsTile(
                 title: unreadMessageCount > 0
                     ? 'Messages ($unreadMessageCount unread)'
                     : 'Messages',

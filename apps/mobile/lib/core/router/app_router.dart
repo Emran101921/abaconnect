@@ -46,8 +46,10 @@ import '../../features/insurance/presentation/insurance_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
 import '../../features/payments/presentation/payments_screen.dart';
 import '../../features/telehealth/presentation/telehealth_screen.dart';
+import '../../features/therapist/models/session_note_editor_mode.dart';
 import '../../features/therapist/presentation/eip_session_note_screen.dart';
 import '../../features/therapist/presentation/session_notes_screen.dart';
+import '../../features/therapist/presentation/staff_session_notes_screen.dart';
 import '../../features/therapist/presentation/therapist_appointments_screen.dart';
 import '../../features/therapist/presentation/therapist_home_screen.dart';
 import '../../features/therapist/presentation/therapist_payouts_screen.dart';
@@ -223,6 +225,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 name: 'therapistEipSessionNote',
                 builder: (context, state) => EipSessionNoteScreen(
                   sessionId: state.pathParameters['sessionId']!,
+                  editorMode: SessionNoteEditorMode.therapist,
                 ),
               ),
             ],
@@ -298,6 +301,24 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: 'appointments',
             name: 'agencyAppointments',
             builder: (context, state) => const AgencyAppointmentsScreen(),
+          ),
+          GoRoute(
+            path: 'session-notes',
+            name: 'agencySessionNotes',
+            builder: (context, state) => StaffSessionNotesScreen(
+              editorMode: SessionNoteEditorMode.agency,
+              formRoutePrefix: '${AppRoutes.agencyHome}/session-notes',
+            ),
+            routes: [
+              GoRoute(
+                path: ':sessionId/form',
+                name: 'agencyEipSessionNote',
+                builder: (context, state) => EipSessionNoteScreen(
+                  sessionId: state.pathParameters['sessionId']!,
+                  editorMode: SessionNoteEditorMode.agency,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -383,6 +404,24 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: 'audit',
             name: 'adminAudit',
             builder: (context, state) => const AdminAuditScreen(),
+          ),
+          GoRoute(
+            path: 'session-notes',
+            name: 'adminSessionNotes',
+            builder: (context, state) => StaffSessionNotesScreen(
+              editorMode: SessionNoteEditorMode.admin,
+              formRoutePrefix: '${AppRoutes.adminHome}/session-notes',
+            ),
+            routes: [
+              GoRoute(
+                path: ':sessionId/form',
+                name: 'adminEipSessionNote',
+                builder: (context, state) => EipSessionNoteScreen(
+                  sessionId: state.pathParameters['sessionId']!,
+                  editorMode: SessionNoteEditorMode.admin,
+                ),
+              ),
+            ],
           ),
         ],
       ),

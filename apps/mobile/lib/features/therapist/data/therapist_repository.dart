@@ -95,6 +95,7 @@ class TherapistSessionModel {
     this.objective,
     this.assessment,
     this.plan,
+    this.eipFormFullySigned = false,
   });
 
   final String id;
@@ -103,6 +104,7 @@ class TherapistSessionModel {
   final String? childId;
   final String? soapNoteId;
   final bool hasSoap;
+  final bool eipFormFullySigned;
   final String? subjective;
   final String? objective;
   final String? assessment;
@@ -229,7 +231,7 @@ class TherapistRepository {
           status
           child { id firstName lastName }
           soapNote {
-            id subjective objective assessment plan
+            id subjective objective assessment plan eipFormFullySigned
           }
         }
       }
@@ -250,6 +252,7 @@ class TherapistRepository {
         objective: soap?['objective'] as String?,
         assessment: soap?['assessment'] as String?,
         plan: soap?['plan'] as String?,
+        eipFormFullySigned: soap?['eipFormFullySigned'] as bool? ?? false,
       );
     }).toList();
   }
@@ -386,7 +389,7 @@ class TherapistRepository {
           interventionistName credentials npi licenseNumber licenseState
           serviceType
           sessionDate ifspServiceLocation timeFrom timeTo
-          sessionDelivered icd10Code existingEipFormData
+          sessionDelivered icd10Code existingEipFormData isFullySigned
         }
       }
     ''',

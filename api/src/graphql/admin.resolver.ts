@@ -7,8 +7,11 @@ import {
 import { AdminService } from '../admin/admin.service';
 import { ComplaintsService } from '../complaints/complaints.service';
 import { InsuranceService } from '../insurance/insurance.service';
+import { isEipFormFullySigned } from '../sessions/eip-form.util';
+import { SessionsService } from '../sessions/sessions.service';
 import { ReviewsService } from '../reviews/reviews.service';
 import { ScreeningsService } from '../screenings/screenings.service';
+import { SaveSoapNoteInput } from './inputs/therapist.inputs';
 import {
   SetUserActiveInput,
   UpdateInsuranceClaimInput,
@@ -30,6 +33,11 @@ import {
   ClaimsPipelineDashboardType,
   ScreeningFunnelDashboardType,
 } from './types/dashboard.types';
+import {
+  SessionNoteFormContextType,
+  SoapNoteType,
+  StaffSessionNoteSummaryType,
+} from './types/therapist.types';
 
 @Resolver()
 @Roles('PLATFORM_ADMIN')
@@ -40,6 +48,7 @@ export class AdminResolver {
     private readonly reviewsService: ReviewsService,
     private readonly insuranceService: InsuranceService,
     private readonly screeningsService: ScreeningsService,
+    private readonly sessionsService: SessionsService,
   ) {}
 
   @Query(() => AdminDashboardType, { name: 'adminDashboard' })
@@ -438,6 +447,76 @@ export class AdminResolver {
       sessionId: c.sessionId ?? undefined,
       ediReady: Boolean(meta.ediReady),
       clearinghouseStatus: clearinghouse?.status,
+    };
+  }
+
+  @Query(() => [StaffSessionNoteSummaryType], { name: 'adminSessionNotes' })
+  async adminSessionNotes(
+    @CurrentUser() user: AuthUser,
+  ): Promise<StaffSessionNoteSummaryType[]> {
+    if (!user.tenantId) {
+      throw new Error('Tenant required');
+    }
+    const rows = await this.sessionsService.listDocumentedSessionsForAdmin(
+      user.tenantId,
+    );
+    return rows.map((s) => ({
+      sessionId: s.id,
+      childName: `${s.child.firstName} ${s.child.lastName}`,
+      therapistName: `${s.therapist.user.firstName} ${s.therapist.user.lastName}`,
+      sessionDate: s.appointment.scheduledStart.toISOString().slice(0, 10),
+      isFullySigned:
+        s.soapNote?.signedAt != null ||
+        isEipFormFullySigned(
+          s.soapNote?.eipFormData as Record<string, unknown> | null,
+        ),
+    }));
+  }
+
+  @Query(() => SessionNoteFormContextType, {
+    name: 'adminSessionNoteFormContext',
+  })
+  async adminSessionNoteFormContext(
+    @CurrentUser() user: AuthUser,
+    @Args('sessionId', { type: () => ID }) sessionId: string,
+  ): Promise<SessionNoteFormContextType> {
+    if (!user.tenantId) {
+      throw new Error('Tenant required');
+    }
+    return this.sessionsService.getSessionNoteFormContextForAdmin(
+      user.tenantId,
+      sessionId,
+    );
+  }
+
+  @Mutation(() => SoapNoteType, { name: 'adminSaveSoapNote' })
+  async adminSaveSoapNote(
+    @CurrentUser() user: AuthUser,
+    @Args('input') input: SaveSoapNoteInput,
+  ): Promise<SoapNoteType> {
+    if (!user.tenantId) {
+      throw new Error('Tenant required');
+    }
+    const note = await this.sessionsService.saveSoapNoteForAdmin(
+      user.tenantId,
+      user.id,
+      input,
+    );
+    return {
+      id: note.id,
+      subjective: note.subjective ?? undefined,
+      objective: note.objective ?? undefined,
+      assessment: note.assessment ?? undefined,
+      plan: note.plan ?? undefined,
+      eipFormData:
+        note.eipFormData != null
+          ? JSON.stringify(note.eipFormData)
+          : undefined,
+      eipFormFullySigned:
+        note.signedAt != null ||
+        isEipFormFullySigned(
+          note.eipFormData as Record<string, unknown> | null,
+        ),
     };
   }
 }

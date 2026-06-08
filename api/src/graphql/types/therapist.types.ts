@@ -103,6 +103,9 @@ export class SoapNoteType {
 
   @Field({ nullable: true })
   eipFormData?: string;
+
+  @Field()
+  eipFormFullySigned: boolean;
 }
 
 @ObjectType()
@@ -160,6 +163,27 @@ export class SessionNoteFormContextType {
 
   @Field({ nullable: true })
   existingEipFormData?: string;
+
+  @Field()
+  isFullySigned: boolean;
+}
+
+@ObjectType()
+export class StaffSessionNoteSummaryType {
+  @Field(() => ID)
+  sessionId: string;
+
+  @Field()
+  childName: string;
+
+  @Field()
+  therapistName: string;
+
+  @Field({ nullable: true })
+  sessionDate?: string;
+
+  @Field()
+  isFullySigned: boolean;
 }
 
 @ObjectType()

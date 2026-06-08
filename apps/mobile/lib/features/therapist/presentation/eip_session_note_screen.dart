@@ -5,30 +5,50 @@ import 'package:go_router/go_router.dart';
 import '../../../core/location/location_service.dart';
 import '../../../core/providers/app_providers.dart';
 import '../models/eip_session_note_model.dart';
+import '../models/session_note_editor_mode.dart';
 import '../therapist_providers.dart';
 import 'session_notes_screen.dart';
 import 'therapist_weekly_progress_section.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 
 final sessionNoteFormContextProvider =
-    FutureProvider.family<EipSessionNoteModel, String>((ref, sessionId) async {
-  final repo = ref.read(therapistRepositoryProvider);
-  final ctx = await repo.fetchSessionNoteFormContext(sessionId);
-  var form = EipSessionNoteModel.fromContext(ctx);
-
-  final profile = await repo.fetchProfile();
-  form = form.withProfileCredentials(
-    npi: profile.npi ?? form.npi,
-    licenseNumber: profile.licenseNumber ?? form.licenseNumber,
-    licenseState: profile.licenseState ?? form.licenseState,
-  );
-  return form;
+    FutureProvider.family<EipSessionNoteModel, SessionNoteScreenRequest>(
+        (ref, request) async {
+  Map<String, dynamic> ctx;
+  switch (request.mode) {
+    case SessionNoteEditorMode.agency:
+      ctx = await ref
+          .read(agencyRepositoryProvider)
+          .fetchSessionNoteFormContext(request.sessionId);
+      return EipSessionNoteModel.fromContext(ctx);
+    case SessionNoteEditorMode.admin:
+      ctx = await ref
+          .read(adminRepositoryProvider)
+          .fetchSessionNoteFormContext(request.sessionId);
+      return EipSessionNoteModel.fromContext(ctx);
+    case SessionNoteEditorMode.therapist:
+      final repo = ref.read(therapistRepositoryProvider);
+      ctx = await repo.fetchSessionNoteFormContext(request.sessionId);
+      var form = EipSessionNoteModel.fromContext(ctx);
+      final profile = await repo.fetchProfile();
+      form = form.withProfileCredentials(
+        npi: profile.npi ?? form.npi,
+        licenseNumber: profile.licenseNumber ?? form.licenseNumber,
+        licenseState: profile.licenseState ?? form.licenseState,
+      );
+      return form;
+  }
 });
 
 class EipSessionNoteScreen extends ConsumerStatefulWidget {
-  const EipSessionNoteScreen({super.key, required this.sessionId});
+  const EipSessionNoteScreen({
+    super.key,
+    required this.sessionId,
+    this.editorMode = SessionNoteEditorMode.therapist,
+  });
 
   final String sessionId;
+  final SessionNoteEditorMode editorMode;
 
   @override
   ConsumerState<EipSessionNoteScreen> createState() =>
@@ -63,25 +83,44 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
   bool _saving = false;
   bool _capturingGps = false;
 
+  SessionNoteScreenRequest get _request => SessionNoteScreenRequest(
+        sessionId: widget.sessionId,
+        mode: widget.editorMode,
+      );
+
+  bool _isReadOnly(EipSessionNoteModel form) =>
+      widget.editorMode == SessionNoteEditorMode.therapist && form.isFullySigned;
+
   @override
   Widget build(BuildContext context) {
-    final contextAsync = ref.watch(
-      sessionNoteFormContextProvider(widget.sessionId),
-    );
+    final contextAsync = ref.watch(sessionNoteFormContextProvider(_request));
 
     return AppScaffold(
-      title: 'Session Note',
+      title: widget.editorMode == SessionNoteEditorMode.therapist
+          ? 'Session Note'
+          : 'Session Note (staff edit)',
       body: contextAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (initial) {
           _form ??= initial;
           final form = _form!;
+          final readOnly = _isReadOnly(form);
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
               _headerCard(context),
+              if (readOnly) _lockedBanner(),
+              if (widget.editorMode != SessionNoteEditorMode.therapist)
+                _staffEditBanner(),
               const SizedBox(height: 12),
+              AbsorbPointer(
+                absorbing: readOnly,
+                child: Opacity(
+                  opacity: readOnly ? 0.72 : 1,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
               _section(
                 title: 'Demographics / Authorization',
                 children: [
@@ -434,42 +473,8 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
               _section(
                 title: 'Signatures',
                 children: [
-                  _locationNotice(),
-                  _gpsGatedSignatureField(
-                    label: 'Parent/caregiver signature',
-                    value: form.parentSignature ?? '',
-                    gpsUnlocked: form.hasParentSignatureGpsCapture,
-                    latitude: form.parentSignatureLatitude,
-                    longitude: form.parentSignatureLongitude,
-                    locationAt: form.parentSignatureLocationAt,
-                    gpsSummary: _gpsSummary(
-                      form.parentSignatureLatitude,
-                      form.parentSignatureLongitude,
-                      form.parentSignatureLocationAt,
-                    ),
-                    onChanged: (v, lat, lng, capturedAt) {
-                      setState(() {
-                        if (v.isEmpty) {
-                          final json = form.toJson()
-                            ..remove('parentSignature')
-                            ..remove('parentSignatureLatitude')
-                            ..remove('parentSignatureLongitude')
-                            ..remove('parentSignatureLocationAt');
-                          _form = EipSessionNoteModel.fromJson(
-                            json,
-                            sessionId: form.sessionId,
-                          );
-                          return;
-                        }
-                        _form = form.copyWith(
-                          parentSignature: v,
-                          parentSignatureLatitude: lat,
-                          parentSignatureLongitude: lng,
-                          parentSignatureLocationAt: capturedAt,
-                        );
-                      });
-                    },
-                  ),
+                  if (!readOnly) _locationNotice(),
+                  _parentSignatureBlock(form, readOnly: readOnly),
                   _field('Parent signature date', form.parentSignatureDate ?? '', (v) {
                     setState(() => _form = form.copyWith(parentSignatureDate: v));
                   }),
@@ -477,7 +482,7 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
                     setState(() => _form = form.copyWith(parentRelationship: v));
                   }),
                   const Divider(height: 24),
-                  _interventionistSignatureBlock(form),
+                  _interventionistSignatureBlock(form, readOnly: readOnly),
                   _field(
                     'Interventionist signature date',
                     form.interventionistSignatureDate ?? form.dateNoteWritten ?? '',
@@ -508,22 +513,68 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
                   }),
                 ],
               ),
-              const SizedBox(height: 16),
-              FilledButton.icon(
-                onPressed: _saving ? null : () => _save(context),
-                icon: _saving
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.save),
-                label: Text(_saving ? 'Saving…' : 'Save session note'),
+                    ],
+                  ),
+                ),
               ),
+              if (!readOnly) ...[
+                const SizedBox(height: 16),
+                FilledButton.icon(
+                  onPressed: _saving ? null : () => _save(context),
+                  icon: _saving
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.save),
+                  label: Text(_saving ? 'Saving…' : 'Save session note'),
+                ),
+              ],
               const SizedBox(height: 32),
             ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _lockedBanner() {
+    return Card(
+      color: Theme.of(context).colorScheme.secondaryContainer,
+      margin: const EdgeInsets.only(bottom: 12),
+      child: const Padding(
+        padding: EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.lock_outline),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'This session note is fully signed by the parent and '
+                'interventionist. It is locked for therapists. Contact your '
+                'agency or platform admin if a correction is needed.',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _staffEditBanner() {
+    final label = widget.editorMode == SessionNoteEditorMode.agency
+        ? 'Agency'
+        : 'Admin';
+    return Card(
+      color: Theme.of(context).colorScheme.tertiaryContainer,
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Text(
+          '$label edit mode — you can update a fully signed session note.',
+        ),
       ),
     );
   }
@@ -623,49 +674,43 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
     }
   }
 
-  Widget _gpsGatedSignatureField({
-    required String label,
-    required String value,
-    required bool gpsUnlocked,
-    required double? latitude,
-    required double? longitude,
-    required String? locationAt,
-    required String? gpsSummary,
-    required void Function(
-      String value,
-      double? lat,
-      double? lng,
-      String? capturedAt,
-    ) onChanged,
+  Widget _parentSignatureBlock(
+    EipSessionNoteModel form, {
+    required bool readOnly,
   }) {
+    final signed = form.hasGpsVerifiedParentSignature;
+    final gpsSummary = _gpsSummary(
+      form.parentSignatureLatitude,
+      form.parentSignatureLongitude,
+      form.parentSignatureLocationAt,
+    );
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _BoundTextField(
-            key: ValueKey('$label-$value-${gpsUnlocked ? 'gps' : 'nogps'}'),
-            label: label,
-            value: value,
-            hint: gpsUnlocked && value.isEmpty
-                ? 'Enter parent/caregiver name'
-                : 'Tap to capture GPS, then sign',
-            readOnly: !gpsUnlocked,
-            onTap: !gpsUnlocked
-                ? () => _beginGpsGatedEdit(
-                      context,
-                      currentValue: value,
-                      onChanged: onChanged,
-                    )
-                : null,
-            onChanged: (v) {
-              if (v.isEmpty) {
-                onChanged('', null, null, null);
-                return;
-              }
-              onChanged(v, latitude, longitude, locationAt);
-            },
+          Text(
+            'Parent/caregiver signature',
+            style: Theme.of(context).textTheme.labelLarge,
           ),
+          const SizedBox(height: 8),
+          if (signed)
+            Card(
+              margin: EdgeInsets.zero,
+              child: ListTile(
+                leading: const Icon(Icons.verified_outlined),
+                title: Text(form.parentSignature!),
+                subtitle: Text(
+                  'Signed ${form.parentSignatureDate ?? ''}',
+                ),
+              ),
+            )
+          else
+            Text(
+              'Capture parent or caregiver signature with GPS.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
           if (gpsSummary != null) ...[
             const SizedBox(height: 4),
             Text(
@@ -673,35 +718,58 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
+          if (!readOnly) ...[
+            const SizedBox(height: 8),
+            FilledButton.tonalIcon(
+              onPressed: _capturingGps
+                  ? null
+                  : () => _signParent(context, form),
+              icon: _capturingGps
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.draw_outlined),
+              label: Text(signed ? 'Re-sign with GPS' : 'Sign with GPS'),
+            ),
+          ],
         ],
       ),
     );
   }
 
-  Future<void> _beginGpsGatedEdit(
-    BuildContext context, {
-    required String currentValue,
-    required void Function(
-      String value,
-      double? lat,
-      double? lng,
-      String? capturedAt,
-    ) onChanged,
-  }) async {
+  Future<void> _signParent(
+    BuildContext context,
+    EipSessionNoteModel form,
+  ) async {
     final gps = await _captureGps(context);
-    if (gps == null || !gps.isSuccess || !mounted) return;
+    if (gps == null || !gps.isSuccess || !context.mounted) return;
 
-    final capturedAt = DateTime.now().toIso8601String();
-    onChanged(
-      currentValue,
-      gps.latitude,
-      gps.longitude,
-      capturedAt,
+    final name = await showDialog<String>(
+      context: context,
+      builder: (ctx) => _ParentSignatureDialog(
+        initialName: form.parentSignature ?? '',
+      ),
     );
-    setState(() {});
+    if (name == null || name.trim().isEmpty || !context.mounted) return;
+
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+    setState(() {
+      _form = form.copyWith(
+        parentSignature: name.trim(),
+        parentSignatureDate: today,
+        parentSignatureLatitude: gps.latitude,
+        parentSignatureLongitude: gps.longitude,
+        parentSignatureLocationAt: DateTime.now().toIso8601String(),
+      );
+    });
   }
 
-  Widget _interventionistSignatureBlock(EipSessionNoteModel form) {
+  Widget _interventionistSignatureBlock(
+    EipSessionNoteModel form, {
+    required bool readOnly,
+  }) {
     final signed = form.hasGpsVerifiedInterventionistSignature;
     final gpsSummary = _gpsSummary(
       form.interventionistSignatureLatitude,
@@ -742,20 +810,22 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
-          const SizedBox(height: 8),
-          FilledButton.tonalIcon(
-            onPressed: _capturingGps
-                ? null
-                : () => _signInterventionist(context, form),
-            icon: _capturingGps
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.draw_outlined),
-            label: Text(signed ? 'Re-sign with GPS' : 'Sign with GPS'),
-          ),
+          if (!readOnly) ...[
+            const SizedBox(height: 8),
+            FilledButton.tonalIcon(
+              onPressed: _capturingGps
+                  ? null
+                  : () => _signInterventionist(context, form),
+              icon: _capturingGps
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.draw_outlined),
+              label: Text(signed ? 'Re-sign with GPS' : 'Sign with GPS'),
+            ),
+          ],
         ],
       ),
     );
@@ -934,6 +1004,17 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
     final form = _form;
     if (form == null) return;
 
+    if (_isReadOnly(form)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'This session note is locked after both parties signed.',
+          ),
+        ),
+      );
+      return;
+    }
+
     if (!form.hasRequiredClinicalFields) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -959,16 +1040,25 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
 
     setState(() => _saving = true);
     try {
-      await ref.read(therapistRepositoryProvider).saveEipSessionNote(form);
-      await ref.read(clinicalRepositoryProvider).saveProgressNote(
-            sessionId: form.sessionId,
-            summary: form.toProgressSummary(),
-          );
+      switch (widget.editorMode) {
+        case SessionNoteEditorMode.agency:
+          await ref.read(agencyRepositoryProvider).saveEipSessionNote(form);
+          break;
+        case SessionNoteEditorMode.admin:
+          await ref.read(adminRepositoryProvider).saveEipSessionNote(form);
+          break;
+        case SessionNoteEditorMode.therapist:
+          await ref.read(therapistRepositoryProvider).saveEipSessionNote(form);
+          await ref.read(clinicalRepositoryProvider).saveProgressNote(
+                sessionId: form.sessionId,
+                summary: form.toProgressSummary(),
+              );
+          ref.invalidate(therapistSessionsProvider);
+          ref.invalidate(therapistDashboardProvider);
+          ref.invalidate(therapistWeeklyProgressProvider);
+      }
 
-      ref.invalidate(therapistSessionsProvider);
-      ref.invalidate(therapistDashboardProvider);
-      ref.invalidate(therapistWeeklyProgressProvider);
-      ref.invalidate(sessionNoteFormContextProvider(form.sessionId));
+      ref.invalidate(sessionNoteFormContextProvider(_request));
 
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1000,8 +1090,6 @@ class _BoundTextField extends StatefulWidget {
     this.minLines = 1,
     this.multiline = false,
     this.readOnly = false,
-    this.onTap,
-    this.hint,
   });
 
   final String label;
@@ -1010,8 +1098,6 @@ class _BoundTextField extends StatefulWidget {
   final int minLines;
   final bool multiline;
   final bool readOnly;
-  final VoidCallback? onTap;
-  final String? hint;
 
   @override
   State<_BoundTextField> createState() => _BoundTextFieldState();
@@ -1045,18 +1131,80 @@ class _BoundTextFieldState extends State<_BoundTextField> {
     return TextField(
       controller: _controller,
       readOnly: widget.readOnly,
-      onTap: widget.onTap,
       decoration: InputDecoration(
         labelText: widget.label,
-        hintText: widget.hint,
         alignLabelWithHint: widget.multiline,
-        suffixIcon: widget.readOnly
-            ? const Icon(Icons.location_searching, size: 20)
-            : null,
       ),
       minLines: widget.multiline ? widget.minLines : 1,
       maxLines: widget.multiline ? null : 1,
       onChanged: widget.onChanged,
     );
+  }
+}
+
+class _ParentSignatureDialog extends StatefulWidget {
+  const _ParentSignatureDialog({required this.initialName});
+
+  final String initialName;
+
+  @override
+  State<_ParentSignatureDialog> createState() => _ParentSignatureDialogState();
+}
+
+class _ParentSignatureDialogState extends State<_ParentSignatureDialog> {
+  late final TextEditingController _controller;
+  final _formKey = GlobalKey<FormState>();
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialName);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Parent/caregiver signature'),
+      content: Form(
+        key: _formKey,
+        child: TextFormField(
+          controller: _controller,
+          autofocus: true,
+          textCapitalization: TextCapitalization.words,
+          decoration: const InputDecoration(
+            labelText: 'Printed name',
+            hintText: 'Parent or caregiver full name',
+          ),
+          validator: (v) {
+            if (v == null || v.trim().isEmpty) {
+              return 'Enter the signer\'s name';
+            }
+            return null;
+          },
+          onFieldSubmitted: (_) => _submit(),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: _submit,
+          child: const Text('Sign'),
+        ),
+      ],
+    );
+  }
+
+  void _submit() {
+    if (_formKey.currentState?.validate() != true) return;
+    Navigator.pop(context, _controller.text.trim());
   }
 }

@@ -6,6 +6,7 @@ import {
   CurrentUser,
 } from '../common/decorators/current-user.decorator';
 import { AppointmentsService } from '../appointments/appointments.service';
+import { isEipFormFullySigned } from '../sessions/eip-form.util';
 import { SessionsService } from '../sessions/sessions.service';
 import { TherapistsService } from '../therapists/therapists.service';
 import {
@@ -94,6 +95,11 @@ export class TherapistResolver {
               s.soapNote.eipFormData != null
                 ? JSON.stringify(s.soapNote.eipFormData)
                 : undefined,
+            eipFormFullySigned:
+              s.soapNote.signedAt != null ||
+              isEipFormFullySigned(
+                s.soapNote.eipFormData as Record<string, unknown> | null,
+              ),
           }
         : undefined,
     }));
@@ -236,6 +242,11 @@ export class TherapistResolver {
         note.eipFormData != null
           ? JSON.stringify(note.eipFormData)
           : undefined,
+      eipFormFullySigned:
+        note.signedAt != null ||
+        isEipFormFullySigned(
+          note.eipFormData as Record<string, unknown> | null,
+        ),
     };
   }
 
