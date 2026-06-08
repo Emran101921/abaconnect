@@ -1,4 +1,4 @@
-# HIPAA Compliance Documentation (ABAConnect)
+# HIPAA Compliance Documentation (BloomOra)
 
 ## Organizational requirements (outside codebase)
 

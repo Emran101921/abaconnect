@@ -15,7 +15,7 @@ async function main() {
     where: { slug: 'abaconnect' },
     update: {},
     create: {
-      name: 'ABAConnect Platform',
+      name: 'BloomOra Platform',
       slug: 'abaconnect',
       settings: { branding: { primaryColor: '#1565C0' } },
       isActive: true,

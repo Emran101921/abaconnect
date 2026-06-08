@@ -50,6 +50,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
             const AppBrandLogo(
               size: AppBrandLogoSize.large,
               lightOnDark: true,
+              showTagline: false,
             ),
             const SizedBox(height: AppSpacing.xxl),
             SizedBox(

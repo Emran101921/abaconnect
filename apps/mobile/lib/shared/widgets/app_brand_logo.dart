@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_brand_assets.dart';
 import '../../core/theme/app_spacing.dart';
 
 class AppBrandLogo extends StatelessWidget {
   const AppBrandLogo({
     super.key,
     this.size = AppBrandLogoSize.medium,
-    this.showTagline = true,
+    this.showTagline = false,
     this.lightOnDark = false,
   });
 
@@ -15,80 +15,58 @@ class AppBrandLogo extends StatelessWidget {
   final bool showTagline;
   final bool lightOnDark;
 
+  double get _width => switch (size) {
+        AppBrandLogoSize.small => 140,
+        AppBrandLogoSize.medium => 200,
+        AppBrandLogoSize.large => 280,
+      };
+
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final titleColor = lightOnDark ? Colors.white : colorScheme.onSurface;
-    final subtitleColor = lightOnDark
-        ? Colors.white.withValues(alpha: 0.9)
-        : colorScheme.onSurfaceVariant;
+    final logo = Image.asset(
+      AppBrandAssets.logo,
+      width: _width,
+      fit: BoxFit.contain,
+      semanticLabel: 'BloomOra',
+    );
 
-    final iconSize = switch (size) {
-      AppBrandLogoSize.small => 28.0,
-      AppBrandLogoSize.medium => 40.0,
-      AppBrandLogoSize.large => 56.0,
-    };
-
-    final titleStyle = switch (size) {
-      AppBrandLogoSize.small => Theme.of(context).textTheme.titleMedium,
-      AppBrandLogoSize.medium => Theme.of(context).textTheme.headlineSmall,
-      AppBrandLogoSize.large => Theme.of(context).textTheme.headlineMedium,
-    };
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: iconSize + 12,
-          height: iconSize + 12,
-          decoration: BoxDecoration(
-            gradient: lightOnDark
-                ? LinearGradient(
-                    colors: [
-                      Colors.white.withValues(alpha: 0.25),
-                      Colors.white.withValues(alpha: 0.1),
-                    ],
-                  )
-                : AppColors.primaryGradient,
-            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-            boxShadow: lightOnDark
-                ? null
-                : [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.3),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-          ),
-          child: Icon(
-            Icons.favorite_rounded,
-            color: lightOnDark ? Colors.white : Colors.white,
-            size: iconSize * 0.5,
-          ),
-        ),
-        const SizedBox(width: AppSpacing.md),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+    if (!lightOnDark) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          logo,
+          if (showTagline) ...[
+            const SizedBox(height: AppSpacing.sm),
             Text(
-              'ABA Connect',
-              style: titleStyle?.copyWith(
-                fontWeight: FontWeight.w800,
-                color: titleColor,
-                letterSpacing: -0.5,
-              ),
+              AppBrandAssets.tagline,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    letterSpacing: 0.6,
+                    fontWeight: FontWeight.w600,
+                  ),
+              textAlign: TextAlign.center,
             ),
-            if (showTagline)
-              Text(
-                'Early Intervention & therapy care',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: subtitleColor,
-                    ),
-              ),
           ],
-        ),
-      ],
+        ],
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.md,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: logo,
     );
   }
 }
