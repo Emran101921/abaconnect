@@ -12,7 +12,7 @@ void main() {
 
     await tester.pumpWidget(const ProviderScope(child: BloomOraApp()));
 
-    expect(find.text('BloomOra'), findsOneWidget);
+    expect(find.bySemanticsLabel('BloomOra'), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
     await tester.pump(const Duration(milliseconds: 800));
