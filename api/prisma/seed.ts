@@ -101,13 +101,22 @@ async function main() {
 
   const therapistProfile = await prisma.therapist.upsert({
     where: { userId: therapistUser.id },
-    update: { isVerified: true, therapyTypes: ['ABA', 'SPEECH'] },
+    update: {
+      isVerified: true,
+      therapyTypes: ['ABA', 'SPEECH'],
+      npi: '1234567893',
+      licenseNumber: 'SLP-123456',
+      licenseState: 'NY',
+    },
     create: {
       userId: therapistUser.id,
       tenantId: tenant.id,
       isVerified: true,
       isAcceptingClients: true,
       therapyTypes: ['ABA', 'SPEECH'],
+      npi: '1234567893',
+      licenseNumber: 'SLP-123456',
+      licenseState: 'NY',
       yearsExperience: 8,
       ratingAverage: 4.9,
       ratingCount: 42,

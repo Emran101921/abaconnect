@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/network/graphql_client.dart';
+import '../../../core/utils/document_upload.dart';
 import '../../../core/utils/file_download.dart';
 
 class TelehealthSessionModel {
@@ -30,6 +31,7 @@ class DocumentItemModel {
     required this.fileName,
     required this.type,
     required this.fileSize,
+    this.childId,
   });
 
   final String id;
@@ -37,6 +39,7 @@ class DocumentItemModel {
   final String fileName;
   final String type;
   final int fileSize;
+  final String? childId;
 }
 
 class NotificationItemModel {
@@ -145,7 +148,7 @@ class PlatformRepository {
 
   Future<List<DocumentItemModel>> fetchDocuments() async {
     final result = await _graphql.query(r'''
-      query { myDocuments { id title fileName type fileSize } }
+      query { myDocuments { id title fileName type fileSize childId } }
     ''');
     final list = result['data']?['myDocuments'] as List<dynamic>? ?? [];
     return list
@@ -156,6 +159,7 @@ class PlatformRepository {
             fileName: e['fileName'] as String,
             type: e['type'] as String? ?? 'OTHER',
             fileSize: e['fileSize'] as int? ?? 0,
+            childId: e['childId'] as String?,
           ),
         )
         .toList();
@@ -192,13 +196,37 @@ class PlatformRepository {
     String type = 'OTHER',
     String? childId,
   }) async {
-    final formData = FormData.fromMap({
+    final ext = fileName.contains('.') ? fileName.split('.').last : null;
+    final validationError = validateDocumentUpload(
+      extension: ext,
+      mimeType: mimeType,
+    );
+    if (validationError != null) {
+      throw Exception(validationError);
+    }
+
+    final fields = <String, dynamic>{
       'title': title,
       'type': type,
-      'childId': ?childId,
-      'file': MultipartFile.fromBytes(bytes, filename: fileName),
-    });
-    await _api.dio.post('/documents/upload', data: formData);
+      'file': MultipartFile.fromBytes(
+        bytes,
+        filename: fileName,
+        contentType: DioMediaType.parse(mimeType),
+      ),
+    };
+    if (childId != null && childId.isNotEmpty) {
+      fields['childId'] = childId;
+    }
+
+    try {
+      await _api.dio.post(
+        '/documents/upload',
+        data: FormData.fromMap(fields),
+        options: Options(contentType: 'multipart/form-data'),
+      );
+    } catch (e) {
+      throw Exception(formatUploadError(e));
+    }
   }
 
   Future<void> deleteDocument(String documentId) async {

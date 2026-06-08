@@ -215,68 +215,107 @@ class TherapistPlansScreen extends ConsumerWidget {
 
     return AppScaffold(
       title: 'Treatment Plans',
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _createPlan(context, ref),
-        child: const Icon(Icons.add),
-      ),
       body: plans.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (list) {
-          if (list.isEmpty) {
-            return const Center(child: Text('No plans yet. Tap + to create.'));
-          }
-          return ListView.separated(
+          return ListView(
             padding: const EdgeInsets.all(16),
-            itemCount: list.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 8),
-            itemBuilder: (context, index) {
-              final p = list[index];
-              return Card(
-                child: ExpansionTile(
-                  title: Text(p.title),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('${p.childName} · ${p.therapyType}'),
-                      if (p.goalsTotalCount > 0) ...[
-                        const SizedBox(height: 6),
-                        LinearProgressIndicator(
-                          value: p.goalsProgress,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        Text(
-                          '${p.goalsDoneCount}/${p.goalsTotalCount} done',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
-                    ],
+            children: [
+              Card(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    'Update treatment goals each week when you report session '
+                    'progress. Goal completion feeds the weekly progress chart '
+                    'on your dashboard and the parent progress view.',
+                    style: Theme.of(context).textTheme.bodyMedium,
                   ),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.edit_outlined),
-                    onPressed: () => _editGoals(context, ref, p),
-                  ),
-                  children: [
-                    if (p.goals.isEmpty)
-                      const ListTile(title: Text('No goals yet'))
-                    else
-                      ...p.goals.map(
-                        (g) => ListTile(
-                          leading: Icon(
-                            g.status == 'done'
-                                ? Icons.check_circle_outline
-                                : Icons.flag_outlined,
-                          ),
-                          title: Text(g.label),
-                          trailing: Chip(label: Text(g.statusLabel)),
-                        ),
-                      ),
-                  ],
                 ),
-              );
-            },
+              ),
+              const SizedBox(height: 12),
+              if (list.isEmpty)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Text('No plans yet. Tap + to create.'),
+                  ),
+                )
+              else
+                ...list.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final p = entry.value;
+                  return Padding(
+                    padding: EdgeInsets.only(
+                      bottom: index < list.length - 1 ? 8 : 0,
+                    ),
+                    child: _PlanCard(
+                      plan: p,
+                      onEditGoals: () => _editGoals(context, ref, p),
+                    ),
+                  );
+                }),
+            ],
           );
         },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _createPlan(context, ref),
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+}
+
+class _PlanCard extends StatelessWidget {
+  const _PlanCard({required this.plan, required this.onEditGoals});
+
+  final TreatmentPlanModel plan;
+  final VoidCallback onEditGoals;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: ExpansionTile(
+        title: Text(plan.title),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('${plan.childName} · ${plan.therapyType}'),
+            if (plan.goalsTotalCount > 0) ...[
+              const SizedBox(height: 6),
+              LinearProgressIndicator(
+                value: plan.goalsProgress,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              Text(
+                '${plan.goalsDoneCount}/${plan.goalsTotalCount} done',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ],
+        ),
+        trailing: IconButton(
+          icon: const Icon(Icons.edit_outlined),
+          onPressed: onEditGoals,
+        ),
+        children: [
+          if (plan.goals.isEmpty)
+            const ListTile(title: Text('No goals yet'))
+          else
+            ...plan.goals.map(
+              (g) => ListTile(
+                leading: Icon(
+                  g.status == 'done'
+                      ? Icons.check_circle_outline
+                      : Icons.flag_outlined,
+                ),
+                title: Text(g.label),
+                trailing: Chip(label: Text(g.statusLabel)),
+              ),
+            ),
+        ],
       ),
     );
   }

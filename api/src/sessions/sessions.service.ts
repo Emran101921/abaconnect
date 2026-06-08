@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma } from '../../generated/prisma/client';
 import { InsuranceService } from '../insurance/insurance.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -13,6 +14,7 @@ export interface SaveSoapNoteInput {
   objective?: string;
   assessment?: string;
   plan?: string;
+  eipFormData?: string;
 }
 
 @Injectable()
@@ -186,6 +188,15 @@ export class SessionsService {
       throw new NotFoundException('Session not found');
     }
 
+    let eipFormData: Record<string, unknown> | undefined;
+    if (input.eipFormData) {
+      try {
+        eipFormData = JSON.parse(input.eipFormData) as Record<string, unknown>;
+      } catch {
+        throw new BadRequestException('eipFormData must be valid JSON');
+      }
+    }
+
     const note = await this.prisma.soapNote.upsert({
       where: { sessionId: session.id },
       create: {
@@ -195,12 +206,16 @@ export class SessionsService {
         objective: input.objective,
         assessment: input.assessment,
         plan: input.plan,
+        eipFormData: eipFormData as Prisma.InputJsonValue,
       },
       update: {
         subjective: input.subjective,
         objective: input.objective,
         assessment: input.assessment,
         plan: input.plan,
+        ...(eipFormData !== undefined
+          ? { eipFormData: eipFormData as Prisma.InputJsonValue }
+          : {}),
       },
     });
 
@@ -218,6 +233,77 @@ export class SessionsService {
     }
 
     return note;
+  }
+
+  async getSessionNoteFormContext(userId: string, sessionId: string) {
+    const therapist = await this.prisma.therapist.findUnique({
+      where: { userId },
+      include: {
+        user: true,
+        agencyLinks: { include: { agency: true }, take: 1 },
+      },
+    });
+    if (!therapist) {
+      throw new NotFoundException('Therapist profile not found');
+    }
+
+    const session = await this.prisma.session.findFirst({
+      where: { id: sessionId, therapistId: therapist.id },
+      include: {
+        child: true,
+        appointment: true,
+        soapNote: true,
+      },
+    });
+    if (!session) {
+      throw new NotFoundException('Session not found');
+    }
+
+    const apt = session.appointment;
+    const child = session.child;
+    const agency = therapist.agencyLinks[0]?.agency;
+    const therapyLabel = apt.therapyType.replace(/_/g, ' ');
+    const locationLabel =
+      apt.locationType === 'TELEHEALTH'
+        ? 'Telehealth'
+        : apt.locationType === 'CLINIC'
+          ? 'Facility'
+          : 'Home/Community';
+
+    const formatTime = (d: Date) =>
+      d.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+      });
+
+    const formatDate = (d: Date) => d.toISOString().slice(0, 10);
+
+    const existingEip = session.soapNote?.eipFormData;
+    const existingEipFormData =
+      existingEip != null ? JSON.stringify(existingEip) : undefined;
+
+    return {
+      sessionId: session.id,
+      childName: `${child.firstName} ${child.lastName}`,
+      childDob: formatDate(child.dateOfBirth),
+      childSex: child.gender ?? undefined,
+      eiNumber: undefined,
+      interventionistName: `${therapist.user.firstName} ${therapist.user.lastName}`,
+      credentials: therapist.licenseNumber
+        ? `${therapyLabel} (${therapist.licenseNumber})`
+        : therapyLabel,
+      npi: therapist.npi ?? agency?.npi ?? undefined,
+      serviceType: therapyLabel,
+      sessionDate: formatDate(apt.scheduledStart),
+      ifspServiceLocation: locationLabel,
+      timeFrom: formatTime(apt.scheduledStart),
+      timeTo: formatTime(apt.scheduledEnd),
+      sessionDelivered:
+        apt.locationType === 'TELEHEALTH' ? 'Telehealth' : 'In-person',
+      icd10Code: child.diagnosisCodes[0] ?? undefined,
+      existingEipFormData,
+    };
   }
 
   async create(data: Record<string, unknown>) {

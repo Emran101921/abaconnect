@@ -137,6 +137,7 @@ export class TherapistsService {
     userId: string,
     data: {
       bio?: string;
+      npi?: string;
       licenseNumber?: string;
       licenseState?: string;
       yearsExperience?: number;

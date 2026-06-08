@@ -46,6 +46,7 @@ import '../../features/insurance/presentation/insurance_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
 import '../../features/payments/presentation/payments_screen.dart';
 import '../../features/telehealth/presentation/telehealth_screen.dart';
+import '../../features/therapist/presentation/eip_session_note_screen.dart';
 import '../../features/therapist/presentation/session_notes_screen.dart';
 import '../../features/therapist/presentation/therapist_appointments_screen.dart';
 import '../../features/therapist/presentation/therapist_home_screen.dart';
@@ -156,7 +157,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'reviews',
             name: 'parentReviews',
-            builder: (context, state) => const ReviewsScreen(),
+            builder: (context, state) => ReviewsScreen(
+              initialTherapistId: state.uri.queryParameters['therapistId'],
+              autoOpenSubmit: state.uri.queryParameters['submit'] == 'true',
+            ),
           ),
           GoRoute(
             path: 'treatment-plans',
@@ -181,7 +185,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'progress-notes',
             name: 'parentProgressNotes',
-            builder: (context, state) => const ProgressNotesScreen(),
+            builder: (context, state) => ProgressNotesScreen(
+              sessionId: state.uri.queryParameters['sessionId'],
+            ),
           ),
           GoRoute(
             path: 'operations/:category',
@@ -211,6 +217,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: 'session-notes',
             name: 'therapistSessionNotes',
             builder: (context, state) => const SessionNotesScreen(),
+            routes: [
+              GoRoute(
+                path: ':sessionId/form',
+                name: 'therapistEipSessionNote',
+                builder: (context, state) => EipSessionNoteScreen(
+                  sessionId: state.pathParameters['sessionId']!,
+                ),
+              ),
+            ],
           ),
           GoRoute(
             path: 'plans',

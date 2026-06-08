@@ -1,4 +1,4 @@
-import { Field, ID, Int, ObjectType } from '@nestjs/graphql';
+import { Field, Float, ID, Int, ObjectType } from '@nestjs/graphql';
 import { TherapyType } from '../../../generated/prisma/client';
 import { ChildType } from './parent-booking.types';
 
@@ -45,6 +45,39 @@ export class TreatmentPlanType {
 
   @Field(() => Int)
   goalsTotalCount: number;
+}
+
+@ObjectType()
+export class WeeklyProgressWeekType {
+  @Field()
+  weekLabel: string;
+
+  @Field(() => Int)
+  reportCount: number;
+}
+
+@ObjectType()
+export class ChildProgressSummaryType {
+  @Field(() => ID)
+  childId: string;
+
+  @Field()
+  childName: string;
+
+  @Field(() => Float)
+  goalCompletionPercent: number;
+
+  @Field({ nullable: true })
+  activePlanTitle?: string;
+}
+
+@ObjectType()
+export class TherapistWeeklyProgressType {
+  @Field(() => [WeeklyProgressWeekType])
+  weeks: WeeklyProgressWeekType[];
+
+  @Field(() => [ChildProgressSummaryType])
+  children: ChildProgressSummaryType[];
 }
 
 @ObjectType()

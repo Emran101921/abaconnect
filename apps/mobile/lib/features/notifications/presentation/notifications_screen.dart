@@ -7,6 +7,8 @@ import '../../../core/router/app_router.dart';
 import '../../../shared/models/user_role.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../messaging/messaging_providers.dart';
+import '../../messaging/presentation/messages_screen.dart';
+import '../../messaging/presentation/recent_messages_section.dart';
 import '../../platform/data/platform_repository.dart';
 import '../notification_providers.dart';
 
@@ -82,6 +84,13 @@ class NotificationsScreen extends ConsumerWidget {
     }
   }
 
+  Future<void> _onRefresh(WidgetRef ref) async {
+    ref.invalidate(notificationsProvider);
+    ref.invalidate(messageThreadsProvider);
+    ref.invalidate(unreadMessageThreadsProvider);
+    await ref.read(notificationsProvider.future);
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final items = ref.watch(notificationsProvider);
@@ -104,37 +113,51 @@ class NotificationsScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (list) {
-          if (list.isEmpty) {
-            return const Center(child: Text('No notifications'));
-          }
           return RefreshIndicator(
-            onRefresh: () async {
-              ref.invalidate(notificationsProvider);
-              await ref.read(notificationsProvider.future);
-            },
-            child: ListView.separated(
+            onRefresh: () => _onRefresh(ref),
+            child: ListView(
               padding: const EdgeInsets.all(16),
-              itemCount: list.length,
-              separatorBuilder: (_, _) => const Divider(height: 1),
-              itemBuilder: (context, index) {
-                final n = list[index];
-                return ListTile(
-                  leading: Icon(
-                    n.isRead
-                        ? Icons.notifications_none
-                        : Icons.notifications_active,
-                    color: n.isRead
-                        ? null
-                        : Theme.of(context).colorScheme.primary,
+              children: [
+                const RecentMessagesSection(inNotificationCenter: true),
+                const SizedBox(height: 20),
+                Text(
+                  'Alerts',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 8),
+                if (list.isEmpty)
+                  const Card(
+                    child: ListTile(
+                      leading: Icon(Icons.notifications_none),
+                      title: Text('No alerts'),
+                      subtitle: Text(
+                        'Appointment reminders and updates appear here',
+                      ),
+                    ),
+                  )
+                else
+                  ...list.map(
+                    (n) => Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: ListTile(
+                        leading: Icon(
+                          n.isRead
+                              ? Icons.notifications_none
+                              : Icons.notifications_active,
+                          color: n.isRead
+                              ? null
+                              : Theme.of(context).colorScheme.primary,
+                        ),
+                        title: Text(n.title),
+                        subtitle: Text(n.body),
+                        trailing: _hasDestination(n)
+                            ? const Icon(Icons.chevron_right)
+                            : null,
+                        onTap: () => _onTap(context, ref, n),
+                      ),
+                    ),
                   ),
-                  title: Text(n.title),
-                  subtitle: Text(n.body),
-                  trailing: _hasDestination(n)
-                      ? const Icon(Icons.chevron_right)
-                      : null,
-                  onTap: () => _onTap(context, ref, n),
-                );
-              },
+              ],
             ),
           );
         },

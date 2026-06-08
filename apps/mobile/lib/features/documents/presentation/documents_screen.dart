@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/app_providers.dart';
+import '../../../core/utils/document_upload.dart';
 import '../../../shared/models/user_role.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../parent/data/parent_booking_repository.dart';
@@ -115,6 +116,19 @@ class DocumentsScreen extends ConsumerWidget {
                 items: const [
                   DropdownMenuItem(value: 'OTHER', child: Text('Other')),
                   DropdownMenuItem(
+                    value: 'SOAP_NOTE',
+                    child: Text('SOAP note'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'PROGRESS_REPORT',
+                    child: Text('Progress report'),
+                  ),
+                  DropdownMenuItem(value: 'LICENSE', child: Text('License')),
+                  DropdownMenuItem(
+                    value: 'TREATMENT_PLAN',
+                    child: Text('Treatment plan'),
+                  ),
+                  DropdownMenuItem(
                     value: 'INSURANCE_CARD',
                     child: Text('Insurance card'),
                   ),
@@ -171,7 +185,11 @@ class DocumentsScreen extends ConsumerWidget {
     );
     if (proceed != true || !context.mounted) return;
 
-    final picked = await FilePicker.platform.pickFiles(withData: true);
+    final picked = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: documentUploadExtensions,
+      withData: true,
+    );
     if (picked == null || picked.files.isEmpty) return;
     final file = picked.files.first;
     final bytes = file.bytes;
@@ -179,6 +197,22 @@ class DocumentsScreen extends ConsumerWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Could not read file bytes')),
+        );
+      }
+      return;
+    }
+
+    final mimeType = file.extension != null
+        ? mimeFromExtension(file.extension!)
+        : 'application/octet-stream';
+    final validationError = validateDocumentUpload(
+      extension: file.extension,
+      mimeType: mimeType,
+    );
+    if (validationError != null) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(validationError)),
         );
       }
       return;
@@ -193,9 +227,7 @@ class DocumentsScreen extends ConsumerWidget {
                 : titleController.text.trim(),
             fileName: file.name,
             bytes: bytes,
-            mimeType: file.extension != null
-                ? _mimeFromExtension(file.extension!)
-                : 'application/octet-stream',
+            mimeType: mimeType,
             type: docType,
             childId: childId,
           );
@@ -207,9 +239,9 @@ class DocumentsScreen extends ConsumerWidget {
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Upload failed: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(formatUploadError(e))),
+        );
       }
     }
   }
@@ -278,17 +310,4 @@ class DocumentsScreen extends ConsumerWidget {
     }
   }
 
-  String _mimeFromExtension(String ext) {
-    switch (ext.toLowerCase()) {
-      case 'pdf':
-        return 'application/pdf';
-      case 'png':
-        return 'image/png';
-      case 'jpg':
-      case 'jpeg':
-        return 'image/jpeg';
-      default:
-        return 'application/octet-stream';
-    }
-  }
 }

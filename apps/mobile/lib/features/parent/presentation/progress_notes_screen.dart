@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/weekly_progress_chart.dart';
 import '../../clinical/data/clinical_repository.dart';
 
 final parentProgressNotesProvider =
@@ -11,8 +12,18 @@ final parentProgressNotesProvider =
       return ref.watch(clinicalRepositoryProvider).fetchParentProgressNotes();
     });
 
-class ProgressNotesScreen extends ConsumerWidget {
-  const ProgressNotesScreen({super.key});
+class ProgressNotesScreen extends ConsumerStatefulWidget {
+  const ProgressNotesScreen({super.key, this.sessionId});
+
+  final String? sessionId;
+
+  @override
+  ConsumerState<ProgressNotesScreen> createState() =>
+      _ProgressNotesScreenState();
+}
+
+class _ProgressNotesScreenState extends ConsumerState<ProgressNotesScreen> {
+  bool _handledSessionId = false;
 
   Future<void> _addFeedback(
     BuildContext context,
@@ -66,8 +77,68 @@ class ProgressNotesScreen extends ConsumerWidget {
     }
   }
 
+  List<WeeklyProgressWeek> _weeklyReportCounts(
+    List<ParentProgressNoteModel> notes,
+  ) {
+    final now = DateTime.now();
+    DateTime startOfWeek(DateTime d) {
+      final day = d.weekday;
+      return DateTime(d.year, d.month, d.day - (day - 1));
+    }
+
+    final weeks = <WeeklyProgressWeek>[];
+    for (var i = 5; i >= 0; i--) {
+      final start = startOfWeek(now).subtract(Duration(days: i * 7));
+      final end = start.add(const Duration(days: 7));
+      final count = notes.where((n) {
+        final signed = n.signedAt;
+        if (signed == null) return false;
+        return !signed.isBefore(start) && signed.isBefore(end);
+      }).length;
+      final label = '${_monthShort(start.month)} ${start.day}';
+      weeks.add(WeeklyProgressWeek(weekLabel: label, reportCount: count));
+    }
+    return weeks;
+  }
+
+  String _monthShort(int month) {
+    const names = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return names[month - 1];
+  }
+
+  void _maybeOpenSessionFeedback(List<ParentProgressNoteModel> list) {
+    final sessionId = widget.sessionId;
+    if (_handledSessionId || sessionId == null || sessionId.isEmpty) return;
+    ParentProgressNoteModel? note;
+    for (final n in list) {
+      if (n.sessionId == sessionId) {
+        note = n;
+        break;
+      }
+    }
+    if (note == null) return;
+    final target = note;
+    _handledSessionId = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _addFeedback(context, ref, target);
+    });
+  }
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final notes = ref.watch(parentProgressNotesProvider);
     final dateFmt = DateFormat.yMMMd();
 
@@ -77,68 +148,131 @@ class ProgressNotesScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (list) {
-          if (list.isEmpty) {
-            return const Center(
-              child: Text(
-                'No progress summaries yet. They appear after sessions.',
-              ),
-            );
-          }
+          _maybeOpenSessionFeedback(list);
           return RefreshIndicator(
             onRefresh: () async {
               ref.invalidate(parentProgressNotesProvider);
               await ref.read(parentProgressNotesProvider.future);
             },
-            child: ListView.separated(
+            child: ListView(
               padding: const EdgeInsets.all(16),
-              itemCount: list.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                final n = list[index];
-                return Card(
+              children: [
+                Card(
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          n.childName,
+                          'Weekly progress from your therapist',
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
-                        Text('With ${n.therapistName}'),
-                        if (n.signedAt != null)
-                          Text(
-                            dateFmt.format(n.signedAt!),
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
                         const SizedBox(height: 8),
-                        Text(n.summary),
-                        if (n.parentFeedback != null) ...[
-                          const SizedBox(height: 8),
-                          Text(
-                            'Your feedback',
-                            style: Theme.of(context).textTheme.labelLarge,
-                          ),
-                          Text(n.parentFeedback!),
-                        ],
-                        const SizedBox(height: 8),
-                        TextButton.icon(
-                          onPressed: () => _addFeedback(context, ref, n),
-                          icon: const Icon(Icons.feedback_outlined),
-                          label: Text(
-                            n.parentFeedback == null
-                                ? 'Leave feedback'
-                                : 'Edit feedback',
-                          ),
+                        Text(
+                          'Your therapist submits a progress summary after each '
+                          'session. Reports are rolled up weekly so you can see '
+                          'how care is trending over time.',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        const SizedBox(height: 16),
+                        WeeklyProgressChart(
+                          weeks: _weeklyReportCounts(list),
                         ),
                       ],
                     ),
                   ),
-                );
-              },
+                ),
+                const SizedBox(height: 16),
+                if (list.isEmpty)
+                  const Card(
+                    child: ListTile(
+                      title: Text('No session summaries yet'),
+                      subtitle: Text(
+                        'Weekly bars will fill in after your therapist documents visits.',
+                      ),
+                    ),
+                  )
+                else
+                  ...list.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final n = entry.value;
+                    return Padding(
+                      padding: EdgeInsets.only(
+                        bottom: index < list.length - 1 ? 12 : 0,
+                      ),
+                      child: _ProgressNoteCard(
+                        note: n,
+                        highlight: widget.sessionId == n.sessionId,
+                        dateFmt: dateFmt,
+                        onFeedback: () => _addFeedback(context, ref, n),
+                      ),
+                    );
+                  }),
+              ],
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _ProgressNoteCard extends StatelessWidget {
+  const _ProgressNoteCard({
+    required this.note,
+    required this.highlight,
+    required this.dateFmt,
+    required this.onFeedback,
+  });
+
+  final ParentProgressNoteModel note;
+  final bool highlight;
+  final DateFormat dateFmt;
+  final VoidCallback onFeedback;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      color: highlight
+          ? Theme.of(context).colorScheme.primaryContainer
+          : null,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              note.childName,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            Text('With ${note.therapistName}'),
+            if (note.signedAt != null)
+              Text(
+                dateFmt.format(note.signedAt!),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            const SizedBox(height: 8),
+            Text(note.summary),
+            if (note.parentFeedback != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Your feedback',
+                style: Theme.of(context).textTheme.labelLarge,
+              ),
+              Text(note.parentFeedback!),
+            ],
+            const SizedBox(height: 8),
+            TextButton.icon(
+              onPressed: onFeedback,
+              icon: const Icon(Icons.feedback_outlined),
+              label: Text(
+                note.parentFeedback == null
+                    ? 'Leave feedback'
+                    : 'Edit feedback',
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

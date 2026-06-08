@@ -15,6 +15,7 @@ import {
 import { TherapyType } from '../../generated/prisma/client';
 import {
   TherapistBadgeType,
+  TherapistWeeklyProgressType,
   TreatmentPlanGoalType,
   TreatmentPlanType,
 } from './types/clinical.types';
@@ -43,6 +44,14 @@ export class ClinicalResolver {
   ): Promise<TreatmentPlanType[]> {
     const rows = await this.clinical.listPlansForTherapistUser(user.id);
     return rows.map((p) => this.mapPlan(p));
+  }
+
+  @Query(() => TherapistWeeklyProgressType, { name: 'therapistWeeklyProgress' })
+  @Roles('THERAPIST')
+  async therapistWeeklyProgress(
+    @CurrentUser() user: AuthUser,
+  ): Promise<TherapistWeeklyProgressType> {
+    return this.clinical.therapistWeeklyProgress(user.id);
   }
 
   @Query(() => [ParentProgressNoteType], { name: 'myProgressNotes' })

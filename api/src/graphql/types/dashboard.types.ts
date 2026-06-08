@@ -218,4 +218,7 @@ export class DashboardActionItemType {
 
   @Field({ nullable: true })
   claimId?: string;
+
+  @Field({ nullable: true })
+  therapistId?: string;
 }

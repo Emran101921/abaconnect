@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -59,13 +60,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
     } catch (e) {
       if (mounted) {
+        final message = _loginErrorMessage(e);
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Login failed: $e')));
+        ).showSnackBar(SnackBar(content: Text(message)));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  String _loginErrorMessage(Object error) {
+    if (error is DioException &&
+        (error.type == DioExceptionType.connectionError ||
+            error.type == DioExceptionType.connectionTimeout)) {
+      return 'Cannot reach API at ${ApiConstants.baseUrl}. '
+          'Start Docker + API on your Mac (cd api && npm run start:dev).';
+    }
+    return 'Login failed: $error';
   }
 
   Future<String?> _promptMfaCode() async {

@@ -9,6 +9,7 @@ class DashboardActionModel {
     this.appointmentId,
     this.sessionId,
     this.claimId,
+    this.therapistId,
   });
 
   final String id;
@@ -20,6 +21,7 @@ class DashboardActionModel {
   final String? appointmentId;
   final String? sessionId;
   final String? claimId;
+  final String? therapistId;
 
   factory DashboardActionModel.fromJson(Map<String, dynamic> json) {
     return DashboardActionModel(
@@ -32,6 +34,7 @@ class DashboardActionModel {
       appointmentId: json['appointmentId'] as String?,
       sessionId: json['sessionId'] as String?,
       claimId: json['claimId'] as String?,
+      therapistId: json['therapistId'] as String?,
     );
   }
 }

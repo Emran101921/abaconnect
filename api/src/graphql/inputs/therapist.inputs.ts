@@ -7,6 +7,9 @@ export class UpdateTherapistProfileInput {
   bio?: string;
 
   @Field({ nullable: true })
+  npi?: string;
+
+  @Field({ nullable: true })
   licenseNumber?: string;
 
   @Field({ nullable: true })
@@ -35,4 +38,8 @@ export class SaveSoapNoteInput {
 
   @Field({ nullable: true })
   plan?: string;
+
+  /** NYC EIP Individual Session Note form (JSON string). */
+  @Field({ nullable: true })
+  eipFormData?: string;
 }

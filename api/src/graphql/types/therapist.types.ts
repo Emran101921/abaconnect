@@ -39,6 +39,9 @@ export class TherapistProfileType {
   bio?: string;
 
   @Field({ nullable: true })
+  npi?: string;
+
+  @Field({ nullable: true })
   licenseNumber?: string;
 
   @Field({ nullable: true })
@@ -97,6 +100,60 @@ export class SoapNoteType {
 
   @Field({ nullable: true })
   plan?: string;
+
+  @Field({ nullable: true })
+  eipFormData?: string;
+}
+
+@ObjectType()
+export class SessionNoteFormContextType {
+  @Field(() => ID)
+  sessionId: string;
+
+  @Field()
+  childName: string;
+
+  @Field({ nullable: true })
+  childDob?: string;
+
+  @Field({ nullable: true })
+  childSex?: string;
+
+  @Field({ nullable: true })
+  eiNumber?: string;
+
+  @Field()
+  interventionistName: string;
+
+  @Field({ nullable: true })
+  credentials?: string;
+
+  @Field({ nullable: true })
+  npi?: string;
+
+  @Field({ nullable: true })
+  serviceType?: string;
+
+  @Field({ nullable: true })
+  sessionDate?: string;
+
+  @Field({ nullable: true })
+  ifspServiceLocation?: string;
+
+  @Field({ nullable: true })
+  timeFrom?: string;
+
+  @Field({ nullable: true })
+  timeTo?: string;
+
+  @Field({ nullable: true })
+  sessionDelivered?: string;
+
+  @Field({ nullable: true })
+  icd10Code?: string;
+
+  @Field({ nullable: true })
+  existingEipFormData?: string;
 }
 
 @ObjectType()

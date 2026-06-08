@@ -13,6 +13,7 @@ import {
   UpdateTherapistProfileInput,
 } from './inputs/therapist.inputs';
 import {
+  SessionNoteFormContextType,
   SoapNoteType,
   TherapistAppointmentType,
   TherapistDashboardType,
@@ -46,6 +47,7 @@ export class TherapistResolver {
       isVerified: t.isVerified,
       therapyTypes: t.therapyTypes,
       bio: t.bio ?? undefined,
+      npi: t.npi ?? undefined,
       licenseNumber: t.licenseNumber ?? undefined,
       licenseState: t.licenseState ?? undefined,
       yearsExperience: t.yearsExperience ?? undefined,
@@ -88,9 +90,21 @@ export class TherapistResolver {
             objective: s.soapNote.objective ?? undefined,
             assessment: s.soapNote.assessment ?? undefined,
             plan: s.soapNote.plan ?? undefined,
+            eipFormData:
+              s.soapNote.eipFormData != null
+                ? JSON.stringify(s.soapNote.eipFormData)
+                : undefined,
           }
         : undefined,
     }));
+  }
+
+  @Query(() => SessionNoteFormContextType, { name: 'sessionNoteFormContext' })
+  async sessionNoteFormContext(
+    @CurrentUser() user: AuthUser,
+    @Args('sessionId', { type: () => ID }) sessionId: string,
+  ): Promise<SessionNoteFormContextType> {
+    return this.sessionsService.getSessionNoteFormContext(user.id, sessionId);
   }
 
   @Mutation(() => TherapistProfileType, { name: 'updateTherapistProfile' })
@@ -104,6 +118,7 @@ export class TherapistResolver {
       isVerified: t.isVerified,
       therapyTypes: t.therapyTypes,
       bio: t.bio ?? undefined,
+      npi: t.npi ?? undefined,
       licenseNumber: t.licenseNumber ?? undefined,
       licenseState: t.licenseState ?? undefined,
       yearsExperience: t.yearsExperience ?? undefined,
@@ -217,6 +232,10 @@ export class TherapistResolver {
       objective: note.objective ?? undefined,
       assessment: note.assessment ?? undefined,
       plan: note.plan ?? undefined,
+      eipFormData:
+        note.eipFormData != null
+          ? JSON.stringify(note.eipFormData)
+          : undefined,
     };
   }
 

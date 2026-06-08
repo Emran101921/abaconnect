@@ -2,9 +2,12 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 
+import 'dart:convert';
+
 import '../../../core/network/api_client.dart';
 import '../../../core/network/graphql_client.dart';
 import '../../../core/utils/file_download.dart';
+import '../models/eip_session_note_model.dart';
 
 class TherapistProfileModel {
   const TherapistProfileModel({
@@ -15,6 +18,7 @@ class TherapistProfileModel {
     required this.rating,
     required this.ratingCount,
     this.bio,
+    this.npi,
     this.licenseNumber,
     this.licenseState,
     this.yearsExperience,
@@ -28,8 +32,13 @@ class TherapistProfileModel {
   final double rating;
   final int ratingCount;
   final String? bio;
+  final String? npi;
   final String? licenseNumber;
   final String? licenseState;
+
+  bool get hasRequiredCredentials =>
+      (npi?.trim().isNotEmpty ?? false) &&
+      (licenseNumber?.trim().isNotEmpty ?? false);
   final int? yearsExperience;
   final List<String> therapyTypes;
 }
@@ -79,15 +88,28 @@ class TherapistSessionModel {
     required this.id,
     required this.status,
     required this.childName,
+    this.childId,
     this.soapNoteId,
     this.hasSoap = false,
+    this.subjective,
+    this.objective,
+    this.assessment,
+    this.plan,
   });
 
   final String id;
   final String status;
   final String childName;
+  final String? childId;
   final String? soapNoteId;
   final bool hasSoap;
+  final String? subjective;
+  final String? objective;
+  final String? assessment;
+  final String? plan;
+
+  bool get needsDocumentation =>
+      status == 'IN_PROGRESS' || status == 'PENDING_DOCUMENTATION';
 }
 
 class TherapistRepository {
@@ -135,6 +157,7 @@ class TherapistRepository {
           id
           isVerified
           bio
+          npi
           licenseNumber
           licenseState
           yearsExperience
@@ -154,6 +177,7 @@ class TherapistRepository {
       displayName: '${user['firstName']} ${user['lastName']}',
       email: user['email'] as String,
       bio: p['bio'] as String?,
+      npi: p['npi'] as String?,
       licenseNumber: p['licenseNumber'] as String?,
       licenseState: p['licenseState'] as String?,
       yearsExperience: p['yearsExperience'] as int?,
@@ -203,8 +227,10 @@ class TherapistRepository {
         myTherapistSessions {
           id
           status
-          child { firstName lastName }
-          soapNote { id }
+          child { id firstName lastName }
+          soapNote {
+            id subjective objective assessment plan
+          }
         }
       }
     ''';
@@ -217,14 +243,20 @@ class TherapistRepository {
         id: e['id'] as String,
         status: e['status'] as String? ?? '',
         childName: '${child['firstName']} ${child['lastName']}',
+        childId: child['id'] as String?,
         soapNoteId: soap?['id'] as String?,
         hasSoap: soap != null,
+        subjective: soap?['subjective'] as String?,
+        objective: soap?['objective'] as String?,
+        assessment: soap?['assessment'] as String?,
+        plan: soap?['plan'] as String?,
       );
     }).toList();
   }
 
   Future<void> updateProfile({
     String? bio,
+    String? npi,
     String? licenseNumber,
     String? licenseState,
     int? yearsExperience,
@@ -239,6 +271,7 @@ class TherapistRepository {
       variables: {
         'input': {
           'bio': ?bio,
+          'npi': ?npi,
           'licenseNumber': ?licenseNumber,
           'licenseState': ?licenseState,
           'yearsExperience': ?yearsExperience,
@@ -320,6 +353,7 @@ class TherapistRepository {
     String? objective,
     String? assessment,
     String? plan,
+    String? eipFormData,
   }) async {
     const mutation = r'''
       mutation Save($input: SaveSoapNoteInput!) {
@@ -335,8 +369,43 @@ class TherapistRepository {
           'objective': ?objective,
           'assessment': ?assessment,
           'plan': ?plan,
+          'eipFormData': ?eipFormData,
         },
       },
+    );
+  }
+
+  Future<Map<String, dynamic>> fetchSessionNoteFormContext(
+    String sessionId,
+  ) async {
+    final result = await _graphql.query(
+      r'''
+      query Context($sessionId: ID!) {
+        sessionNoteFormContext(sessionId: $sessionId) {
+          sessionId childName childDob childSex eiNumber
+          interventionistName credentials npi serviceType
+          sessionDate ifspServiceLocation timeFrom timeTo
+          sessionDelivered icd10Code existingEipFormData
+        }
+      }
+    ''',
+      variables: {'sessionId': sessionId},
+    );
+    final data = result['data']?['sessionNoteFormContext'];
+    if (data is! Map<String, dynamic>) {
+      throw Exception('Could not load session note context');
+    }
+    return data;
+  }
+
+  Future<void> saveEipSessionNote(EipSessionNoteModel form) async {
+    await saveSoapNote(
+      sessionId: form.sessionId,
+      subjective: form.toSoapSubjective(),
+      objective: form.toSoapObjective(),
+      assessment: form.toSoapAssessment(),
+      plan: form.toSoapPlan(),
+      eipFormData: jsonEncode(form.toJson()),
     );
   }
 }

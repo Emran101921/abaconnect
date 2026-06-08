@@ -49,6 +49,9 @@ export class DocumentItemType {
   @Field(() => Int)
   fileSize: number;
 
+  @Field(() => ID, { nullable: true })
+  childId?: string;
+
   @Field()
   uploadedAt: Date;
 }

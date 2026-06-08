@@ -4,9 +4,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../data/parent_booking_repository.dart';
+import 'parent_home_screen.dart';
 
 class ReviewsScreen extends ConsumerStatefulWidget {
-  const ReviewsScreen({super.key});
+  const ReviewsScreen({
+    super.key,
+    this.initialTherapistId,
+    this.autoOpenSubmit = false,
+  });
+
+  final String? initialTherapistId;
+  final bool autoOpenSubmit;
 
   @override
   ConsumerState<ReviewsScreen> createState() => _ReviewsScreenState();
@@ -14,8 +22,9 @@ class ReviewsScreen extends ConsumerStatefulWidget {
 
 class _ReviewsScreenState extends ConsumerState<ReviewsScreen> {
   List<ReviewModel> _reviews = [];
-  List<TherapistModel> _therapists = [];
+  List<TherapistModel> _pendingTherapists = [];
   bool _loading = true;
+  bool _autoOpened = false;
 
   @override
   void initState() {
@@ -28,13 +37,14 @@ class _ReviewsScreenState extends ConsumerState<ReviewsScreen> {
     final repo = ref.read(parentBookingRepositoryProvider);
     try {
       final reviews = await repo.fetchReviews();
-      final therapists = await repo.fetchTherapists();
+      final pending = await repo.fetchPendingReviewTherapists();
       if (mounted) {
         setState(() {
           _reviews = reviews;
-          _therapists = therapists;
+          _pendingTherapists = pending;
           _loading = false;
         });
+        _maybeAutoOpenSubmit();
       }
     } catch (e) {
       if (mounted) {
@@ -46,14 +56,29 @@ class _ReviewsScreenState extends ConsumerState<ReviewsScreen> {
     }
   }
 
+  void _maybeAutoOpenSubmit() {
+    if (_autoOpened || !widget.autoOpenSubmit || _pendingTherapists.isEmpty) {
+      return;
+    }
+    _autoOpened = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _submitReview();
+    });
+  }
+
   Future<void> _submitReview() async {
-    if (_therapists.isEmpty) {
+    if (_pendingTherapists.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No therapists available to review')),
+        const SnackBar(
+          content: Text('No completed sessions awaiting a therapist review'),
+        ),
       );
       return;
     }
-    var therapistId = _therapists.first.id;
+    final initialId = widget.initialTherapistId;
+    var therapistId = _pendingTherapists.any((t) => t.id == initialId)
+        ? initialId!
+        : _pendingTherapists.first.id;
     var rating = 5;
     final comment = TextEditingController();
     final ok = await showDialog<bool>(
@@ -67,7 +92,7 @@ class _ReviewsScreenState extends ConsumerState<ReviewsScreen> {
               DropdownButtonFormField<String>(
                 initialValue: therapistId,
                 decoration: const InputDecoration(labelText: 'Therapist'),
-                items: _therapists
+                items: _pendingTherapists
                     .map(
                       (t) => DropdownMenuItem(
                         value: t.id,
@@ -119,6 +144,7 @@ class _ReviewsScreenState extends ConsumerState<ReviewsScreen> {
             rating: rating,
             comment: comment.text.trim().isEmpty ? null : comment.text.trim(),
           );
+      ref.invalidate(parentPendingReviewsProvider);
       await _load();
       if (mounted) {
         ScaffoldMessenger.of(
@@ -138,65 +164,99 @@ class _ReviewsScreenState extends ConsumerState<ReviewsScreen> {
   Widget build(BuildContext context) {
     return AppScaffold(
       title: 'Reviews',
-      floatingActionButton: FloatingActionButton(
-        onPressed: _submitReview,
-        child: const Icon(Icons.rate_review),
-      ),
+      floatingActionButton: _pendingTherapists.isEmpty
+          ? null
+          : FloatingActionButton(
+              onPressed: _submitReview,
+              child: const Icon(Icons.rate_review),
+            ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : _reviews.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text('No reviews yet.'),
-                  const SizedBox(height: 12),
-                  FilledButton(
-                    onPressed: _submitReview,
-                    child: const Text('Write first review'),
-                  ),
-                ],
-              ),
-            )
-          : RefreshIndicator(
-              onRefresh: _load,
-              child: ListView.separated(
-                padding: const EdgeInsets.all(16),
-                itemCount: _reviews.length,
-                separatorBuilder: (context, _) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final r = _reviews[index];
-                  return Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            r.therapistName,
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: List.generate(
-                              5,
-                              (i) => Icon(
-                                i < r.rating ? Icons.star : Icons.star_border,
-                                color: Colors.amber,
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                          if (r.comment != null && r.comment!.isNotEmpty) ...[
-                            const SizedBox(height: 8),
-                            Text(r.comment!),
-                          ],
-                        ],
-                      ),
+          : Column(
+              children: [
+                if (_pendingTherapists.isNotEmpty)
+                  MaterialBanner(
+                    content: Text(
+                      '${_pendingTherapists.length} therapist(s) awaiting your review',
                     ),
-                  );
-                },
-              ),
+                    leading: const Icon(Icons.rate_review),
+                    actions: [
+                      TextButton(
+                        onPressed: _submitReview,
+                        child: const Text('Review now'),
+                      ),
+                    ],
+                  ),
+                Expanded(
+                  child: _reviews.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                _pendingTherapists.isEmpty
+                                    ? 'No reviews yet.'
+                                    : 'No reviews submitted yet.',
+                              ),
+                              if (_pendingTherapists.isNotEmpty) ...[
+                                const SizedBox(height: 12),
+                                FilledButton(
+                                  onPressed: _submitReview,
+                                  child: const Text('Write first review'),
+                                ),
+                              ],
+                            ],
+                          ),
+                        )
+                      : RefreshIndicator(
+                          onRefresh: _load,
+                          child: ListView.separated(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: _reviews.length,
+                            separatorBuilder: (context, _) =>
+                                const SizedBox(height: 12),
+                            itemBuilder: (context, index) {
+                              final r = _reviews[index];
+                              return Card(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        r.therapistName,
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.titleMedium,
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Row(
+                                        children: List.generate(
+                                          5,
+                                          (i) => Icon(
+                                            i < r.rating
+                                                ? Icons.star
+                                                : Icons.star_border,
+                                            color: Colors.amber,
+                                            size: 20,
+                                          ),
+                                        ),
+                                      ),
+                                      if (r.comment != null &&
+                                          r.comment!.isNotEmpty) ...[
+                                        const SizedBox(height: 8),
+                                        Text(r.comment!),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                ),
+              ],
             ),
     );
   }

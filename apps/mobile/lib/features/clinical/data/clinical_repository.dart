@@ -94,6 +94,40 @@ class ParentProgressNoteModel {
   final DateTime? signedAt;
 }
 
+class TherapistWeeklyProgressModel {
+  const TherapistWeeklyProgressModel({
+    required this.weeks,
+    required this.children,
+  });
+
+  final List<WeeklyProgressWeekModel> weeks;
+  final List<ChildProgressSummaryModel> children;
+}
+
+class WeeklyProgressWeekModel {
+  const WeeklyProgressWeekModel({
+    required this.weekLabel,
+    required this.reportCount,
+  });
+
+  final String weekLabel;
+  final int reportCount;
+}
+
+class ChildProgressSummaryModel {
+  const ChildProgressSummaryModel({
+    required this.childId,
+    required this.childName,
+    required this.goalCompletionPercent,
+    this.activePlanTitle,
+  });
+
+  final String childId;
+  final String childName;
+  final double goalCompletionPercent;
+  final String? activePlanTitle;
+}
+
 class TherapistBadgeModel {
   const TherapistBadgeModel({required this.type, this.label});
 
@@ -236,6 +270,45 @@ class ClinicalRepository {
       variables: {
         'input': {'sessionId': sessionId, 'summary': summary},
       },
+    );
+  }
+
+  Future<TherapistWeeklyProgressModel> fetchTherapistWeeklyProgress() async {
+    final result = await _graphql.query(r'''
+      query {
+        therapistWeeklyProgress {
+          weeks { weekLabel reportCount }
+          children {
+            childId childName goalCompletionPercent activePlanTitle
+          }
+        }
+      }
+    ''');
+    final data =
+        result['data']?['therapistWeeklyProgress'] as Map<String, dynamic>? ??
+        {};
+    final weeksRaw = data['weeks'] as List<dynamic>? ?? [];
+    final childrenRaw = data['children'] as List<dynamic>? ?? [];
+    return TherapistWeeklyProgressModel(
+      weeks: weeksRaw
+          .map(
+            (w) => WeeklyProgressWeekModel(
+              weekLabel: w['weekLabel'] as String? ?? '',
+              reportCount: w['reportCount'] as int? ?? 0,
+            ),
+          )
+          .toList(),
+      children: childrenRaw
+          .map(
+            (c) => ChildProgressSummaryModel(
+              childId: c['childId'] as String? ?? '',
+              childName: c['childName'] as String? ?? '',
+              goalCompletionPercent:
+                  (c['goalCompletionPercent'] as num?)?.toDouble() ?? 0,
+              activePlanTitle: c['activePlanTitle'] as String?,
+            ),
+          )
+          .toList(),
     );
   }
 
