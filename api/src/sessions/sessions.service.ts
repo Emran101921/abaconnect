@@ -293,7 +293,7 @@ export class SessionsService {
       credentials: therapist.licenseNumber
         ? `${therapyLabel} (${therapist.licenseNumber})`
         : therapyLabel,
-      npi: agency?.npi ?? undefined,
+      npi: therapist.npi ?? agency?.npi ?? undefined,
       serviceType: therapyLabel,
       sessionDate: formatDate(apt.scheduledStart),
       ifspServiceLocation: locationLabel,

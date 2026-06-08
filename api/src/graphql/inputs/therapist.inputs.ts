@@ -7,6 +7,9 @@ export class UpdateTherapistProfileInput {
   bio?: string;
 
   @Field({ nullable: true })
+  npi?: string;
+
+  @Field({ nullable: true })
   licenseNumber?: string;
 
   @Field({ nullable: true })

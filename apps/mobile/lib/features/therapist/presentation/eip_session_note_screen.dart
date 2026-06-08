@@ -27,6 +27,29 @@ class EipSessionNoteScreen extends ConsumerStatefulWidget {
       _EipSessionNoteScreenState();
 }
 
+const _ifspServiceLocations = [
+  'Home',
+  'Home/Community (natural environment)',
+  'Community — child care program',
+  'Community — family child care home',
+  'Community — other natural setting',
+  'Facility / center-based',
+  'School',
+  'Telehealth (with parent consent)',
+  'Other',
+];
+
+/// NYC EIP Individual Session Note — intensity per IFSP authorization.
+const _intensityOptions = [
+  'Home/Community (as authorized in IFSP)',
+  'Individual-Facility (as authorized in IFSP)',
+  'Group session (use Group Session Note)',
+  'Parent-child group',
+  'Family-support group',
+  'Collateral / parent-only (per IFSP)',
+  'Other',
+];
+
 class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
   EipSessionNoteModel? _form;
   bool _saving = false;
@@ -105,15 +128,31 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
                   _field('Session date', form.sessionDate ?? '', (v) {
                     setState(() => _form = form.copyWith(sessionDate: v));
                   }),
-                  _field(
-                    'IFSP service location',
-                    form.ifspServiceLocation ?? '',
-                    (v) {
-                      setState(
-                        () => _form = form.copyWith(ifspServiceLocation: v),
-                      );
+                  _scrollableDropdown(
+                    label: 'IFSP service location',
+                    value: _ifspLocationValue(form.ifspServiceLocation),
+                    items: _ifspLocationItems(form.ifspServiceLocation),
+                    onChanged: (v) {
+                      if (v == null) return;
+                      setState(() {
+                        _form = form.copyWith(
+                          ifspServiceLocation: v,
+                        );
+                      });
                     },
                   ),
+                  if (form.ifspServiceLocation == 'Other')
+                    _field(
+                      'Specify IFSP service location',
+                      '',
+                      (v) {
+                        setState(
+                          () => _form = form.copyWith(
+                            ifspServiceLocation: v.trim().isEmpty ? 'Other' : v,
+                          ),
+                        );
+                      },
+                    ),
                   Row(
                     children: [
                       Expanded(
@@ -164,16 +203,29 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
                       ),
                     ],
                   ),
-                  _dropdown(
+                  _scrollableDropdown(
                     label: 'Intensity',
-                    value: form.intensity,
-                    items: const ['Home/Community', 'Individual-Facility'],
+                    value: _intensityValue(form.intensity),
+                    items: _intensityItems(form.intensity),
                     onChanged: (v) {
-                      if (v != null) {
-                        setState(() => _form = form.copyWith(intensity: v));
-                      }
+                      if (v == null) return;
+                      setState(() {
+                        _form = form.copyWith(intensity: v);
+                      });
                     },
                   ),
+                  if (form.intensity == 'Other')
+                    _field(
+                      'Specify intensity',
+                      '',
+                      (v) {
+                        setState(
+                          () => _form = form.copyWith(
+                            intensity: v.trim().isEmpty ? 'Other' : v,
+                          ),
+                        );
+                      },
+                    ),
                   _dropdown(
                     label: 'Session delivered',
                     value: form.sessionDelivered,
@@ -516,19 +568,112 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
     );
   }
 
+  String? _normalizeIfspLocation(String? location) {
+    if (location == null || location.isEmpty) return location;
+    switch (location) {
+      case 'Home/Community':
+        return 'Home/Community (natural environment)';
+      case 'Facility':
+        return 'Facility / center-based';
+      case 'Telehealth':
+        return 'Telehealth (with parent consent)';
+      default:
+        return location;
+    }
+  }
+
+  String _ifspLocationValue(String? location) {
+    if (location == 'Other') return 'Other';
+    if (location == null || location.isEmpty) {
+      return _ifspServiceLocations.first;
+    }
+    final normalized = _normalizeIfspLocation(location) ?? location;
+    if (_ifspServiceLocations.contains(normalized)) return normalized;
+    return normalized;
+  }
+
+  List<String> _ifspLocationItems(String? location) {
+    final items = [..._ifspServiceLocations];
+    final normalized = _normalizeIfspLocation(location);
+    if (normalized != null &&
+        normalized.isNotEmpty &&
+        !items.contains(normalized)) {
+      items.insert(items.length - 1, normalized);
+    }
+    return items;
+  }
+
+  String? _normalizeIntensity(String? intensity) {
+    if (intensity == null || intensity.isEmpty) return intensity;
+    switch (intensity) {
+      case 'Home/Community':
+        return 'Home/Community (as authorized in IFSP)';
+      case 'Individual-Facility':
+        return 'Individual-Facility (as authorized in IFSP)';
+      default:
+        return intensity;
+    }
+  }
+
+  String _intensityValue(String? intensity) {
+    if (intensity == 'Other') return 'Other';
+    if (intensity == null || intensity.isEmpty) {
+      return _intensityOptions.first;
+    }
+    final normalized = _normalizeIntensity(intensity) ?? intensity;
+    if (_intensityOptions.contains(normalized)) return normalized;
+    return normalized;
+  }
+
+  List<String> _intensityItems(String? intensity) {
+    final items = [..._intensityOptions];
+    final normalized = _normalizeIntensity(intensity);
+    if (normalized != null &&
+        normalized.isNotEmpty &&
+        !items.contains(normalized)) {
+      items.insert(items.length - 1, normalized);
+    }
+    return items;
+  }
+
   Widget _dropdown({
     required String label,
     required String value,
     required List<String> items,
     required ValueChanged<String?> onChanged,
   }) {
+    return _scrollableDropdown(
+      label: label,
+      value: value,
+      items: items,
+      onChanged: onChanged,
+    );
+  }
+
+  Widget _scrollableDropdown({
+    required String label,
+    required String value,
+    required List<String> items,
+    required ValueChanged<String?> onChanged,
+  }) {
+    final selected = items.contains(value) ? value : items.first;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: DropdownButtonFormField<String>(
-        initialValue: value,
+        initialValue: selected,
+        isExpanded: true,
+        menuMaxHeight: 280,
         decoration: InputDecoration(labelText: label),
         items: items
-            .map((e) => DropdownMenuItem(value: e, child: Text(e.isEmpty ? '—' : e)))
+            .map(
+              (e) => DropdownMenuItem(
+                value: e,
+                child: Text(
+                  e.isEmpty ? '—' : e,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            )
             .toList(),
         onChanged: onChanged,
       ),

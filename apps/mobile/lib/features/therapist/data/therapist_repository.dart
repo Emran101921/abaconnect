@@ -18,6 +18,7 @@ class TherapistProfileModel {
     required this.rating,
     required this.ratingCount,
     this.bio,
+    this.npi,
     this.licenseNumber,
     this.licenseState,
     this.yearsExperience,
@@ -31,8 +32,13 @@ class TherapistProfileModel {
   final double rating;
   final int ratingCount;
   final String? bio;
+  final String? npi;
   final String? licenseNumber;
   final String? licenseState;
+
+  bool get hasRequiredCredentials =>
+      (npi?.trim().isNotEmpty ?? false) &&
+      (licenseNumber?.trim().isNotEmpty ?? false);
   final int? yearsExperience;
   final List<String> therapyTypes;
 }
@@ -151,6 +157,7 @@ class TherapistRepository {
           id
           isVerified
           bio
+          npi
           licenseNumber
           licenseState
           yearsExperience
@@ -170,6 +177,7 @@ class TherapistRepository {
       displayName: '${user['firstName']} ${user['lastName']}',
       email: user['email'] as String,
       bio: p['bio'] as String?,
+      npi: p['npi'] as String?,
       licenseNumber: p['licenseNumber'] as String?,
       licenseState: p['licenseState'] as String?,
       yearsExperience: p['yearsExperience'] as int?,
@@ -248,6 +256,7 @@ class TherapistRepository {
 
   Future<void> updateProfile({
     String? bio,
+    String? npi,
     String? licenseNumber,
     String? licenseState,
     int? yearsExperience,
@@ -262,6 +271,7 @@ class TherapistRepository {
       variables: {
         'input': {
           'bio': ?bio,
+          'npi': ?npi,
           'licenseNumber': ?licenseNumber,
           'licenseState': ?licenseState,
           'yearsExperience': ?yearsExperience,
