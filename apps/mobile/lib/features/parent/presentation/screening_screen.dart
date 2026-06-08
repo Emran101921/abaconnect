@@ -12,11 +12,7 @@ import 'ei_screening_wizard.dart';
 import 'screening_results_screen.dart';
 
 class ScreeningScreen extends ConsumerStatefulWidget {
-  const ScreeningScreen({
-    super.key,
-    this.childId,
-    this.autoStart = false,
-  });
+  const ScreeningScreen({super.key, this.childId, this.autoStart = false});
 
   final String? childId;
   final bool autoStart;
@@ -84,9 +80,9 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _loading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load screening: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to load screening: $e')));
       }
     }
   }
@@ -99,10 +95,9 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
       return;
     }
     try {
-      final draft = await ref.read(parentBookingRepositoryProvider).fetchScreeningDraft(
-            templateId: template.id,
-            childId: child.id,
-          );
+      final draft = await ref
+          .read(parentBookingRepositoryProvider)
+          .fetchScreeningDraft(templateId: template.id, childId: child.id);
       if (mounted) setState(() => _hasDraft = draft != null);
     } catch (_) {
       if (mounted) setState(() => _hasDraft = false);
@@ -152,7 +147,9 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
     final targetChild = child ?? _selectedChild;
     if (targetChild == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Add a child before completing screening')),
+        const SnackBar(
+          content: Text('Add a child before completing screening'),
+        ),
       );
       context.push(AppRoutes.parentChildren);
       return;
@@ -161,7 +158,9 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
     Map<String, dynamic> answers = {};
     String? draftId;
     try {
-      final draft = await ref.read(parentBookingRepositoryProvider).fetchScreeningDraft(
+      final draft = await ref
+          .read(parentBookingRepositoryProvider)
+          .fetchScreeningDraft(
             templateId: template.id,
             childId: targetChild.id,
           );
@@ -181,16 +180,18 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
   }
 
   Future<void> _viewHistoryResult(ScreeningHistoryModel entry) async {
-    final child = _selectedChild ??
+    final child =
+        _selectedChild ??
         _children.cast<ChildModel?>().firstWhere(
-              (c) => c?.displayName == entry.childName,
-              orElse: () => _children.isNotEmpty ? _children.first : null,
-            );
+          (c) => c?.displayName == entry.childName,
+          orElse: () => _children.isNotEmpty ? _children.first : null,
+        );
     if (child == null) return;
 
     try {
-      final result =
-          await ref.read(parentBookingRepositoryProvider).fetchScreeningResult(entry.id);
+      final result = await ref
+          .read(parentBookingRepositoryProvider)
+          .fetchScreeningResult(entry.id);
       if (!mounted) return;
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
@@ -199,9 +200,9 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not load results: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Could not load results: $e')));
       }
     }
   }
@@ -252,8 +253,9 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
 
     return AppScaffold(
       title: 'Early Intervention Screening',
-      bottomNavigationBar:
-          const ParentBottomNav(current: ParentNavTab.screening),
+      bottomNavigationBar: const ParentBottomNav(
+        current: ParentNavTab.screening,
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
@@ -281,14 +283,14 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
                         children: [
                           Text(
                             eiScreeningDisclaimer,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  fontStyle: FontStyle.italic,
-                                ),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(fontStyle: FontStyle.italic),
                           ),
                           const SizedBox(height: 16),
                           if (selectedChild == null)
                             FilledButton.icon(
-                              onPressed: () => context.push(AppRoutes.parentChildren),
+                              onPressed: () =>
+                                  context.push(AppRoutes.parentChildren),
                               icon: const Icon(Icons.child_care),
                               label: const Text('Add child profile'),
                             )
@@ -298,7 +300,10 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
                             )
                           else
                             FilledButton.icon(
-                              onPressed: () => _startTemplate(eiTemplate, child: selectedChild),
+                              onPressed: () => _startTemplate(
+                                eiTemplate,
+                                child: selectedChild,
+                              ),
                               icon: const Icon(Icons.play_arrow),
                               label: Text(
                                 _hasDraft

@@ -32,9 +32,7 @@ class AppChoiceTile extends StatelessWidget {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
           side: BorderSide(
-            color: selected
-                ? colorScheme.primary
-                : colorScheme.outlineVariant,
+            color: selected ? colorScheme.primary : colorScheme.outlineVariant,
             width: selected ? 2 : 1,
           ),
         ),
@@ -59,31 +57,30 @@ class AppChoiceTile extends StatelessWidget {
                       Text(
                         label,
                         style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                              color: selected
-                                  ? colorScheme.onPrimaryContainer
-                                  : colorScheme.onSurface,
-                            ),
+                          color: selected
+                              ? colorScheme.onPrimaryContainer
+                              : colorScheme.onSurface,
+                        ),
                       ),
                       if (subtitle != null) ...[
                         const SizedBox(height: AppSpacing.xs),
                         Text(
                           subtitle!,
-                          style:
-                              Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: selected
-                                        ? colorScheme.onPrimaryContainer
-                                            .withValues(alpha: 0.8)
-                                        : colorScheme.onSurfaceVariant,
-                                  ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: selected
+                                    ? colorScheme.onPrimaryContainer.withValues(
+                                        alpha: 0.8,
+                                      )
+                                    : colorScheme.onSurfaceVariant,
+                              ),
                         ),
                       ],
                     ],
                   ),
                 ),
                 Icon(
-                  selected
-                      ? Icons.check_circle_rounded
-                      : Icons.circle_outlined,
+                  selected ? Icons.check_circle_rounded : Icons.circle_outlined,
                   color: selected
                       ? colorScheme.primary
                       : colorScheme.onSurfaceVariant,

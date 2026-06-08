@@ -341,7 +341,9 @@ class AdminRepository {
     return _mapClaimsPipeline(data);
   }
 
-  Future<AdminInsuranceClaimModel> fetchAnalyticsClaimDetail(String claimId) async {
+  Future<AdminInsuranceClaimModel> fetchAnalyticsClaimDetail(
+    String claimId,
+  ) async {
     const query = r'''
       query ClaimDetail($claimId: ID!) {
         adminAnalyticsClaimDetail(claimId: $claimId) {
@@ -351,11 +353,9 @@ class AdminRepository {
         }
       }
     ''';
-    final result = await _graphql.query(
-      query,
-      variables: {'claimId': claimId},
-    );
-    final e = result['data']?['adminAnalyticsClaimDetail'] as Map<String, dynamic>?;
+    final result = await _graphql.query(query, variables: {'claimId': claimId});
+    final e =
+        result['data']?['adminAnalyticsClaimDetail'] as Map<String, dynamic>?;
     if (e == null) throw Exception('Claim not found');
     return AdminInsuranceClaimModel(
       id: e['id'] as String,
@@ -391,7 +391,8 @@ class AdminRepository {
       variables: {'screeningId': screeningId},
     );
     final e =
-        result['data']?['adminAnalyticsScreeningDetail'] as Map<String, dynamic>?;
+        result['data']?['adminAnalyticsScreeningDetail']
+            as Map<String, dynamic>?;
     if (e == null) throw Exception('Screening not found');
     return AnalyticsScreeningDetailModel(
       id: e['id'] as String,
@@ -435,7 +436,8 @@ class AdminRepository {
         'toDate': toDate,
       },
     );
-    final list = result['data']?['adminAnalyticsClaims'] as List<dynamic>? ?? [];
+    final list =
+        result['data']?['adminAnalyticsClaims'] as List<dynamic>? ?? [];
     return list
         .map(
           (e) => AnalyticsClaimSummaryModel(
@@ -647,7 +649,7 @@ class AdminRepository {
     final result = await _graphql.query(query);
     final list =
         result['data']?['pendingTherapistVerifications'] as List<dynamic>? ??
-            [];
+        [];
     return list.map((e) {
       final user = e['user'] as Map<String, dynamic>;
       return PendingTherapistModel(
@@ -673,7 +675,8 @@ class AdminRepository {
       }
     ''';
     final result = await _graphql.query(query);
-    final list = result['data']?['adminRecentAuditLogs'] as List<dynamic>? ?? [];
+    final list =
+        result['data']?['adminRecentAuditLogs'] as List<dynamic>? ?? [];
     return list
         .map(
           (e) => AuditLogModel(
@@ -717,7 +720,10 @@ class AdminRepository {
         resolveComplaint(complaintId: $id, resolution: $resolution) { id status }
       }
     ''';
-    await _graphql.query(mutation, variables: {'id': id, 'resolution': resolution});
+    await _graphql.query(
+      mutation,
+      variables: {'id': id, 'resolution': resolution},
+    );
   }
 
   Future<List<AdminReviewModel>> fetchReviews() async {
@@ -853,8 +859,8 @@ class AdminRepository {
         'input': {
           'claimId': claimId,
           'status': status,
-          if (denialReason != null) 'denialReason': denialReason,
-          if (approvedAmount != null) 'approvedAmount': approvedAmount,
+          'denialReason': ?denialReason,
+          'approvedAmount': ?approvedAmount,
         },
       },
     );

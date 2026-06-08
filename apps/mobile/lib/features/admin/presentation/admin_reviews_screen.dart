@@ -28,7 +28,7 @@ class AdminReviewsScreen extends ConsumerWidget {
             child: ListView.separated(
               padding: const EdgeInsets.all(16),
               itemCount: list.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              separatorBuilder: (_, _) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
                 final r = list[index];
                 final stars = List.filled(r.rating.clamp(1, 5), '★').join();
@@ -43,11 +43,13 @@ class AdminReviewsScreen extends ConsumerWidget {
                     isThreeLine: true,
                     trailing: r.isPublished
                         ? OutlinedButton(
-                            onPressed: () => _moderate(context, ref, r.id, false),
+                            onPressed: () =>
+                                _moderate(context, ref, r.id, false),
                             child: const Text('Hide'),
                           )
                         : FilledButton(
-                            onPressed: () => _moderate(context, ref, r.id, true),
+                            onPressed: () =>
+                                _moderate(context, ref, r.id, true),
                             child: const Text('Publish'),
                           ),
                   ),
@@ -71,14 +73,16 @@ class AdminReviewsScreen extends ConsumerWidget {
       ref.invalidate(adminReviewsProvider);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(publish ? 'Review published' : 'Review hidden')),
+          SnackBar(
+            content: Text(publish ? 'Review published' : 'Review hidden'),
+          ),
         );
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed: $e')));
       }
     }
   }

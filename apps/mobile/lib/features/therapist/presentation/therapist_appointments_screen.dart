@@ -25,15 +25,15 @@ class TherapistAppointmentsScreen extends ConsumerWidget {
           .confirmAppointment(appointment.id);
       ref.invalidate(therapistAppointmentsProvider);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Appointment confirmed')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Appointment confirmed')));
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Confirm failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Confirm failed: $e')));
       }
     }
   }
@@ -49,15 +49,15 @@ class TherapistAppointmentsScreen extends ConsumerWidget {
           .cancelAppointment(appointment.id, reason: 'Therapist unavailable');
       ref.invalidate(therapistAppointmentsProvider);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Appointment cancelled')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Appointment cancelled')));
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Cancel failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Cancel failed: $e')));
       }
     }
   }
@@ -73,15 +73,15 @@ class TherapistAppointmentsScreen extends ConsumerWidget {
           .declineAppointment(appointment.id, reason: 'Schedule conflict');
       ref.invalidate(therapistAppointmentsProvider);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Appointment declined')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Appointment declined')));
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Decline failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Decline failed: $e')));
       }
     }
   }
@@ -92,9 +92,7 @@ class TherapistAppointmentsScreen extends ConsumerWidget {
     TherapistAppointmentModel appointment,
   ) async {
     try {
-      await ref
-          .read(therapistRepositoryProvider)
-          .startSession(appointment.id);
+      await ref.read(therapistRepositoryProvider).startSession(appointment.id);
       ref.invalidate(therapistSessionsProvider);
       ref.invalidate(therapistAppointmentsProvider);
       if (!context.mounted) return;
@@ -109,29 +107,30 @@ class TherapistAppointmentsScreen extends ConsumerWidget {
       );
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not start session: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Could not start session: $e')));
       }
     }
   }
 
   Future<void> _exportCalendar(BuildContext context, WidgetRef ref) async {
     try {
-      final path =
-          await ref.read(therapistRepositoryProvider).downloadAppointmentsIcal();
+      final path = await ref
+          .read(therapistRepositoryProvider)
+          .downloadAppointmentsIcal();
       if (!context.mounted) return;
       final message = kIsWeb
           ? 'Calendar file downloaded'
           : (path.isNotEmpty ? 'Saved to $path' : 'Calendar file saved');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Export failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Export failed: $e')));
       }
     }
   }
@@ -155,9 +154,7 @@ class TherapistAppointmentsScreen extends ConsumerWidget {
       body: appointments.when(
         data: (list) {
           if (list.isEmpty) {
-            return const Center(
-              child: Text('No appointments yet'),
-            );
+            return const Center(child: Text('No appointments yet'));
           }
           return ListView.separated(
             padding: const EdgeInsets.all(16),
@@ -166,9 +163,14 @@ class TherapistAppointmentsScreen extends ConsumerWidget {
             itemBuilder: (context, index) {
               final a = list[index];
               final isRequested = a.status == 'REQUESTED';
-              final canStart = a.status == 'CONFIRMED' || a.status == 'SCHEDULED';
-              final canCancel = !['COMPLETED', 'CANCELLED', 'NO_SHOW', 'REQUESTED']
-                  .contains(a.status);
+              final canStart =
+                  a.status == 'CONFIRMED' || a.status == 'SCHEDULED';
+              final canCancel = ![
+                'COMPLETED',
+                'CANCELLED',
+                'NO_SHOW',
+                'REQUESTED',
+              ].contains(a.status);
               return Card(
                 child: Padding(
                   padding: const EdgeInsets.all(12),

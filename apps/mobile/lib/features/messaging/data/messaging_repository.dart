@@ -167,10 +167,7 @@ class MessagingRepository {
   }
 
   Future<void> markThreadRead(String threadId) async {
-    await _graphql.query(
-      _markReadMutation,
-      variables: {'threadId': threadId},
-    );
+    await _graphql.query(_markReadMutation, variables: {'threadId': threadId});
   }
 
   Future<ChatMessageModel> sendMessage({
@@ -208,7 +205,8 @@ class MessagingRepository {
       _startParentConversationMutation,
       variables: {'parentId': parentId},
     );
-    final e = result['data']?['startParentConversation'] as Map<String, dynamic>?;
+    final e =
+        result['data']?['startParentConversation'] as Map<String, dynamic>?;
     if (e == null) throw Exception('Could not start conversation');
     return e['id'] as String;
   }
@@ -218,7 +216,8 @@ class MessagingRepository {
       _startConversationMutation,
       variables: {'therapistId': therapistId},
     );
-    final e = result['data']?['startTherapistConversation'] as Map<String, dynamic>?;
+    final e =
+        result['data']?['startTherapistConversation'] as Map<String, dynamic>?;
     if (e == null) throw Exception('Could not start conversation');
     return e['id'] as String;
   }

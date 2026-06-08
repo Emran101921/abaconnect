@@ -29,7 +29,7 @@ class AdminComplaintsScreen extends ConsumerWidget {
             child: ListView.separated(
               padding: const EdgeInsets.all(16),
               itemCount: list.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              separatorBuilder: (_, _) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
                 final c = list[index];
                 return Card(
@@ -73,15 +73,16 @@ class AdminComplaintsScreen extends ConsumerWidget {
                         );
                         if (resolution == null || resolution.isEmpty) return;
                         try {
-                          await ref.read(adminRepositoryProvider).resolveComplaint(
-                                c.id,
-                                resolution,
-                              );
+                          await ref
+                              .read(adminRepositoryProvider)
+                              .resolveComplaint(c.id, resolution);
                           ref.invalidate(adminComplaintsProvider);
                           ref.invalidate(adminDashboardProvider);
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Complaint resolved')),
+                              const SnackBar(
+                                content: Text('Complaint resolved'),
+                              ),
                             );
                           }
                         } catch (e) {

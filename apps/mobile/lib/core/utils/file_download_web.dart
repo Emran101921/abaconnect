@@ -1,3 +1,6 @@
+// Web-only implementation; dart:html is the supported conditional-import target.
+// ignore_for_file: avoid_web_libraries_in_flutter, deprecated_member_use
+
 import 'dart:html' as html;
 import 'dart:typed_data';
 

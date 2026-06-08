@@ -63,8 +63,9 @@ class AdminAnalyticsClaimDetailScreen extends ConsumerWidget {
                   onRefresh: () async {
                     ref.invalidate(adminAnalyticsClaimDetailProvider(claimId));
                     ref.invalidate(adminClaimsPipelineProvider);
-                    await ref
-                        .read(adminAnalyticsClaimDetailProvider(claimId).future);
+                    await ref.read(
+                      adminAnalyticsClaimDetailProvider(claimId).future,
+                    );
                   },
                 ),
               ),
@@ -124,8 +125,9 @@ class AgencyAnalyticsClaimDetailScreen extends ConsumerWidget {
                   onRefresh: () async {
                     ref.invalidate(agencyAnalyticsClaimDetailProvider(claimId));
                     ref.invalidate(agencyClaimsPipelineProvider);
-                    await ref
-                        .read(agencyAnalyticsClaimDetailProvider(claimId).future);
+                    await ref.read(
+                      agencyAnalyticsClaimDetailProvider(claimId).future,
+                    );
                   },
                 ),
               ),
@@ -147,8 +149,9 @@ class AdminAnalyticsScreeningDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final screening =
-        ref.watch(adminAnalyticsScreeningDetailProvider(screeningId));
+    final screening = ref.watch(
+      adminAnalyticsScreeningDetailProvider(screeningId),
+    );
     return AnalyticsDateRangeSync(
       dateRangeProvider: adminAnalyticsDateRangeProvider,
       defaultPreset: analyticsDefaultDateRangePreset,
@@ -186,9 +189,11 @@ class AdminAnalyticsScreeningDetailScreen extends ConsumerWidget {
                   sectionAnswersJson: s.sectionAnswersJson,
                   onRefresh: () async {
                     ref.invalidate(
-                        adminAnalyticsScreeningDetailProvider(screeningId));
+                      adminAnalyticsScreeningDetailProvider(screeningId),
+                    );
                     await ref.read(
-                        adminAnalyticsScreeningDetailProvider(screeningId).future);
+                      adminAnalyticsScreeningDetailProvider(screeningId).future,
+                    );
                   },
                 ),
               ),
@@ -210,8 +215,9 @@ class AgencyAnalyticsScreeningDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final screening =
-        ref.watch(agencyAnalyticsScreeningDetailProvider(screeningId));
+    final screening = ref.watch(
+      agencyAnalyticsScreeningDetailProvider(screeningId),
+    );
     return AnalyticsDateRangeSync(
       dateRangeProvider: agencyAnalyticsDateRangeProvider,
       defaultPreset: analyticsDefaultDateRangePreset,
@@ -249,9 +255,13 @@ class AgencyAnalyticsScreeningDetailScreen extends ConsumerWidget {
                   sectionAnswersJson: s.sectionAnswersJson,
                   onRefresh: () async {
                     ref.invalidate(
-                        agencyAnalyticsScreeningDetailProvider(screeningId));
+                      agencyAnalyticsScreeningDetailProvider(screeningId),
+                    );
                     await ref.read(
-                        agencyAnalyticsScreeningDetailProvider(screeningId).future);
+                      agencyAnalyticsScreeningDetailProvider(
+                        screeningId,
+                      ).future,
+                    );
                   },
                 ),
               ),
@@ -291,7 +301,9 @@ Widget? _adminClaimActions(
       if (claim.status == 'DENIED')
         FilledButton(
           onPressed: () async {
-            await ref.read(adminRepositoryProvider).updateInsuranceClaim(
+            await ref
+                .read(adminRepositoryProvider)
+                .updateInsuranceClaim(
                   claimId: claimId,
                   status: 'APPEALED',
                   denialReason: 'Appeal filed — resubmitting for review',
@@ -305,8 +317,12 @@ Widget? _adminClaimActions(
           },
           child: const Text('File appeal'),
         ),
-      if (['SUBMITTED', 'PENDING', 'UNDER_REVIEW', 'APPROVED']
-          .contains(claim.status))
+      if ([
+        'SUBMITTED',
+        'PENDING',
+        'UNDER_REVIEW',
+        'APPROVED',
+      ].contains(claim.status))
         FilledButton.tonal(
           onPressed: () async {
             await ref
@@ -324,7 +340,9 @@ Widget? _adminClaimActions(
       if (claim.status != 'PAID')
         FilledButton(
           onPressed: () async {
-            await ref.read(adminRepositoryProvider).updateInsuranceClaim(
+            await ref
+                .read(adminRepositoryProvider)
+                .updateInsuranceClaim(
                   claimId: claimId,
                   status: 'PAID',
                   approvedAmount: claim.billedAmount,
@@ -341,15 +359,17 @@ Widget? _adminClaimActions(
       if (claim.status != 'DENIED')
         OutlinedButton(
           onPressed: () async {
-            await ref.read(adminRepositoryProvider).updateInsuranceClaim(
+            await ref
+                .read(adminRepositoryProvider)
+                .updateInsuranceClaim(
                   claimId: claimId,
                   status: 'DENIED',
                   denialReason: 'Not covered under plan',
                 );
             if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Claim denied')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('Claim denied')));
             }
             await refresh();
           },
@@ -365,7 +385,12 @@ Widget? _agencyClaimActions(
   AgencyClaimDetailModel claim,
   String claimId,
 ) {
-  if (!['DENIED', 'SUBMITTED', 'PENDING', 'UNDER_REVIEW'].contains(claim.status)) {
+  if (![
+    'DENIED',
+    'SUBMITTED',
+    'PENDING',
+    'UNDER_REVIEW',
+  ].contains(claim.status)) {
     return null;
   }
 
@@ -381,15 +406,17 @@ Widget? _agencyClaimActions(
       if (claim.status == 'DENIED')
         FilledButton(
           onPressed: () async {
-            await ref.read(agencyRepositoryProvider).updateInsuranceClaim(
+            await ref
+                .read(agencyRepositoryProvider)
+                .updateInsuranceClaim(
                   claimId: claimId,
                   status: 'APPEALED',
                   denialReason: 'Agency appeal — requesting reconsideration',
                 );
             if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Appeal filed')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('Appeal filed')));
             }
             await refresh();
           },
@@ -567,10 +594,7 @@ class AnalyticsScreeningDetailBody extends StatelessWidget {
                     label: 'Completed',
                     value: dateFormat.format(completedAt),
                   ),
-                  _DetailRow(
-                    label: 'Score',
-                    value: score?.toStringAsFixed(2),
-                  ),
+                  _DetailRow(label: 'Score', value: score?.toStringAsFixed(2)),
                   _DetailRow(label: 'Risk level', value: riskLevel),
                   _DetailRow(
                     label: 'Consent granted',
@@ -691,10 +715,7 @@ class AnalyticsScreeningDetailBody extends StatelessWidget {
             }),
           ] else if (rawResponses.isNotEmpty) ...[
             const SizedBox(height: 12),
-            Text(
-              'Responses',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
+            Text('Responses', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             Card(
               child: Column(
@@ -782,10 +803,7 @@ class _DetailRow extends StatelessWidget {
         children: [
           SizedBox(
             width: 120,
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
+            child: Text(label, style: Theme.of(context).textTheme.bodySmall),
           ),
           Expanded(child: Text(value!)),
         ],

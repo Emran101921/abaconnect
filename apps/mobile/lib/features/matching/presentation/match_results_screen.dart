@@ -29,9 +29,9 @@ class _MatchResultsScreenState extends ConsumerState<MatchResultsScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final list = await ref.read(parentBookingRepositoryProvider).fetchTherapists(
-            therapyTypes: widget.therapyTypes,
-          );
+      final list = await ref
+          .read(parentBookingRepositoryProvider)
+          .fetchTherapists(therapyTypes: widget.therapyTypes);
       if (mounted) {
         setState(() {
           _therapists = list;
@@ -41,9 +41,9 @@ class _MatchResultsScreenState extends ConsumerState<MatchResultsScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _loading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Match load failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Match load failed: $e')));
       }
     }
   }
@@ -76,76 +76,76 @@ class _MatchResultsScreenState extends ConsumerState<MatchResultsScreen> {
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
                 : _therapists.isEmpty
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: Text(
-                            widget.therapyTypes != null &&
-                                    widget.therapyTypes!.isNotEmpty
-                                ? 'No therapists found for $_filterLabel in your area.'
-                                : 'No therapists found for your area.',
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      )
-                    : RefreshIndicator(
-                        onRefresh: _load,
-                        child: ListView.separated(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: _therapists.length,
-                          separatorBuilder: (context, _) =>
-                              const SizedBox(height: 12),
-                          itemBuilder: (context, index) {
-                            final t = _therapists[index];
-                            final matchPct = t.matchScore != null
-                                ? '${(t.matchScore! * 100).round()}% match'
-                                : 'Recommended';
-                            return Card(
-                              child: Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Text(
+                        widget.therapyTypes != null &&
+                                widget.therapyTypes!.isNotEmpty
+                            ? 'No therapists found for $_filterLabel in your area.'
+                            : 'No therapists found for your area.',
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  )
+                : RefreshIndicator(
+                    onRefresh: _load,
+                    child: ListView.separated(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: _therapists.length,
+                      separatorBuilder: (context, _) =>
+                          const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        final t = _therapists[index];
+                        final matchPct = t.matchScore != null
+                            ? '${(t.matchScore! * 100).round()}% match'
+                            : 'Recommended';
+                        return Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
                                   children: [
-                                    Row(
-                                      children: [
-                                        CircleAvatar(
-                                          child: Text(
-                                            t.displayName.characters.first,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                t.displayName,
-                                                style: Theme.of(context)
-                                                    .textTheme
-                                                    .titleMedium,
-                                              ),
-                                              Text(
-                                                '★ ${t.rating.toStringAsFixed(1)} · $matchPct',
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
+                                    CircleAvatar(
+                                      child: Text(
+                                        t.displayName.characters.first,
+                                      ),
                                     ),
-                                    const SizedBox(height: 12),
-                                    FilledButton(
-                                      onPressed: () =>
-                                          context.push(AppRoutes.parentBooking),
-                                      child: const Text('Book session'),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            t.displayName,
+                                            style: Theme.of(
+                                              context,
+                                            ).textTheme.titleMedium,
+                                          ),
+                                          Text(
+                                            '★ ${t.rating.toStringAsFixed(1)} · $matchPct',
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ],
                                 ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
+                                const SizedBox(height: 12),
+                                FilledButton(
+                                  onPressed: () =>
+                                      context.push(AppRoutes.parentBooking),
+                                  child: const Text('Book session'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
           ),
         ],
       ),

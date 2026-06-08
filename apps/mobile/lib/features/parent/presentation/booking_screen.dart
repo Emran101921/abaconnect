@@ -51,9 +51,9 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
     } catch (e) {
       setState(() => _loading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Load failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Load failed: $e')));
       }
     }
   }
@@ -97,17 +97,17 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
         );
         ref.invalidate(parentAppointmentsProvider);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Appointment booked')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Appointment booked')));
           context.pop();
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Booking failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Booking failed: $e')));
       }
     } finally {
       if (mounted) setState(() => _submitting = false);
@@ -152,143 +152,153 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
       body: AppContentContainer(
         child: SingleChildScrollView(
           child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const AppSectionHeader(
-              title: 'Schedule a session',
-              subtitle: 'Book therapy with a matched provider',
-            ),
-            const SizedBox(height: 12),
-            AppDashboardCard(
-              elevated: false,
-              child: const AppIllustrationRow(
-                type: AppIllustrationType.scheduling,
-                title: 'Flexible scheduling',
-                subtitle: 'In-home, clinic, school, or telehealth',
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const AppSectionHeader(
+                title: 'Schedule a session',
+                subtitle: 'Book therapy with a matched provider',
               ),
-            ),
-            const SizedBox(height: 16),
-            AppDashboardCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-            DropdownMenu<String>(
-              label: const Text('Child'),
-              initialSelection: _childId,
-              dropdownMenuEntries: _children
-                  .map(
-                    (c) => DropdownMenuEntry(
-                      value: c.id,
-                      label: c.displayName,
-                    ),
-                  )
-                  .toList(),
-              onSelected: (v) => setState(() => _childId = v),
-            ),
-            const SizedBox(height: 16),
-            DropdownMenu<String>(
-              label: const Text('Therapy type'),
-              initialSelection: _therapyType,
-              dropdownMenuEntries: const [
-                DropdownMenuEntry(value: 'ABA', label: 'ABA Therapy'),
-                DropdownMenuEntry(value: 'SPEECH', label: 'Speech Therapy'),
-                DropdownMenuEntry(value: 'OCCUPATIONAL', label: 'OT'),
-                DropdownMenuEntry(value: 'PHYSICAL', label: 'PT'),
-              ],
-              onSelected: (v) async {
-                if (v == null) return;
-                setState(() {
-                  _therapyType = v;
-                  _loading = true;
-                });
-                final therapists = await ref
-                    .read(parentBookingRepositoryProvider)
-                    .fetchTherapists(therapyType: v);
-                setState(() {
-                  _therapists = therapists;
-                  _therapistId =
-                      therapists.isNotEmpty ? therapists.first.id : null;
-                  _loading = false;
-                });
-              },
-            ),
-            const SizedBox(height: 16),
-            DropdownMenu<String>(
-              label: const Text('Therapist'),
-              initialSelection: _therapistId,
-              dropdownMenuEntries: _therapists
-                  .map(
-                    (t) => DropdownMenuEntry(
-                      value: t.id,
-                      label:
-                          '${t.displayName} (${t.rating.toStringAsFixed(1)}★)',
-                    ),
-                  )
-                  .toList(),
-              onSelected: (v) => setState(() => _therapistId = v),
-            ),
-            const SizedBox(height: 16),
-            DropdownMenu<String>(
-              label: const Text('Session location'),
-              initialSelection: _locationType,
-              dropdownMenuEntries: const [
-                DropdownMenuEntry(value: 'IN_HOME', label: 'In home'),
-                DropdownMenuEntry(value: 'CLINIC', label: 'Clinic'),
-                DropdownMenuEntry(value: 'SCHOOL', label: 'School'),
-                DropdownMenuEntry(value: 'TELEHEALTH', label: 'Telehealth'),
-                DropdownMenuEntry(value: 'COMMUNITY', label: 'Community'),
-              ],
-              onSelected: (v) {
-                if (v != null) setState(() => _locationType = v);
-              },
-            ),
-            const SizedBox(height: 16),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Date & Time'),
-              subtitle: Text(_start.toLocal().toString()),
-              trailing: const Icon(Icons.calendar_today),
-              onTap: _pickDateTime,
-            ),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Weekly recurring'),
-              subtitle: const Text('Book the same slot each week'),
-              value: _recurring,
-              onChanged: (v) => setState(() => _recurring = v),
-            ),
-            if (_recurring)
-              DropdownMenu<int>(
-                label: const Text('Number of weeks'),
-                initialSelection: _recurringWeeks,
-                dropdownMenuEntries: List.generate(
-                  11,
-                  (i) => DropdownMenuEntry(
-                    value: i + 2,
-                    label: '${i + 2} weeks',
-                  ),
+              const SizedBox(height: 12),
+              AppDashboardCard(
+                elevated: false,
+                child: const AppIllustrationRow(
+                  type: AppIllustrationType.scheduling,
+                  title: 'Flexible scheduling',
+                  subtitle: 'In-home, clinic, school, or telehealth',
                 ),
-                onSelected: (v) {
-                  if (v != null) setState(() => _recurringWeeks = v);
-                },
               ),
-                ],
+              const SizedBox(height: 16),
+              AppDashboardCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    DropdownMenu<String>(
+                      label: const Text('Child'),
+                      initialSelection: _childId,
+                      dropdownMenuEntries: _children
+                          .map(
+                            (c) => DropdownMenuEntry(
+                              value: c.id,
+                              label: c.displayName,
+                            ),
+                          )
+                          .toList(),
+                      onSelected: (v) => setState(() => _childId = v),
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownMenu<String>(
+                      label: const Text('Therapy type'),
+                      initialSelection: _therapyType,
+                      dropdownMenuEntries: const [
+                        DropdownMenuEntry(value: 'ABA', label: 'ABA Therapy'),
+                        DropdownMenuEntry(
+                          value: 'SPEECH',
+                          label: 'Speech Therapy',
+                        ),
+                        DropdownMenuEntry(value: 'OCCUPATIONAL', label: 'OT'),
+                        DropdownMenuEntry(value: 'PHYSICAL', label: 'PT'),
+                      ],
+                      onSelected: (v) async {
+                        if (v == null) return;
+                        setState(() {
+                          _therapyType = v;
+                          _loading = true;
+                        });
+                        final therapists = await ref
+                            .read(parentBookingRepositoryProvider)
+                            .fetchTherapists(therapyType: v);
+                        setState(() {
+                          _therapists = therapists;
+                          _therapistId = therapists.isNotEmpty
+                              ? therapists.first.id
+                              : null;
+                          _loading = false;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownMenu<String>(
+                      label: const Text('Therapist'),
+                      initialSelection: _therapistId,
+                      dropdownMenuEntries: _therapists
+                          .map(
+                            (t) => DropdownMenuEntry(
+                              value: t.id,
+                              label:
+                                  '${t.displayName} (${t.rating.toStringAsFixed(1)}★)',
+                            ),
+                          )
+                          .toList(),
+                      onSelected: (v) => setState(() => _therapistId = v),
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownMenu<String>(
+                      label: const Text('Session location'),
+                      initialSelection: _locationType,
+                      dropdownMenuEntries: const [
+                        DropdownMenuEntry(value: 'IN_HOME', label: 'In home'),
+                        DropdownMenuEntry(value: 'CLINIC', label: 'Clinic'),
+                        DropdownMenuEntry(value: 'SCHOOL', label: 'School'),
+                        DropdownMenuEntry(
+                          value: 'TELEHEALTH',
+                          label: 'Telehealth',
+                        ),
+                        DropdownMenuEntry(
+                          value: 'COMMUNITY',
+                          label: 'Community',
+                        ),
+                      ],
+                      onSelected: (v) {
+                        if (v != null) setState(() => _locationType = v);
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Date & Time'),
+                      subtitle: Text(_start.toLocal().toString()),
+                      trailing: const Icon(Icons.calendar_today),
+                      onTap: _pickDateTime,
+                    ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Weekly recurring'),
+                      subtitle: const Text('Book the same slot each week'),
+                      value: _recurring,
+                      onChanged: (v) => setState(() => _recurring = v),
+                    ),
+                    if (_recurring)
+                      DropdownMenu<int>(
+                        label: const Text('Number of weeks'),
+                        initialSelection: _recurringWeeks,
+                        dropdownMenuEntries: List.generate(
+                          11,
+                          (i) => DropdownMenuEntry(
+                            value: i + 2,
+                            label: '${i + 2} weeks',
+                          ),
+                        ),
+                        onSelected: (v) {
+                          if (v != null) setState(() => _recurringWeeks = v);
+                        },
+                      ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: _submitting ? null : _book,
-              icon: _submitting
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.event_available),
-              label: const Text('Confirm booking'),
-            ),
-          ],
-        ),
+              const SizedBox(height: 24),
+              FilledButton.icon(
+                onPressed: _submitting ? null : _book,
+                icon: _submitting
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.event_available),
+                label: const Text('Confirm booking'),
+              ),
+            ],
+          ),
         ),
       ),
     );

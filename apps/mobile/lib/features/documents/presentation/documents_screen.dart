@@ -66,7 +66,10 @@ class DocumentsScreen extends ConsumerWidget {
                         }
                       },
                       itemBuilder: (ctx) => const [
-                        PopupMenuItem(value: 'download', child: Text('Download')),
+                        PopupMenuItem(
+                          value: 'download',
+                          child: Text('Download'),
+                        ),
                         PopupMenuItem(value: 'delete', child: Text('Delete')),
                       ],
                     ),
@@ -87,6 +90,7 @@ class DocumentsScreen extends ConsumerWidget {
     final children = isParent
         ? await ref.read(documentChildrenProvider.future)
         : <ChildModel>[];
+    if (!context.mounted) return;
 
     final titleController = TextEditingController();
     var docType = 'OTHER';
@@ -106,7 +110,7 @@ class DocumentsScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: docType,
+                initialValue: docType,
                 decoration: const InputDecoration(labelText: 'Type'),
                 items: const [
                   DropdownMenuItem(value: 'OTHER', child: Text('Other')),
@@ -131,8 +135,10 @@ class DocumentsScreen extends ConsumerWidget {
               if (children.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String?>(
-                  value: childId,
-                  decoration: const InputDecoration(labelText: 'Child (optional)'),
+                  initialValue: childId,
+                  decoration: const InputDecoration(
+                    labelText: 'Child (optional)',
+                  ),
                   items: [
                     const DropdownMenuItem<String?>(
                       value: null,
@@ -151,8 +157,14 @@ class DocumentsScreen extends ConsumerWidget {
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Choose file')),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Choose file'),
+            ),
           ],
         ),
       ),
@@ -173,7 +185,9 @@ class DocumentsScreen extends ConsumerWidget {
     }
 
     try {
-      await ref.read(platformRepositoryProvider).uploadDocumentFile(
+      await ref
+          .read(platformRepositoryProvider)
+          .uploadDocumentFile(
             title: titleController.text.trim().isEmpty
                 ? file.name
                 : titleController.text.trim(),
@@ -187,15 +201,15 @@ class DocumentsScreen extends ConsumerWidget {
           );
       ref.invalidate(documentsProvider);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Document uploaded')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Document uploaded')));
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Upload failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Upload failed: $e')));
       }
     }
   }
@@ -211,8 +225,14 @@ class DocumentsScreen extends ConsumerWidget {
         title: const Text('Delete document?'),
         content: Text('Remove "${doc.title}" permanently?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
         ],
       ),
     );
@@ -221,15 +241,15 @@ class DocumentsScreen extends ConsumerWidget {
       await ref.read(platformRepositoryProvider).deleteDocument(doc.id);
       ref.invalidate(documentsProvider);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Document deleted')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Document deleted')));
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Delete failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
       }
     }
   }
@@ -251,9 +271,9 @@ class DocumentsScreen extends ConsumerWidget {
       );
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Download failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Download failed: $e')));
       }
     }
   }

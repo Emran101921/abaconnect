@@ -34,8 +34,8 @@ class MessagesScreen extends ConsumerWidget {
       bottomNavigationBar: isParent
           ? const ParentBottomNav(current: ParentNavTab.messages)
           : isTherapist
-              ? const TherapistBottomNav(current: TherapistNavTab.messages)
-              : null,
+          ? const TherapistBottomNav(current: TherapistNavTab.messages)
+          : null,
       floatingActionButton: FloatingActionButton(
         onPressed: () => isTherapist
             ? _startParentChat(context, ref)
@@ -77,7 +77,9 @@ class MessagesScreen extends ConsumerWidget {
                           : _startTherapistChat(context, ref),
                       icon: const Icon(Icons.add_comment),
                       label: Text(
-                        isTherapist ? 'Message a parent' : 'Start a conversation',
+                        isTherapist
+                            ? 'Message a parent'
+                            : 'Start a conversation',
                       ),
                     ),
                   ],
@@ -93,82 +95,86 @@ class MessagesScreen extends ConsumerWidget {
             },
             child: AppContentContainer(
               child: ListView.separated(
-              itemCount: list.length + 1,
-              separatorBuilder: (context, index) =>
-                  index == 0 ? const SizedBox.shrink() : const SizedBox(height: 8),
-              itemBuilder: (context, index) {
-                if (index == 0) {
-                  return const AppSectionHeader(
-                    title: 'Conversations',
-                    subtitle: 'Secure messaging with your care team',
-                  );
-                }
-                final t = list[index - 1];
-                final time = t.lastMessageAt ?? t.updatedAt;
-                return AppDashboardCard(
-                  onTap: () => context.push('${AppRoutes.messages}/${t.id}'),
-                  child: ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: CircleAvatar(
-                      backgroundColor:
-                          Theme.of(context).colorScheme.primaryContainer,
-                      child: Text(t.otherParticipantName.characters.first),
-                    ),
-                    title: Text(t.otherParticipantName),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          t.lastMessageBody ?? t.subject ?? 'No messages yet',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        if (t.lastMessageIsMine && t.lastMessageStatus != null)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 2),
-                            child: MessageStatusBadge(
-                              status: t.lastMessageStatus!,
-                              compact: true,
-                            ),
-                          ),
-                      ],
-                    ),
-                    trailing: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          DateFormat.MMMd().format(time),
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                        if (t.hasUnread) ...[
-                          const SizedBox(height: 4),
-                          Badge(
-                            label: const Text('New'),
-                            backgroundColor:
-                                Theme.of(context).colorScheme.primary,
-                          ),
-                        ] else if (t.lastMessageIsMine &&
-                            t.lastMessageStatus ==
-                                MessageDeliveryStatus.read) ...[
-                          const SizedBox(height: 4),
+                itemCount: list.length + 1,
+                separatorBuilder: (context, index) => index == 0
+                    ? const SizedBox.shrink()
+                    : const SizedBox(height: 8),
+                itemBuilder: (context, index) {
+                  if (index == 0) {
+                    return const AppSectionHeader(
+                      title: 'Conversations',
+                      subtitle: 'Secure messaging with your care team',
+                    );
+                  }
+                  final t = list[index - 1];
+                  final time = t.lastMessageAt ?? t.updatedAt;
+                  return AppDashboardCard(
+                    onTap: () => context.push('${AppRoutes.messages}/${t.id}'),
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: CircleAvatar(
+                        backgroundColor: Theme.of(
+                          context,
+                        ).colorScheme.primaryContainer,
+                        child: Text(t.otherParticipantName.characters.first),
+                      ),
+                      title: Text(t.otherParticipantName),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                           Text(
-                            'Read',
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelSmall
-                                ?.copyWith(
-                                  color: Theme.of(context).colorScheme.primary,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                            t.lastMessageBody ?? t.subject ?? 'No messages yet',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
+                          if (t.lastMessageIsMine &&
+                              t.lastMessageStatus != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: MessageStatusBadge(
+                                status: t.lastMessageStatus!,
+                                compact: true,
+                              ),
+                            ),
                         ],
-                      ],
+                      ),
+                      trailing: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            DateFormat.MMMd().format(time),
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                          if (t.hasUnread) ...[
+                            const SizedBox(height: 4),
+                            Badge(
+                              label: const Text('New'),
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.primary,
+                            ),
+                          ] else if (t.lastMessageIsMine &&
+                              t.lastMessageStatus ==
+                                  MessageDeliveryStatus.read) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              'Read',
+                              style: Theme.of(context).textTheme.labelSmall
+                                  ?.copyWith(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
-                  ),
-                );
-              },
-            ),
+                  );
+                },
+              ),
             ),
           );
         },
@@ -178,8 +184,9 @@ class MessagesScreen extends ConsumerWidget {
 
   Future<void> _startTherapistChat(BuildContext context, WidgetRef ref) async {
     try {
-      final therapists =
-          await ref.read(parentBookingRepositoryProvider).fetchTherapists();
+      final therapists = await ref
+          .read(parentBookingRepositoryProvider)
+          .fetchTherapists();
       if (therapists.isEmpty) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -214,17 +221,18 @@ class MessagesScreen extends ConsumerWidget {
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not start chat: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Could not start chat: $e')));
       }
     }
   }
 
   Future<void> _startParentChat(BuildContext context, WidgetRef ref) async {
     try {
-      final parents =
-          await ref.read(messagingRepositoryProvider).fetchParentContacts();
+      final parents = await ref
+          .read(messagingRepositoryProvider)
+          .fetchParentContacts();
       if (parents.isEmpty) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -255,8 +263,9 @@ class MessagesScreen extends ConsumerWidget {
         ),
       );
       if (selected == null) return;
-      final threadId =
-          await ref.read(messagingRepositoryProvider).startParentConversation(selected);
+      final threadId = await ref
+          .read(messagingRepositoryProvider)
+          .startParentConversation(selected);
       ref.invalidate(messageThreadsProvider);
       ref.invalidate(unreadMessageThreadsProvider);
       if (context.mounted) {
@@ -264,9 +273,9 @@ class MessagesScreen extends ConsumerWidget {
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not start chat: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Could not start chat: $e')));
       }
     }
   }

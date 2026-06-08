@@ -29,10 +29,7 @@ class MfaSetupResult {
 }
 
 class AuthTokens {
-  const AuthTokens({
-    required this.accessToken,
-    required this.refreshToken,
-  });
+  const AuthTokens({required this.accessToken, required this.refreshToken});
 
   final String accessToken;
   final String refreshToken;
@@ -64,7 +61,7 @@ class MeProfile {
 
 class AuthRepository {
   AuthRepository(this._api, {FlutterSecureStorage? storage})
-      : _storage = storage ?? const FlutterSecureStorage();
+    : _storage = storage ?? const FlutterSecureStorage();
 
   final ApiClient _api;
   final FlutterSecureStorage _storage;
@@ -82,9 +79,7 @@ class AuthRepository {
       throw Exception('Invalid login response');
     }
     if (data['requiresMfa'] == true) {
-      return LoginResponse.mfaRequired(
-        data['mfaChallengeToken'] as String,
-      );
+      return LoginResponse.mfaRequired(data['mfaChallengeToken'] as String);
     }
     final tokens = AuthTokens(
       accessToken: data['accessToken'] as String,
@@ -160,11 +155,7 @@ class AuthRepository {
   }) async {
     await _api.post(
       '/auth/device',
-      data: {
-        'deviceToken': token,
-        'platform': platform,
-        'appVersion': '1.0.0',
-      },
+      data: {'deviceToken': token, 'platform': platform, 'appVersion': '1.0.0'},
     );
   }
 
@@ -191,10 +182,10 @@ class AuthRepository {
     required String code,
     required String password,
   }) async {
-    await _api.post('/auth/mfa/disable', data: {
-      'code': code,
-      'password': password,
-    });
+    await _api.post(
+      '/auth/mfa/disable',
+      data: {'code': code, 'password': password},
+    );
   }
 
   Future<AuthTokens> register({
@@ -275,7 +266,10 @@ class AuthRepository {
   }
 
   Future<void> _persistMe(MeProfile me) async {
-    await _storage.write(key: ApiConstants.userRoleKey, value: _apiRoleToUserRole(me.role).name);
+    await _storage.write(
+      key: ApiConstants.userRoleKey,
+      value: _apiRoleToUserRole(me.role).name,
+    );
     await _storage.write(key: ApiConstants.userEmailKey, value: me.email);
     await _storage.write(key: ApiConstants.userIdKey, value: me.id);
     await _storage.write(key: ApiConstants.tenantIdKey, value: me.tenantId);
@@ -283,7 +277,10 @@ class AuthRepository {
       await _storage.write(key: ApiConstants.parentIdKey, value: me.parentId);
     }
     if (me.therapistId != null) {
-      await _storage.write(key: ApiConstants.therapistIdKey, value: me.therapistId);
+      await _storage.write(
+        key: ApiConstants.therapistIdKey,
+        value: me.therapistId,
+      );
     }
   }
 

@@ -6,7 +6,6 @@ import 'package:intl/intl.dart';
 import '../../../core/router/app_router.dart';
 
 import '../../../shared/models/analytics_date_range.dart';
-import '../../../shared/models/analytics_metric.dart';
 import '../../../shared/presentation/analytics_copy_link.dart';
 import '../../../shared/presentation/analytics_date_range_filter.dart';
 import '../../../shared/presentation/analytics_date_range_url.dart';
@@ -39,9 +38,8 @@ class AdminAnalyticsScreen extends ConsumerWidget {
       ]);
     }
 
-    final loading = metrics.isLoading ||
-        claims.isLoading ||
-        screenings.isLoading;
+    final loading =
+        metrics.isLoading || claims.isLoading || screenings.isLoading;
     if (loading) {
       return const AppScaffold(
         title: 'Analytics',
@@ -52,10 +50,10 @@ class AdminAnalyticsScreen extends ConsumerWidget {
     final error = metrics.hasError
         ? metrics.error
         : claims.hasError
-            ? claims.error
-            : screenings.hasError
-                ? screenings.error
-                : null;
+        ? claims.error
+        : screenings.hasError
+        ? screenings.error
+        : null;
     if (error != null) {
       return AppScaffold(
         title: 'Analytics',
@@ -67,10 +65,8 @@ class AdminAnalyticsScreen extends ConsumerWidget {
     final pipeline = claims.requireValue;
     final funnel = screenings.requireValue;
 
-    String metricLabel(String key) => analyticsOverviewMetricLabel(
-          key,
-          dateRange,
-        );
+    String metricLabel(String key) =>
+        analyticsOverviewMetricLabel(key, dateRange);
 
     return AnalyticsDateRangeSync(
       dateRangeProvider: adminAnalyticsDateRangeProvider,
@@ -84,273 +80,304 @@ class AdminAnalyticsScreen extends ConsumerWidget {
           onRefresh: refresh,
           child: AppContentContainer(
             child: ListView(
-            children: [
-            const AppSectionHeader(
-              title: 'Platform analytics',
-              subtitle:
-                  'Platform metrics, claims pipeline, and screening funnel.',
-            ),
-            const SizedBox(height: 16),
-            AnalyticsDateRangeBar(
-              dateRangeProvider: adminAnalyticsDateRangeProvider,
-              defaultSuppressedProvider:
-                  adminAnalyticsDateRangeDefaultSuppressedProvider,
-            ),
-            const SizedBox(height: 16),
-            if (metricList.isNotEmpty) ...[
-              const AppSectionHeader(title: 'Overview'),
-              const SizedBox(height: 12),
-              if (metricList.any(
-                (m) => m.metricKey == 'revenue_mismatch' && m.metricValue >= 1,
-              )) ...[
-                Card(
-                  color: Theme.of(context).colorScheme.errorContainer,
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.warning_amber,
-                          color: Theme.of(context).colorScheme.onErrorContainer,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'Revenue mismatch: session payments do not align with '
-                            'paid claims total for this date range.',
-                            style: TextStyle(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onErrorContainer,
+              children: [
+                const AppSectionHeader(
+                  title: 'Platform analytics',
+                  subtitle:
+                      'Platform metrics, claims pipeline, and screening funnel.',
+                ),
+                const SizedBox(height: 16),
+                AnalyticsDateRangeBar(
+                  dateRangeProvider: adminAnalyticsDateRangeProvider,
+                  defaultSuppressedProvider:
+                      adminAnalyticsDateRangeDefaultSuppressedProvider,
+                ),
+                const SizedBox(height: 16),
+                if (metricList.isNotEmpty) ...[
+                  const AppSectionHeader(title: 'Overview'),
+                  const SizedBox(height: 12),
+                  if (metricList.any(
+                    (m) =>
+                        m.metricKey == 'revenue_mismatch' && m.metricValue >= 1,
+                  )) ...[
+                    Card(
+                      color: Theme.of(context).colorScheme.errorContainer,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.warning_amber,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onErrorContainer,
                             ),
-                          ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Revenue mismatch: session payments do not align with '
+                                'paid claims total for this date range.',
+                                style: TextStyle(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onErrorContainer,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
+                    const SizedBox(height: 12),
+                  ],
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: metricList
+                        .where((m) => m.metricKey != 'revenue_mismatch')
+                        .map((m) {
+                          final isCurrency =
+                              m.metricKey == 'revenue_paid' ||
+                              m.metricKey == 'claims_paid_total';
+                          final display = isCurrency
+                              ? currency.format(m.metricValue)
+                              : m.metricValue.toStringAsFixed(
+                                  m.metricValue == m.metricValue.roundToDouble()
+                                      ? 0
+                                      : 2,
+                                );
+                          final periodDelta =
+                              analyticsOverviewComparisonKeys.contains(
+                                m.metricKey,
+                              )
+                              ? formatAnalyticsPeriodDelta(
+                                  m.metricValue,
+                                  m.priorPeriodValue,
+                                  isCurrency: isCurrency,
+                                )
+                              : null;
+                          final highlight =
+                              m.metricKey == 'claims_paid_total' &&
+                              pipeline.summary.paidAmountTotal > 0 &&
+                              (m.metricValue - pipeline.summary.paidAmountTotal)
+                                      .abs() >
+                                  0.01;
+                          return AdminStatCard(
+                            label: metricLabel(m.metricKey),
+                            value: display,
+                            periodDelta: periodDelta,
+                            highlight: highlight,
+                          );
+                        })
+                        .toList(),
                   ),
+                  const SizedBox(height: 24),
+                ],
+                const AppSectionHeader(title: 'Claims pipeline'),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    AdminStatCard(
+                      label: 'Draft',
+                      value: pipeline.summary.draftCount,
+                      periodDelta: formatCountPeriodDelta(
+                        pipeline.summary.draftCount,
+                        pipeline.summary.priorDraftCount,
+                      ),
+                      onTap: () {
+                        final range = ref.read(adminAnalyticsDateRangeProvider);
+                        context.push(
+                          analyticsPathWithDateRange(
+                            '${AppRoutes.adminHome}/analytics/claims/filter/draft',
+                            range,
+                          ),
+                        );
+                      },
+                    ),
+                    AdminStatCard(
+                      label: 'Submitted',
+                      value: pipeline.summary.submittedCount,
+                      periodDelta: formatCountPeriodDelta(
+                        pipeline.summary.submittedCount,
+                        pipeline.summary.priorSubmittedCount,
+                      ),
+                      onTap: () {
+                        final range = ref.read(adminAnalyticsDateRangeProvider);
+                        context.push(
+                          analyticsPathWithDateRange(
+                            '${AppRoutes.adminHome}/analytics/claims/filter/submitted',
+                            range,
+                          ),
+                        );
+                      },
+                    ),
+                    AdminStatCard(
+                      label: 'Pending',
+                      value: pipeline.summary.pendingCount,
+                      periodDelta: formatCountPeriodDelta(
+                        pipeline.summary.pendingCount,
+                        pipeline.summary.priorPendingCount,
+                      ),
+                      onTap: () {
+                        final range = ref.read(adminAnalyticsDateRangeProvider);
+                        context.push(
+                          analyticsPathWithDateRange(
+                            '${AppRoutes.adminHome}/analytics/claims/filter/pending',
+                            range,
+                          ),
+                        );
+                      },
+                    ),
+                    AdminStatCard(
+                      label: 'Paid',
+                      value:
+                          '${pipeline.summary.paidCount} · ${currency.format(pipeline.summary.paidAmountTotal)}',
+                      periodDelta: formatAnalyticsPeriodDelta(
+                        pipeline.summary.paidAmountTotal,
+                        pipeline.summary.priorPaidAmountTotal,
+                        isCurrency: true,
+                      ),
+                      highlight: true,
+                      onTap: () {
+                        final range = ref.read(adminAnalyticsDateRangeProvider);
+                        context.push(
+                          analyticsPathWithDateRange(
+                            '${AppRoutes.adminHome}/analytics/claims/filter/paid',
+                            range,
+                          ),
+                        );
+                      },
+                    ),
+                    AdminStatCard(
+                      label: 'Denied',
+                      value: pipeline.summary.deniedCount,
+                      periodDelta: formatCountPeriodDelta(
+                        pipeline.summary.deniedCount,
+                        pipeline.summary.priorDeniedCount,
+                      ),
+                      onTap: () {
+                        final range = ref.read(adminAnalyticsDateRangeProvider);
+                        context.push(
+                          analyticsPathWithDateRange(
+                            '${AppRoutes.adminHome}/analytics/claims/filter/denied',
+                            range,
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 12),
-              ],
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: metricList
-                    .where((m) => m.metricKey != 'revenue_mismatch')
-                    .map((m) {
-                  final isCurrency = m.metricKey == 'revenue_paid' ||
-                      m.metricKey == 'claims_paid_total';
-                  final display = isCurrency
-                      ? currency.format(m.metricValue)
-                      : m.metricValue.toStringAsFixed(
-                          m.metricValue == m.metricValue.roundToDouble()
-                              ? 0
-                              : 2,
+                _RecentClaimsList(
+                  claims: pipeline.recentClaims,
+                  currency: currency,
+                  dateFormat: dateFormat,
+                  onClaimTap: (id) {
+                    final range = ref.read(adminAnalyticsDateRangeProvider);
+                    context.push(
+                      analyticsPathWithDateRange(
+                        '${AppRoutes.adminHome}/analytics/claims/$id',
+                        range,
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 24),
+                const AppSectionHeader(title: 'Screening funnel'),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    AdminStatCard(
+                      label: 'Completed',
+                      value: funnel.summary.completedCount,
+                      periodDelta: formatCountPeriodDelta(
+                        funnel.summary.completedCount,
+                        funnel.summary.priorCompletedCount,
+                      ),
+                      onTap: () {
+                        final range = ref.read(adminAnalyticsDateRangeProvider);
+                        context.push(
+                          analyticsPathWithDateRange(
+                            '${AppRoutes.adminHome}/analytics/screenings/filter/all',
+                            range,
+                          ),
                         );
-                  final periodDelta = analyticsOverviewComparisonKeys
-                          .contains(m.metricKey)
-                      ? formatAnalyticsPeriodDelta(
-                          m.metricValue,
-                          m.priorPeriodValue,
-                          isCurrency: isCurrency,
-                        )
-                      : null;
-                  final highlight = m.metricKey == 'claims_paid_total' &&
-                      pipeline.summary.paidAmountTotal > 0 &&
-                      (m.metricValue - pipeline.summary.paidAmountTotal).abs() >
-                          0.01;
-                  return AdminStatCard(
-                    label: metricLabel(m.metricKey),
-                    value: display,
-                    periodDelta: periodDelta,
-                    highlight: highlight,
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 24),
-            ],
-            const AppSectionHeader(title: 'Claims pipeline'),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                AdminStatCard(
-                  label: 'Draft',
-                  value: pipeline.summary.draftCount,
-                  periodDelta: formatCountPeriodDelta(
-                    pipeline.summary.draftCount,
-                    pipeline.summary.priorDraftCount,
-                  ),
-                  onTap: () {
-                    final range = ref.read(adminAnalyticsDateRangeProvider);
-                    context.push(analyticsPathWithDateRange(
-                      '${AppRoutes.adminHome}/analytics/claims/filter/draft',
-                      range,
-                    ));
-                  },
+                      },
+                    ),
+                    AdminStatCard(
+                      label: 'Low risk',
+                      value: funnel.summary.lowRiskCount,
+                      periodDelta: formatCountPeriodDelta(
+                        funnel.summary.lowRiskCount,
+                        funnel.summary.priorLowRiskCount,
+                      ),
+                      onTap: () {
+                        final range = ref.read(adminAnalyticsDateRangeProvider);
+                        context.push(
+                          analyticsPathWithDateRange(
+                            '${AppRoutes.adminHome}/analytics/screenings/filter/low',
+                            range,
+                          ),
+                        );
+                      },
+                    ),
+                    AdminStatCard(
+                      label: 'Medium risk',
+                      value: funnel.summary.moderateRiskCount,
+                      periodDelta: formatCountPeriodDelta(
+                        funnel.summary.moderateRiskCount,
+                        funnel.summary.priorModerateRiskCount,
+                      ),
+                      onTap: () {
+                        final range = ref.read(adminAnalyticsDateRangeProvider);
+                        context.push(
+                          analyticsPathWithDateRange(
+                            '${AppRoutes.adminHome}/analytics/screenings/filter/moderate',
+                            range,
+                          ),
+                        );
+                      },
+                    ),
+                    AdminStatCard(
+                      label: 'High risk',
+                      value: funnel.summary.highRiskCount,
+                      periodDelta: formatCountPeriodDelta(
+                        funnel.summary.highRiskCount,
+                        funnel.summary.priorHighRiskCount,
+                      ),
+                      highlight: funnel.summary.highRiskCount > 0,
+                      onTap: () {
+                        final range = ref.read(adminAnalyticsDateRangeProvider);
+                        context.push(
+                          analyticsPathWithDateRange(
+                            '${AppRoutes.adminHome}/analytics/screenings/filter/high',
+                            range,
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                 ),
-                AdminStatCard(
-                  label: 'Submitted',
-                  value: pipeline.summary.submittedCount,
-                  periodDelta: formatCountPeriodDelta(
-                    pipeline.summary.submittedCount,
-                    pipeline.summary.priorSubmittedCount,
-                  ),
-                  onTap: () {
+                const SizedBox(height: 12),
+                _RecentScreeningsList(
+                  screenings: funnel.recentScreenings,
+                  dateFormat: dateFormat,
+                  onScreeningTap: (id) {
                     final range = ref.read(adminAnalyticsDateRangeProvider);
-                    context.push(analyticsPathWithDateRange(
-                      '${AppRoutes.adminHome}/analytics/claims/filter/submitted',
-                      range,
-                    ));
-                  },
-                ),
-                AdminStatCard(
-                  label: 'Pending',
-                  value: pipeline.summary.pendingCount,
-                  periodDelta: formatCountPeriodDelta(
-                    pipeline.summary.pendingCount,
-                    pipeline.summary.priorPendingCount,
-                  ),
-                  onTap: () {
-                    final range = ref.read(adminAnalyticsDateRangeProvider);
-                    context.push(analyticsPathWithDateRange(
-                      '${AppRoutes.adminHome}/analytics/claims/filter/pending',
-                      range,
-                    ));
-                  },
-                ),
-                AdminStatCard(
-                  label: 'Paid',
-                  value:
-                      '${pipeline.summary.paidCount} · ${currency.format(pipeline.summary.paidAmountTotal)}',
-                  periodDelta: formatAnalyticsPeriodDelta(
-                    pipeline.summary.paidAmountTotal,
-                    pipeline.summary.priorPaidAmountTotal,
-                    isCurrency: true,
-                  ),
-                  highlight: true,
-                  onTap: () {
-                    final range = ref.read(adminAnalyticsDateRangeProvider);
-                    context.push(analyticsPathWithDateRange(
-                      '${AppRoutes.adminHome}/analytics/claims/filter/paid',
-                      range,
-                    ));
-                  },
-                ),
-                AdminStatCard(
-                  label: 'Denied',
-                  value: pipeline.summary.deniedCount,
-                  periodDelta: formatCountPeriodDelta(
-                    pipeline.summary.deniedCount,
-                    pipeline.summary.priorDeniedCount,
-                  ),
-                  onTap: () {
-                    final range = ref.read(adminAnalyticsDateRangeProvider);
-                    context.push(analyticsPathWithDateRange(
-                      '${AppRoutes.adminHome}/analytics/claims/filter/denied',
-                      range,
-                    ));
+                    context.push(
+                      analyticsPathWithDateRange(
+                        '${AppRoutes.adminHome}/analytics/screenings/$id',
+                        range,
+                      ),
+                    );
                   },
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            _RecentClaimsList(
-              claims: pipeline.recentClaims,
-              currency: currency,
-              dateFormat: dateFormat,
-              onClaimTap: (id) {
-                final range = ref.read(adminAnalyticsDateRangeProvider);
-                context.push(analyticsPathWithDateRange(
-                  '${AppRoutes.adminHome}/analytics/claims/$id',
-                  range,
-                ));
-              },
-            ),
-            const SizedBox(height: 24),
-            const AppSectionHeader(title: 'Screening funnel'),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                AdminStatCard(
-                  label: 'Completed',
-                  value: funnel.summary.completedCount,
-                  periodDelta: formatCountPeriodDelta(
-                    funnel.summary.completedCount,
-                    funnel.summary.priorCompletedCount,
-                  ),
-                  onTap: () {
-                    final range = ref.read(adminAnalyticsDateRangeProvider);
-                    context.push(analyticsPathWithDateRange(
-                      '${AppRoutes.adminHome}/analytics/screenings/filter/all',
-                      range,
-                    ));
-                  },
-                ),
-                AdminStatCard(
-                  label: 'Low risk',
-                  value: funnel.summary.lowRiskCount,
-                  periodDelta: formatCountPeriodDelta(
-                    funnel.summary.lowRiskCount,
-                    funnel.summary.priorLowRiskCount,
-                  ),
-                  onTap: () {
-                    final range = ref.read(adminAnalyticsDateRangeProvider);
-                    context.push(analyticsPathWithDateRange(
-                      '${AppRoutes.adminHome}/analytics/screenings/filter/low',
-                      range,
-                    ));
-                  },
-                ),
-                AdminStatCard(
-                  label: 'Medium risk',
-                  value: funnel.summary.moderateRiskCount,
-                  periodDelta: formatCountPeriodDelta(
-                    funnel.summary.moderateRiskCount,
-                    funnel.summary.priorModerateRiskCount,
-                  ),
-                  onTap: () {
-                    final range = ref.read(adminAnalyticsDateRangeProvider);
-                    context.push(analyticsPathWithDateRange(
-                      '${AppRoutes.adminHome}/analytics/screenings/filter/moderate',
-                      range,
-                    ));
-                  },
-                ),
-                AdminStatCard(
-                  label: 'High risk',
-                  value: funnel.summary.highRiskCount,
-                  periodDelta: formatCountPeriodDelta(
-                    funnel.summary.highRiskCount,
-                    funnel.summary.priorHighRiskCount,
-                  ),
-                  highlight: funnel.summary.highRiskCount > 0,
-                  onTap: () {
-                    final range = ref.read(adminAnalyticsDateRangeProvider);
-                    context.push(analyticsPathWithDateRange(
-                      '${AppRoutes.adminHome}/analytics/screenings/filter/high',
-                      range,
-                    ));
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _RecentScreeningsList(
-              screenings: funnel.recentScreenings,
-              dateFormat: dateFormat,
-              onScreeningTap: (id) {
-                final range = ref.read(adminAnalyticsDateRangeProvider);
-                context.push(analyticsPathWithDateRange(
-                  '${AppRoutes.adminHome}/analytics/screenings/$id',
-                  range,
-                ));
-              },
-            ),
-            ],
-          ),
           ),
         ),
       ),
@@ -374,9 +401,7 @@ class _RecentClaimsList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (claims.isEmpty) {
-      return const Card(
-        child: ListTile(title: Text('No recent claims')),
-      );
+      return const Card(child: ListTile(title: Text('No recent claims')));
     }
     return Card(
       child: Column(

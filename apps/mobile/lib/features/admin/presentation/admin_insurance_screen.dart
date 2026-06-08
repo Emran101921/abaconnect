@@ -31,11 +31,15 @@ class AdminInsuranceScreen extends ConsumerWidget {
             child: ListView.separated(
               padding: const EdgeInsets.all(16),
               itemCount: list.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              separatorBuilder: (_, _) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
                 final c = list[index];
-                final actionable = ['SUBMITTED', 'PENDING', 'UNDER_REVIEW', 'DRAFT']
-                    .contains(c.status);
+                final actionable = [
+                  'SUBMITTED',
+                  'PENDING',
+                  'UNDER_REVIEW',
+                  'DRAFT',
+                ].contains(c.status);
                 return Card(
                   child: Padding(
                     padding: const EdgeInsets.all(12),
@@ -62,11 +66,8 @@ class AdminInsuranceScreen extends ConsumerWidget {
                             children: [
                               if (c.status == 'DRAFT' || c.status == 'PENDING')
                                 FilledButton.tonal(
-                                  onPressed: () => _submitClearinghouse(
-                                    context,
-                                    ref,
-                                    c,
-                                  ),
+                                  onPressed: () =>
+                                      _submitClearinghouse(context, ref, c),
                                   child: const Text('Submit 837'),
                                 ),
                               FilledButton(
@@ -121,9 +122,7 @@ class AdminInsuranceScreen extends ConsumerWidget {
     AdminInsuranceClaimModel c,
   ) async {
     try {
-      await ref
-          .read(adminRepositoryProvider)
-          .submitClaimToClearinghouse(c.id);
+      await ref.read(adminRepositoryProvider).submitClaimToClearinghouse(c.id);
       ref.invalidate(adminInsuranceClaimsProvider);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -132,9 +131,9 @@ class AdminInsuranceScreen extends ConsumerWidget {
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Submit failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Submit failed: $e')));
       }
     }
   }
@@ -148,7 +147,9 @@ class AdminInsuranceScreen extends ConsumerWidget {
     String? denial,
   }) async {
     try {
-      await ref.read(adminRepositoryProvider).updateInsuranceClaim(
+      await ref
+          .read(adminRepositoryProvider)
+          .updateInsuranceClaim(
             claimId: c.id,
             status: status,
             approvedAmount: approvedAmount,
@@ -156,15 +157,15 @@ class AdminInsuranceScreen extends ConsumerWidget {
           );
       ref.invalidate(adminInsuranceClaimsProvider);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Claim $status')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Claim $status')));
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed: $e')));
       }
     }
   }

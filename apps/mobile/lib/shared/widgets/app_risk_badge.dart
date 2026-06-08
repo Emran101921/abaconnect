@@ -12,16 +12,19 @@ class AppRiskBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final normalized = level.toUpperCase();
     final (color, bg) = switch (normalized) {
-      'HIGH' => (AppColors.riskHigh, AppColors.riskHigh.withValues(alpha: 0.12)),
+      'HIGH' => (
+        AppColors.riskHigh,
+        AppColors.riskHigh.withValues(alpha: 0.12),
+      ),
       'MODERATE' => (
-          AppColors.riskModerate,
-          AppColors.riskModerate.withValues(alpha: 0.12)
-        ),
+        AppColors.riskModerate,
+        AppColors.riskModerate.withValues(alpha: 0.12),
+      ),
       'LOW' => (AppColors.riskLow, AppColors.riskLow.withValues(alpha: 0.12)),
       _ => (
-          Theme.of(context).colorScheme.onSurfaceVariant,
-          Theme.of(context).colorScheme.surfaceContainerHighest,
-        ),
+        Theme.of(context).colorScheme.onSurfaceVariant,
+        Theme.of(context).colorScheme.surfaceContainerHighest,
+      ),
     };
 
     return Container(
@@ -37,10 +40,10 @@ class AppRiskBadge extends StatelessWidget {
       child: Text(
         normalized,
         style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.5,
-            ),
+          color: color,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.5,
+        ),
       ),
     );
   }

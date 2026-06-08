@@ -157,7 +157,8 @@ class TherapistRepository {
       licenseNumber: p['licenseNumber'] as String?,
       licenseState: p['licenseState'] as String?,
       yearsExperience: p['yearsExperience'] as int?,
-      therapyTypes: (p['therapyTypes'] as List<dynamic>?)
+      therapyTypes:
+          (p['therapyTypes'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
           [],
@@ -233,14 +234,17 @@ class TherapistRepository {
         updateTherapistProfile(input: $input) { id }
       }
     ''';
-    await _graphql.query(mutation, variables: {
-      'input': {
-        'bio': ?bio,
-        'licenseNumber': ?licenseNumber,
-        'licenseState': ?licenseState,
-        'yearsExperience': ?yearsExperience,
+    await _graphql.query(
+      mutation,
+      variables: {
+        'input': {
+          'bio': ?bio,
+          'licenseNumber': ?licenseNumber,
+          'licenseState': ?licenseState,
+          'yearsExperience': ?yearsExperience,
+        },
       },
-    });
+    );
   }
 
   Future<String> downloadAppointmentsIcal() async {
@@ -267,22 +271,25 @@ class TherapistRepository {
         cancelAppointmentAsTherapist(appointmentId: $appointmentId, reason: $reason) { id status }
       }
     ''';
-    await _graphql.query(mutation, variables: {
-      'appointmentId': appointmentId,
-      if (reason != null) 'reason': reason,
-    });
+    await _graphql.query(
+      mutation,
+      variables: {'appointmentId': appointmentId, 'reason': ?reason},
+    );
   }
 
-  Future<void> declineAppointment(String appointmentId, {String? reason}) async {
+  Future<void> declineAppointment(
+    String appointmentId, {
+    String? reason,
+  }) async {
     const mutation = r'''
       mutation Decline($appointmentId: ID!, $reason: String) {
         declineAppointment(appointmentId: $appointmentId, reason: $reason) { id status }
       }
     ''';
-    await _graphql.query(mutation, variables: {
-      'appointmentId': appointmentId,
-      if (reason != null) 'reason': reason,
-    });
+    await _graphql.query(
+      mutation,
+      variables: {'appointmentId': appointmentId, 'reason': ?reason},
+    );
   }
 
   Future<void> completeSession(String sessionId) async {
@@ -300,9 +307,10 @@ class TherapistRepository {
         startSession(appointmentId: $appointmentId) { id }
       }
     ''';
-    final result = await _graphql.query(mutation, variables: {
-      'appointmentId': appointmentId,
-    });
+    final result = await _graphql.query(
+      mutation,
+      variables: {'appointmentId': appointmentId},
+    );
     return result['data']?['startSession']?['id'] as String;
   }
 
@@ -318,14 +326,17 @@ class TherapistRepository {
         saveSoapNote(input: $input) { id }
       }
     ''';
-    await _graphql.query(mutation, variables: {
-      'input': {
-        'sessionId': sessionId,
-        'subjective': ?subjective,
-        'objective': ?objective,
-        'assessment': ?assessment,
-        'plan': ?plan,
+    await _graphql.query(
+      mutation,
+      variables: {
+        'input': {
+          'sessionId': sessionId,
+          'subjective': ?subjective,
+          'objective': ?objective,
+          'assessment': ?assessment,
+          'plan': ?plan,
+        },
       },
-    });
+    );
   }
 }

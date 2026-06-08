@@ -6,43 +6,53 @@ import '../../../shared/models/analytics_date_range.dart';
 import '../../../shared/models/analytics_metric.dart';
 import '../data/agency_repository.dart';
 
-final agencyAnalyticsDateRangeProvider =
-    StateProvider<AnalyticsDateRange>((ref) => const AnalyticsDateRange());
+final agencyAnalyticsDateRangeProvider = StateProvider<AnalyticsDateRange>(
+  (ref) => const AnalyticsDateRange(),
+);
 
-final agencyAnalyticsDateRangeDefaultSuppressedProvider =
-    StateProvider<bool>((ref) => false);
+final agencyAnalyticsDateRangeDefaultSuppressedProvider = StateProvider<bool>(
+  (ref) => false,
+);
 
 final agencyDashboardProvider = FutureProvider<AgencyDashboardModel>((ref) {
   return ref.watch(agencyRepositoryProvider).fetchDashboard();
 });
 
-final agencyTherapistsProvider = FutureProvider<List<AgencyTherapistModel>>((ref) {
+final agencyTherapistsProvider = FutureProvider<List<AgencyTherapistModel>>((
+  ref,
+) {
   return ref.watch(agencyRepositoryProvider).fetchTherapists();
 });
 
 final agencyInviteCandidatesProvider =
     FutureProvider<List<AgencyTherapistModel>>((ref) {
-  return ref.watch(agencyRepositoryProvider).fetchAvailableToInvite();
-});
+      return ref.watch(agencyRepositoryProvider).fetchAvailableToInvite();
+    });
 
 final agencyUpcomingAppointmentsProvider =
     FutureProvider<List<AgencyAppointmentModel>>((ref) {
-  return ref.watch(agencyRepositoryProvider).fetchUpcomingAppointments();
-});
+      return ref.watch(agencyRepositoryProvider).fetchUpcomingAppointments();
+    });
 
-final agencyAnalyticsProvider =
-    FutureProvider<List<AnalyticsMetricModel>>((ref) {
+final agencyAnalyticsProvider = FutureProvider<List<AnalyticsMetricModel>>((
+  ref,
+) {
   final range = ref.watch(agencyAnalyticsDateRangeProvider);
-  return ref.watch(agencyRepositoryProvider).fetchTenantAnalytics(
+  return ref
+      .watch(agencyRepositoryProvider)
+      .fetchTenantAnalytics(
         fromDate: range.graphqlFrom,
         toDate: range.graphqlTo,
       );
 });
 
-final agencyClaimsPipelineProvider =
-    FutureProvider<AgencyClaimsPipelineModel>((ref) {
+final agencyClaimsPipelineProvider = FutureProvider<AgencyClaimsPipelineModel>((
+  ref,
+) {
   final range = ref.watch(agencyAnalyticsDateRangeProvider);
-  return ref.watch(agencyRepositoryProvider).fetchClaimsPipeline(
+  return ref
+      .watch(agencyRepositoryProvider)
+      .fetchClaimsPipeline(
         fromDate: range.graphqlFrom,
         toDate: range.graphqlTo,
       );
@@ -50,55 +60,71 @@ final agencyClaimsPipelineProvider =
 
 final agencyScreeningFunnelProvider =
     FutureProvider<AgencyScreeningFunnelModel>((ref) {
-  final range = ref.watch(agencyAnalyticsDateRangeProvider);
-  return ref.watch(agencyRepositoryProvider).fetchScreeningFunnel(
-        fromDate: range.graphqlFrom,
-        toDate: range.graphqlTo,
-      );
-});
+      final range = ref.watch(agencyAnalyticsDateRangeProvider);
+      return ref
+          .watch(agencyRepositoryProvider)
+          .fetchScreeningFunnel(
+            fromDate: range.graphqlFrom,
+            toDate: range.graphqlTo,
+          );
+    });
 
 final agencyAnalyticsClaimDetailProvider =
     FutureProvider.family<AgencyClaimDetailModel, String>((ref, claimId) {
-  return ref.watch(agencyRepositoryProvider).fetchAnalyticsClaimDetail(claimId);
-});
+      return ref
+          .watch(agencyRepositoryProvider)
+          .fetchAnalyticsClaimDetail(claimId);
+    });
 
 final agencyAnalyticsScreeningDetailProvider =
-    FutureProvider.family<AgencyScreeningDetailModel, String>(
-        (ref, screeningId) {
-  return ref
-      .watch(agencyRepositoryProvider)
-      .fetchAnalyticsScreeningDetail(screeningId);
-});
+    FutureProvider.family<AgencyScreeningDetailModel, String>((
+      ref,
+      screeningId,
+    ) {
+      return ref
+          .watch(agencyRepositoryProvider)
+          .fetchAnalyticsScreeningDetail(screeningId);
+    });
 
 final agencyAnalyticsClaimsListProvider =
-    FutureProvider.family<List<AgencyClaimSummaryModel>, String>(
-        (ref, statusFilter) {
-  final range = ref.watch(agencyAnalyticsDateRangeProvider);
-  return ref.watch(agencyRepositoryProvider).fetchAnalyticsClaimsList(
-        statusFilter,
-        fromDate: range.graphqlFrom,
-        toDate: range.graphqlTo,
-      );
-});
+    FutureProvider.family<List<AgencyClaimSummaryModel>, String>((
+      ref,
+      statusFilter,
+    ) {
+      final range = ref.watch(agencyAnalyticsDateRangeProvider);
+      return ref
+          .watch(agencyRepositoryProvider)
+          .fetchAnalyticsClaimsList(
+            statusFilter,
+            fromDate: range.graphqlFrom,
+            toDate: range.graphqlTo,
+          );
+    });
 
 final agencyAnalyticsScreeningsListProvider =
-    FutureProvider.family<List<AgencyScreeningSummaryModel>, String>(
-        (ref, riskFilterKey) {
-  final riskLevel = riskFilterKey == 'all' ? null : riskFilterKey;
-  final range = ref.watch(agencyAnalyticsDateRangeProvider);
-  return ref.watch(agencyRepositoryProvider).fetchAnalyticsScreeningsList(
-        riskLevel: riskLevel,
-        fromDate: range.graphqlFrom,
-        toDate: range.graphqlTo,
-      );
-});
+    FutureProvider.family<List<AgencyScreeningSummaryModel>, String>((
+      ref,
+      riskFilterKey,
+    ) {
+      final riskLevel = riskFilterKey == 'all' ? null : riskFilterKey;
+      final range = ref.watch(agencyAnalyticsDateRangeProvider);
+      return ref
+          .watch(agencyRepositoryProvider)
+          .fetchAnalyticsScreeningsList(
+            riskLevel: riskLevel,
+            fromDate: range.graphqlFrom,
+            toDate: range.graphqlTo,
+          );
+    });
 
 Future<void> showInviteTherapist(BuildContext context, WidgetRef ref) async {
   final candidates = await ref.read(agencyInviteCandidatesProvider.future);
   if (!context.mounted) return;
   if (candidates.isEmpty) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('All therapists are already on your roster')),
+      const SnackBar(
+        content: Text('All therapists are already on your roster'),
+      ),
     );
     return;
   }
@@ -128,9 +154,9 @@ Future<void> showInviteTherapist(BuildContext context, WidgetRef ref) async {
     }
   } catch (e) {
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Invite failed: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Invite failed: $e')));
     }
   }
 }

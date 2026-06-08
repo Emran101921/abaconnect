@@ -8,8 +8,7 @@ import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../data/parent_booking_repository.dart';
 
-final sessionHistoryProvider =
-    FutureProvider<List<SessionHistoryModel>>((ref) {
+final sessionHistoryProvider = FutureProvider<List<SessionHistoryModel>>((ref) {
   return ref.watch(parentBookingRepositoryProvider).fetchSessionHistory();
 });
 
@@ -28,9 +27,7 @@ class SessionHistoryScreen extends ConsumerWidget {
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (list) {
           if (list.isEmpty) {
-            return const Center(
-              child: Text('No completed sessions yet'),
-            );
+            return const Center(child: Text('No completed sessions yet'));
           }
           return RefreshIndicator(
             onRefresh: () async {
@@ -40,7 +37,7 @@ class SessionHistoryScreen extends ConsumerWidget {
             child: ListView.separated(
               padding: const EdgeInsets.all(16),
               itemCount: list.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              separatorBuilder: (_, _) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
                 final s = list[index];
                 return Card(
@@ -59,9 +56,13 @@ class SessionHistoryScreen extends ConsumerWidget {
                       '${s.completedAt != null ? dateFmt.format(s.completedAt!) : 'In progress'}'
                       '${s.durationMinutes != null ? ' · ${s.durationMinutes} min' : ''}',
                     ),
-                    trailing: _StatusChip(status: s.status, label: s.statusLabel),
+                    trailing: _StatusChip(
+                      status: s.status,
+                      label: s.statusLabel,
+                    ),
                     children: [
-                      if (s.hasProgressNote && s.progressNoteSummary != null) ...[
+                      if (s.hasProgressNote &&
+                          s.progressNoteSummary != null) ...[
                         Padding(
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                           child: Column(

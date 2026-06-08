@@ -67,9 +67,7 @@ import '../widgets/app_scaffold.dart';
   }
 }
 
-List<Widget>? analyticsExportActions({
-  required VoidCallback? onExport,
-}) {
+List<Widget>? analyticsExportActions({required VoidCallback? onExport}) {
   if (onExport == null) return null;
   return [
     IconButton(
@@ -80,9 +78,7 @@ List<Widget>? analyticsExportActions({
   ];
 }
 
-List<Widget> analyticsListScreenActions({
-  required VoidCallback? onExport,
-}) {
+List<Widget> analyticsListScreenActions({required VoidCallback? onExport}) {
   return [
     const AnalyticsCopyLinkButton(),
     ...?analyticsExportActions(onExport: onExport),
@@ -187,64 +183,65 @@ class AdminAnalyticsClaimsListScreen extends ConsumerWidget {
       defaultSuppressedProvider:
           adminAnalyticsDateRangeDefaultSuppressedProvider,
       child: AppScaffold(
-      title: analyticsClaimListTitle(statusFilter),
-      actions: analyticsListScreenActions(
-        onExport: claims.maybeWhen(
-          data: (list) => () => exportAnalyticsCsv(
-            context,
-            csv: claimsCsvFromAdmin(list),
-            filename: analyticsExportFilename(
-              'claims',
-              statusFilter,
-              dateRangeSuffix: dateRange.filenameSuffix,
-            ),
+        title: analyticsClaimListTitle(statusFilter),
+        actions: analyticsListScreenActions(
+          onExport: claims.maybeWhen(
+            data: (list) =>
+                () => exportAnalyticsCsv(
+                  context,
+                  csv: claimsCsvFromAdmin(list),
+                  filename: analyticsExportFilename(
+                    'claims',
+                    statusFilter,
+                    dateRangeSuffix: dateRange.filenameSuffix,
+                  ),
+                ),
+            orElse: () => null,
           ),
-          orElse: () => null,
         ),
-      ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-            child: AnalyticsDateRangeBar(
-              dateRangeProvider: adminAnalyticsDateRangeProvider,
-              defaultSuppressedProvider:
-                  adminAnalyticsDateRangeDefaultSuppressedProvider,
-            ),
-          ),
-          AnalyticsListHeader(
-            count: counts.$1,
-            priorCount: counts.$2,
-            amountLabel: amountLabel,
-          ),
-          Expanded(
-            child: claims.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Text('Error: $e')),
-              data: (list) => AnalyticsClaimsListBody(
-                claims: list,
-                currency: currency,
-                dateFormat: dateFormat,
-                onClaimTap: (id) {
-                  final range = ref.read(adminAnalyticsDateRangeProvider);
-                  context.push(analyticsPathWithDateRange(
-                    '$detailBasePath/$id',
-                    range,
-                  ));
-                },
-                onRefresh: () async {
-                  ref.invalidate(adminAnalyticsClaimsListProvider(apiFilter));
-                  ref.invalidate(adminClaimsPipelineProvider);
-                  await ref
-                      .read(adminAnalyticsClaimsListProvider(apiFilter).future);
-                },
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: AnalyticsDateRangeBar(
+                dateRangeProvider: adminAnalyticsDateRangeProvider,
+                defaultSuppressedProvider:
+                    adminAnalyticsDateRangeDefaultSuppressedProvider,
               ),
             ),
-          ),
-        ],
+            AnalyticsListHeader(
+              count: counts.$1,
+              priorCount: counts.$2,
+              amountLabel: amountLabel,
+            ),
+            Expanded(
+              child: claims.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(child: Text('Error: $e')),
+                data: (list) => AnalyticsClaimsListBody(
+                  claims: list,
+                  currency: currency,
+                  dateFormat: dateFormat,
+                  onClaimTap: (id) {
+                    final range = ref.read(adminAnalyticsDateRangeProvider);
+                    context.push(
+                      analyticsPathWithDateRange('$detailBasePath/$id', range),
+                    );
+                  },
+                  onRefresh: () async {
+                    ref.invalidate(adminAnalyticsClaimsListProvider(apiFilter));
+                    ref.invalidate(adminClaimsPipelineProvider);
+                    await ref.read(
+                      adminAnalyticsClaimsListProvider(apiFilter).future,
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
-    ),
     );
   }
 }
@@ -297,64 +294,67 @@ class AgencyAnalyticsClaimsListScreen extends ConsumerWidget {
       defaultSuppressedProvider:
           agencyAnalyticsDateRangeDefaultSuppressedProvider,
       child: AppScaffold(
-      title: analyticsClaimListTitle(statusFilter),
-      actions: analyticsListScreenActions(
-        onExport: claims.maybeWhen(
-          data: (list) => () => exportAnalyticsCsv(
-            context,
-            csv: claimsCsvFromAgency(list),
-            filename: analyticsExportFilename(
-              'claims',
-              statusFilter,
-              dateRangeSuffix: dateRange.filenameSuffix,
-            ),
+        title: analyticsClaimListTitle(statusFilter),
+        actions: analyticsListScreenActions(
+          onExport: claims.maybeWhen(
+            data: (list) =>
+                () => exportAnalyticsCsv(
+                  context,
+                  csv: claimsCsvFromAgency(list),
+                  filename: analyticsExportFilename(
+                    'claims',
+                    statusFilter,
+                    dateRangeSuffix: dateRange.filenameSuffix,
+                  ),
+                ),
+            orElse: () => null,
           ),
-          orElse: () => null,
         ),
-      ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-            child: AnalyticsDateRangeBar(
-              dateRangeProvider: agencyAnalyticsDateRangeProvider,
-              defaultSuppressedProvider:
-                  agencyAnalyticsDateRangeDefaultSuppressedProvider,
-            ),
-          ),
-          AnalyticsListHeader(
-            count: counts.$1,
-            priorCount: counts.$2,
-            amountLabel: amountLabel,
-          ),
-          Expanded(
-            child: claims.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Text('Error: $e')),
-              data: (list) => AgencyAnalyticsClaimsListBody(
-                claims: list,
-                currency: currency,
-                dateFormat: dateFormat,
-                onClaimTap: (id) {
-                  final range = ref.read(agencyAnalyticsDateRangeProvider);
-                  context.push(analyticsPathWithDateRange(
-                    '$detailBasePath/$id',
-                    range,
-                  ));
-                },
-                onRefresh: () async {
-                  ref.invalidate(agencyAnalyticsClaimsListProvider(apiFilter));
-                  ref.invalidate(agencyClaimsPipelineProvider);
-                  await ref
-                      .read(agencyAnalyticsClaimsListProvider(apiFilter).future);
-                },
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: AnalyticsDateRangeBar(
+                dateRangeProvider: agencyAnalyticsDateRangeProvider,
+                defaultSuppressedProvider:
+                    agencyAnalyticsDateRangeDefaultSuppressedProvider,
               ),
             ),
-          ),
-        ],
+            AnalyticsListHeader(
+              count: counts.$1,
+              priorCount: counts.$2,
+              amountLabel: amountLabel,
+            ),
+            Expanded(
+              child: claims.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(child: Text('Error: $e')),
+                data: (list) => AgencyAnalyticsClaimsListBody(
+                  claims: list,
+                  currency: currency,
+                  dateFormat: dateFormat,
+                  onClaimTap: (id) {
+                    final range = ref.read(agencyAnalyticsDateRangeProvider);
+                    context.push(
+                      analyticsPathWithDateRange('$detailBasePath/$id', range),
+                    );
+                  },
+                  onRefresh: () async {
+                    ref.invalidate(
+                      agencyAnalyticsClaimsListProvider(apiFilter),
+                    );
+                    ref.invalidate(agencyClaimsPipelineProvider);
+                    await ref.read(
+                      agencyAnalyticsClaimsListProvider(apiFilter).future,
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
-    ),
     );
   }
 }
@@ -398,62 +398,62 @@ class AdminAnalyticsScreeningsListScreen extends ConsumerWidget {
       defaultSuppressedProvider:
           adminAnalyticsDateRangeDefaultSuppressedProvider,
       child: AppScaffold(
-      title: analyticsScreeningListTitle(riskFilter),
-      actions: analyticsListScreenActions(
-        onExport: screenings.maybeWhen(
-          data: (list) => () => exportAnalyticsCsv(
-            context,
-            csv: screeningsCsvFromAdmin(list),
-            filename: analyticsExportFilename(
-              'screenings',
-              riskFilter,
-              dateRangeSuffix: dateRange.filenameSuffix,
-            ),
+        title: analyticsScreeningListTitle(riskFilter),
+        actions: analyticsListScreenActions(
+          onExport: screenings.maybeWhen(
+            data: (list) =>
+                () => exportAnalyticsCsv(
+                  context,
+                  csv: screeningsCsvFromAdmin(list),
+                  filename: analyticsExportFilename(
+                    'screenings',
+                    riskFilter,
+                    dateRangeSuffix: dateRange.filenameSuffix,
+                  ),
+                ),
+            orElse: () => null,
           ),
-          orElse: () => null,
         ),
-      ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-            child: AnalyticsDateRangeBar(
-              dateRangeProvider: adminAnalyticsDateRangeProvider,
-              defaultSuppressedProvider:
-                  adminAnalyticsDateRangeDefaultSuppressedProvider,
-            ),
-          ),
-          AnalyticsListHeader(
-            count: counts.$1,
-            priorCount: counts.$2,
-          ),
-          Expanded(
-            child: screenings.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Text('Error: $e')),
-              data: (list) => AnalyticsScreeningsListBody(
-                screenings: list,
-                dateFormat: dateFormat,
-                onScreeningTap: (id) {
-                  final range = ref.read(adminAnalyticsDateRangeProvider);
-                  context.push(analyticsPathWithDateRange(
-                    '$detailBasePath/$id',
-                    range,
-                  ));
-                },
-                onRefresh: () async {
-                  ref.invalidate(adminAnalyticsScreeningsListProvider(riskKey));
-                  ref.invalidate(adminScreeningFunnelProvider);
-                  await ref
-                      .read(adminAnalyticsScreeningsListProvider(riskKey).future);
-                },
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: AnalyticsDateRangeBar(
+                dateRangeProvider: adminAnalyticsDateRangeProvider,
+                defaultSuppressedProvider:
+                    adminAnalyticsDateRangeDefaultSuppressedProvider,
               ),
             ),
-          ),
-        ],
+            AnalyticsListHeader(count: counts.$1, priorCount: counts.$2),
+            Expanded(
+              child: screenings.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(child: Text('Error: $e')),
+                data: (list) => AnalyticsScreeningsListBody(
+                  screenings: list,
+                  dateFormat: dateFormat,
+                  onScreeningTap: (id) {
+                    final range = ref.read(adminAnalyticsDateRangeProvider);
+                    context.push(
+                      analyticsPathWithDateRange('$detailBasePath/$id', range),
+                    );
+                  },
+                  onRefresh: () async {
+                    ref.invalidate(
+                      adminAnalyticsScreeningsListProvider(riskKey),
+                    );
+                    ref.invalidate(adminScreeningFunnelProvider);
+                    await ref.read(
+                      adminAnalyticsScreeningsListProvider(riskKey).future,
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
-    ),
     );
   }
 }
@@ -473,7 +473,9 @@ class AgencyAnalyticsScreeningsListScreen extends ConsumerWidget {
     final apiRisk = analyticsScreeningRiskFromPath(riskFilter);
     final riskKey = apiRisk ?? 'all';
     final dateRange = ref.watch(agencyAnalyticsDateRangeProvider);
-    final screenings = ref.watch(agencyAnalyticsScreeningsListProvider(riskKey));
+    final screenings = ref.watch(
+      agencyAnalyticsScreeningsListProvider(riskKey),
+    );
     final funnel = ref.watch(agencyScreeningFunnelProvider);
     final dateFormat = DateFormat.yMMMd();
     final counts = funnel.maybeWhen(
@@ -497,62 +499,62 @@ class AgencyAnalyticsScreeningsListScreen extends ConsumerWidget {
       defaultSuppressedProvider:
           agencyAnalyticsDateRangeDefaultSuppressedProvider,
       child: AppScaffold(
-      title: analyticsScreeningListTitle(riskFilter),
-      actions: analyticsListScreenActions(
-        onExport: screenings.maybeWhen(
-          data: (list) => () => exportAnalyticsCsv(
-            context,
-            csv: screeningsCsvFromAgency(list),
-            filename: analyticsExportFilename(
-              'screenings',
-              riskFilter,
-              dateRangeSuffix: dateRange.filenameSuffix,
-            ),
+        title: analyticsScreeningListTitle(riskFilter),
+        actions: analyticsListScreenActions(
+          onExport: screenings.maybeWhen(
+            data: (list) =>
+                () => exportAnalyticsCsv(
+                  context,
+                  csv: screeningsCsvFromAgency(list),
+                  filename: analyticsExportFilename(
+                    'screenings',
+                    riskFilter,
+                    dateRangeSuffix: dateRange.filenameSuffix,
+                  ),
+                ),
+            orElse: () => null,
           ),
-          orElse: () => null,
         ),
-      ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-            child: AnalyticsDateRangeBar(
-              dateRangeProvider: agencyAnalyticsDateRangeProvider,
-              defaultSuppressedProvider:
-                  agencyAnalyticsDateRangeDefaultSuppressedProvider,
-            ),
-          ),
-          AnalyticsListHeader(
-            count: counts.$1,
-            priorCount: counts.$2,
-          ),
-          Expanded(
-            child: screenings.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Text('Error: $e')),
-              data: (list) => AgencyAnalyticsScreeningsListBody(
-                screenings: list,
-                dateFormat: dateFormat,
-                onScreeningTap: (id) {
-                  final range = ref.read(agencyAnalyticsDateRangeProvider);
-                  context.push(analyticsPathWithDateRange(
-                    '$detailBasePath/$id',
-                    range,
-                  ));
-                },
-                onRefresh: () async {
-                  ref.invalidate(agencyAnalyticsScreeningsListProvider(riskKey));
-                  ref.invalidate(agencyScreeningFunnelProvider);
-                  await ref
-                      .read(agencyAnalyticsScreeningsListProvider(riskKey).future);
-                },
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: AnalyticsDateRangeBar(
+                dateRangeProvider: agencyAnalyticsDateRangeProvider,
+                defaultSuppressedProvider:
+                    agencyAnalyticsDateRangeDefaultSuppressedProvider,
               ),
             ),
-          ),
-        ],
+            AnalyticsListHeader(count: counts.$1, priorCount: counts.$2),
+            Expanded(
+              child: screenings.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(child: Text('Error: $e')),
+                data: (list) => AgencyAnalyticsScreeningsListBody(
+                  screenings: list,
+                  dateFormat: dateFormat,
+                  onScreeningTap: (id) {
+                    final range = ref.read(agencyAnalyticsDateRangeProvider);
+                    context.push(
+                      analyticsPathWithDateRange('$detailBasePath/$id', range),
+                    );
+                  },
+                  onRefresh: () async {
+                    ref.invalidate(
+                      agencyAnalyticsScreeningsListProvider(riskKey),
+                    );
+                    ref.invalidate(agencyScreeningFunnelProvider);
+                    await ref.read(
+                      agencyAnalyticsScreeningsListProvider(riskKey).future,
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
-    ),
     );
   }
 }

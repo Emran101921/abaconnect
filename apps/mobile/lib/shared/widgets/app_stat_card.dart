@@ -67,10 +67,10 @@ class AppStatCard extends StatelessWidget {
           Text(
             '$value',
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: fg,
-                  letterSpacing: -0.5,
-                ),
+              fontWeight: FontWeight.w800,
+              color: fg,
+              letterSpacing: -0.5,
+            ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -78,17 +78,17 @@ class AppStatCard extends StatelessWidget {
           Text(
             label,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: fg.withValues(alpha: 0.85),
-                  fontWeight: FontWeight.w500,
-                ),
+              color: fg.withValues(alpha: 0.85),
+              fontWeight: FontWeight.w500,
+            ),
           ),
           if (periodDelta != null) ...[
             const SizedBox(height: AppSpacing.xs),
             Text(
               'vs prior: $periodDelta',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: _deltaColor(context, periodDelta!),
-                  ),
+                color: _deltaColor(context, periodDelta!),
+              ),
             ),
           ],
         ],

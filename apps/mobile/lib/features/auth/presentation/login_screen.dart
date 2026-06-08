@@ -33,7 +33,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _signIn({UserRole? demoRole}) async {
     setState(() => _loading = true);
     try {
-      final result = await ref.read(authStateProvider.notifier).login(
+      final result = await ref
+          .read(authStateProvider.notifier)
+          .login(
             email: _emailController.text.trim(),
             password: _passwordController.text,
             role: demoRole ?? UserRole.parent,
@@ -42,7 +44,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (result.requiresMfa) {
         final code = await _promptMfaCode();
         if (code == null || !mounted) return;
-        await ref.read(authStateProvider.notifier).completeMfaLogin(
+        await ref
+            .read(authStateProvider.notifier)
+            .completeMfaLogin(
               mfaChallengeToken: result.mfaChallengeToken!,
               code: code,
             );
@@ -54,9 +58,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Login failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Login failed: $e')));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -79,7 +83,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           maxLength: 6,
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, controller.text.trim()),
             child: const Text('Verify'),
@@ -127,19 +134,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 Text(
                   'Care coordination\nfor every family',
                   style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        height: 1.15,
-                      ),
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    height: 1.15,
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.md),
                 Text(
                   'Screening, therapy matching, sessions, billing, and '
                   'clinical documentation — one secure, family-friendly platform.',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: Colors.white.withValues(alpha: 0.92),
-                        height: 1.5,
-                      ),
+                    color: Colors.white.withValues(alpha: 0.92),
+                    height: 1.5,
+                  ),
                 ),
                 const Spacer(),
                 Wrap(
@@ -178,16 +185,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const SizedBox(height: AppSpacing.lg),
-            Row(
-              children: const [
-                Spacer(),
-                AppThemeToggle(compact: true),
-              ],
-            ),
+            Row(children: const [Spacer(), AppThemeToggle(compact: true)]),
             const SizedBox(height: AppSpacing.md),
-            const Center(
-              child: AppBrandLogo(size: AppBrandLogoSize.large),
-            ),
+            const Center(child: AppBrandLogo(size: AppBrandLogoSize.large)),
             const SizedBox(height: AppSpacing.md),
             const Center(
               child: AppHealthcareIllustration(
@@ -209,24 +209,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       children: [
         Text(
           'Sign in',
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: AppSpacing.xs),
         Text(
           'Access your care dashboard',
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
         if (kDebugMode) ...[
           const SizedBox(height: AppSpacing.sm),
           Text(
             'Dev: API at localhost:3000',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
         ],
         const SizedBox(height: AppSpacing.lg),
@@ -348,9 +348,9 @@ class _FeatureChip extends StatelessWidget {
       child: Text(
         label,
         style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
-            ),
+          color: Colors.white,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -369,9 +369,6 @@ class _DemoChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ActionChip(
-      label: Text(label),
-      onPressed: loading ? null : onTap,
-    );
+    return ActionChip(label: Text(label), onPressed: loading ? null : onTap);
   }
 }

@@ -109,7 +109,8 @@ class PlatformRepository {
     final result = await _graphql.query(r'''
       query { myTelehealthSessions { id roomId joinUrl appointmentLabel vendor } }
     ''');
-    final list = result['data']?['myTelehealthSessions'] as List<dynamic>? ?? [];
+    final list =
+        result['data']?['myTelehealthSessions'] as List<dynamic>? ?? [];
     return list
         .map(
           (e) => TelehealthSessionModel(
@@ -194,7 +195,7 @@ class PlatformRepository {
     final formData = FormData.fromMap({
       'title': title,
       'type': type,
-      if (childId != null) 'childId': childId,
+      'childId': ?childId,
       'file': MultipartFile.fromBytes(bytes, filename: fileName),
     });
     await _api.dio.post('/documents/upload', data: formData);
@@ -211,7 +212,10 @@ class PlatformRepository {
     );
   }
 
-  Future<String> downloadDocumentFile(String documentId, String fileName) async {
+  Future<String> downloadDocumentFile(
+    String documentId,
+    String fileName,
+  ) async {
     final response = await _api.dio.get<List<int>>(
       '/documents/$documentId/file',
       options: Options(responseType: ResponseType.bytes),

@@ -27,8 +27,10 @@ class AgencyHomeScreen extends ConsumerWidget {
     final unread = ref.watch(unreadNotificationsProvider);
     final unreadCount = unread.maybeWhen(data: (c) => c, orElse: () => 0);
     final unreadMessages = ref.watch(unreadMessageThreadsProvider);
-    final unreadMessageCount =
-        unreadMessages.maybeWhen(data: (c) => c, orElse: () => 0);
+    final unreadMessageCount = unreadMessages.maybeWhen(
+      data: (c) => c,
+      orElse: () => 0,
+    );
 
     return AppScaffold(
       title: 'Agency',
@@ -62,196 +64,203 @@ class AgencyHomeScreen extends ConsumerWidget {
         child: AppContentContainer(
           padding: EdgeInsets.zero,
           child: ListView(
-          children: [
-            const AppWelcomeBanner(
-              greeting: 'Agency operations',
-              subtitle: 'Roster, scheduling, analytics, and parent communication.',
-              illustrationType: AppIllustrationType.scheduling,
-            ),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: AppSectionHeader(
-                title: 'Overview',
-                subtitle: 'Agency operations at a glance',
+            children: [
+              const AppWelcomeBanner(
+                greeting: 'Agency operations',
+                subtitle:
+                    'Roster, scheduling, analytics, and parent communication.',
+                illustrationType: AppIllustrationType.scheduling,
               ),
-            ),
-            const SizedBox(height: 12),
-            dashboard.when(
-              data: (d) => Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    children: [
-                      AppStatCard(
-                        label: 'Therapists',
-                        value: '${d.therapistCount}',
-                        icon: Icons.groups_outlined,
-                        onTap: () =>
-                            context.push('${AppRoutes.agencyHome}/roster'),
-                      ),
-                      AppStatCard(
-                        label: 'Active clients',
-                        value: '${d.activeClients}',
-                        icon: Icons.people_outline,
-                        onTap: () =>
-                            context.push('${AppRoutes.agencyHome}/analytics'),
-                      ),
-                      AppStatCard(
-                        label: 'Sessions today',
-                        value: '${d.appointmentsToday}',
-                        icon: Icons.event_outlined,
-                        accent: d.appointmentsToday > 0,
-                        onTap: () => context
-                            .push('${AppRoutes.agencyHome}/appointments'),
-                      ),
-                      AppStatCard(
-                        label: 'Pending verify',
-                        value: '${d.pendingTherapists}',
-                        highlight: d.pendingTherapists > 0,
-                        icon: Icons.verified_user_outlined,
-                        onTap: () =>
-                            context.push('${AppRoutes.agencyHome}/roster'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  const AppSectionHeader(title: 'Operations board'),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    children: [
-                      AppStatCard(
-                        label: 'Missing EVV',
-                        value: '${d.missingEvvCount}',
-                        highlight: d.missingEvvCount > 0,
-                        icon: Icons.location_off_outlined,
-                        onTap: () =>
-                            context.push('${AppRoutes.agencyHome}/appointments'),
-                      ),
-                      AppStatCard(
-                        label: 'Draft claims',
-                        value: '${d.draftClaimsCount}',
-                        highlight: d.draftClaimsCount > 0,
-                        icon: Icons.receipt_long_outlined,
-                        onTap: () =>
-                            context.push('${AppRoutes.agencyHome}/analytics'),
-                      ),
-                      AppStatCard(
-                        label: 'Cancels today',
-                        value: '${d.cancellationsToday}',
-                        icon: Icons.event_busy_outlined,
-                        onTap: () =>
-                            context.push('${AppRoutes.agencyHome}/appointments'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  DashboardActionInbox(
-                    items: d.actionItems
-                        .map((e) => DashboardActionModel.fromJson(e))
-                        .toList(),
-                  ),
-                ],
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: AppSectionHeader(
+                  title: 'Overview',
+                  subtitle: 'Agency operations at a glance',
+                ),
               ),
-              loading: () => const LinearProgressIndicator(),
-              error: (e, _) => Text('Overview error: $e'),
-            ),
-            const SizedBox(height: 12),
-            upcoming.when(
-              data: (list) {
-                if (list.isEmpty) return const SizedBox.shrink();
-                return Column(
+              const SizedBox(height: 12),
+              dashboard.when(
+                data: (d) => Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
                       children: [
-                        Text(
-                          'Upcoming sessions',
-                          style: Theme.of(context).textTheme.titleSmall,
+                        AppStatCard(
+                          label: 'Therapists',
+                          value: '${d.therapistCount}',
+                          icon: Icons.groups_outlined,
+                          onTap: () =>
+                              context.push('${AppRoutes.agencyHome}/roster'),
                         ),
-                        const Spacer(),
-                        TextButton(
-                          onPressed: () =>
-                              context.push('${AppRoutes.agencyHome}/appointments'),
-                          child: const Text('All'),
+                        AppStatCard(
+                          label: 'Active clients',
+                          value: '${d.activeClients}',
+                          icon: Icons.people_outline,
+                          onTap: () =>
+                              context.push('${AppRoutes.agencyHome}/analytics'),
+                        ),
+                        AppStatCard(
+                          label: 'Sessions today',
+                          value: '${d.appointmentsToday}',
+                          icon: Icons.event_outlined,
+                          accent: d.appointmentsToday > 0,
+                          onTap: () => context.push(
+                            '${AppRoutes.agencyHome}/appointments',
+                          ),
+                        ),
+                        AppStatCard(
+                          label: 'Pending verify',
+                          value: '${d.pendingTherapists}',
+                          highlight: d.pendingTherapists > 0,
+                          icon: Icons.verified_user_outlined,
+                          onTap: () =>
+                              context.push('${AppRoutes.agencyHome}/roster'),
                         ),
                       ],
                     ),
+                    const SizedBox(height: 12),
+                    const AppSectionHeader(title: 'Operations board'),
                     const SizedBox(height: 8),
-                    ...list.take(3).map(
-                      (a) => Card(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        child: ListTile(
-                          title: Text('${a.childName} · ${a.therapyType}'),
-                          subtitle: Text(
-                            '${a.therapistName}\n'
-                            '${DateFormat.yMMMd().add_jm().format(a.scheduledStart)} · ${a.locationType}',
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: [
+                        AppStatCard(
+                          label: 'Missing EVV',
+                          value: '${d.missingEvvCount}',
+                          highlight: d.missingEvvCount > 0,
+                          icon: Icons.location_off_outlined,
+                          onTap: () => context.push(
+                            '${AppRoutes.agencyHome}/appointments',
                           ),
-                          isThreeLine: true,
-                          trailing: Chip(label: Text(a.status)),
                         ),
-                      ),
+                        AppStatCard(
+                          label: 'Draft claims',
+                          value: '${d.draftClaimsCount}',
+                          highlight: d.draftClaimsCount > 0,
+                          icon: Icons.receipt_long_outlined,
+                          onTap: () =>
+                              context.push('${AppRoutes.agencyHome}/analytics'),
+                        ),
+                        AppStatCard(
+                          label: 'Cancels today',
+                          value: '${d.cancellationsToday}',
+                          icon: Icons.event_busy_outlined,
+                          onTap: () => context.push(
+                            '${AppRoutes.agencyHome}/appointments',
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    DashboardActionInbox(
+                      items: d.actionItems
+                          .map((e) => DashboardActionModel.fromJson(e))
+                          .toList(),
                     ),
                   ],
-                );
-              },
-              loading: () => const SizedBox.shrink(),
-              error: (_, __) => const SizedBox.shrink(),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Operations',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Manage your roster, invites, analytics, and today’s session load.',
-            ),
-            const SizedBox(height: 16),
-            _OpsTile(
-              title: 'Therapist roster',
-              subtitle: 'View roster and remove therapists',
-              icon: Icons.groups,
-              onTap: () => context.push('${AppRoutes.agencyHome}/roster'),
-            ),
-            _OpsTile(
-              title: 'Invite therapists',
-              subtitle: 'Add verified therapists to your agency',
-              icon: Icons.person_add,
-              onTap: () => context.push('${AppRoutes.agencyHome}/invites'),
-            ),
-            _OpsTile(
-              title: 'Platform analytics',
-              subtitle: 'Sessions, revenue, and activity metrics',
-              icon: Icons.insights,
-              onTap: () => context.push('${AppRoutes.agencyHome}/analytics'),
-            ),
-            _OpsTile(
-              title: 'Appointments overview',
-              subtitle: 'Today’s scheduled sessions across the agency',
-              icon: Icons.event,
-              onTap: () => context.push('${AppRoutes.agencyHome}/appointments'),
-            ),
-            _OpsTile(
-              title: unreadMessageCount > 0
-                  ? 'Messages ($unreadMessageCount unread)'
-                  : 'Messages',
-              subtitle: unreadMessageCount > 0
-                  ? 'Threads need a reply'
-                  : 'Chat with parents and therapists',
-              icon: Icons.message,
-              onTap: () => context.push(AppRoutes.messages),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Tip: pull down to refresh counts on this screen.',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
-        ),
+                ),
+                loading: () => const LinearProgressIndicator(),
+                error: (e, _) => Text('Overview error: $e'),
+              ),
+              const SizedBox(height: 12),
+              upcoming.when(
+                data: (list) {
+                  if (list.isEmpty) return const SizedBox.shrink();
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            'Upcoming sessions',
+                            style: Theme.of(context).textTheme.titleSmall,
+                          ),
+                          const Spacer(),
+                          TextButton(
+                            onPressed: () => context.push(
+                              '${AppRoutes.agencyHome}/appointments',
+                            ),
+                            child: const Text('All'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      ...list
+                          .take(3)
+                          .map(
+                            (a) => Card(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              child: ListTile(
+                                title: Text(
+                                  '${a.childName} · ${a.therapyType}',
+                                ),
+                                subtitle: Text(
+                                  '${a.therapistName}\n'
+                                  '${DateFormat.yMMMd().add_jm().format(a.scheduledStart)} · ${a.locationType}',
+                                ),
+                                isThreeLine: true,
+                                trailing: Chip(label: Text(a.status)),
+                              ),
+                            ),
+                          ),
+                    ],
+                  );
+                },
+                loading: () => const SizedBox.shrink(),
+                error: (_, _) => const SizedBox.shrink(),
+              ),
+              const SizedBox(height: 24),
+              Text('Operations', style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 8),
+              const Text(
+                'Manage your roster, invites, analytics, and today’s session load.',
+              ),
+              const SizedBox(height: 16),
+              _OpsTile(
+                title: 'Therapist roster',
+                subtitle: 'View roster and remove therapists',
+                icon: Icons.groups,
+                onTap: () => context.push('${AppRoutes.agencyHome}/roster'),
+              ),
+              _OpsTile(
+                title: 'Invite therapists',
+                subtitle: 'Add verified therapists to your agency',
+                icon: Icons.person_add,
+                onTap: () => context.push('${AppRoutes.agencyHome}/invites'),
+              ),
+              _OpsTile(
+                title: 'Platform analytics',
+                subtitle: 'Sessions, revenue, and activity metrics',
+                icon: Icons.insights,
+                onTap: () => context.push('${AppRoutes.agencyHome}/analytics'),
+              ),
+              _OpsTile(
+                title: 'Appointments overview',
+                subtitle: 'Today’s scheduled sessions across the agency',
+                icon: Icons.event,
+                onTap: () =>
+                    context.push('${AppRoutes.agencyHome}/appointments'),
+              ),
+              _OpsTile(
+                title: unreadMessageCount > 0
+                    ? 'Messages ($unreadMessageCount unread)'
+                    : 'Messages',
+                subtitle: unreadMessageCount > 0
+                    ? 'Threads need a reply'
+                    : 'Chat with parents and therapists',
+                icon: Icons.message,
+                onTap: () => context.push(AppRoutes.messages),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Tip: pull down to refresh counts on this screen.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ),
         ),
       ),
     );

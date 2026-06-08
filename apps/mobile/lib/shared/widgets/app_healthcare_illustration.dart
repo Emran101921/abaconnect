@@ -27,29 +27,29 @@ class AppHealthcareIllustration extends StatelessWidget {
   Widget build(BuildContext context) {
     final (icon, colors) = switch (type) {
       AppIllustrationType.family => (
-          Icons.family_restroom_rounded,
-          [AppColors.primary, AppColors.secondary],
-        ),
+        Icons.family_restroom_rounded,
+        [AppColors.primary, AppColors.secondary],
+      ),
       AppIllustrationType.screening => (
-          Icons.assignment_turned_in_outlined,
-          [AppColors.secondary, AppColors.accent],
-        ),
+        Icons.assignment_turned_in_outlined,
+        [AppColors.secondary, AppColors.accent],
+      ),
       AppIllustrationType.therapy => (
-          Icons.psychology_outlined,
-          [AppColors.primary, const Color(0xFF7C3AED)],
-        ),
+        Icons.psychology_outlined,
+        [AppColors.primary, const Color(0xFF7C3AED)],
+      ),
       AppIllustrationType.messaging => (
-          Icons.forum_outlined,
-          [AppColors.secondary, AppColors.primaryLight],
-        ),
+        Icons.forum_outlined,
+        [AppColors.secondary, AppColors.primaryLight],
+      ),
       AppIllustrationType.scheduling => (
-          Icons.event_available_outlined,
-          [AppColors.accent, AppColors.secondary],
-        ),
+        Icons.event_available_outlined,
+        [AppColors.accent, AppColors.secondary],
+      ),
       AppIllustrationType.progress => (
-          Icons.trending_up_rounded,
-          [AppColors.success, AppColors.accent],
-        ),
+        Icons.trending_up_rounded,
+        [AppColors.success, AppColors.accent],
+      ),
     };
 
     return SizedBox(
@@ -89,11 +89,7 @@ class AppHealthcareIllustration extends StatelessWidget {
                 ),
               ],
             ),
-            child: Icon(
-              icon,
-              size: size * 0.34,
-              color: Colors.white,
-            ),
+            child: Icon(icon, size: size * 0.34, color: Colors.white),
           ),
           Positioned(
             right: size * 0.08,
@@ -139,10 +135,7 @@ class AppIllustrationRow extends StatelessWidget {
               Text(title, style: Theme.of(context).textTheme.titleMedium),
               if (subtitle != null) ...[
                 const SizedBox(height: AppSpacing.xs),
-                Text(
-                  subtitle!,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
+                Text(subtitle!, style: Theme.of(context).textTheme.bodyMedium),
               ],
             ],
           ),

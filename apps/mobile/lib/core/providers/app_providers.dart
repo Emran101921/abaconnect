@@ -22,7 +22,9 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepository(ref.watch(apiClientProvider));
 });
 
-final parentBookingRepositoryProvider = Provider<ParentBookingRepository>((ref) {
+final parentBookingRepositoryProvider = Provider<ParentBookingRepository>((
+  ref,
+) {
   return ParentBookingRepository(
     ref.watch(graphqlClientProvider),
     ref.watch(apiClientProvider),
@@ -69,5 +71,5 @@ final clinicalRepositoryProvider = Provider<ClinicalRepository>((ref) {
 
 final authStateProvider =
     StateNotifierProvider<AuthNotifier, AsyncValue<AuthSession?>>((ref) {
-  return AuthNotifier(ref.watch(authRepositoryProvider));
-});
+      return AuthNotifier(ref.watch(authRepositoryProvider));
+    });

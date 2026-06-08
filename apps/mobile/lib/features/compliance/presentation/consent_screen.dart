@@ -45,10 +45,9 @@ class ConsentScreen extends ConsumerWidget {
             FilledButton(
               onPressed: () async {
                 try {
-                  await ref.read(platformRepositoryProvider).grantConsent(
-                        'HIPAA_PRIVACY',
-                        '1.0',
-                      );
+                  await ref
+                      .read(platformRepositoryProvider)
+                      .grantConsent('HIPAA_PRIVACY', '1.0');
                   ref.invalidate(consentsProvider);
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -57,9 +56,9 @@ class ConsentScreen extends ConsumerWidget {
                   }
                 } catch (e) {
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('$e')),
-                    );
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text('$e')));
                   }
                 }
               },

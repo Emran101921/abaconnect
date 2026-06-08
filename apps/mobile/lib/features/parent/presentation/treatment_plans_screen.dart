@@ -5,8 +5,9 @@ import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../clinical/data/clinical_repository.dart';
 
-final parentTreatmentPlansProvider =
-    FutureProvider<List<TreatmentPlanModel>>((ref) {
+final parentTreatmentPlansProvider = FutureProvider<List<TreatmentPlanModel>>((
+  ref,
+) {
   return ref.watch(clinicalRepositoryProvider).fetchParentPlans();
 });
 
@@ -24,9 +25,7 @@ class TreatmentPlansScreen extends ConsumerWidget {
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (list) {
           if (list.isEmpty) {
-            return const Center(
-              child: Text('No active treatment plans yet.'),
-            );
+            return const Center(child: Text('No active treatment plans yet.'));
           }
           return RefreshIndicator(
             onRefresh: () async {
@@ -36,7 +35,7 @@ class TreatmentPlansScreen extends ConsumerWidget {
             child: ListView.separated(
               padding: const EdgeInsets.all(16),
               itemCount: list.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              separatorBuilder: (_, _) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
                 final p = list[index];
                 return Card(

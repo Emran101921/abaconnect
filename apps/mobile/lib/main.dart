@@ -8,8 +8,9 @@ import 'core/router/app_router.dart';
 import 'core/providers/theme_mode_provider.dart';
 import 'core/theme/app_theme.dart';
 
-final pendingPushPayloadProvider =
-    StateProvider<Map<String, dynamic>?>((ref) => null);
+final pendingPushPayloadProvider = StateProvider<Map<String, dynamic>?>(
+  (ref) => null,
+);
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,9 +28,11 @@ class _BloomOraAppState extends ConsumerState<BloomOraApp> {
   @override
   void initState() {
     super.initState();
-    PushBootstrap.init(onOpened: (data) {
-      ref.read(pendingPushPayloadProvider.notifier).state = data;
-    });
+    PushBootstrap.init(
+      onOpened: (data) {
+        ref.read(pendingPushPayloadProvider.notifier).state = data;
+      },
+    );
   }
 
   @override
@@ -40,11 +43,7 @@ class _BloomOraAppState extends ConsumerState<BloomOraApp> {
 
     if (pending != null && auth != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        navigateFromPushPayload(
-          router,
-          data: pending,
-          role: auth.user.role,
-        );
+        navigateFromPushPayload(router, data: pending, role: auth.user.role);
         ref.read(pendingPushPayloadProvider.notifier).state = null;
       });
     }

@@ -31,23 +31,25 @@ class _ComplaintsScreenState extends ConsumerState<ComplaintsScreen> {
       return;
     }
     try {
-      await ref.read(platformRepositoryProvider).fileComplaint(
+      await ref
+          .read(platformRepositoryProvider)
+          .fileComplaint(
             category: _category,
             subject: _subject.text.trim(),
             description: _description.text.trim(),
           );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Complaint submitted')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Complaint submitted')));
         _subject.clear();
         _description.clear();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed: $e')));
       }
     }
   }
@@ -65,7 +67,7 @@ class _ComplaintsScreenState extends ConsumerState<ComplaintsScreen> {
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
-            value: _category,
+            initialValue: _category,
             decoration: const InputDecoration(labelText: 'Category'),
             items: const [
               DropdownMenuItem(value: 'SERVICE', child: Text('Service')),

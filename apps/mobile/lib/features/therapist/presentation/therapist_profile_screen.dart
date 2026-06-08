@@ -6,13 +6,15 @@ import '../../clinical/data/clinical_repository.dart';
 import '../data/therapist_repository.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 
-final therapistBadgesProvider =
-    FutureProvider<List<TherapistBadgeModel>>((ref) {
+final therapistBadgesProvider = FutureProvider<List<TherapistBadgeModel>>((
+  ref,
+) {
   return ref.watch(clinicalRepositoryProvider).fetchBadges();
 });
 
-final therapistProfileProvider =
-    FutureProvider<TherapistProfileModel>((ref) async {
+final therapistProfileProvider = FutureProvider<TherapistProfileModel>((
+  ref,
+) async {
   return ref.watch(therapistRepositoryProvider).fetchProfile();
 });
 
@@ -42,22 +44,24 @@ class _TherapistProfileScreenState
   Future<void> _save() async {
     setState(() => _saving = true);
     try {
-      await ref.read(therapistRepositoryProvider).updateProfile(
+      await ref
+          .read(therapistRepositoryProvider)
+          .updateProfile(
             bio: _bioController.text.trim(),
             licenseNumber: _licenseController.text.trim(),
             licenseState: _stateController.text.trim(),
           );
       ref.invalidate(therapistProfileProvider);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile saved')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Profile saved')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Save failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Save failed: $e')));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -123,15 +127,11 @@ class _TherapistProfileScreenState
                         runSpacing: 8,
                         alignment: WrapAlignment.center,
                         children: list
-                            .map(
-                              (b) => Chip(
-                                label: Text(b.label ?? b.type),
-                              ),
-                            )
+                            .map((b) => Chip(label: Text(b.label ?? b.type)))
                             .toList(),
                       ),
                 loading: () => const SizedBox.shrink(),
-                error: (_, __) => const SizedBox.shrink(),
+                error: (_, _) => const SizedBox.shrink(),
               ),
               const SizedBox(height: 24),
               TextField(

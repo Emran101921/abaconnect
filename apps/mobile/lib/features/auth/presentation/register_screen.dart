@@ -35,7 +35,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   Future<void> _register() async {
     setState(() => _loading = true);
     try {
-      await ref.read(authStateProvider.notifier).register(
+      await ref
+          .read(authStateProvider.notifier)
+          .register(
             email: _emailController.text.trim(),
             password: _passwordController.text,
             firstName: _firstNameController.text.trim(),
@@ -48,9 +50,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Registration failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Registration failed: $e')));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -95,17 +97,17 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 Text(
                   'Start your family\'s\ncare journey',
                   style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                      ),
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.md),
                 Text(
                   'Create a secure parent account to manage screening, '
                   'therapy, appointments, and progress — all in one place.',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: Colors.white.withValues(alpha: 0.92),
-                      ),
+                    color: Colors.white.withValues(alpha: 0.92),
+                  ),
                 ),
                 const Spacer(),
               ],
@@ -144,9 +146,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 const AppThemeToggle(compact: true),
               ],
             ),
-            const Center(
-              child: AppBrandLogo(size: AppBrandLogoSize.medium),
-            ),
+            const Center(child: AppBrandLogo(size: AppBrandLogoSize.medium)),
             const SizedBox(height: AppSpacing.md),
             const Center(
               child: AppHealthcareIllustration(
@@ -168,16 +168,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       children: [
         Text(
           'Create account',
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: AppSpacing.xs),
         Text(
           'Family-friendly care coordination for Early Intervention',
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
         const SizedBox(height: AppSpacing.lg),
         TextField(

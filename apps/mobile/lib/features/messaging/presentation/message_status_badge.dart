@@ -44,9 +44,9 @@ class MessageStatusBadge extends StatelessWidget {
               ? '$label · ${DateFormat.jm().format(readAt!)}'
               : label,
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: color,
-                fontWeight: isRead ? FontWeight.w600 : null,
-              ),
+            color: color,
+            fontWeight: isRead ? FontWeight.w600 : null,
+          ),
         ),
       ],
     );

@@ -44,25 +44,25 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       body: Container(
         decoration: const BoxDecoration(gradient: AppColors.warmGradient),
         child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const AppBrandLogo(
-              size: AppBrandLogoSize.large,
-              lightOnDark: true,
-              showTagline: false,
-            ),
-            const SizedBox(height: AppSpacing.xxl),
-            SizedBox(
-              width: 28,
-              height: 28,
-              child: CircularProgressIndicator(
-                strokeWidth: 2.5,
-                color: Colors.white.withValues(alpha: 0.9),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const AppBrandLogo(
+                size: AppBrandLogoSize.large,
+                lightOnDark: true,
+                showTagline: false,
               ),
-            ),
-          ],
-        ),
+              const SizedBox(height: AppSpacing.xxl),
+              SizedBox(
+                width: 28,
+                height: 28,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: Colors.white.withValues(alpha: 0.9),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

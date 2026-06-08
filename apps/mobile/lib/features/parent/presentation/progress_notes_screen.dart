@@ -8,8 +8,8 @@ import '../../clinical/data/clinical_repository.dart';
 
 final parentProgressNotesProvider =
     FutureProvider<List<ParentProgressNoteModel>>((ref) {
-  return ref.watch(clinicalRepositoryProvider).fetchParentProgressNotes();
-});
+      return ref.watch(clinicalRepositoryProvider).fetchParentProgressNotes();
+    });
 
 class ProgressNotesScreen extends ConsumerWidget {
   const ProgressNotesScreen({super.key});
@@ -45,21 +45,23 @@ class ProgressNotesScreen extends ConsumerWidget {
     );
     if (ok != true) return;
     try {
-      await ref.read(clinicalRepositoryProvider).submitSessionFeedback(
+      await ref
+          .read(clinicalRepositoryProvider)
+          .submitSessionFeedback(
             sessionId: note.sessionId,
             feedback: controller.text.trim(),
           );
       ref.invalidate(parentProgressNotesProvider);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Feedback saved')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Feedback saved')));
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed: $e')));
       }
     }
   }
@@ -77,7 +79,9 @@ class ProgressNotesScreen extends ConsumerWidget {
         data: (list) {
           if (list.isEmpty) {
             return const Center(
-              child: Text('No progress summaries yet. They appear after sessions.'),
+              child: Text(
+                'No progress summaries yet. They appear after sessions.',
+              ),
             );
           }
           return RefreshIndicator(
@@ -88,7 +92,7 @@ class ProgressNotesScreen extends ConsumerWidget {
             child: ListView.separated(
               padding: const EdgeInsets.all(16),
               itemCount: list.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              separatorBuilder: (_, _) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
                 final n = list[index];
                 return Card(

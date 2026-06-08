@@ -106,10 +106,7 @@ class EarlyInterventionEvaluationRequestModel {
 }
 
 class ScreeningDraftModel {
-  const ScreeningDraftModel({
-    required this.id,
-    required this.responses,
-  });
+  const ScreeningDraftModel({required this.id, required this.responses});
 
   final String id;
   final Map<String, dynamic> responses;
@@ -460,15 +457,15 @@ class ParentBookingRepository {
     ''',
       variables: {
         'input': {
-          if (addressLine1 != null) 'addressLine1': addressLine1,
-          if (city != null) 'city': city,
-          if (state != null) 'state': state,
-          if (zipCode != null) 'zipCode': zipCode,
-          if (emergencyContactName != null) 'emergencyContactName': emergencyContactName,
-          if (emergencyContactPhone != null) 'emergencyContactPhone': emergencyContactPhone,
-          if (insuranceProvider != null) 'insuranceProvider': insuranceProvider,
-          if (insuranceMemberId != null) 'insuranceMemberId': insuranceMemberId,
-          if (insuranceGroupNumber != null) 'insuranceGroupNumber': insuranceGroupNumber,
+          'addressLine1': ?addressLine1,
+          'city': ?city,
+          'state': ?state,
+          'zipCode': ?zipCode,
+          'emergencyContactName': ?emergencyContactName,
+          'emergencyContactPhone': ?emergencyContactPhone,
+          'insuranceProvider': ?insuranceProvider,
+          'insuranceMemberId': ?insuranceMemberId,
+          'insuranceGroupNumber': ?insuranceGroupNumber,
         },
       },
     );
@@ -543,10 +540,8 @@ class ParentBookingRepository {
       pendingReviews: d['pendingReviews'] as int? ?? 0,
       openClaimsCount: d['openClaimsCount'] as int? ?? 0,
       lastSessionSummary: d['lastSessionSummary'] as String?,
-      nextTelehealthAppointmentId:
-          d['nextTelehealthAppointmentId'] as String?,
-      onboardingStepsCompleted:
-          d['onboardingStepsCompleted'] as int? ?? 0,
+      nextTelehealthAppointmentId: d['nextTelehealthAppointmentId'] as String?,
+      onboardingStepsCompleted: d['onboardingStepsCompleted'] as int? ?? 0,
       onboardingStepsTotal: d['onboardingStepsTotal'] as int? ?? 4,
       onboardingComplete: d['onboardingComplete'] as bool? ?? false,
       hasChild: d['hasChild'] as bool? ?? false,
@@ -691,17 +686,16 @@ class ParentBookingRepository {
           'firstName': firstName,
           'lastName': lastName,
           'dateOfBirth': _dateOnlyIso(dateOfBirth),
-          if (gender != null) 'gender': gender,
-          if (primaryLanguage != null) 'primaryLanguage': primaryLanguage,
-          if (guardianName != null) 'guardianName': guardianName,
-          if (guardianPhone != null) 'guardianPhone': guardianPhone,
-          if (guardianEmail != null) 'guardianEmail': guardianEmail,
-          if (addressLine1 != null) 'addressLine1': addressLine1,
-          if (zipCode != null) 'zipCode': zipCode,
-          if (pediatricianName != null) 'pediatricianName': pediatricianName,
-          if (insuranceType != null) 'insuranceType': insuranceType,
-          if (hadEarlyIntervention != null)
-            'hadEarlyIntervention': hadEarlyIntervention,
+          'gender': ?gender,
+          'primaryLanguage': ?primaryLanguage,
+          'guardianName': ?guardianName,
+          'guardianPhone': ?guardianPhone,
+          'guardianEmail': ?guardianEmail,
+          'addressLine1': ?addressLine1,
+          'zipCode': ?zipCode,
+          'pediatricianName': ?pediatricianName,
+          'insuranceType': ?insuranceType,
+          'hadEarlyIntervention': ?hadEarlyIntervention,
         },
       },
     );
@@ -743,8 +737,8 @@ class ParentBookingRepository {
         'input': {
           'therapistId': therapistId,
           'rating': rating,
-          if (title != null) 'title': title,
-          if (comment != null) 'comment': comment,
+          'title': ?title,
+          'comment': ?comment,
         },
       },
     );
@@ -831,18 +825,20 @@ class ParentBookingRepository {
     final completed = e['completedAt'] as String?;
     return ScreeningResultModel(
       id: e['id'] as String,
-      completedAt:
-          completed != null ? DateTime.parse(completed) : DateTime.now(),
+      completedAt: completed != null
+          ? DateTime.parse(completed)
+          : DateTime.now(),
       score: (e['score'] as num?)?.toDouble(),
       riskLevel: e['riskLevel'] as String?,
-      recommendations:
-          _parseRecommendations(e['recommendationsJson'] as String?),
+      recommendations: _parseRecommendations(
+        e['recommendationsJson'] as String?,
+      ),
       isDraft: e['isDraft'] as bool? ?? false,
     );
   }
 
   Future<EarlyInterventionEvaluationRequestModel>
-      requestEarlyInterventionEvaluation(String screeningResponseId) async {
+  requestEarlyInterventionEvaluation(String screeningResponseId) async {
     const mutation = r'''
       mutation RequestEvaluation($screeningResponseId: ID!) {
         requestEarlyInterventionEvaluation(screeningResponseId: $screeningResponseId) {
@@ -858,8 +854,9 @@ class ParentBookingRepository {
       mutation,
       variables: {'screeningResponseId': screeningResponseId},
     );
-    final e = result['data']?['requestEarlyInterventionEvaluation']
-        as Map<String, dynamic>?;
+    final e =
+        result['data']?['requestEarlyInterventionEvaluation']
+            as Map<String, dynamic>?;
     if (e == null) {
       throw Exception('Failed to request evaluation');
     }
@@ -891,10 +888,7 @@ class ParentBookingRepository {
         responses = Map<String, dynamic>.from(jsonDecode(raw) as Map);
       } catch (_) {}
     }
-    return ScreeningDraftModel(
-      id: e['id'] as String,
-      responses: responses,
-    );
+    return ScreeningDraftModel(id: e['id'] as String, responses: responses);
   }
 
   Future<ScreeningResultModel> saveScreeningDraft({
@@ -910,7 +904,7 @@ class ParentBookingRepository {
           'templateId': templateId,
           'childId': childId,
           'responsesJson': jsonEncode(responses),
-          if (draftId != null) 'draftId': draftId,
+          'draftId': ?draftId,
         },
       },
     );
@@ -936,7 +930,7 @@ class ParentBookingRepository {
           'templateId': templateId,
           'childId': childId,
           'responsesJson': jsonEncode(responses),
-          if (draftId != null) 'draftId': draftId,
+          'draftId': ?draftId,
           'consentGranted': consentGranted,
         },
       },
@@ -963,7 +957,7 @@ class ParentBookingRepository {
           'therapyType': therapyType,
           'scheduledStart': start.toIso8601String(),
           'scheduledEnd': end.toIso8601String(),
-          if (locationType != null) 'locationType': locationType,
+          'locationType': ?locationType,
         },
       },
     );
@@ -988,7 +982,7 @@ class ParentBookingRepository {
           'scheduledStart': start.toIso8601String(),
           'scheduledEnd': end.toIso8601String(),
           'weeks': weeks,
-          if (locationType != null) 'locationType': locationType,
+          'locationType': ?locationType,
         },
       },
     );
@@ -1039,10 +1033,7 @@ class ParentBookingRepository {
   }) async {
     await _graphql.query(
       _cancelMutation,
-      variables: {
-        'id': appointmentId,
-        if (reason != null) 'reason': reason,
-      },
+      variables: {'id': appointmentId, 'reason': ?reason},
     );
   }
 
@@ -1071,21 +1062,19 @@ class ParentBookingRepository {
       variables: {
         'input': {
           'childId': childId,
-          if (firstName != null) 'firstName': firstName,
-          if (lastName != null) 'lastName': lastName,
-          if (dateOfBirth != null)
-            'dateOfBirth': _dateOnlyIso(dateOfBirth),
-          if (gender != null) 'gender': gender,
-          if (primaryLanguage != null) 'primaryLanguage': primaryLanguage,
-          if (guardianName != null) 'guardianName': guardianName,
-          if (guardianPhone != null) 'guardianPhone': guardianPhone,
-          if (guardianEmail != null) 'guardianEmail': guardianEmail,
-          if (addressLine1 != null) 'addressLine1': addressLine1,
-          if (zipCode != null) 'zipCode': zipCode,
-          if (pediatricianName != null) 'pediatricianName': pediatricianName,
-          if (insuranceType != null) 'insuranceType': insuranceType,
-          if (hadEarlyIntervention != null)
-            'hadEarlyIntervention': hadEarlyIntervention,
+          'firstName': ?firstName,
+          'lastName': ?lastName,
+          if (dateOfBirth != null) 'dateOfBirth': _dateOnlyIso(dateOfBirth),
+          'gender': ?gender,
+          'primaryLanguage': ?primaryLanguage,
+          'guardianName': ?guardianName,
+          'guardianPhone': ?guardianPhone,
+          'guardianEmail': ?guardianEmail,
+          'addressLine1': ?addressLine1,
+          'zipCode': ?zipCode,
+          'pediatricianName': ?pediatricianName,
+          'insuranceType': ?insuranceType,
+          'hadEarlyIntervention': ?hadEarlyIntervention,
         },
       },
     );
