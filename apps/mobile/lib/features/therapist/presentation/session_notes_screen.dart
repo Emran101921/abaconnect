@@ -394,16 +394,23 @@ class SessionNotesScreen extends ConsumerWidget {
                                 onPressed: () => context.push(
                                   '${AppRoutes.therapistHome}/session-notes/${s.id}/form',
                                 ),
-                                icon: const Icon(Icons.assignment),
+                                icon: Icon(
+                                  s.eipFormFullySigned
+                                      ? Icons.visibility_outlined
+                                      : Icons.assignment,
+                                ),
                                 label: Text(
-                                  s.hasSoap
-                                      ? 'Edit session note (EIP)'
-                                      : 'Session note (EIP)',
+                                  s.eipFormFullySigned
+                                      ? 'View session note (locked)'
+                                      : s.hasSoap
+                                          ? 'Edit session note (EIP)'
+                                          : 'Session note (EIP)',
                                 ),
                               ),
                               FilledButton.tonalIcon(
-                                onPressed: () =>
-                                    _openSoapEditor(context, ref, s),
+                                onPressed: s.eipFormFullySigned
+                                    ? null
+                                    : () => _openSoapEditor(context, ref, s),
                                 icon: const Icon(Icons.edit_note),
                                 label: Text(
                                   s.hasSoap ? 'Quick SOAP' : 'Quick SOAP',

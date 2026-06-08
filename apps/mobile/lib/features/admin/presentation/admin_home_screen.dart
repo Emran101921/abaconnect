@@ -175,6 +175,12 @@ class AdminHomeScreen extends ConsumerWidget {
                 icon: Icons.history,
                 onTap: () => context.push('${AppRoutes.adminHome}/audit'),
               ),
+              _OpsTile(
+                title: 'Session notes',
+                subtitle: 'Edit fully signed therapist session documentation',
+                icon: Icons.assignment_outlined,
+                onTap: () => context.push('${AppRoutes.adminHome}/session-notes'),
+              ),
               const SizedBox(height: 8),
               Text(
                 'Tip: pull down to refresh counts on this screen.',

@@ -6,7 +6,10 @@ import {
 } from '../common/decorators/current-user.decorator';
 import { AgenciesService } from '../agencies/agencies.service';
 import { InsuranceService } from '../insurance/insurance.service';
+import { isEipFormFullySigned } from '../sessions/eip-form.util';
+import { SessionsService } from '../sessions/sessions.service';
 import { ScreeningsService } from '../screenings/screenings.service';
+import { SaveSoapNoteInput } from './inputs/therapist.inputs';
 import {
   AgencyAppointmentType,
   AgencyDashboardType,
@@ -22,6 +25,11 @@ import {
   ClaimsPipelineDashboardType,
   ScreeningFunnelDashboardType,
 } from './types/dashboard.types';
+import {
+  SessionNoteFormContextType,
+  SoapNoteType,
+  StaffSessionNoteSummaryType,
+} from './types/therapist.types';
 
 @Resolver()
 @Roles('AGENCY_ADMIN')
@@ -30,6 +38,7 @@ export class AgencyResolver {
     private readonly agenciesService: AgenciesService,
     private readonly insuranceService: InsuranceService,
     private readonly screeningsService: ScreeningsService,
+    private readonly sessionsService: SessionsService,
   ) {}
 
   @Query(() => AgencyDashboardType, { name: 'agencyDashboard' })
@@ -382,6 +391,76 @@ export class AgencyResolver {
             email: t.user.email,
           }
         : undefined,
+    };
+  }
+
+  @Query(() => [StaffSessionNoteSummaryType], { name: 'agencySessionNotes' })
+  async agencySessionNotes(
+    @CurrentUser() user: AuthUser,
+  ): Promise<StaffSessionNoteSummaryType[]> {
+    if (!user.tenantId) {
+      throw new Error('Tenant required');
+    }
+    const rows = await this.sessionsService.listDocumentedSessionsForAgency(
+      user.tenantId,
+    );
+    return rows.map((s) => ({
+      sessionId: s.id,
+      childName: `${s.child.firstName} ${s.child.lastName}`,
+      therapistName: `${s.therapist.user.firstName} ${s.therapist.user.lastName}`,
+      sessionDate: s.appointment.scheduledStart.toISOString().slice(0, 10),
+      isFullySigned:
+        s.soapNote?.signedAt != null ||
+        isEipFormFullySigned(
+          s.soapNote?.eipFormData as Record<string, unknown> | null,
+        ),
+    }));
+  }
+
+  @Query(() => SessionNoteFormContextType, {
+    name: 'agencySessionNoteFormContext',
+  })
+  async agencySessionNoteFormContext(
+    @CurrentUser() user: AuthUser,
+    @Args('sessionId', { type: () => ID }) sessionId: string,
+  ): Promise<SessionNoteFormContextType> {
+    if (!user.tenantId) {
+      throw new Error('Tenant required');
+    }
+    return this.sessionsService.getSessionNoteFormContextForAgency(
+      user.tenantId,
+      sessionId,
+    );
+  }
+
+  @Mutation(() => SoapNoteType, { name: 'agencySaveSoapNote' })
+  async agencySaveSoapNote(
+    @CurrentUser() user: AuthUser,
+    @Args('input') input: SaveSoapNoteInput,
+  ): Promise<SoapNoteType> {
+    if (!user.tenantId) {
+      throw new Error('Tenant required');
+    }
+    const note = await this.sessionsService.saveSoapNoteForAgency(
+      user.tenantId,
+      user.id,
+      input,
+    );
+    return {
+      id: note.id,
+      subjective: note.subjective ?? undefined,
+      objective: note.objective ?? undefined,
+      assessment: note.assessment ?? undefined,
+      plan: note.plan ?? undefined,
+      eipFormData:
+        note.eipFormData != null
+          ? JSON.stringify(note.eipFormData)
+          : undefined,
+      eipFormFullySigned:
+        note.signedAt != null ||
+        isEipFormFullySigned(
+          note.eipFormData as Record<string, unknown> | null,
+        ),
     };
   }
 }

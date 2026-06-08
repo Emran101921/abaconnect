@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import '../../../core/network/graphql_client.dart';
 import '../../../shared/models/analytics_metric.dart';
+import '../../therapist/models/eip_session_note_model.dart';
 
 class AgencyDashboardModel {
   const AgencyDashboardModel({
@@ -43,6 +46,22 @@ class AgencyAppointmentModel {
   final String locationType;
   final String childName;
   final String therapistName;
+}
+
+class StaffSessionNoteSummaryModel {
+  const StaffSessionNoteSummaryModel({
+    required this.sessionId,
+    required this.childName,
+    required this.therapistName,
+    this.sessionDate,
+    required this.isFullySigned,
+  });
+
+  final String sessionId;
+  final String childName;
+  final String therapistName;
+  final String? sessionDate;
+  final bool isFullySigned;
 }
 
 class AgencyTherapistModel {
@@ -710,5 +729,73 @@ class AgencyRepository {
       }
     ''';
     await _graphql.query(mutation, variables: {'claimId': claimId});
+  }
+
+  Future<List<StaffSessionNoteSummaryModel>> fetchSessionNotes() async {
+    const query = r'''
+      query {
+        agencySessionNotes {
+          sessionId childName therapistName sessionDate isFullySigned
+        }
+      }
+    ''';
+    final result = await _graphql.query(query);
+    final list = result['data']?['agencySessionNotes'] as List<dynamic>? ?? [];
+    return list
+        .map(
+          (e) => StaffSessionNoteSummaryModel(
+            sessionId: e['sessionId'] as String,
+            childName: e['childName'] as String? ?? '',
+            therapistName: e['therapistName'] as String? ?? '',
+            sessionDate: e['sessionDate'] as String?,
+            isFullySigned: e['isFullySigned'] as bool? ?? false,
+          ),
+        )
+        .toList();
+  }
+
+  Future<Map<String, dynamic>> fetchSessionNoteFormContext(
+    String sessionId,
+  ) async {
+    final result = await _graphql.query(
+      r'''
+      query Context($sessionId: ID!) {
+        agencySessionNoteFormContext(sessionId: $sessionId) {
+          sessionId childName childDob childSex eiNumber
+          interventionistName credentials npi licenseNumber licenseState
+          serviceType
+          sessionDate ifspServiceLocation timeFrom timeTo
+          sessionDelivered icd10Code existingEipFormData isFullySigned
+        }
+      }
+    ''',
+      variables: {'sessionId': sessionId},
+    );
+    final data = result['data']?['agencySessionNoteFormContext'];
+    if (data is! Map<String, dynamic>) {
+      throw Exception('Could not load session note context');
+    }
+    return data;
+  }
+
+  Future<void> saveEipSessionNote(EipSessionNoteModel form) async {
+    const mutation = r'''
+      mutation Save($input: SaveSoapNoteInput!) {
+        agencySaveSoapNote(input: $input) { id }
+      }
+    ''';
+    await _graphql.query(
+      mutation,
+      variables: {
+        'input': {
+          'sessionId': form.sessionId,
+          'subjective': form.toSoapSubjective(),
+          'objective': form.toSoapObjective(),
+          'assessment': form.toSoapAssessment(),
+          'plan': form.toSoapPlan(),
+          'eipFormData': jsonEncode(form.toJson()),
+        },
+      },
+    );
   }
 }

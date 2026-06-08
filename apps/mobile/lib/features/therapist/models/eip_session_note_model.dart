@@ -146,6 +146,9 @@ class EipSessionNoteModel {
       (hasInterventionistSignature && !hasGpsVerifiedInterventionistSignature) ||
       (hasParentSignature && !hasGpsVerifiedParentSignature);
 
+  bool get isFullySigned =>
+      hasGpsVerifiedInterventionistSignature && hasGpsVerifiedParentSignature;
+
   EipSessionNoteModel copyWith({
     String? childName,
     String? childDob,
