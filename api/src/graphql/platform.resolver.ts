@@ -102,6 +102,7 @@ export class PlatformResolver {
       fileName: d.fileName,
       type: d.type,
       fileSize: d.fileSize,
+      childId: d.childId ?? undefined,
       uploadedAt: d.uploadedAt,
     }));
   }
@@ -119,6 +120,7 @@ export class PlatformResolver {
       fileName: d.fileName,
       type: d.type,
       fileSize: d.fileSize,
+      childId: d.childId ?? undefined,
       uploadedAt: d.uploadedAt,
     };
   }

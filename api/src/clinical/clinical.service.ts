@@ -214,4 +214,72 @@ export class ClinicalService {
       orderBy: { awardedAt: 'desc' },
     });
   }
+
+  private startOfWeekMonday(date: Date): Date {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    d.setDate(diff);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }
+
+  async therapistWeeklyProgress(userId: string) {
+    const therapist = await this.prisma.therapist.findUnique({
+      where: { userId },
+    });
+    if (!therapist) {
+      return { weeks: [], children: [] };
+    }
+
+    const now = new Date();
+    const weekStarts: Date[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const start = this.startOfWeekMonday(now);
+      start.setDate(start.getDate() - i * 7);
+      weekStarts.push(start);
+    }
+
+    const notes = await this.prisma.progressNote.findMany({
+      where: {
+        signedAt: { not: null, gte: weekStarts[0] },
+        session: { therapistId: therapist.id },
+      },
+      select: { signedAt: true },
+    });
+
+    const weeks = weekStarts.map((start, index) => {
+      const end =
+        index < weekStarts.length - 1
+          ? weekStarts[index + 1]
+          : new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000);
+      const reportCount = notes.filter(
+        (n) => n.signedAt! >= start && n.signedAt! < end,
+      ).length;
+      const weekLabel = start.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+      });
+      return { weekLabel, reportCount };
+    });
+
+    const plans = await this.listPlansForTherapistUser(userId);
+    const children = plans
+      .filter((p) => p.child)
+      .map((p) => {
+        const goals = Array.isArray(p.goals) ? (p.goals as { status?: string }[]) : [];
+        const total = goals.length;
+        const done = goals.filter((g) => g.status === 'done').length;
+        const goalCompletionPercent =
+          total > 0 ? Math.round((done / total) * 100) : 0;
+        return {
+          childId: p.child!.id,
+          childName: `${p.child!.firstName} ${p.child!.lastName}`,
+          goalCompletionPercent,
+          activePlanTitle: p.title,
+        };
+      });
+
+    return { weeks, children };
+  }
 }

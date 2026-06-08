@@ -15,11 +15,11 @@ import '../../../shared/widgets/app_healthcare_illustration.dart';
 import '../../../shared/widgets/dashboard_action_inbox.dart';
 import '../../messaging/messaging_providers.dart';
 import '../../messaging/presentation/messages_screen.dart';
-import '../../messaging/presentation/recent_messages_section.dart';
 import '../../notifications/notification_providers.dart';
 import '../data/therapist_repository.dart';
 import '../therapist_providers.dart';
 import 'session_notes_screen.dart';
+import 'therapist_weekly_progress_section.dart';
 
 final therapistAppointmentsProvider =
     FutureProvider<List<TherapistAppointmentModel>>((ref) async {
@@ -91,6 +91,7 @@ class TherapistHomeScreen extends ConsumerWidget {
           ref.invalidate(unreadMessageThreadsProvider);
           ref.invalidate(messageThreadsProvider);
           ref.invalidate(therapistDashboardProvider);
+          ref.invalidate(therapistWeeklyProgressProvider);
         },
         child: AppContentContainer(
           padding: EdgeInsets.zero,
@@ -172,8 +173,7 @@ class TherapistHomeScreen extends ConsumerWidget {
                 loading: () => const SizedBox.shrink(),
                 error: (_, _) => const SizedBox.shrink(),
               ),
-              const SizedBox(height: 12),
-              const RecentMessagesSection(),
+              const TherapistWeeklyProgressSection(),
               const SizedBox(height: 12),
               appointments.when(
                 data: (list) {
@@ -278,7 +278,7 @@ class TherapistHomeScreen extends ConsumerWidget {
               ),
               _OpsTile(
                 title: 'Session notes',
-                subtitle: 'SOAP documentation',
+                subtitle: 'NYC EIP form & SOAP documentation',
                 icon: Icons.note_alt,
                 onTap: () =>
                     context.push('${AppRoutes.therapistHome}/session-notes'),

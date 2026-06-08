@@ -9,7 +9,8 @@ import 'message_status_badge.dart';
 import 'messages_screen.dart' show messageThreadsProvider;
 
 class RecentMessagesSection extends ConsumerWidget {
-  const RecentMessagesSection({super.key});
+  const RecentMessagesSection({super.key, this.inNotificationCenter = false});
+  final bool inNotificationCenter;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -17,7 +18,18 @@ class RecentMessagesSection extends ConsumerWidget {
 
     return threads.when(
       data: (list) {
-        if (list.isEmpty) return const SizedBox.shrink();
+        if (list.isEmpty) {
+          if (!inNotificationCenter) return const SizedBox.shrink();
+          return Card(
+            child: ListTile(
+              leading: const Icon(Icons.chat_bubble_outline),
+              title: const Text('No messages yet'),
+              subtitle: const Text('Conversations with your care team appear here'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push(AppRoutes.messages),
+            ),
+          );
+        }
         final preview = [...list]
           ..sort((a, b) {
             if (a.hasUnread != b.hasUnread) {
@@ -32,7 +44,7 @@ class RecentMessagesSection extends ConsumerWidget {
             Row(
               children: [
                 Text(
-                  'Recent messages',
+                  inNotificationCenter ? 'Messages' : 'Recent messages',
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
                 const Spacer(),

@@ -96,7 +96,8 @@ class SessionHistoryScreen extends ConsumerWidget {
                           padding: const EdgeInsets.only(left: 8, bottom: 8),
                           child: TextButton.icon(
                             onPressed: () => context.push(
-                              '${AppRoutes.parentHome}/progress-notes',
+                              '${AppRoutes.parentHome}/progress-notes'
+                              '?sessionId=${s.id}',
                             ),
                             icon: const Icon(Icons.feedback_outlined),
                             label: Text(

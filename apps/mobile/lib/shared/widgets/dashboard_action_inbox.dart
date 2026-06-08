@@ -63,7 +63,10 @@ class DashboardActionInbox extends StatelessWidget {
       case 'SOAP_DUE':
         context.push('${AppRoutes.therapistHome}/session-notes');
       case 'REVIEW':
-        context.push('${AppRoutes.parentHome}/reviews');
+        final therapistQ = item.therapistId != null
+            ? 'therapistId=${item.therapistId}&submit=true'
+            : 'submit=true';
+        context.push('${AppRoutes.parentHome}/reviews?$therapistQ');
       case 'APPOINTMENT':
         if (item.appointmentId != null) {
           context.push(

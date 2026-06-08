@@ -17,12 +17,10 @@ import '../../../shared/widgets/app_theme_toggle.dart';
 import '../../../shared/widgets/dashboard_action_inbox.dart';
 import '../../messaging/messaging_providers.dart';
 import '../../messaging/presentation/messages_screen.dart';
-import '../../messaging/presentation/recent_messages_section.dart';
 import '../../notifications/notification_providers.dart';
 import '../data/parent_booking_repository.dart';
 import 'parent_category_box.dart';
 import 'parent_operations_category_screen.dart';
-import 'session_history_screen.dart';
 
 final parentDashboardProvider = FutureProvider<ParentDashboardModel>((
   ref,
@@ -72,6 +70,12 @@ class ParentHomeScreen extends ConsumerWidget {
       actions: [
         const AppThemeToggle(compact: true),
         IconButton(
+          icon: const Icon(Icons.history),
+          tooltip: 'Recent visits',
+          onPressed: () =>
+              context.push('${AppRoutes.parentHome}/session-history'),
+        ),
+        IconButton(
           icon: unreadCount > 0
               ? Badge(
                   label: Text('$unreadCount'),
@@ -96,7 +100,6 @@ class ParentHomeScreen extends ConsumerWidget {
           ref.invalidate(unreadNotificationsProvider);
           ref.invalidate(unreadMessageThreadsProvider);
           ref.invalidate(messageThreadsProvider);
-          ref.invalidate(sessionHistoryProvider);
         },
         child: AppContentContainer(
           padding: EdgeInsets.zero,
@@ -336,8 +339,6 @@ class ParentHomeScreen extends ConsumerWidget {
                       loading: () => const SizedBox.shrink(),
                       error: (_, _) => const SizedBox.shrink(),
                     ),
-                    const RecentMessagesSection(),
-                    const SizedBox(height: 12),
                     pendingReviews.when(
                       data: (therapists) {
                         if (therapists.isEmpty) return const SizedBox.shrink();
@@ -353,8 +354,10 @@ class ParentHomeScreen extends ConsumerWidget {
                               '${therapists.length} completed session(s) awaiting feedback',
                             ),
                             trailing: const Icon(Icons.chevron_right),
-                            onTap: () =>
-                                context.push('${AppRoutes.parentHome}/reviews'),
+                            onTap: () => context.push(
+                              '${AppRoutes.parentHome}/reviews'
+                              '?therapistId=${therapists.first.id}&submit=true',
+                            ),
                           ),
                         );
                       },
@@ -410,75 +413,6 @@ class ParentHomeScreen extends ConsumerWidget {
                       },
                       loading: () => const LinearProgressIndicator(),
                       error: (e, _) => Text('Appointments: $e'),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Recent visits',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 8),
-                    Consumer(
-                      builder: (context, ref, _) {
-                        final history = ref.watch(sessionHistoryProvider);
-                        return history.when(
-                          data: (sessions) {
-                            final recent = sessions
-                                .where((s) => s.status == 'COMPLETED')
-                                .take(2)
-                                .toList();
-                            if (recent.isEmpty) {
-                              return const Card(
-                                child: ListTile(
-                                  title: Text('No visit summaries yet'),
-                                  subtitle: Text(
-                                    'Completed sessions with therapist notes appear here',
-                                  ),
-                                ),
-                              );
-                            }
-                            return Column(
-                              children: [
-                                ...recent.map(
-                                  (s) => Card(
-                                    margin: const EdgeInsets.only(bottom: 8),
-                                    child: ListTile(
-                                      leading: Icon(
-                                        s.hasProgressNote
-                                            ? Icons.summarize_outlined
-                                            : Icons.history,
-                                      ),
-                                      title: Text(
-                                        '${s.therapyType} · ${s.childName}',
-                                      ),
-                                      subtitle: Text(
-                                        s.progressNoteSummary ??
-                                            'Summary pending from ${s.therapistName}',
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      trailing: const Icon(Icons.chevron_right),
-                                      onTap: () => context.push(
-                                        '${AppRoutes.parentHome}/session-history',
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                Align(
-                                  alignment: Alignment.centerRight,
-                                  child: TextButton(
-                                    onPressed: () => context.push(
-                                      '${AppRoutes.parentHome}/session-history',
-                                    ),
-                                    child: const Text('View all sessions'),
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
-                          loading: () => const LinearProgressIndicator(),
-                          error: (_, _) => const SizedBox.shrink(),
-                        );
-                      },
                     ),
                     const SizedBox(height: 24),
                     const AppSectionHeader(

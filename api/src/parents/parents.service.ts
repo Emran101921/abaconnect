@@ -138,6 +138,7 @@ export class ParentsService {
         subtitle: `${session.child.firstName} with ${t.user.firstName}`,
         actionType: 'REVIEW',
         sessionId: session.id,
+        therapistId: t.id,
         priority: 2,
       });
       if (actionItems.filter((a) => a.actionType === 'REVIEW').length >= 2)

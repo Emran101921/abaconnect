@@ -32,6 +32,8 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
     }),
   );
-  await app.listen(process.env.PORT ?? 3000);
+  const port = process.env.PORT ?? 3000;
+  await app.listen(port, '0.0.0.0');
+  console.log(`API listening on http://0.0.0.0:${port} (emulator: http://10.0.2.2:${port})`);
 }
 bootstrap();
