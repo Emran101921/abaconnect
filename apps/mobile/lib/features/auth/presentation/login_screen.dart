@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/constants/api_constants.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -223,7 +224,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         if (kDebugMode) ...[
           const SizedBox(height: AppSpacing.sm),
           Text(
-            'Dev: API at localhost:3000',
+            'Dev: API at ${ApiConstants.apiHost}:3000',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
