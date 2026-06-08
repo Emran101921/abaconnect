@@ -25,7 +25,9 @@ class AgencyInvitesScreen extends ConsumerWidget {
         data: (list) {
           if (list.isEmpty) {
             return const Center(
-              child: Text('All verified therapists are already on your roster.'),
+              child: Text(
+                'All verified therapists are already on your roster.',
+              ),
             );
           }
           return RefreshIndicator(
@@ -56,7 +58,9 @@ class AgencyInvitesScreen extends ConsumerWidget {
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text('${t.displayName} added to roster'),
+                                content: Text(
+                                  '${t.displayName} added to roster',
+                                ),
                               ),
                             );
                           }

@@ -43,10 +43,10 @@ class TreatmentPlanGoalModel {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'label': label,
-        if (status != null) 'status': status,
-      };
+    'id': id,
+    'label': label,
+    if (status != null) 'status': status,
+  };
 }
 
 class TreatmentPlanModel {
@@ -95,10 +95,7 @@ class ParentProgressNoteModel {
 }
 
 class TherapistBadgeModel {
-  const TherapistBadgeModel({
-    required this.type,
-    this.label,
-  });
+  const TherapistBadgeModel({required this.type, this.label});
 
   final String type;
   final String? label;
@@ -203,7 +200,7 @@ class ClinicalRepository {
       variables: {
         'input': {
           'planId': planId,
-          if (title != null) 'title': title,
+          'title': ?title,
           if (goals != null) 'goals': goals.map((g) => g.toJson()).toList(),
         },
       },
@@ -272,7 +269,9 @@ class ClinicalRepository {
       goalsDoneCount: e['goalsDoneCount'] as int? ?? 0,
       goalsTotalCount: e['goalsTotalCount'] as int? ?? goalsRaw.length,
       goals: goalsRaw
-          .map((g) => TreatmentPlanGoalModel.fromJson(g as Map<String, dynamic>))
+          .map(
+            (g) => TreatmentPlanGoalModel.fromJson(g as Map<String, dynamic>),
+          )
           .toList(),
     );
   }

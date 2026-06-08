@@ -5,14 +5,14 @@ import '../constants/api_constants.dart';
 
 class GraphqlClient {
   GraphqlClient({FlutterSecureStorage? secureStorage})
-      : _secureStorage = secureStorage ?? const FlutterSecureStorage(),
-        _dio = Dio(
-          BaseOptions(
-            connectTimeout: ApiConstants.connectTimeout,
-            receiveTimeout: ApiConstants.receiveTimeout,
-            headers: {'Content-Type': 'application/json'},
-          ),
-        );
+    : _secureStorage = secureStorage ?? const FlutterSecureStorage(),
+      _dio = Dio(
+        BaseOptions(
+          connectTimeout: ApiConstants.connectTimeout,
+          receiveTimeout: ApiConstants.receiveTimeout,
+          headers: {'Content-Type': 'application/json'},
+        ),
+      );
 
   final Dio _dio;
   final FlutterSecureStorage _secureStorage;
@@ -24,10 +24,7 @@ class GraphqlClient {
     final token = await _secureStorage.read(key: ApiConstants.authTokenKey);
     final response = await _dio.post<Map<String, dynamic>>(
       ApiConstants.graphqlUrl,
-      data: {
-        'query': document,
-        'variables': ?variables,
-      },
+      data: {'query': document, 'variables': ?variables},
       options: Options(
         headers: token != null && token.isNotEmpty
             ? {'Authorization': 'Bearer $token'}

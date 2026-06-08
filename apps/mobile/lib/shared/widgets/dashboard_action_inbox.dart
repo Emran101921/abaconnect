@@ -5,11 +5,7 @@ import '../../core/router/app_router.dart';
 import '../models/dashboard_action_model.dart';
 
 class DashboardActionInbox extends StatelessWidget {
-  const DashboardActionInbox({
-    super.key,
-    required this.items,
-    this.onRefresh,
-  });
+  const DashboardActionInbox({super.key, required this.items, this.onRefresh});
 
   final List<DashboardActionModel> items;
   final VoidCallback? onRefresh;

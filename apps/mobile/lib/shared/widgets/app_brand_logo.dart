@@ -16,10 +16,10 @@ class AppBrandLogo extends StatelessWidget {
   final bool lightOnDark;
 
   double get _width => switch (size) {
-        AppBrandLogoSize.small => 140,
-        AppBrandLogoSize.medium => 200,
-        AppBrandLogoSize.large => 280,
-      };
+    AppBrandLogoSize.small => 140,
+    AppBrandLogoSize.medium => 200,
+    AppBrandLogoSize.large => 280,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -40,9 +40,9 @@ class AppBrandLogo extends StatelessWidget {
             Text(
               AppBrandAssets.tagline,
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    letterSpacing: 0.6,
-                    fontWeight: FontWeight.w600,
-                  ),
+                letterSpacing: 0.6,
+                fontWeight: FontWeight.w600,
+              ),
               textAlign: TextAlign.center,
             ),
           ],

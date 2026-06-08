@@ -61,10 +61,7 @@ class ParentOperationsCategory {
 }
 
 class ParentOperationsCategoryScreen extends ConsumerWidget {
-  const ParentOperationsCategoryScreen({
-    super.key,
-    required this.categoryId,
-  });
+  const ParentOperationsCategoryScreen({super.key, required this.categoryId});
 
   final String categoryId;
 
@@ -86,8 +83,10 @@ class ParentOperationsCategoryScreen extends ConsumerWidget {
     final unread = ref.watch(unreadNotificationsProvider);
     final unreadCount = unread.maybeWhen(data: (c) => c, orElse: () => 0);
     final unreadMessages = ref.watch(unreadMessageThreadsProvider);
-    final unreadMessageCount =
-        unreadMessages.maybeWhen(data: (c) => c, orElse: () => 0);
+    final unreadMessageCount = unreadMessages.maybeWhen(
+      data: (c) => c,
+      orElse: () => 0,
+    );
 
     final tiles = _tilesForCategory(
       context,
@@ -170,13 +169,15 @@ class ParentOperationsCategoryScreen extends ConsumerWidget {
             title: 'Session history',
             subtitle: 'Past completed sessions',
             icon: Icons.history,
-            onTap: () => context.push('${AppRoutes.parentHome}/session-history'),
+            onTap: () =>
+                context.push('${AppRoutes.parentHome}/session-history'),
           ),
           ParentOpsTile(
             title: 'Treatment plans',
             subtitle: 'Goals and care plans',
             icon: Icons.medical_information,
-            onTap: () => context.push('${AppRoutes.parentHome}/treatment-plans'),
+            onTap: () =>
+                context.push('${AppRoutes.parentHome}/treatment-plans'),
           ),
           ParentOpsTile(
             title: 'Progress notes',

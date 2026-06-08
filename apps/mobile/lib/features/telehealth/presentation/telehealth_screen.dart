@@ -12,10 +12,11 @@ import '../../parent/presentation/parent_home_screen.dart';
 import '../../platform/data/platform_repository.dart';
 import '../../therapist/presentation/therapist_home_screen.dart';
 
-final telehealthSessionsProvider =
-    FutureProvider<List<TelehealthSessionModel>>((ref) {
-  return ref.watch(platformRepositoryProvider).fetchTelehealthSessions();
-});
+final telehealthSessionsProvider = FutureProvider<List<TelehealthSessionModel>>(
+  (ref) {
+    return ref.watch(platformRepositoryProvider).fetchTelehealthSessions();
+  },
+);
 
 class TelehealthScreen extends ConsumerWidget {
   const TelehealthScreen({super.key});
@@ -81,8 +82,9 @@ class TelehealthScreen extends ConsumerWidget {
                 if (isTherapist) {
                   return therapistAppointments.when(
                     data: (apts) {
-                      final telehealth =
-                          apts.where((a) => a.isTelehealth).toList();
+                      final telehealth = apts
+                          .where((a) => a.isTelehealth)
+                          .toList();
                       return _appointmentJoinList(
                         context,
                         ref,
@@ -104,8 +106,9 @@ class TelehealthScreen extends ConsumerWidget {
                 }
                 return parentAppointments.when(
                   data: (apts) {
-                    final telehealth =
-                        apts.where((a) => a.isTelehealth).toList();
+                    final telehealth = apts
+                        .where((a) => a.isTelehealth)
+                        .toList();
                     return _appointmentJoinList(
                       context,
                       ref,
@@ -176,17 +179,18 @@ class TelehealthScreen extends ConsumerWidget {
     String appointmentId,
   ) async {
     try {
-      final room =
-          await ref.read(platformRepositoryProvider).joinTelehealth(appointmentId);
+      final room = await ref
+          .read(platformRepositoryProvider)
+          .joinTelehealth(appointmentId);
       ref.invalidate(telehealthSessionsProvider);
       if (room.joinUrl != null && context.mounted) {
         _showRoomLink(context, room.joinUrl!);
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Join failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Join failed: $e')));
       }
     }
   }
@@ -202,9 +206,9 @@ class TelehealthScreen extends ConsumerWidget {
             onPressed: () {
               Clipboard.setData(ClipboardData(text: url));
               Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Link copied')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('Link copied')));
             },
             child: const Text('Copy link'),
           ),
@@ -270,9 +274,9 @@ class _TelehealthCountdownState extends State<_TelehealthCountdown> {
     if (_remaining.isNegative) {
       return Text(
         'Started ${fmt.format(widget.start)} · ready to join',
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Colors.green.shade700,
-            ),
+        style: Theme.of(
+          context,
+        ).textTheme.bodySmall?.copyWith(color: Colors.green.shade700),
       );
     }
     final hours = _remaining.inHours;

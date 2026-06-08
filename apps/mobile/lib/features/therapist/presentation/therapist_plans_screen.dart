@@ -5,8 +5,7 @@ import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../clinical/data/clinical_repository.dart';
 
-final therapistPlansProvider =
-    FutureProvider<List<TreatmentPlanModel>>((ref) {
+final therapistPlansProvider = FutureProvider<List<TreatmentPlanModel>>((ref) {
   return ref.watch(clinicalRepositoryProvider).fetchTherapistPlans();
 });
 
@@ -14,8 +13,9 @@ class TherapistPlansScreen extends ConsumerWidget {
   const TherapistPlansScreen({super.key});
 
   Future<void> _createPlan(BuildContext context, WidgetRef ref) async {
-    final appointments =
-        await ref.read(therapistRepositoryProvider).fetchAppointments();
+    final appointments = await ref
+        .read(therapistRepositoryProvider)
+        .fetchAppointments();
     if (appointments.isEmpty) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -25,7 +25,10 @@ class TherapistPlansScreen extends ConsumerWidget {
       return;
     }
     final a = appointments.first;
-    final title = TextEditingController(text: 'Treatment plan — ${a.childName}');
+    if (!context.mounted) return;
+    final title = TextEditingController(
+      text: 'Treatment plan — ${a.childName}',
+    );
     final goalLabel = TextEditingController();
     final goals = <TreatmentPlanGoalModel>[];
 
@@ -52,20 +55,21 @@ class TherapistPlansScreen extends ConsumerWidget {
                     final label = goalLabel.text.trim();
                     if (label.isEmpty) return;
                     setState(() {
-                      goals.add(TreatmentPlanGoalModel(
-                        id: 'g${goals.length + 1}',
-                        label: label,
-                        status: 'active',
-                      ));
+                      goals.add(
+                        TreatmentPlanGoalModel(
+                          id: 'g${goals.length + 1}',
+                          label: label,
+                          status: 'active',
+                        ),
+                      );
                       goalLabel.clear();
                     });
                   },
                   child: const Text('Add goal'),
                 ),
-                ...goals.map((g) => ListTile(
-                      dense: true,
-                      title: Text(g.label),
-                    )),
+                ...goals.map(
+                  (g) => ListTile(dense: true, title: Text(g.label)),
+                ),
               ],
             ),
           ),
@@ -84,7 +88,9 @@ class TherapistPlansScreen extends ConsumerWidget {
     );
     if (ok != true) return;
     try {
-      await ref.read(clinicalRepositoryProvider).createPlan(
+      await ref
+          .read(clinicalRepositoryProvider)
+          .createPlan(
             childId: a.childId,
             therapyType: a.therapyType,
             title: title.text.trim(),
@@ -92,15 +98,15 @@ class TherapistPlansScreen extends ConsumerWidget {
           );
       ref.invalidate(therapistPlansProvider);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Plan created')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Plan created')));
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed: $e')));
       }
     }
   }
@@ -131,11 +137,13 @@ class TherapistPlansScreen extends ConsumerWidget {
                     final label = goalLabel.text.trim();
                     if (label.isEmpty) return;
                     setState(() {
-                      goals.add(TreatmentPlanGoalModel(
-                        id: 'g${DateTime.now().millisecondsSinceEpoch}',
-                        label: label,
-                        status: 'active',
-                      ));
+                      goals.add(
+                        TreatmentPlanGoalModel(
+                          id: 'g${DateTime.now().millisecondsSinceEpoch}',
+                          label: label,
+                          status: 'active',
+                        ),
+                      );
                       goalLabel.clear();
                     });
                   },
@@ -158,7 +166,8 @@ class TherapistPlansScreen extends ConsumerWidget {
                         ),
                         IconButton(
                           icon: const Icon(Icons.delete_outline),
-                          onPressed: () => setState(() => goals.removeAt(e.key)),
+                          onPressed: () =>
+                              setState(() => goals.removeAt(e.key)),
                         ),
                       ],
                     ),
@@ -182,21 +191,20 @@ class TherapistPlansScreen extends ConsumerWidget {
     );
     if (ok != true) return;
     try {
-      await ref.read(clinicalRepositoryProvider).updatePlan(
-            planId: plan.id,
-            goals: goals,
-          );
+      await ref
+          .read(clinicalRepositoryProvider)
+          .updatePlan(planId: plan.id, goals: goals);
       ref.invalidate(therapistPlansProvider);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Goals updated')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Goals updated')));
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed: $e')));
       }
     }
   }
@@ -221,7 +229,7 @@ class TherapistPlansScreen extends ConsumerWidget {
           return ListView.separated(
             padding: const EdgeInsets.all(16),
             itemCount: list.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            separatorBuilder: (_, _) => const SizedBox(height: 8),
             itemBuilder: (context, index) {
               final p = list[index];
               return Card(

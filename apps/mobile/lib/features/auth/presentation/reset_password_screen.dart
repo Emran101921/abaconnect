@@ -34,7 +34,9 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     }
     setState(() => _loading = true);
     try {
-      await ref.read(authRepositoryProvider).resetPassword(
+      await ref
+          .read(authRepositoryProvider)
+          .resetPassword(
             token: widget.token,
             newPassword: _passwordController.text,
           );
@@ -45,9 +47,9 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
       context.go('/login');
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Reset failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Reset failed: $e')));
       }
     } finally {
       if (mounted) setState(() => _loading = false);

@@ -107,9 +107,9 @@ class _ChildProfileSheetState extends ConsumerState<_ChildProfileSheet> {
       if (mounted) Navigator.pop(context, child);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Save failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Save failed: $e')));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -167,7 +167,11 @@ class _ChildProfileSheetState extends ConsumerState<_ChildProfileSheet> {
                             height: 20,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : Text(widget.existing == null ? 'Save & continue' : 'Save'),
+                        : Text(
+                            widget.existing == null
+                                ? 'Save & continue'
+                                : 'Save',
+                          ),
                   ),
                 ),
               ),
@@ -199,7 +203,9 @@ class _ChildrenListScreenState extends ConsumerState<ChildrenListScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final list = await ref.read(parentBookingRepositoryProvider).fetchChildren();
+      final list = await ref
+          .read(parentBookingRepositoryProvider)
+          .fetchChildren();
       if (mounted) {
         setState(() {
           _children = list;
@@ -209,9 +215,9 @@ class _ChildrenListScreenState extends ConsumerState<ChildrenListScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _loading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load children: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to load children: $e')));
       }
     }
   }
@@ -222,7 +228,9 @@ class _ChildrenListScreenState extends ConsumerState<ChildrenListScreen> {
     await _load();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Child saved — opening intake screening…')),
+        const SnackBar(
+          content: Text('Child saved — opening intake screening…'),
+        ),
       );
       context.push(
         '${AppRoutes.parentScreening}?childId=${child.id}&autoStart=true',
@@ -235,9 +243,9 @@ class _ChildrenListScreenState extends ConsumerState<ChildrenListScreen> {
     if (updated == null) return;
     await _load();
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Child updated')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Child updated')));
     }
   }
 
@@ -246,8 +254,9 @@ class _ChildrenListScreenState extends ConsumerState<ChildrenListScreen> {
     return AppScaffold(
       title: 'My Children',
       subtitle: 'Child profiles for screening & care',
-      bottomNavigationBar:
-          const ParentBottomNav(current: ParentNavTab.children),
+      bottomNavigationBar: const ParentBottomNav(
+        current: ParentNavTab.children,
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: _addChild,
         child: const Icon(Icons.add),
@@ -255,57 +264,57 @@ class _ChildrenListScreenState extends ConsumerState<ChildrenListScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _children.isEmpty
-              ? AppContentContainer(
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.child_care_outlined,
-                          size: 56,
-                          color: Theme.of(context).colorScheme.outline,
-                        ),
-                        const SizedBox(height: 16),
-                        const Text('No children yet'),
-                        const SizedBox(height: 8),
-                        FilledButton.icon(
-                          onPressed: _addChild,
-                          icon: const Icon(Icons.add),
-                          label: const Text('Add child profile'),
-                        ),
-                      ],
+          ? AppContentContainer(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.child_care_outlined,
+                      size: 56,
+                      color: Theme.of(context).colorScheme.outline,
                     ),
-                  ),
-                )
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  child: AppContentContainer(
-                    child: ListView.separated(
-                    itemCount: _children.length,
-                    separatorBuilder: (context, _) => const SizedBox(height: 12),
-                    itemBuilder: (context, index) {
-                      final child = _children[index];
-                      return Card(
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            child: Text(child.firstName.characters.first),
-                          ),
-                          title: Text(child.displayName),
-                          subtitle: Text(
-                            'DOB ${DateFormat.yMMMd().format(child.dateOfBirth)}'
-                            '${child.primaryLanguage != null ? ' · ${child.primaryLanguage}' : ''}',
-                          ),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.edit),
-                            onPressed: () => _editChild(child),
-                          ),
-                          onTap: () => _editChild(child),
-                        ),
-                      );
-                    },
-                  ),
+                    const SizedBox(height: 16),
+                    const Text('No children yet'),
+                    const SizedBox(height: 8),
+                    FilledButton.icon(
+                      onPressed: _addChild,
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add child profile'),
                     ),
+                  ],
                 ),
+              ),
+            )
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: AppContentContainer(
+                child: ListView.separated(
+                  itemCount: _children.length,
+                  separatorBuilder: (context, _) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    final child = _children[index];
+                    return Card(
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          child: Text(child.firstName.characters.first),
+                        ),
+                        title: Text(child.displayName),
+                        subtitle: Text(
+                          'DOB ${DateFormat.yMMMd().format(child.dateOfBirth)}'
+                          '${child.primaryLanguage != null ? ' · ${child.primaryLanguage}' : ''}',
+                        ),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.edit),
+                          onPressed: () => _editChild(child),
+                        ),
+                        onTap: () => _editChild(child),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
     );
   }
 }

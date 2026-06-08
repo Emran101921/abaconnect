@@ -62,19 +62,17 @@ List<EiSection> parseEiSections(String? questionsJson) {
     final sections = decoded['sections'] as List<dynamic>? ?? [];
     return sections.map((s) {
       final map = s as Map<String, dynamic>;
-      final questions = (map['questions'] as List<dynamic>? ?? [])
-          .map((q) {
-            final qm = q as Map<String, dynamic>;
-            return EiQuestion(
-              id: qm['id'] as String? ?? '',
-              text: qm['text'] as String? ?? '',
-              type: qm['type'] as String? ?? 'yes_no',
-              options: (qm['options'] as List<dynamic>? ?? [])
-                  .map((o) => o.toString())
-                  .toList(),
-            );
-          })
-          .toList();
+      final questions = (map['questions'] as List<dynamic>? ?? []).map((q) {
+        final qm = q as Map<String, dynamic>;
+        return EiQuestion(
+          id: qm['id'] as String? ?? '',
+          text: qm['text'] as String? ?? '',
+          type: qm['type'] as String? ?? 'yes_no',
+          options: (qm['options'] as List<dynamic>? ?? [])
+              .map((o) => o.toString())
+              .toList(),
+        );
+      }).toList();
       return EiSection(
         id: map['id'] as String? ?? '',
         title: map['title'] as String? ?? '',
@@ -166,12 +164,10 @@ class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
     return _flatQuestions[_questionIndex];
   }
 
-  double get _progress => _flatQuestions.isEmpty
-      ? 0
-      : (_questionIndex + 1) / _flatQuestions.length;
+  double get _progress =>
+      _flatQuestions.isEmpty ? 0 : (_questionIndex + 1) / _flatQuestions.length;
 
-  bool get _isLastQuestion =>
-      _questionIndex >= _flatQuestions.length - 1;
+  bool get _isLastQuestion => _questionIndex >= _flatQuestions.length - 1;
 
   bool _isQuestionAnswered(EiQuestion q) {
     final value = _answers[q.id];
@@ -187,13 +183,14 @@ class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
   Future<void> _saveDraft() async {
     setState(() => _saving = true);
     try {
-      final draft =
-          await ref.read(parentBookingRepositoryProvider).saveScreeningDraft(
-                templateId: widget.template.id,
-                childId: widget.child.id,
-                responses: _answers,
-                draftId: _draftId,
-              );
+      final draft = await ref
+          .read(parentBookingRepositoryProvider)
+          .saveScreeningDraft(
+            templateId: widget.template.id,
+            childId: widget.child.id,
+            responses: _answers,
+            draftId: _draftId,
+          );
       _draftId = draft.id;
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -204,9 +201,9 @@ class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not save draft: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Could not save draft: $e')));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -230,20 +227,21 @@ class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
     }
     setState(() => _saving = true);
     try {
-      final result =
-          await ref.read(parentBookingRepositoryProvider).submitScreening(
-                templateId: widget.template.id,
-                childId: widget.child.id,
-                responses: _answers,
-                draftId: _draftId,
-                consentGranted: true,
-              );
+      final result = await ref
+          .read(parentBookingRepositoryProvider)
+          .submitScreening(
+            templateId: widget.template.id,
+            childId: widget.child.id,
+            responses: _answers,
+            draftId: _draftId,
+            consentGranted: true,
+          );
       widget.onSubmitted?.call(result);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Submit failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Submit failed: $e')));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -274,7 +272,9 @@ class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
   void _goNext() {
     if (!_isQuestionAnswered(_current.question)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please answer this question to continue')),
+        const SnackBar(
+          content: Text('Please answer this question to continue'),
+        ),
       );
       return;
     }
@@ -378,8 +378,7 @@ class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
           child: AppAnimatedProgress(
             value: _progress,
-            label:
-                'Question ${_questionIndex + 1} of ${_flatQuestions.length}',
+            label: 'Question ${_questionIndex + 1} of ${_flatQuestions.length}',
           ),
         ),
         Padding(
@@ -390,7 +389,8 @@ class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
               children: List.generate(_sections.length, (i) {
                 final s = _sections[i];
                 final isActive = i == current.sectionIndex;
-                final isDone = i < current.sectionIndex ||
+                final isDone =
+                    i < current.sectionIndex ||
                     (i == current.sectionIndex &&
                         _flatQuestions
                             .where((fq) => fq.sectionIndex == i)
@@ -433,8 +433,8 @@ class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
                   child: Text(
                     eiScreeningDisclaimer,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          fontStyle: FontStyle.italic,
-                        ),
+                      fontStyle: FontStyle.italic,
+                    ),
                   ),
                 ),
               if (_questionIndex == 0) const SizedBox(height: AppSpacing.md),
@@ -471,8 +471,8 @@ class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
                     ? 'Share your thoughts'
                     : question.text,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               if (question.type == 'text' || question.type == 'text_list') ...[
                 const SizedBox(height: AppSpacing.sm),

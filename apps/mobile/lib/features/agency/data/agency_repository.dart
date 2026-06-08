@@ -306,7 +306,8 @@ class AgencyRepository {
 
   Future<List<AgencyTherapistModel>> fetchAvailableToInvite() async {
     final result = await _graphql.query(_availableInviteQuery);
-    final list = result['data']?['agencyTherapistsAvailableToInvite']
+    final list =
+        result['data']?['agencyTherapistsAvailableToInvite']
             as List<dynamic>? ??
         [];
     return list.map(_mapTherapist).toList();
@@ -437,7 +438,9 @@ class AgencyRepository {
     return _mapClaimsPipeline(data);
   }
 
-  Future<AgencyClaimDetailModel> fetchAnalyticsClaimDetail(String claimId) async {
+  Future<AgencyClaimDetailModel> fetchAnalyticsClaimDetail(
+    String claimId,
+  ) async {
     const query = r'''
       query ClaimDetail($claimId: ID!) {
         agencyAnalyticsClaimDetail(claimId: $claimId) {
@@ -447,10 +450,7 @@ class AgencyRepository {
         }
       }
     ''';
-    final result = await _graphql.query(
-      query,
-      variables: {'claimId': claimId},
-    );
+    final result = await _graphql.query(query, variables: {'claimId': claimId});
     final e =
         result['data']?['agencyAnalyticsClaimDetail'] as Map<String, dynamic>?;
     if (e == null) throw Exception('Claim not found');
@@ -487,8 +487,9 @@ class AgencyRepository {
       query,
       variables: {'screeningId': screeningId},
     );
-    final e = result['data']?['agencyAnalyticsScreeningDetail']
-        as Map<String, dynamic>?;
+    final e =
+        result['data']?['agencyAnalyticsScreeningDetail']
+            as Map<String, dynamic>?;
     if (e == null) throw Exception('Screening not found');
     return AgencyScreeningDetailModel(
       id: e['id'] as String,
@@ -610,8 +611,7 @@ class AgencyRepository {
       variables: {'fromDate': fromDate, 'toDate': toDate},
     );
     final data =
-        result['data']?['agencyScreeningFunnel'] as Map<String, dynamic>? ??
-            {};
+        result['data']?['agencyScreeningFunnel'] as Map<String, dynamic>? ?? {};
     return _mapScreeningFunnel(data);
   }
 
@@ -696,8 +696,8 @@ class AgencyRepository {
         'input': {
           'claimId': claimId,
           'status': status,
-          if (denialReason != null) 'denialReason': denialReason,
-          if (approvedAmount != null) 'approvedAmount': approvedAmount,
+          'denialReason': ?denialReason,
+          'approvedAmount': ?approvedAmount,
         },
       },
     );

@@ -105,18 +105,18 @@ class _ThreadPreviewCard extends StatelessWidget {
         trailing: thread.hasUnread
             ? const Badge(label: Text('New'))
             : thread.lastMessageIsMine &&
-                    thread.lastMessageStatus == MessageDeliveryStatus.read
-                ? Text(
-                    'Read',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: Theme.of(context).colorScheme.primary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                  )
-                : Text(
-                    DateFormat.MMMd().format(time),
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
+                  thread.lastMessageStatus == MessageDeliveryStatus.read
+            ? Text(
+                'Read',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              )
+            : Text(
+                DateFormat.MMMd().format(time),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
         onTap: () => context.push('${AppRoutes.messages}/${thread.id}'),
       ),
     );

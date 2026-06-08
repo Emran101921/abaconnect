@@ -16,9 +16,9 @@ Future<void> copyAnalyticsLink(BuildContext context) async {
   final url = analyticsShareableUrl(context);
   await Clipboard.setData(ClipboardData(text: url));
   if (context.mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Link copied')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Link copied')));
   }
 }
 

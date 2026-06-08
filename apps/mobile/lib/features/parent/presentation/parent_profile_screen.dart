@@ -13,7 +13,8 @@ class ParentProfileScreen extends ConsumerStatefulWidget {
   const ParentProfileScreen({super.key});
 
   @override
-  ConsumerState<ParentProfileScreen> createState() => _ParentProfileScreenState();
+  ConsumerState<ParentProfileScreen> createState() =>
+      _ParentProfileScreenState();
 }
 
 class _ParentProfileScreenState extends ConsumerState<ParentProfileScreen> {
@@ -60,35 +61,42 @@ class _ParentProfileScreenState extends ConsumerState<ParentProfileScreen> {
   Future<void> _save() async {
     setState(() => _saving = true);
     try {
-      await ref.read(parentBookingRepositoryProvider).updateParentProfile(
-            addressLine1: _address.text.trim().isEmpty ? null : _address.text.trim(),
+      await ref
+          .read(parentBookingRepositoryProvider)
+          .updateParentProfile(
+            addressLine1: _address.text.trim().isEmpty
+                ? null
+                : _address.text.trim(),
             city: _city.text.trim().isEmpty ? null : _city.text.trim(),
             state: _state.text.trim().isEmpty ? null : _state.text.trim(),
             zipCode: _zip.text.trim().isEmpty ? null : _zip.text.trim(),
-            emergencyContactName:
-                _emergencyName.text.trim().isEmpty ? null : _emergencyName.text.trim(),
-            emergencyContactPhone:
-                _emergencyPhone.text.trim().isEmpty ? null : _emergencyPhone.text.trim(),
+            emergencyContactName: _emergencyName.text.trim().isEmpty
+                ? null
+                : _emergencyName.text.trim(),
+            emergencyContactPhone: _emergencyPhone.text.trim().isEmpty
+                ? null
+                : _emergencyPhone.text.trim(),
             insuranceProvider: _insuranceProvider.text.trim().isEmpty
                 ? null
                 : _insuranceProvider.text.trim(),
             insuranceMemberId: _insuranceMemberId.text.trim().isEmpty
                 ? null
                 : _insuranceMemberId.text.trim(),
-            insuranceGroupNumber:
-                _insuranceGroup.text.trim().isEmpty ? null : _insuranceGroup.text.trim(),
+            insuranceGroupNumber: _insuranceGroup.text.trim().isEmpty
+                ? null
+                : _insuranceGroup.text.trim(),
           );
       ref.invalidate(parentProfileProvider);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile saved')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Profile saved')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Save failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Save failed: $e')));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -149,7 +157,10 @@ class _ParentProfileScreenState extends ConsumerState<ParentProfileScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-              Text('Emergency contact', style: Theme.of(context).textTheme.titleSmall),
+              Text(
+                'Emergency contact',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
               const SizedBox(height: 8),
               TextField(
                 controller: _emergencyName,

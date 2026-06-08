@@ -35,8 +35,9 @@ class AppScaffold extends StatelessWidget {
       return Scaffold(
         extendBodyBehindAppBar: extendBodyBehindHeader,
         appBar: AppBar(
-          automaticallyImplyLeading:
-              showBackButton != null ? showBackButton! : canPop,
+          automaticallyImplyLeading: showBackButton != null
+              ? showBackButton!
+              : canPop,
           title: subtitle == null
               ? Text(title)
               : Column(
@@ -46,8 +47,8 @@ class AppScaffold extends StatelessWidget {
                     Text(
                       subtitle!,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
+                        color: colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),
@@ -71,8 +72,9 @@ class AppScaffold extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        automaticallyImplyLeading:
-            showBackButton != null ? showBackButton! : canPop,
+        automaticallyImplyLeading: showBackButton != null
+            ? showBackButton!
+            : canPop,
         title: subtitle == null
             ? Text(title)
             : Column(
@@ -82,8 +84,8 @@ class AppScaffold extends StatelessWidget {
                   Text(
                     subtitle!,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
+                      color: colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),

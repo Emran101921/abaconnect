@@ -72,13 +72,11 @@ class PaymentsRepository {
     final result = await _graphql.query(
       _createPaymentMutation,
       variables: {
-        'input': {
-          'amountCents': amountCents,
-          if (description != null) 'description': description,
-        },
+        'input': {'amountCents': amountCents, 'description': ?description},
       },
     );
-    final e = result['data']?['createPayment']?['payment'] as Map<String, dynamic>?;
+    final e =
+        result['data']?['createPayment']?['payment'] as Map<String, dynamic>?;
     if (e == null) throw Exception('Payment creation failed');
     return _mapPayment(e);
   }
@@ -98,7 +96,8 @@ class PaymentsRepository {
       status: e['status'] as String? ?? 'PENDING',
       description: e['description'] as String?,
       paidAt: DateTime.tryParse(e['paidAt'] as String? ?? ''),
-      createdAt: DateTime.tryParse(e['createdAt'] as String? ?? '') ?? DateTime.now(),
+      createdAt:
+          DateTime.tryParse(e['createdAt'] as String? ?? '') ?? DateTime.now(),
     );
   }
 }

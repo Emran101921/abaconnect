@@ -35,7 +35,7 @@ class TherapistPayoutsScreen extends ConsumerWidget {
             child: ListView.separated(
               padding: const EdgeInsets.all(16),
               itemCount: list.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              separatorBuilder: (_, _) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
                 final p = list[index];
                 return Card(
@@ -50,7 +50,9 @@ class TherapistPayoutsScreen extends ConsumerWidget {
                       p.status == 'SUCCEEDED'
                           ? Icons.check_circle
                           : Icons.pending,
-                      color: p.status == 'SUCCEEDED' ? Colors.green : Colors.orange,
+                      color: p.status == 'SUCCEEDED'
+                          ? Colors.green
+                          : Colors.orange,
                     ),
                   ),
                 );

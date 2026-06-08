@@ -29,9 +29,7 @@ class ParentAppointmentsScreen extends ConsumerWidget {
           title: const Text('Cancel appointment?'),
           content: TextField(
             controller: controller,
-            decoration: const InputDecoration(
-              labelText: 'Reason (optional)',
-            ),
+            decoration: const InputDecoration(labelText: 'Reason (optional)'),
             maxLines: 2,
           ),
           actions: [
@@ -50,21 +48,23 @@ class ParentAppointmentsScreen extends ConsumerWidget {
     if (reason == null || !context.mounted) return;
 
     try {
-      await ref.read(parentBookingRepositoryProvider).cancelAppointment(
+      await ref
+          .read(parentBookingRepositoryProvider)
+          .cancelAppointment(
             appointmentId: appointment.id,
             reason: reason.isEmpty ? null : reason,
           );
       ref.invalidate(parentAppointmentsProvider);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Appointment cancelled')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Appointment cancelled')));
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Cancel failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Cancel failed: $e')));
       }
     }
   }
@@ -75,8 +75,9 @@ class ParentAppointmentsScreen extends ConsumerWidget {
     AppointmentModel appointment,
   ) async {
     try {
-      final session =
-          await ref.read(platformRepositoryProvider).joinTelehealth(appointment.id);
+      final session = await ref
+          .read(platformRepositoryProvider)
+          .joinTelehealth(appointment.id);
       if (!context.mounted) return;
       if (session.joinUrl != null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -89,32 +90,30 @@ class ParentAppointmentsScreen extends ConsumerWidget {
       context.push('/telehealth');
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Telehealth failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Telehealth failed: $e')));
       }
     }
   }
 
-  Future<void> _exportCalendar(
-    BuildContext context,
-    WidgetRef ref,
-  ) async {
+  Future<void> _exportCalendar(BuildContext context, WidgetRef ref) async {
     try {
-      final path =
-          await ref.read(parentBookingRepositoryProvider).downloadAppointmentsIcal();
+      final path = await ref
+          .read(parentBookingRepositoryProvider)
+          .downloadAppointmentsIcal();
       if (!context.mounted) return;
       final message = kIsWeb
           ? 'Calendar file downloaded'
           : (path.isNotEmpty ? 'Saved to $path' : 'Calendar file saved');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Export failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Export failed: $e')));
       }
     }
   }
@@ -141,7 +140,9 @@ class ParentAppointmentsScreen extends ConsumerWidget {
     final end = start.add(const Duration(hours: 1));
 
     try {
-      await ref.read(parentBookingRepositoryProvider).rescheduleAppointment(
+      await ref
+          .read(parentBookingRepositoryProvider)
+          .rescheduleAppointment(
             appointmentId: appointment.id,
             start: start,
             end: end,
@@ -154,9 +155,9 @@ class ParentAppointmentsScreen extends ConsumerWidget {
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Reschedule failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Reschedule failed: $e')));
       }
     }
   }
@@ -209,24 +210,28 @@ class ParentAppointmentsScreen extends ConsumerWidget {
             },
             child: AppContentContainer(
               child: ListView.separated(
-              itemCount: list.length + 1,
-              separatorBuilder: (_, index) =>
-                  index == 0 ? const SizedBox.shrink() : const SizedBox(height: 8),
-              itemBuilder: (context, index) {
-                if (index == 0) {
-                  return const AppSectionHeader(
-                    title: 'Upcoming appointments',
-                    subtitle: 'Reschedule, join telehealth, or cancel',
-                  );
-                }
-                final a = list[index - 1];
-                final canChange = !['COMPLETED', 'CANCELLED', 'NO_SHOW']
-                    .contains(a.status);
-                final loc = a.locationType ?? 'IN_HOME';
-                return AppDashboardCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+                itemCount: list.length + 1,
+                separatorBuilder: (_, index) => index == 0
+                    ? const SizedBox.shrink()
+                    : const SizedBox(height: 8),
+                itemBuilder: (context, index) {
+                  if (index == 0) {
+                    return const AppSectionHeader(
+                      title: 'Upcoming appointments',
+                      subtitle: 'Reschedule, join telehealth, or cancel',
+                    );
+                  }
+                  final a = list[index - 1];
+                  final canChange = ![
+                    'COMPLETED',
+                    'CANCELLED',
+                    'NO_SHOW',
+                  ].contains(a.status);
+                  final loc = a.locationType ?? 'IN_HOME';
+                  return AppDashboardCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Text(
                           '${a.therapyType} · ${a.childName}',
                           style: Theme.of(context).textTheme.titleMedium,
@@ -273,9 +278,9 @@ class ParentAppointmentsScreen extends ConsumerWidget {
                           ),
                       ],
                     ),
-                );
-              },
-            ),
+                  );
+                },
+              ),
             ),
           );
         },

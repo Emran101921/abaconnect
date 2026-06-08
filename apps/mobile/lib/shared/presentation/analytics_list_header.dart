@@ -29,15 +29,12 @@ class AnalyticsListHeader extends StatelessWidget {
           Text(
             'vs prior period: $delta',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
           if (amountLabel != null) ...[
             const SizedBox(height: 4),
-            Text(
-              amountLabel!,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
+            Text(amountLabel!, style: Theme.of(context).textTheme.bodySmall),
           ],
         ],
       ),

@@ -40,8 +40,8 @@ class AppAnimatedProgress extends StatelessWidget {
                   Text(
                     '${(clamped * 100).round()}%',
                     style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
+                      color: colorScheme.onSurfaceVariant,
+                    ),
                   ),
               ],
             ),

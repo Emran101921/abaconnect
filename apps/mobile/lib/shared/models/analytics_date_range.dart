@@ -9,9 +9,7 @@ class AnalyticsDateRange {
   final DateTime? from;
   final DateTime? to;
 
-  factory AnalyticsDateRange.fromQueryParameters(
-    Map<String, String> params,
-  ) {
+  factory AnalyticsDateRange.fromQueryParameters(Map<String, String> params) {
     return AnalyticsDateRange(
       from: _parseQueryDate(params[analyticsFromDateParam]),
       to: _parseQueryDate(params[analyticsToDateParam]),
@@ -100,8 +98,9 @@ enum AnalyticsDateRangePreset {
         );
       case AnalyticsDateRangePreset.lastMonth:
         final firstOfThisMonth = DateTime(today.year, today.month);
-        final lastOfLastMonth =
-            firstOfThisMonth.subtract(const Duration(days: 1));
+        final lastOfLastMonth = firstOfThisMonth.subtract(
+          const Duration(days: 1),
+        );
         return AnalyticsDateRange(
           from: DateTime(lastOfLastMonth.year, lastOfLastMonth.month),
           to: lastOfLastMonth,

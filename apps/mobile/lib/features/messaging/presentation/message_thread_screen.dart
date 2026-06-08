@@ -19,7 +19,8 @@ class MessageThreadScreen extends ConsumerStatefulWidget {
   final String threadId;
 
   @override
-  ConsumerState<MessageThreadScreen> createState() => _MessageThreadScreenState();
+  ConsumerState<MessageThreadScreen> createState() =>
+      _MessageThreadScreenState();
 }
 
 class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
@@ -70,9 +71,9 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _loading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Load failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Load failed: $e')));
       }
     }
   }
@@ -80,8 +81,9 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
   Future<void> _refreshStatuses() async {
     if (_loading || !mounted) return;
     try {
-      final list =
-          await ref.read(messagingRepositoryProvider).fetchMessages(widget.threadId);
+      final list = await ref
+          .read(messagingRepositoryProvider)
+          .fetchMessages(widget.threadId);
       if (mounted) {
         setState(() => _messages = list);
       }
@@ -93,10 +95,9 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
     if (text.isEmpty) return;
     setState(() => _sending = true);
     try {
-      final msg = await ref.read(messagingRepositoryProvider).sendMessage(
-            threadId: widget.threadId,
-            body: text,
-          );
+      final msg = await ref
+          .read(messagingRepositoryProvider)
+          .sendMessage(threadId: widget.threadId, body: text);
       _controller.clear();
       setState(() {
         _messages = [..._messages, msg];
@@ -108,9 +109,9 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
     } catch (e) {
       setState(() => _sending = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Send failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Send failed: $e')));
       }
     }
   }
@@ -129,8 +130,7 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
                     itemCount: _messages.length,
                     itemBuilder: (context, index) {
                       final m = _messages[index];
-                      final status =
-                          m.status ?? MessageDeliveryStatus.sent;
+                      final status = m.status ?? MessageDeliveryStatus.sent;
                       return Align(
                         alignment: m.isMine
                             ? Alignment.centerRight
@@ -144,17 +144,25 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
                           decoration: BoxDecoration(
                             color: m.isMine
                                 ? Theme.of(context).colorScheme.primary
-                                : Theme.of(context)
-                                    .colorScheme
-                                    .surfaceContainerLow,
+                                : Theme.of(
+                                    context,
+                                  ).colorScheme.surfaceContainerLow,
                             borderRadius: BorderRadius.only(
-                              topLeft: const Radius.circular(AppSpacing.radiusLg),
-                              topRight: const Radius.circular(AppSpacing.radiusLg),
+                              topLeft: const Radius.circular(
+                                AppSpacing.radiusLg,
+                              ),
+                              topRight: const Radius.circular(
+                                AppSpacing.radiusLg,
+                              ),
                               bottomLeft: Radius.circular(
-                                m.isMine ? AppSpacing.radiusLg : AppSpacing.radiusSm,
+                                m.isMine
+                                    ? AppSpacing.radiusLg
+                                    : AppSpacing.radiusSm,
                               ),
                               bottomRight: Radius.circular(
-                                m.isMine ? AppSpacing.radiusSm : AppSpacing.radiusLg,
+                                m.isMine
+                                    ? AppSpacing.radiusSm
+                                    : AppSpacing.radiusLg,
                               ),
                             ),
                             boxShadow: [
@@ -174,9 +182,8 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
                               if (!m.isMine)
                                 Text(
                                   m.senderName,
-                                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                                  style: Theme.of(context).textTheme.labelSmall
+                                      ?.copyWith(fontWeight: FontWeight.w600),
                                 ),
                               Text(
                                 m.body,
@@ -197,9 +204,9 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
                                         ?.copyWith(
                                           color: m.isMine
                                               ? Theme.of(context)
-                                                  .colorScheme
-                                                  .onPrimary
-                                                  .withValues(alpha: 0.8)
+                                                    .colorScheme
+                                                    .onPrimary
+                                                    .withValues(alpha: 0.8)
                                               : null,
                                         ),
                                   ),

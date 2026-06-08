@@ -19,7 +19,9 @@ class AgencyRosterScreen extends ConsumerWidget {
         error: (e, _) => Center(child: Text('Roster error: $e')),
         data: (list) {
           if (list.isEmpty) {
-            return const Center(child: Text('No therapists on your roster yet.'));
+            return const Center(
+              child: Text('No therapists on your roster yet.'),
+            );
           }
           return RefreshIndicator(
             onRefresh: () async {
@@ -71,7 +73,9 @@ class AgencyRosterScreen extends ConsumerWidget {
                           ref.invalidate(agencyInviteCandidatesProvider);
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Removed from roster')),
+                              const SnackBar(
+                                content: Text('Removed from roster'),
+                              ),
                             );
                           }
                         } catch (e) {

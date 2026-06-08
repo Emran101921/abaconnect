@@ -10,8 +10,9 @@ import '../../messaging/messaging_providers.dart';
 import '../../platform/data/platform_repository.dart';
 import '../notification_providers.dart';
 
-final notificationsProvider =
-    FutureProvider<List<NotificationItemModel>>((ref) {
+final notificationsProvider = FutureProvider<List<NotificationItemModel>>((
+  ref,
+) {
   return ref.watch(platformRepositoryProvider).fetchNotifications();
 });
 
@@ -70,7 +71,9 @@ class NotificationsScreen extends ConsumerWidget {
       return;
     }
     if (n.actionType == 'TELEHEALTH' && n.appointmentId != null) {
-      context.push('${AppRoutes.parentHome}/appointments?id=${n.appointmentId}');
+      context.push(
+        '${AppRoutes.parentHome}/appointments?id=${n.appointmentId}',
+      );
       return;
     }
 
@@ -88,7 +91,9 @@ class NotificationsScreen extends ConsumerWidget {
       actions: [
         TextButton(
           onPressed: () async {
-            await ref.read(platformRepositoryProvider).markAllNotificationsRead();
+            await ref
+                .read(platformRepositoryProvider)
+                .markAllNotificationsRead();
             ref.invalidate(notificationsProvider);
             ref.invalidate(unreadNotificationsProvider);
           },
@@ -110,13 +115,17 @@ class NotificationsScreen extends ConsumerWidget {
             child: ListView.separated(
               padding: const EdgeInsets.all(16),
               itemCount: list.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
+              separatorBuilder: (_, _) => const Divider(height: 1),
               itemBuilder: (context, index) {
                 final n = list[index];
                 return ListTile(
                   leading: Icon(
-                    n.isRead ? Icons.notifications_none : Icons.notifications_active,
-                    color: n.isRead ? null : Theme.of(context).colorScheme.primary,
+                    n.isRead
+                        ? Icons.notifications_none
+                        : Icons.notifications_active,
+                    color: n.isRead
+                        ? null
+                        : Theme.of(context).colorScheme.primary,
                   ),
                   title: Text(n.title),
                   subtitle: Text(n.body),

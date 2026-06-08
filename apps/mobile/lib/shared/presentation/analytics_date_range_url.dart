@@ -21,8 +21,7 @@ bool analyticsUriHasDateParams(Uri uri) {
   final params = uri.queryParameters;
   final from = params[analyticsFromDateParam];
   final to = params[analyticsToDateParam];
-  return (from != null && from.isNotEmpty) ||
-      (to != null && to.isNotEmpty);
+  return (from != null && from.isNotEmpty) || (to != null && to.isNotEmpty);
 }
 
 /// Keeps [dateRangeProvider] in sync with `fromDate` / `toDate` URL params.
@@ -45,7 +44,8 @@ class AnalyticsDateRangeSync extends ConsumerStatefulWidget {
       _AnalyticsDateRangeSyncState();
 }
 
-class _AnalyticsDateRangeSyncState extends ConsumerState<AnalyticsDateRangeSync> {
+class _AnalyticsDateRangeSyncState
+    extends ConsumerState<AnalyticsDateRangeSync> {
   bool _syncingToUrl = false;
   String? _lastAppliedQueryKey;
 
@@ -77,7 +77,8 @@ class _AnalyticsDateRangeSyncState extends ConsumerState<AnalyticsDateRangeSync>
     final preset = widget.defaultPreset;
     if (preset == null) return;
 
-    final suppressed = widget.defaultSuppressedProvider != null &&
+    final suppressed =
+        widget.defaultSuppressedProvider != null &&
         ref.read(widget.defaultSuppressedProvider!);
     if (suppressed) return;
     if (analyticsUriHasDateParams(uri)) return;
@@ -87,7 +88,9 @@ class _AnalyticsDateRangeSyncState extends ConsumerState<AnalyticsDateRangeSync>
 
     final defaultRange = preset.range;
     ref.read(widget.dateRangeProvider.notifier).state = defaultRange;
-    _lastAppliedQueryKey = _queryKey(uriWithAnalyticsDateRange(uri, defaultRange));
+    _lastAppliedQueryKey = _queryKey(
+      uriWithAnalyticsDateRange(uri, defaultRange),
+    );
   }
 
   void _syncUriIntoState(Uri uri) {

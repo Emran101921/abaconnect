@@ -24,13 +24,9 @@ void navigateFromPushPayload(
       actionType.startsWith('APPOINTMENT') &&
       appointmentId != null) {
     if (role == UserRole.therapist) {
-      router.push(
-        '${AppRoutes.therapistHome}/appointments?id=$appointmentId',
-      );
+      router.push('${AppRoutes.therapistHome}/appointments?id=$appointmentId');
     } else {
-      router.push(
-        '${AppRoutes.parentHome}/appointments?id=$appointmentId',
-      );
+      router.push('${AppRoutes.parentHome}/appointments?id=$appointmentId');
     }
     return;
   }

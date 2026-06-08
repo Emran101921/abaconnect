@@ -29,9 +29,9 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
       ref.invalidate(mfaStatusProvider);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Setup failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Setup failed: $e')));
       }
     }
   }
@@ -51,9 +51,9 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Enable failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Enable failed: $e')));
       }
     }
   }
@@ -70,7 +70,9 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
           children: [
             TextField(
               controller: codeController,
-              decoration: const InputDecoration(labelText: 'Authenticator code'),
+              decoration: const InputDecoration(
+                labelText: 'Authenticator code',
+              ),
             ),
             TextField(
               controller: passwordController,
@@ -80,28 +82,36 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Disable')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Disable'),
+          ),
         ],
       ),
     );
     if (ok != true) return;
     try {
-      await ref.read(authRepositoryProvider).disableMfa(
+      await ref
+          .read(authRepositoryProvider)
+          .disableMfa(
             code: codeController.text.trim(),
             password: passwordController.text,
           );
       ref.invalidate(mfaStatusProvider);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('MFA disabled')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('MFA disabled')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Disable failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Disable failed: $e')));
       }
     }
   }

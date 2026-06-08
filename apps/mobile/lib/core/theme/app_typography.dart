@@ -9,8 +9,9 @@ abstract final class AppTypography {
         ? GoogleFonts.interTextTheme()
         : GoogleFonts.interTextTheme(ThemeData.dark().textTheme);
 
-    final onSurface =
-        brightness == Brightness.light ? AppColors.textPrimary : Colors.white;
+    final onSurface = brightness == Brightness.light
+        ? AppColors.textPrimary
+        : Colors.white;
     final onSurfaceVariant = brightness == Brightness.light
         ? AppColors.textSecondary
         : const Color(0xFF94A3B8);

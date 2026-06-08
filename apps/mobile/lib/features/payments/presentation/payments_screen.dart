@@ -72,34 +72,34 @@ class PaymentsScreen extends ConsumerWidget {
             },
             child: AppContentContainer(
               child: ListView.separated(
-              itemCount: list.length + 1,
-              separatorBuilder: (context, _) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                if (index == 0) {
-                  return const AppSectionHeader(
-                    title: 'Payment history',
-                    subtitle: 'Secure billing for therapy sessions',
+                itemCount: list.length + 1,
+                separatorBuilder: (context, _) => const SizedBox(height: 12),
+                itemBuilder: (context, index) {
+                  if (index == 0) {
+                    return const AppSectionHeader(
+                      title: 'Payment history',
+                      subtitle: 'Secure billing for therapy sessions',
+                    );
+                  }
+                  final p = list[index - 1];
+                  return AppDashboardCard(
+                    child: ListTile(
+                      title: Text(
+                        p.description ?? 'Payment ${p.id.substring(0, 8)}',
+                      ),
+                      subtitle: Text(
+                        '${DateFormat.yMMMd().format(p.createdAt)} · ${p.status}',
+                      ),
+                      isThreeLine: true,
+                      trailing: Text(
+                        formatter.format(p.amount),
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      onTap: () => _paymentActions(context, ref, p),
+                    ),
                   );
-                }
-                final p = list[index - 1];
-                return AppDashboardCard(
-                  child: ListTile(
-                    title: Text(
-                      p.description ?? 'Payment ${p.id.substring(0, 8)}',
-                    ),
-                    subtitle: Text(
-                      '${DateFormat.yMMMd().format(p.createdAt)} · ${p.status}',
-                    ),
-                    isThreeLine: true,
-                    trailing: Text(
-                      formatter.format(p.amount),
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    onTap: () => _paymentActions(context, ref, p),
-                  ),
-                );
-              },
-            ),
+                },
+              ),
             ),
           );
         },
@@ -148,11 +148,12 @@ class PaymentsScreen extends ConsumerWidget {
 
   Future<void> _paySession(BuildContext context, WidgetRef ref) async {
     try {
-      final result =
-          await ref.read(billingRepositoryProvider).createPaymentWithCheckout(
-                amountCents: 15000,
-                description: 'ABA therapy session',
-              );
+      final result = await ref
+          .read(billingRepositoryProvider)
+          .createPaymentWithCheckout(
+            amountCents: 15000,
+            description: 'ABA therapy session',
+          );
       ref.invalidate(parentPaymentsProvider);
       if (!context.mounted) return;
 
@@ -167,9 +168,9 @@ class PaymentsScreen extends ConsumerWidget {
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Payment failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Payment failed: $e')));
       }
     }
   }
@@ -209,15 +210,15 @@ class PaymentsScreen extends ConsumerWidget {
       await ref.read(billingRepositoryProvider).syncPayment(paymentId);
       ref.invalidate(parentPaymentsProvider);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Payment status synced')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Payment status synced')));
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Sync failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Sync failed: $e')));
       }
     }
   }
@@ -238,27 +239,32 @@ class PaymentsScreen extends ConsumerWidget {
           maxLines: 3,
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Submit')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Submit'),
+          ),
         ],
       ),
     );
     if (ok != true || reason.text.trim().isEmpty) return;
     try {
-      await ref.read(billingRepositoryProvider).openDispute(
-            paymentId: paymentId,
-            reason: reason.text.trim(),
-          );
+      await ref
+          .read(billingRepositoryProvider)
+          .openDispute(paymentId: paymentId, reason: reason.text.trim());
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Dispute opened')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Dispute opened')));
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed: $e')));
       }
     }
   }
@@ -272,15 +278,15 @@ class PaymentsScreen extends ConsumerWidget {
       await ref.read(paymentsRepositoryProvider).confirmPaymentDemo(paymentId);
       ref.invalidate(parentPaymentsProvider);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Payment marked as paid')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Payment marked as paid')));
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Confirm failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Confirm failed: $e')));
       }
     }
   }

@@ -54,132 +54,134 @@ class AdminHomeScreen extends ConsumerWidget {
         child: AppContentContainer(
           padding: EdgeInsets.zero,
           child: ListView(
-          children: [
-            const AppWelcomeBanner(
-              greeting: 'Platform administration',
-              subtitle: 'Secure oversight for users, claims, screenings, and compliance.',
-              illustrationType: AppIllustrationType.progress,
-            ),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: AppSectionHeader(
-                title: 'Overview',
-                subtitle: 'Platform operations dashboard',
+            children: [
+              const AppWelcomeBanner(
+                greeting: 'Platform administration',
+                subtitle:
+                    'Secure oversight for users, claims, screenings, and compliance.',
+                illustrationType: AppIllustrationType.progress,
               ),
-            ),
-            const SizedBox(height: 12),
-            dashboard.when(
-              data: (d) => Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
-                  AdminStatCard(label: 'Users', value: d.userCount),
-                  AdminStatCard(label: 'Parents', value: d.parentCount),
-                  AdminStatCard(label: 'Therapists', value: d.therapistCount),
-                  AdminStatCard(label: 'Appointments', value: d.appointmentCount),
-                  AdminStatCard(
-                    label: 'Pending verify',
-                    value: d.pendingTherapists,
-                    highlight: d.pendingTherapists > 0,
-                  ),
-                  AdminStatCard(
-                    label: 'Open complaints',
-                    value: d.openComplaints,
-                    highlight: d.openComplaints > 0,
-                  ),
-                ],
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: AppSectionHeader(
+                  title: 'Overview',
+                  subtitle: 'Platform operations dashboard',
+                ),
               ),
-              loading: () => const LinearProgressIndicator(),
-              error: (e, _) => Text('Overview error: $e'),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Operations',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Choose a workflow below. Each screen has actions you can run '
-              '(verify, resolve, approve, publish, etc.).',
-            ),
-            const SizedBox(height: 16),
-            _OpsTile(
-              title: unreadCount > 0
-                  ? 'Notifications ($unreadCount)'
-                  : 'Notifications',
-              subtitle: 'Platform alerts and activity',
-              icon: Icons.notifications,
-              onTap: () => context.push(AppRoutes.notifications),
-            ),
-            _OpsTile(
-              title: 'Therapist verification',
-              subtitle: 'Approve licenses for new providers',
-              icon: Icons.verified_user,
-              badge: pending.maybeWhen(
-                data: (l) => l.length,
-                orElse: () => null,
+              const SizedBox(height: 12),
+              dashboard.when(
+                data: (d) => Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    AdminStatCard(label: 'Users', value: d.userCount),
+                    AdminStatCard(label: 'Parents', value: d.parentCount),
+                    AdminStatCard(label: 'Therapists', value: d.therapistCount),
+                    AdminStatCard(
+                      label: 'Appointments',
+                      value: d.appointmentCount,
+                    ),
+                    AdminStatCard(
+                      label: 'Pending verify',
+                      value: d.pendingTherapists,
+                      highlight: d.pendingTherapists > 0,
+                    ),
+                    AdminStatCard(
+                      label: 'Open complaints',
+                      value: d.openComplaints,
+                      highlight: d.openComplaints > 0,
+                    ),
+                  ],
+                ),
+                loading: () => const LinearProgressIndicator(),
+                error: (e, _) => Text('Overview error: $e'),
               ),
-              onTap: () => context.push('${AppRoutes.adminHome}/verifications'),
-            ),
-            _OpsTile(
-              title: 'Complaints',
-              subtitle: 'Review and resolve parent reports',
-              icon: Icons.report,
-              badge: complaints.maybeWhen(
-                data: (l) => l.length,
-                orElse: () => null,
+              const SizedBox(height: 24),
+              Text('Operations', style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 8),
+              const Text(
+                'Choose a workflow below. Each screen has actions you can run '
+                '(verify, resolve, approve, publish, etc.).',
               ),
-              onTap: () => context.push('${AppRoutes.adminHome}/complaints'),
-            ),
-            _OpsTile(
-              title: 'Payment disputes',
-              subtitle: 'Resolve billing disputes',
-              icon: Icons.gavel,
-              onTap: () => context.push('${AppRoutes.adminHome}/disputes'),
-            ),
-            _OpsTile(
-              title: 'Therapist payouts',
-              subtitle: 'Mark payouts as paid',
-              icon: Icons.payments,
-              onTap: () => context.push('${AppRoutes.adminHome}/payouts'),
-            ),
-            _OpsTile(
-              title: 'Insurance claims',
-              subtitle: 'Approve, deny, or mark claims paid',
-              icon: Icons.health_and_safety,
-              onTap: () => context.push('${AppRoutes.adminHome}/insurance'),
-            ),
-            _OpsTile(
-              title: 'Review moderation',
-              subtitle: 'Publish or hide therapist reviews',
-              icon: Icons.rate_review,
-              onTap: () => context.push('${AppRoutes.adminHome}/reviews'),
-            ),
-            _OpsTile(
-              title: 'Platform analytics',
-              subtitle: 'Sessions, revenue, and activity metrics',
-              icon: Icons.insights,
-              onTap: () => context.push('${AppRoutes.adminHome}/analytics'),
-            ),
-            _OpsTile(
-              title: 'Users',
-              subtitle: 'Browse platform accounts by role',
-              icon: Icons.people,
-              onTap: () => context.push('${AppRoutes.adminHome}/users'),
-            ),
-            _OpsTile(
-              title: 'Audit logs',
-              subtitle: 'HIPAA audit trail (read-only)',
-              icon: Icons.history,
-              onTap: () => context.push('${AppRoutes.adminHome}/audit'),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Tip: pull down to refresh counts on this screen.',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
-        ),
+              const SizedBox(height: 16),
+              _OpsTile(
+                title: unreadCount > 0
+                    ? 'Notifications ($unreadCount)'
+                    : 'Notifications',
+                subtitle: 'Platform alerts and activity',
+                icon: Icons.notifications,
+                onTap: () => context.push(AppRoutes.notifications),
+              ),
+              _OpsTile(
+                title: 'Therapist verification',
+                subtitle: 'Approve licenses for new providers',
+                icon: Icons.verified_user,
+                badge: pending.maybeWhen(
+                  data: (l) => l.length,
+                  orElse: () => null,
+                ),
+                onTap: () =>
+                    context.push('${AppRoutes.adminHome}/verifications'),
+              ),
+              _OpsTile(
+                title: 'Complaints',
+                subtitle: 'Review and resolve parent reports',
+                icon: Icons.report,
+                badge: complaints.maybeWhen(
+                  data: (l) => l.length,
+                  orElse: () => null,
+                ),
+                onTap: () => context.push('${AppRoutes.adminHome}/complaints'),
+              ),
+              _OpsTile(
+                title: 'Payment disputes',
+                subtitle: 'Resolve billing disputes',
+                icon: Icons.gavel,
+                onTap: () => context.push('${AppRoutes.adminHome}/disputes'),
+              ),
+              _OpsTile(
+                title: 'Therapist payouts',
+                subtitle: 'Mark payouts as paid',
+                icon: Icons.payments,
+                onTap: () => context.push('${AppRoutes.adminHome}/payouts'),
+              ),
+              _OpsTile(
+                title: 'Insurance claims',
+                subtitle: 'Approve, deny, or mark claims paid',
+                icon: Icons.health_and_safety,
+                onTap: () => context.push('${AppRoutes.adminHome}/insurance'),
+              ),
+              _OpsTile(
+                title: 'Review moderation',
+                subtitle: 'Publish or hide therapist reviews',
+                icon: Icons.rate_review,
+                onTap: () => context.push('${AppRoutes.adminHome}/reviews'),
+              ),
+              _OpsTile(
+                title: 'Platform analytics',
+                subtitle: 'Sessions, revenue, and activity metrics',
+                icon: Icons.insights,
+                onTap: () => context.push('${AppRoutes.adminHome}/analytics'),
+              ),
+              _OpsTile(
+                title: 'Users',
+                subtitle: 'Browse platform accounts by role',
+                icon: Icons.people,
+                onTap: () => context.push('${AppRoutes.adminHome}/users'),
+              ),
+              _OpsTile(
+                title: 'Audit logs',
+                subtitle: 'HIPAA audit trail (read-only)',
+                icon: Icons.history,
+                onTap: () => context.push('${AppRoutes.adminHome}/audit'),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Tip: pull down to refresh counts on this screen.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -9,8 +9,9 @@ import '../therapist_providers.dart';
 import '../../../shared/widgets/app_bottom_nav.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 
-final therapistSessionsProvider =
-    FutureProvider<List<TherapistSessionModel>>((ref) async {
+final therapistSessionsProvider = FutureProvider<List<TherapistSessionModel>>((
+  ref,
+) async {
   return ref.watch(therapistRepositoryProvider).fetchSessions();
 });
 
@@ -112,7 +113,9 @@ class SessionNotesScreen extends ConsumerWidget {
 
     if (saved == true && context.mounted) {
       try {
-        await ref.read(therapistRepositoryProvider).saveSoapNote(
+        await ref
+            .read(therapistRepositoryProvider)
+            .saveSoapNote(
               sessionId: session.id,
               subjective: subjective.text,
               objective: objective.text,
@@ -120,7 +123,9 @@ class SessionNotesScreen extends ConsumerWidget {
               plan: plan.text,
             );
         if (progressSummary.text.trim().isNotEmpty) {
-          await ref.read(clinicalRepositoryProvider).saveProgressNote(
+          await ref
+              .read(clinicalRepositoryProvider)
+              .saveProgressNote(
                 sessionId: session.id,
                 summary: progressSummary.text.trim(),
               );
@@ -129,14 +134,16 @@ class SessionNotesScreen extends ConsumerWidget {
         ref.invalidate(therapistDashboardProvider);
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('SOAP note saved — session finalized')),
+            const SnackBar(
+              content: Text('SOAP note saved — session finalized'),
+            ),
           );
         }
       } catch (e) {
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Save failed: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Save failed: $e')));
         }
       }
     }
@@ -168,9 +175,9 @@ class SessionNotesScreen extends ConsumerWidget {
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Complete failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Complete failed: $e')));
       }
     }
   }
@@ -204,22 +211,24 @@ class SessionNotesScreen extends ConsumerWidget {
         }
         return;
       }
-      await ref.read(platformRepositoryProvider).recordEvv(
+      await ref
+          .read(platformRepositoryProvider)
+          .recordEvv(
             sessionId: sessionId,
             lat: coords.lat,
             lng: coords.lng,
             eventType: eventType,
           );
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('EVV $eventType recorded')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('EVV $eventType recorded')));
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('EVV failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('EVV failed: $e')));
       }
     }
   }
@@ -246,7 +255,10 @@ class SessionNotesScreen extends ConsumerWidget {
                     const SizedBox(height: 16),
                     const Text(
                       'No sessions yet',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     const Text(
@@ -255,8 +267,7 @@ class SessionNotesScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 24),
                     FilledButton.icon(
-                      onPressed: () =>
-                          context.push('/therapist/appointments'),
+                      onPressed: () => context.push('/therapist/appointments'),
                       icon: const Icon(Icons.event),
                       label: const Text('Go to appointments'),
                     ),
@@ -288,26 +299,19 @@ class SessionNotesScreen extends ConsumerWidget {
                       child: Row(
                         children: [
                           TextButton(
-                            onPressed: () => _evv(
-                              context,
-                              ref,
-                              s.id,
-                              'CHECK_IN',
-                            ),
+                            onPressed: () =>
+                                _evv(context, ref, s.id, 'CHECK_IN'),
                             child: const Text('EVV in'),
                           ),
                           TextButton(
-                            onPressed: () => _evv(
-                              context,
-                              ref,
-                              s.id,
-                              'CHECK_OUT',
-                            ),
+                            onPressed: () =>
+                                _evv(context, ref, s.id, 'CHECK_OUT'),
                             child: const Text('EVV out'),
                           ),
                           if (s.status == 'IN_PROGRESS')
                             FilledButton(
-                              onPressed: () => _completeSession(context, ref, s.id),
+                              onPressed: () =>
+                                  _completeSession(context, ref, s.id),
                               child: const Text('End visit'),
                             ),
                         ],

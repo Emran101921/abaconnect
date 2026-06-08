@@ -43,9 +43,8 @@ class AgencyAppointmentsScreen extends ConsumerWidget {
                       const SizedBox(height: 8),
                       Text(
                         '${stats.appointmentsToday}',
-                        style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                        style: Theme.of(context).textTheme.displaySmall
+                            ?.copyWith(fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 8),
                       Text(
@@ -73,12 +72,16 @@ class AgencyAppointmentsScreen extends ConsumerWidget {
                 if (list.isEmpty) {
                   return const Padding(
                     padding: EdgeInsets.all(16),
-                    child: Text('No upcoming appointments in the next two weeks.'),
+                    child: Text(
+                      'No upcoming appointments in the next two weeks.',
+                    ),
                   );
                 }
                 return Column(
                   children: list.map((a) {
-                    final start = DateFormat.MMMd().add_jm().format(a.scheduledStart);
+                    final start = DateFormat.MMMd().add_jm().format(
+                      a.scheduledStart,
+                    );
                     return Card(
                       child: ListTile(
                         title: Text('${a.childName} · ${a.therapyType}'),

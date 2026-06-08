@@ -61,12 +61,14 @@ class ParentCategoryBox extends StatelessWidget {
                         ),
                         decoration: BoxDecoration(
                           color: colorScheme.errorContainer,
-                          borderRadius:
-                              BorderRadius.circular(AppSpacing.radiusSm),
+                          borderRadius: BorderRadius.circular(
+                            AppSpacing.radiusSm,
+                          ),
                         ),
                         child: Text(
                           badge!,
-                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
                                 color: colorScheme.onErrorContainer,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -80,9 +82,9 @@ class ParentCategoryBox extends StatelessWidget {
                 Text(
                   '$itemCount options',
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: accent,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    color: accent,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),

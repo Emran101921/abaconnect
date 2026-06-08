@@ -34,7 +34,8 @@ class AppWelcomeBanner extends StatelessWidget {
                   children: [
                     Text(
                       greeting,
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(
                             color: Colors.white,
                             fontWeight: FontWeight.w700,
                           ),
@@ -44,17 +45,14 @@ class AppWelcomeBanner extends StatelessWidget {
                       Text(
                         subtitle!,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Colors.white.withValues(alpha: 0.9),
-                            ),
+                          color: Colors.white.withValues(alpha: 0.9),
+                        ),
                       ),
                     ],
                   ],
                 ),
               ),
-              AppHealthcareIllustration(
-                type: illustrationType,
-                size: 80,
-              ),
+              AppHealthcareIllustration(type: illustrationType, size: 80),
             ],
           ),
         ),

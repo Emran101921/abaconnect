@@ -249,8 +249,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 name: 'agencyAnalyticsClaimsList',
                 builder: (context, state) => AgencyAnalyticsClaimsListScreen(
                   statusFilter: state.pathParameters['statusFilter']!,
-                  detailBasePath:
-                      '${AppRoutes.agencyHome}/analytics/claims',
+                  detailBasePath: '${AppRoutes.agencyHome}/analytics/claims',
                 ),
               ),
               GoRoute(
@@ -265,18 +264,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 name: 'agencyAnalyticsScreeningsList',
                 builder: (context, state) =>
                     AgencyAnalyticsScreeningsListScreen(
-                  riskFilter: state.pathParameters['riskFilter']!,
-                  detailBasePath:
-                      '${AppRoutes.agencyHome}/analytics/screenings',
-                ),
+                      riskFilter: state.pathParameters['riskFilter']!,
+                      detailBasePath:
+                          '${AppRoutes.agencyHome}/analytics/screenings',
+                    ),
               ),
               GoRoute(
                 path: 'screenings/:screeningId',
                 name: 'agencyAnalyticsScreeningDetail',
                 builder: (context, state) =>
                     AgencyAnalyticsScreeningDetailScreen(
-                  screeningId: state.pathParameters['screeningId']!,
-                ),
+                      screeningId: state.pathParameters['screeningId']!,
+                    ),
               ),
             ],
           ),
@@ -347,8 +346,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 name: 'adminAnalyticsScreeningsList',
                 builder: (context, state) => AdminAnalyticsScreeningsListScreen(
                   riskFilter: state.pathParameters['riskFilter']!,
-                  detailBasePath:
-                      '${AppRoutes.adminHome}/analytics/screenings',
+                  detailBasePath: '${AppRoutes.adminHome}/analytics/screenings',
                 ),
               ),
               GoRoute(
@@ -356,8 +354,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 name: 'adminAnalyticsScreeningDetail',
                 builder: (context, state) =>
                     AdminAnalyticsScreeningDetailScreen(
-                  screeningId: state.pathParameters['screeningId']!,
-                ),
+                      screeningId: state.pathParameters['screeningId']!,
+                    ),
               ),
             ],
           ),
@@ -431,9 +429,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     ],
     errorBuilder: (context, state) => Scaffold(
       appBar: AppBar(title: const Text('Page Not Found')),
-      body: Center(
-        child: Text('No route defined for ${state.uri}'),
-      ),
+      body: Center(child: Text('No route defined for ${state.uri}')),
     ),
   );
 });

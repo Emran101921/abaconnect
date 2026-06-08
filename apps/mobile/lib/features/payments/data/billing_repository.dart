@@ -67,10 +67,7 @@ class BillingRepository {
       }
     ''',
       variables: {
-        'input': {
-          'amountCents': amountCents,
-          if (description != null) 'description': description,
-        },
+        'input': {'amountCents': amountCents, 'description': ?description},
       },
     );
     final data = result['data']?['createPayment'] as Map<String, dynamic>?;

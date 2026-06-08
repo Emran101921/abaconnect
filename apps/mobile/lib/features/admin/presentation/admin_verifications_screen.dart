@@ -30,7 +30,7 @@ class AdminVerificationsScreen extends ConsumerWidget {
             child: ListView.separated(
               padding: const EdgeInsets.all(16),
               itemCount: list.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              separatorBuilder: (_, _) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
                 final t = list[index];
                 return Card(
@@ -51,7 +51,9 @@ class AdminVerificationsScreen extends ConsumerWidget {
                           ref.invalidate(adminDashboardProvider);
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Verified ${t.displayName}')),
+                              SnackBar(
+                                content: Text('Verified ${t.displayName}'),
+                              ),
                             );
                           }
                         } catch (e) {

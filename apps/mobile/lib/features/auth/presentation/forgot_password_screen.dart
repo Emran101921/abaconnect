@@ -44,9 +44,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Request failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Request failed: $e')));
       }
     } finally {
       if (mounted) setState(() => _loading = false);

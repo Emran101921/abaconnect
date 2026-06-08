@@ -22,42 +22,50 @@ class AppTheme {
       primaryContainer: isLight
           ? const Color(0xFFE0E7FF)
           : const Color(0xFF312E81),
-      onPrimaryContainer:
-          isLight ? AppColors.primaryDark : const Color(0xFFC7D2FE),
+      onPrimaryContainer: isLight
+          ? AppColors.primaryDark
+          : const Color(0xFFC7D2FE),
       secondary: AppColors.secondary,
       onSecondary: Colors.white,
       secondaryContainer: isLight
           ? const Color(0xFFCFFAFE)
           : const Color(0xFF164E63),
-      onSecondaryContainer:
-          isLight ? const Color(0xFF0E7490) : const Color(0xFFA5F3FC),
+      onSecondaryContainer: isLight
+          ? const Color(0xFF0E7490)
+          : const Color(0xFFA5F3FC),
       tertiary: AppColors.accent,
       onTertiary: Colors.white,
       tertiaryContainer: isLight
           ? const Color(0xFFD1FAE5)
           : const Color(0xFF064E3B),
-      onTertiaryContainer:
-          isLight ? const Color(0xFF047857) : const Color(0xFFA7F3D0),
+      onTertiaryContainer: isLight
+          ? const Color(0xFF047857)
+          : const Color(0xFFA7F3D0),
       error: AppColors.error,
       onError: Colors.white,
       errorContainer: isLight
           ? const Color(0xFFFEE2E2)
           : const Color(0xFF7F1D1D),
-      onErrorContainer:
-          isLight ? const Color(0xFFB91C1C) : const Color(0xFFFECACA),
+      onErrorContainer: isLight
+          ? const Color(0xFFB91C1C)
+          : const Color(0xFFFECACA),
       surface: isLight ? AppColors.card : AppColors.cardDark,
       onSurface: isLight ? AppColors.textPrimary : const Color(0xFFF1F5F9),
-      onSurfaceVariant:
-          isLight ? AppColors.textSecondary : const Color(0xFF94A3B8),
+      onSurfaceVariant: isLight
+          ? AppColors.textSecondary
+          : const Color(0xFF94A3B8),
       outline: isLight ? const Color(0xFFCBD5E1) : const Color(0xFF334155),
-      outlineVariant:
-          isLight ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
+      outlineVariant: isLight
+          ? const Color(0xFFE2E8F0)
+          : const Color(0xFF1E293B),
       shadow: Colors.black,
       scrim: Colors.black54,
-      inverseSurface:
-          isLight ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
-      onInverseSurface:
-          isLight ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A),
+      inverseSurface: isLight
+          ? const Color(0xFF1E293B)
+          : const Color(0xFFF8FAFC),
+      onInverseSurface: isLight
+          ? const Color(0xFFF8FAFC)
+          : const Color(0xFF0F172A),
       inversePrimary: AppColors.primaryLight,
       surfaceTint: AppColors.primary,
       surfaceContainerHighest: isLight
@@ -70,8 +78,9 @@ class AppTheme {
           ? AppColors.background
           : const Color(0xFF1E293B),
       surfaceContainerLow: isLight ? AppColors.card : AppColors.cardDark,
-      surfaceContainerLowest:
-          isLight ? AppColors.card : const Color(0xFF0F172A),
+      surfaceContainerLowest: isLight
+          ? AppColors.card
+          : const Color(0xFF0F172A),
       surfaceBright: isLight ? Colors.white : const Color(0xFF334155),
       surfaceDim: isLight ? AppColors.background : AppColors.surfaceDark,
     );
@@ -79,8 +88,9 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
-      scaffoldBackgroundColor:
-          isLight ? AppColors.background : AppColors.surfaceDark,
+      scaffoldBackgroundColor: isLight
+          ? AppColors.background
+          : AppColors.surfaceDark,
       textTheme: textTheme,
       appBarTheme: AppBarTheme(
         centerTitle: false,
@@ -220,9 +230,7 @@ class AppTheme {
           }
           return Colors.transparent;
         }),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(4),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
       ),
       radioTheme: RadioThemeData(
         fillColor: WidgetStateProperty.resolveWith((states) {
