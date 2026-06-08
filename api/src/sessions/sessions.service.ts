@@ -290,10 +290,10 @@ export class SessionsService {
       childSex: child.gender ?? undefined,
       eiNumber: undefined,
       interventionistName: `${therapist.user.firstName} ${therapist.user.lastName}`,
-      credentials: therapist.licenseNumber
-        ? `${therapyLabel} (${therapist.licenseNumber})`
-        : therapyLabel,
+      credentials: therapyLabel,
       npi: therapist.npi ?? agency?.npi ?? undefined,
+      licenseNumber: therapist.licenseNumber ?? undefined,
+      licenseState: therapist.licenseState ?? undefined,
       serviceType: therapyLabel,
       sessionDate: formatDate(apt.scheduledStart),
       ifspServiceLocation: locationLabel,

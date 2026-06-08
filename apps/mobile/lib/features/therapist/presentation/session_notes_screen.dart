@@ -249,28 +249,17 @@ class SessionNotesScreen extends ConsumerWidget {
     String eventType,
   ) async {
     try {
-      final coords = await LocationService().getCurrentCoords();
-      if (coords == null) {
+      final capture = await LocationService().captureCurrentPosition();
+      if (!capture.isSuccess) {
         if (context.mounted) {
-          await showDialog<void>(
-            context: context,
-            builder: (ctx) => AlertDialog(
-              title: const Text('Location access needed'),
-              content: const Text(
-                'EVV check-in requires location permission. Enable location '
-                'for BloomOra in device Settings, then try again.',
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text('OK'),
-                ),
-              ],
-            ),
+          await LocationService.showLocationRequiredDialog(
+            context,
+            capture.failureReason ?? LocationFailure.serviceDisabled,
           );
         }
         return;
       }
+      final coords = (lat: capture.latitude!, lng: capture.longitude!);
       await ref
           .read(platformRepositoryProvider)
           .recordEvv(

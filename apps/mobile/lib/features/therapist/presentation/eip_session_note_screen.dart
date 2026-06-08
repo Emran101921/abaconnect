@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/location/location_service.dart';
 import '../../../core/providers/app_providers.dart';
 import '../models/eip_session_note_model.dart';
 import '../therapist_providers.dart';
@@ -11,10 +12,17 @@ import '../../../shared/widgets/app_scaffold.dart';
 
 final sessionNoteFormContextProvider =
     FutureProvider.family<EipSessionNoteModel, String>((ref, sessionId) async {
-  final ctx = await ref
-      .read(therapistRepositoryProvider)
-      .fetchSessionNoteFormContext(sessionId);
-  return EipSessionNoteModel.fromContext(ctx);
+  final repo = ref.read(therapistRepositoryProvider);
+  final ctx = await repo.fetchSessionNoteFormContext(sessionId);
+  var form = EipSessionNoteModel.fromContext(ctx);
+
+  final profile = await repo.fetchProfile();
+  form = form.withProfileCredentials(
+    npi: profile.npi ?? form.npi,
+    licenseNumber: profile.licenseNumber ?? form.licenseNumber,
+    licenseState: profile.licenseState ?? form.licenseState,
+  );
+  return form;
 });
 
 class EipSessionNoteScreen extends ConsumerStatefulWidget {
@@ -53,6 +61,7 @@ const _intensityOptions = [
 class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
   EipSessionNoteModel? _form;
   bool _saving = false;
+  bool _capturingGps = false;
 
   @override
   Widget build(BuildContext context) {
@@ -111,11 +120,19 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
                       () => _form = form.copyWith(interventionistName: v),
                     );
                   }),
-                  _field('Credentials', form.credentials ?? '', (v) {
+                  _field('Credentials (discipline)', form.credentials ?? '', (v) {
                     setState(() => _form = form.copyWith(credentials: v));
                   }),
                   _field('National Provider ID (NPI)', form.npi ?? '', (v) {
                     setState(() => _form = form.copyWith(npi: v));
+                  }),
+                  _field('State license number', form.licenseNumber ?? '', (v) {
+                    setState(() {
+                      _form = form.copyWith(
+                        licenseNumber: v,
+                        interventionistLicense: v,
+                      );
+                    });
                   }),
                   _field('Service type', form.serviceType ?? '', (v) {
                     setState(() => _form = form.copyWith(serviceType: v));
@@ -417,9 +434,42 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
               _section(
                 title: 'Signatures',
                 children: [
-                  _field('Parent/caregiver signature', form.parentSignature ?? '', (v) {
-                    setState(() => _form = form.copyWith(parentSignature: v));
-                  }),
+                  _locationNotice(),
+                  _gpsGatedSignatureField(
+                    label: 'Parent/caregiver signature',
+                    value: form.parentSignature ?? '',
+                    gpsUnlocked: form.hasParentSignatureGpsCapture,
+                    latitude: form.parentSignatureLatitude,
+                    longitude: form.parentSignatureLongitude,
+                    locationAt: form.parentSignatureLocationAt,
+                    gpsSummary: _gpsSummary(
+                      form.parentSignatureLatitude,
+                      form.parentSignatureLongitude,
+                      form.parentSignatureLocationAt,
+                    ),
+                    onChanged: (v, lat, lng, capturedAt) {
+                      setState(() {
+                        if (v.isEmpty) {
+                          final json = form.toJson()
+                            ..remove('parentSignature')
+                            ..remove('parentSignatureLatitude')
+                            ..remove('parentSignatureLongitude')
+                            ..remove('parentSignatureLocationAt');
+                          _form = EipSessionNoteModel.fromJson(
+                            json,
+                            sessionId: form.sessionId,
+                          );
+                          return;
+                        }
+                        _form = form.copyWith(
+                          parentSignature: v,
+                          parentSignatureLatitude: lat,
+                          parentSignatureLongitude: lng,
+                          parentSignatureLocationAt: capturedAt,
+                        );
+                      });
+                    },
+                  ),
                   _field('Parent signature date', form.parentSignatureDate ?? '', (v) {
                     setState(() => _form = form.copyWith(parentSignatureDate: v));
                   }),
@@ -427,30 +477,22 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
                     setState(() => _form = form.copyWith(parentRelationship: v));
                   }),
                   const Divider(height: 24),
-                  _field(
-                    'Interventionist signature',
-                    form.interventionistSignature ?? form.interventionistName,
-                    (v) {
-                      setState(
-                        () => _form = form.copyWith(interventionistSignature: v),
-                      );
-                    },
-                  ),
+                  _interventionistSignatureBlock(form),
                   _field(
                     'Interventionist signature date',
                     form.interventionistSignatureDate ?? form.dateNoteWritten ?? '',
-                    (v) {
-                      setState(
-                        () => _form = form.copyWith(interventionistSignatureDate: v),
-                      );
-                    },
+                    (_) {},
+                    readOnly: true,
                   ),
                   _field(
                     'License/certification #',
-                    form.interventionistLicense ?? form.credentials ?? '',
+                    form.interventionistLicense ?? form.licenseNumber ?? '',
                     (v) {
                       setState(
-                        () => _form = form.copyWith(interventionistLicense: v),
+                        () => _form = form.copyWith(
+                          interventionistLicense: v,
+                          licenseNumber: v,
+                        ),
                       );
                     },
                   ),
@@ -532,11 +574,218 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
     );
   }
 
+  Widget _locationNotice() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.location_on_outlined,
+            size: 20,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          const SizedBox(width: 8),
+          const Expanded(
+            child: Text(
+              'Location services must be on to sign this note. GPS coordinates '
+              'are recorded when you sign.',
+              style: TextStyle(fontSize: 13),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String? _gpsSummary(double? lat, double? lng, String? capturedAt) {
+    if (lat == null || lng == null) return null;
+    final coords =
+        '${lat.toStringAsFixed(5)}, ${lng.toStringAsFixed(5)}';
+    if (capturedAt == null || capturedAt.isEmpty) return 'GPS: $coords';
+    return 'GPS: $coords · $capturedAt';
+  }
+
+  Future<LocationCaptureResult?> _captureGps(BuildContext context) async {
+    if (_capturingGps) return null;
+    setState(() => _capturingGps = true);
+    try {
+      final result = await LocationService().captureCurrentPosition();
+      if (!result.isSuccess && context.mounted) {
+        await LocationService.showLocationRequiredDialog(
+          context,
+          result.failureReason ?? LocationFailure.serviceDisabled,
+        );
+      }
+      return result;
+    } finally {
+      if (mounted) setState(() => _capturingGps = false);
+    }
+  }
+
+  Widget _gpsGatedSignatureField({
+    required String label,
+    required String value,
+    required bool gpsUnlocked,
+    required double? latitude,
+    required double? longitude,
+    required String? locationAt,
+    required String? gpsSummary,
+    required void Function(
+      String value,
+      double? lat,
+      double? lng,
+      String? capturedAt,
+    ) onChanged,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _BoundTextField(
+            key: ValueKey('$label-$value-${gpsUnlocked ? 'gps' : 'nogps'}'),
+            label: label,
+            value: value,
+            hint: gpsUnlocked && value.isEmpty
+                ? 'Enter parent/caregiver name'
+                : 'Tap to capture GPS, then sign',
+            readOnly: !gpsUnlocked,
+            onTap: !gpsUnlocked
+                ? () => _beginGpsGatedEdit(
+                      context,
+                      currentValue: value,
+                      onChanged: onChanged,
+                    )
+                : null,
+            onChanged: (v) {
+              if (v.isEmpty) {
+                onChanged('', null, null, null);
+                return;
+              }
+              onChanged(v, latitude, longitude, locationAt);
+            },
+          ),
+          if (gpsSummary != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              gpsSummary,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _beginGpsGatedEdit(
+    BuildContext context, {
+    required String currentValue,
+    required void Function(
+      String value,
+      double? lat,
+      double? lng,
+      String? capturedAt,
+    ) onChanged,
+  }) async {
+    final gps = await _captureGps(context);
+    if (gps == null || !gps.isSuccess || !mounted) return;
+
+    final capturedAt = DateTime.now().toIso8601String();
+    onChanged(
+      currentValue,
+      gps.latitude,
+      gps.longitude,
+      capturedAt,
+    );
+    setState(() {});
+  }
+
+  Widget _interventionistSignatureBlock(EipSessionNoteModel form) {
+    final signed = form.hasGpsVerifiedInterventionistSignature;
+    final gpsSummary = _gpsSummary(
+      form.interventionistSignatureLatitude,
+      form.interventionistSignatureLongitude,
+      form.interventionistSignatureLocationAt,
+    );
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Interventionist signature',
+            style: Theme.of(context).textTheme.labelLarge,
+          ),
+          const SizedBox(height: 8),
+          if (signed)
+            Card(
+              margin: EdgeInsets.zero,
+              child: ListTile(
+                leading: const Icon(Icons.verified_outlined),
+                title: Text(form.interventionistSignature!),
+                subtitle: Text(
+                  'Signed ${form.interventionistSignatureDate ?? ''}',
+                ),
+              ),
+            )
+          else
+            Text(
+              form.interventionistName,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          if (gpsSummary != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              gpsSummary,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+          const SizedBox(height: 8),
+          FilledButton.tonalIcon(
+            onPressed: _capturingGps
+                ? null
+                : () => _signInterventionist(context, form),
+            icon: _capturingGps
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.draw_outlined),
+            label: Text(signed ? 'Re-sign with GPS' : 'Sign with GPS'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _signInterventionist(
+    BuildContext context,
+    EipSessionNoteModel form,
+  ) async {
+    final gps = await _captureGps(context);
+    if (gps == null || !gps.isSuccess || !mounted) return;
+
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+    setState(() {
+      _form = form.copyWith(
+        interventionistSignature: form.interventionistName,
+        interventionistSignatureDate: today,
+        interventionistSignatureLatitude: gps.latitude,
+        interventionistSignatureLongitude: gps.longitude,
+        interventionistSignatureLocationAt: DateTime.now().toIso8601String(),
+      );
+    });
+  }
+
   Widget _field(
     String label,
     String value,
-    ValueChanged<String> onChanged,
-  ) {
+    ValueChanged<String> onChanged, {
+    bool readOnly = false,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: _BoundTextField(
@@ -544,6 +793,7 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
         label: label,
         value: value,
         onChanged: onChanged,
+        readOnly: readOnly,
       ),
     );
   }
@@ -696,6 +946,17 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
       return;
     }
 
+    if (form.hasInvalidSignatures) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Signatures require GPS location. Turn on location services and sign again.',
+          ),
+        ),
+      );
+      return;
+    }
+
     setState(() => _saving = true);
     try {
       await ref.read(therapistRepositoryProvider).saveEipSessionNote(form);
@@ -738,6 +999,9 @@ class _BoundTextField extends StatefulWidget {
     required this.onChanged,
     this.minLines = 1,
     this.multiline = false,
+    this.readOnly = false,
+    this.onTap,
+    this.hint,
   });
 
   final String label;
@@ -745,6 +1009,9 @@ class _BoundTextField extends StatefulWidget {
   final ValueChanged<String> onChanged;
   final int minLines;
   final bool multiline;
+  final bool readOnly;
+  final VoidCallback? onTap;
+  final String? hint;
 
   @override
   State<_BoundTextField> createState() => _BoundTextFieldState();
@@ -777,9 +1044,15 @@ class _BoundTextFieldState extends State<_BoundTextField> {
   Widget build(BuildContext context) {
     return TextField(
       controller: _controller,
+      readOnly: widget.readOnly,
+      onTap: widget.onTap,
       decoration: InputDecoration(
         labelText: widget.label,
+        hintText: widget.hint,
         alignLabelWithHint: widget.multiline,
+        suffixIcon: widget.readOnly
+            ? const Icon(Icons.location_searching, size: 20)
+            : null,
       ),
       minLines: widget.multiline ? widget.minLines : 1,
       maxLines: widget.multiline ? null : 1,

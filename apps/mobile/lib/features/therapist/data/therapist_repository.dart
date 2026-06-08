@@ -383,7 +383,8 @@ class TherapistRepository {
       query Context($sessionId: ID!) {
         sessionNoteFormContext(sessionId: $sessionId) {
           sessionId childName childDob childSex eiNumber
-          interventionistName credentials npi serviceType
+          interventionistName credentials npi licenseNumber licenseState
+          serviceType
           sessionDate ifspServiceLocation timeFrom timeTo
           sessionDelivered icd10Code existingEipFormData
         }

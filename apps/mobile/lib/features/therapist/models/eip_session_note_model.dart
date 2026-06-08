@@ -11,6 +11,8 @@ class EipSessionNoteModel {
     this.interventionistName = '',
     this.credentials,
     this.npi,
+    this.licenseNumber,
+    this.licenseState,
     this.serviceType,
     this.sessionDate,
     this.ifspServiceLocation,
@@ -48,7 +50,13 @@ class EipSessionNoteModel {
     this.parentRelationship,
     this.interventionistSignature,
     this.interventionistSignatureDate,
+    this.interventionistSignatureLatitude,
+    this.interventionistSignatureLongitude,
+    this.interventionistSignatureLocationAt,
     this.interventionistLicense,
+    this.parentSignatureLatitude,
+    this.parentSignatureLongitude,
+    this.parentSignatureLocationAt,
     this.supervisorName,
     this.supervisorSignatureDate,
     this.supervisorLicense,
@@ -62,6 +70,8 @@ class EipSessionNoteModel {
   final String interventionistName;
   final String? credentials;
   final String? npi;
+  final String? licenseNumber;
+  final String? licenseState;
   final String? serviceType;
   final String? sessionDate;
   final String? ifspServiceLocation;
@@ -99,7 +109,13 @@ class EipSessionNoteModel {
   final String? parentRelationship;
   final String? interventionistSignature;
   final String? interventionistSignatureDate;
+  final double? interventionistSignatureLatitude;
+  final double? interventionistSignatureLongitude;
+  final String? interventionistSignatureLocationAt;
   final String? interventionistLicense;
+  final double? parentSignatureLatitude;
+  final double? parentSignatureLongitude;
+  final String? parentSignatureLocationAt;
   final String? supervisorName;
   final String? supervisorSignatureDate;
   final String? supervisorLicense;
@@ -109,6 +125,27 @@ class EipSessionNoteModel {
       q2SessionDescription.trim().isNotEmpty &&
       q4HomeStrategies.trim().isNotEmpty;
 
+  bool get hasInterventionistSignature =>
+      interventionistSignature?.trim().isNotEmpty ?? false;
+
+  bool get hasGpsVerifiedInterventionistSignature =>
+      hasInterventionistSignature &&
+      interventionistSignatureLatitude != null &&
+      interventionistSignatureLongitude != null;
+
+  bool get hasParentSignature => parentSignature?.trim().isNotEmpty ?? false;
+
+  bool get hasParentSignatureGpsCapture =>
+      parentSignatureLatitude != null && parentSignatureLongitude != null;
+
+  bool get hasGpsVerifiedParentSignature =>
+      hasParentSignature && hasParentSignatureGpsCapture;
+
+  /// Signatures without GPS coordinates are not allowed to be saved.
+  bool get hasInvalidSignatures =>
+      (hasInterventionistSignature && !hasGpsVerifiedInterventionistSignature) ||
+      (hasParentSignature && !hasGpsVerifiedParentSignature);
+
   EipSessionNoteModel copyWith({
     String? childName,
     String? childDob,
@@ -117,6 +154,8 @@ class EipSessionNoteModel {
     String? interventionistName,
     String? credentials,
     String? npi,
+    String? licenseNumber,
+    String? licenseState,
     String? serviceType,
     String? sessionDate,
     String? ifspServiceLocation,
@@ -154,7 +193,13 @@ class EipSessionNoteModel {
     String? parentRelationship,
     String? interventionistSignature,
     String? interventionistSignatureDate,
+    double? interventionistSignatureLatitude,
+    double? interventionistSignatureLongitude,
+    String? interventionistSignatureLocationAt,
     String? interventionistLicense,
+    double? parentSignatureLatitude,
+    double? parentSignatureLongitude,
+    String? parentSignatureLocationAt,
     String? supervisorName,
     String? supervisorSignatureDate,
     String? supervisorLicense,
@@ -168,6 +213,8 @@ class EipSessionNoteModel {
       interventionistName: interventionistName ?? this.interventionistName,
       credentials: credentials ?? this.credentials,
       npi: npi ?? this.npi,
+      licenseNumber: licenseNumber ?? this.licenseNumber,
+      licenseState: licenseState ?? this.licenseState,
       serviceType: serviceType ?? this.serviceType,
       sessionDate: sessionDate ?? this.sessionDate,
       ifspServiceLocation:
@@ -211,8 +258,20 @@ class EipSessionNoteModel {
           interventionistSignature ?? this.interventionistSignature,
       interventionistSignatureDate:
           interventionistSignatureDate ?? this.interventionistSignatureDate,
+      interventionistSignatureLatitude: interventionistSignatureLatitude ??
+          this.interventionistSignatureLatitude,
+      interventionistSignatureLongitude: interventionistSignatureLongitude ??
+          this.interventionistSignatureLongitude,
+      interventionistSignatureLocationAt: interventionistSignatureLocationAt ??
+          this.interventionistSignatureLocationAt,
       interventionistLicense:
           interventionistLicense ?? this.interventionistLicense,
+      parentSignatureLatitude:
+          parentSignatureLatitude ?? this.parentSignatureLatitude,
+      parentSignatureLongitude:
+          parentSignatureLongitude ?? this.parentSignatureLongitude,
+      parentSignatureLocationAt:
+          parentSignatureLocationAt ?? this.parentSignatureLocationAt,
       supervisorName: supervisorName ?? this.supervisorName,
       supervisorSignatureDate:
           supervisorSignatureDate ?? this.supervisorSignatureDate,
@@ -232,6 +291,9 @@ class EipSessionNoteModel {
       } catch (_) {}
     }
 
+    final license = ctx['licenseNumber'] as String?;
+    final npi = ctx['npi'] as String?;
+
     final base = EipSessionNoteModel(
       sessionId: ctx['sessionId'] as String,
       childName: ctx['childName'] as String? ?? '',
@@ -240,7 +302,9 @@ class EipSessionNoteModel {
       eiNumber: ctx['eiNumber'] as String?,
       interventionistName: ctx['interventionistName'] as String? ?? '',
       credentials: ctx['credentials'] as String?,
-      npi: ctx['npi'] as String?,
+      npi: npi,
+      licenseNumber: license,
+      licenseState: ctx['licenseState'] as String?,
       serviceType: ctx['serviceType'] as String?,
       sessionDate: ctx['sessionDate'] as String?,
       ifspServiceLocation: ctx['ifspServiceLocation'] as String?,
@@ -251,9 +315,44 @@ class EipSessionNoteModel {
       sessionDelivered: ctx['sessionDelivered'] as String? ?? 'In-person',
       dateNoteWritten: DateTime.now().toIso8601String().slice(0, 10),
       icd10Code: ctx['icd10Code'] as String?,
+      interventionistLicense: license,
     );
 
-    return existing ?? base;
+    if (existing != null) {
+      return existing.withProfileCredentials(
+        npi: base.npi,
+        licenseNumber: base.licenseNumber,
+        licenseState: base.licenseState,
+      );
+    }
+    return base;
+  }
+
+  /// Fills NPI and license from therapist profile when not already on the form.
+  EipSessionNoteModel withProfileCredentials({
+    String? npi,
+    String? licenseNumber,
+    String? licenseState,
+  }) {
+    final profileNpi = npi?.trim();
+    final profileLicense = licenseNumber?.trim();
+    final profileState = licenseState?.trim();
+
+    return copyWith(
+      npi: _preferExisting(this.npi, profileNpi),
+      licenseNumber: _preferExisting(this.licenseNumber, profileLicense),
+      licenseState: _preferExisting(this.licenseState, profileState),
+      interventionistLicense: _preferExisting(
+        interventionistLicense,
+        profileLicense,
+      ),
+    );
+  }
+
+  static String? _preferExisting(String? current, String? fromProfile) {
+    if (current != null && current.trim().isNotEmpty) return current.trim();
+    if (fromProfile != null && fromProfile.isNotEmpty) return fromProfile;
+    return current;
   }
 
   factory EipSessionNoteModel.fromJson(
@@ -269,6 +368,8 @@ class EipSessionNoteModel {
       interventionistName: json['interventionistName'] as String? ?? '',
       credentials: json['credentials'] as String?,
       npi: json['npi'] as String?,
+      licenseNumber: json['licenseNumber'] as String?,
+      licenseState: json['licenseState'] as String?,
       serviceType: json['serviceType'] as String?,
       sessionDate: json['sessionDate'] as String?,
       ifspServiceLocation: json['ifspServiceLocation'] as String?,
@@ -306,7 +407,18 @@ class EipSessionNoteModel {
       parentRelationship: json['parentRelationship'] as String?,
       interventionistSignature: json['interventionistSignature'] as String?,
       interventionistSignatureDate: json['interventionistSignatureDate'] as String?,
+      interventionistSignatureLatitude:
+          (json['interventionistSignatureLatitude'] as num?)?.toDouble(),
+      interventionistSignatureLongitude:
+          (json['interventionistSignatureLongitude'] as num?)?.toDouble(),
+      interventionistSignatureLocationAt:
+          json['interventionistSignatureLocationAt'] as String?,
       interventionistLicense: json['interventionistLicense'] as String?,
+      parentSignatureLatitude:
+          (json['parentSignatureLatitude'] as num?)?.toDouble(),
+      parentSignatureLongitude:
+          (json['parentSignatureLongitude'] as num?)?.toDouble(),
+      parentSignatureLocationAt: json['parentSignatureLocationAt'] as String?,
       supervisorName: json['supervisorName'] as String?,
       supervisorSignatureDate: json['supervisorSignatureDate'] as String?,
       supervisorLicense: json['supervisorLicense'] as String?,
@@ -321,6 +433,8 @@ class EipSessionNoteModel {
         'interventionistName': interventionistName,
         'credentials': credentials,
         'npi': npi,
+        'licenseNumber': licenseNumber,
+        'licenseState': licenseState,
         'serviceType': serviceType,
         'sessionDate': sessionDate,
         'ifspServiceLocation': ifspServiceLocation,
@@ -358,7 +472,14 @@ class EipSessionNoteModel {
         'parentRelationship': parentRelationship,
         'interventionistSignature': interventionistSignature,
         'interventionistSignatureDate': interventionistSignatureDate,
+        'interventionistSignatureLatitude': interventionistSignatureLatitude,
+        'interventionistSignatureLongitude': interventionistSignatureLongitude,
+        'interventionistSignatureLocationAt':
+            interventionistSignatureLocationAt,
         'interventionistLicense': interventionistLicense,
+        'parentSignatureLatitude': parentSignatureLatitude,
+        'parentSignatureLongitude': parentSignatureLongitude,
+        'parentSignatureLocationAt': parentSignatureLocationAt,
         'supervisorName': supervisorName,
         'supervisorSignatureDate': supervisorSignatureDate,
         'supervisorLicense': supervisorLicense,

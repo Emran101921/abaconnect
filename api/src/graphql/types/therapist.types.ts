@@ -132,6 +132,12 @@ export class SessionNoteFormContextType {
   npi?: string;
 
   @Field({ nullable: true })
+  licenseNumber?: string;
+
+  @Field({ nullable: true })
+  licenseState?: string;
+
+  @Field({ nullable: true })
   serviceType?: string;
 
   @Field({ nullable: true })
