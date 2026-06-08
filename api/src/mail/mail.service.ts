@@ -37,7 +37,7 @@ export class MailService {
       await this.transporter.sendMail({
         from:
           this.config.get<string>('SMTP_FROM') ??
-          'ABAConnect <noreply@abaconnect.local>',
+          'BloomOra <noreply@abaconnect.local>',
         to: options.to,
         subject: options.subject,
         text: options.text,
@@ -58,9 +58,9 @@ export class MailService {
   ): Promise<{ sent: boolean; mode: 'smtp' | 'log' }> {
     return this.sendMail({
       to: email,
-      subject: 'Reset your ABAConnect password',
+      subject: 'Reset your BloomOra password',
       text: [
-        'You requested a password reset for ABAConnect.',
+        'You requested a password reset for BloomOra.',
         '',
         `Reset your password (link expires in 1 hour):`,
         resetUrl,

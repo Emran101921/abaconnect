@@ -1,4 +1,4 @@
-// ABAConnect therapy marketplace – Prisma 7 schema
+// BloomOra therapy marketplace – Prisma 7 schema
 
 generator client {
   provider = "prisma-client"

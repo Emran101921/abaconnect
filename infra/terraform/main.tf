@@ -1,4 +1,4 @@
-# ABAConnect – AWS HIPAA-eligible infrastructure (skeleton)
+# BloomOra – AWS HIPAA-eligible infrastructure (skeleton)
 # Requires: terraform >= 1.5, AWS provider configured
 
 terraform {
@@ -68,7 +68,7 @@ resource "aws_db_instance" "postgres" {
 
 # KMS for encryption at rest
 resource "aws_kms_key" "main" {
-  description             = "ABAConnect ${var.environment} encryption key"
+  description             = "BloomOra ${var.environment} encryption key"
   deletion_window_in_days = 30
   enable_key_rotation     = true
 }

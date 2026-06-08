@@ -1,4 +1,4 @@
-# ABAConnect – Phase Deliverables Map
+# BloomOra – Phase Deliverables Map
 
 ## Phase 0 – Compliance foundation
 - [x] `AuditLog`, `HipaaConsent`, `DocumentAccessLog` models

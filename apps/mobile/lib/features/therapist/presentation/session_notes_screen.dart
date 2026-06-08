@@ -191,7 +191,7 @@ class SessionNotesScreen extends ConsumerWidget {
               title: const Text('Location access needed'),
               content: const Text(
                 'EVV check-in requires location permission. Enable location '
-                'for ABA Connect in device Settings, then try again.',
+                'for BloomOra in device Settings, then try again.',
               ),
               actions: [
                 TextButton(

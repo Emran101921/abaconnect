@@ -1,4 +1,4 @@
-# ABAConnect
+# BloomOra
 
 HIPAA-oriented therapy marketplace connecting parents with licensed providers (ABA, Speech, OT, PT, and related services).
 

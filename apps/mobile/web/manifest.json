@@ -1,11 +1,11 @@
 {
-    "name": "mobile",
-    "short_name": "mobile",
+    "name": "BloomOra",
+    "short_name": "BloomOra",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Early Intervention and therapy care coordination for families.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

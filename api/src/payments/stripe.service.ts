@@ -67,7 +67,7 @@ export class StripeService {
             currency: 'usd',
             unit_amount: amountCents,
             product_data: {
-              name: metadata.description ?? 'ABAConnect session payment',
+              name: metadata.description ?? 'BloomOra session payment',
             },
           },
         },

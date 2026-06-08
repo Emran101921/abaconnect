@@ -10,9 +10,9 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(const ProviderScope(child: AbaConnectApp()));
+    await tester.pumpWidget(const ProviderScope(child: BloomOraApp()));
 
-    expect(find.text('ABA Connect'), findsOneWidget);
+    expect(find.text('BloomOra'), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
     await tester.pump(const Duration(milliseconds: 800));

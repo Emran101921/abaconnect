@@ -13,17 +13,17 @@ final pendingPushPayloadProvider =
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const ProviderScope(child: AbaConnectApp()));
+  runApp(const ProviderScope(child: BloomOraApp()));
 }
 
-class AbaConnectApp extends ConsumerStatefulWidget {
-  const AbaConnectApp({super.key});
+class BloomOraApp extends ConsumerStatefulWidget {
+  const BloomOraApp({super.key});
 
   @override
-  ConsumerState<AbaConnectApp> createState() => _AbaConnectAppState();
+  ConsumerState<BloomOraApp> createState() => _BloomOraAppState();
 }
 
-class _AbaConnectAppState extends ConsumerState<AbaConnectApp> {
+class _BloomOraAppState extends ConsumerState<BloomOraApp> {
   @override
   void initState() {
     super.initState();
@@ -52,7 +52,7 @@ class _AbaConnectAppState extends ConsumerState<AbaConnectApp> {
     final themeMode = ref.watch(themeModeProvider);
 
     return MaterialApp.router(
-      title: 'ABA Connect',
+      title: 'BloomOra',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,

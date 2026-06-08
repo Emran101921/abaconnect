@@ -72,7 +72,7 @@ class AppBrandLogo extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'ABA Connect',
+              'BloomOra',
               style: titleStyle?.copyWith(
                 fontWeight: FontWeight.w800,
                 color: titleColor,

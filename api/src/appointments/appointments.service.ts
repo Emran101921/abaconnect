@@ -84,7 +84,7 @@ export class AppointmentsService {
     const lines: string[] = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
-      'PRODID:-//ABAConnect//EN',
+      'PRODID:-//BloomOra//EN',
       'CALSCALE:GREGORIAN',
       'METHOD:PUBLISH',
     ];
@@ -114,7 +114,7 @@ export class AppointmentsService {
     const lines: string[] = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
-      'PRODID:-//ABAConnect//EN',
+      'PRODID:-//BloomOra//EN',
       'CALSCALE:GREGORIAN',
       'METHOD:PUBLISH',
     ];

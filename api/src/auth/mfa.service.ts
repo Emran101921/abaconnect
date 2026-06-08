@@ -9,7 +9,7 @@ export class MfaService {
   generateSecret(email: string): { secret: string; otpauthUrl: string } {
     const secret = generateSecret();
     const otpauthUrl = generateURI({
-      issuer: 'ABAConnect',
+      issuer: 'BloomOra',
       label: email,
       secret,
     });

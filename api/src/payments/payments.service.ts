@@ -62,7 +62,7 @@ export class PaymentsService {
         {
           paymentId: payment.id,
           parentId: parent.id,
-          description: input.description ?? 'ABAConnect payment',
+          description: input.description ?? 'BloomOra payment',
         },
         `${appUrl}/api/v1/payments/success?paymentId=${payment.id}`,
         `${appUrl}/api/v1/payments/cancel`,

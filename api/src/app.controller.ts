@@ -28,7 +28,7 @@ export class AppController {
     return {
       ok: true,
       message:
-        'Payment received. Return to the ABAConnect app and refresh Payments.',
+        'Payment received. Return to the BloomOra app and refresh Payments.',
     };
   }
 
