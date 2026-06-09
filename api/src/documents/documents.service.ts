@@ -8,7 +8,6 @@ import {
   encryptBuffer,
 } from '../common/crypto/field-crypto.util';
 import {
-  createReadStream,
   existsSync,
   mkdirSync,
   readFileSync,
