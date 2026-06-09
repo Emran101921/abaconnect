@@ -8,7 +8,8 @@ import { GraphqlFeatureModule } from './graphql/graphql.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { GraphQLModule } from '@nestjs/graphql';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { AppThrottlerGuard } from './common/guards/app-throttler.guard';
 import { BullModule } from '@nestjs/bull';
 import { MailModule } from './mail/mail.module';
 import { AppController } from './app.controller';
@@ -104,7 +105,7 @@ import { SecurityModule } from './security/security.module';
     AppService,
     { provide: APP_INTERCEPTOR, useClass: TenantContextInterceptor },
     { provide: APP_INTERCEPTOR, useClass: HipaaConsentInterceptor },
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: AppThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
   ],
