@@ -8,7 +8,11 @@ import { Prisma } from '../../generated/prisma/client';
 import { InsuranceService } from '../insurance/insurance.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { isEipFormFullySigned } from './eip-form.util';
+import {
+  hasParentSignature,
+  isEipFormFullySigned,
+  isReadyForParentSignature,
+} from './eip-form.util';
 
 export interface SaveSoapNoteInput {
   sessionId: string;
@@ -295,6 +299,13 @@ export class SessionsService {
     }
 
     const eipFormData = this.parseEipFormData(input.eipFormData);
+    if (eipFormData != null && hasParentSignature(eipFormData)) {
+      if (!isReadyForParentSignature(eipFormData)) {
+        throw new BadRequestException(
+          'Complete all required session note fields before parent signature.',
+        );
+      }
+    }
     const fullySigned =
       eipFormData != null ? isEipFormFullySigned(eipFormData) : false;
 
