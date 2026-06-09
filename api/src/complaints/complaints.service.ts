@@ -49,9 +49,13 @@ export class ComplaintsService {
     });
   }
 
-  async resolveComplaint(complaintId: string, resolution: string) {
-    const row = await this.prisma.complaint.findUnique({
-      where: { id: complaintId },
+  async resolveComplaint(
+    tenantId: string,
+    complaintId: string,
+    resolution: string,
+  ) {
+    const row = await this.prisma.complaint.findFirst({
+      where: { id: complaintId, tenantId },
     });
     if (!row) throw new NotFoundException('Complaint not found');
     return this.prisma.complaint.update({

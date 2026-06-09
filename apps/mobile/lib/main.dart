@@ -6,6 +6,7 @@ import 'core/push/push_navigation.dart';
 import 'core/providers/app_providers.dart';
 import 'core/router/app_router.dart';
 import 'core/providers/theme_mode_provider.dart';
+import 'core/security/session_idle_guard.dart';
 import 'core/theme/app_theme.dart';
 
 final pendingPushPayloadProvider = StateProvider<Map<String, dynamic>?>(
@@ -50,13 +51,15 @@ class _BloomOraAppState extends ConsumerState<BloomOraApp> {
 
     final themeMode = ref.watch(themeModeProvider);
 
-    return MaterialApp.router(
-      title: 'BloomOra',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
-      darkTheme: AppTheme.dark,
-      themeMode: themeMode,
-      routerConfig: router,
+    return SessionIdleGuard(
+      child: MaterialApp.router(
+        title: 'BloomOra',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light,
+        darkTheme: AppTheme.dark,
+        themeMode: themeMode,
+        routerConfig: router,
+      ),
     );
   }
 }

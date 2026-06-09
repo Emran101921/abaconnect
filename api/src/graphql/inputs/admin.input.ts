@@ -11,6 +11,18 @@ export class SetUserActiveInput {
 }
 
 @InputType()
+export class SetAgencyBaaInput {
+  @Field(() => ID)
+  agencyId: string;
+
+  @Field()
+  baaSignedAt: Date;
+
+  @Field({ nullable: true })
+  baaDocumentKey?: string;
+}
+
+@InputType()
 export class UpdateInsuranceClaimInput {
   @Field(() => ID)
   claimId: string;

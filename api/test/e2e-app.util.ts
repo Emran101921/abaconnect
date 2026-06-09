@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getQueueToken } from '@nestjs/bull';
 import helmet from 'helmet';
 import { AppModule } from '../src/app.module';
+import { GraphqlValidationPipe } from '../src/common/pipes/graphql-validation.pipe';
 
 export async function createE2eApp(): Promise<INestApplication> {
   const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -18,7 +19,10 @@ export async function createE2eApp(): Promise<INestApplication> {
 
   const app = moduleFixture.createNestApplication();
   app.use(helmet({ contentSecurityPolicy: false }));
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
+  app.useGlobalPipes(
+    new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),
+    new GraphqlValidationPipe(),
+  );
   app.setGlobalPrefix('api/v1');
   app.enableShutdownHooks();
   await app.init();

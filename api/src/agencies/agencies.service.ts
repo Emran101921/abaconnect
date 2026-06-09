@@ -253,6 +253,26 @@ export class AgenciesService {
     throw new BadRequestException('Provide tenantId and therapistId');
   }
 
+  async setAgencyBaaSigned(
+    tenantId: string,
+    agencyId: string,
+    data: { baaSignedAt: Date; baaDocumentKey?: string },
+  ) {
+    const agency = await this.prisma.agency.findFirst({
+      where: { id: agencyId, tenantId },
+    });
+    if (!agency) {
+      throw new NotFoundException('Agency not found');
+    }
+    return this.prisma.agency.update({
+      where: { id: agencyId },
+      data: {
+        baaSignedAt: data.baaSignedAt,
+        baaDocumentKey: data.baaDocumentKey,
+      },
+    });
+  }
+
   async findAll() {
     return this.prisma.agency.findMany({ take: 50 });
   }

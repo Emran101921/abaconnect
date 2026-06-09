@@ -1,4 +1,5 @@
 import {
+  UseGuards,
   Body,
   Controller,
   Delete,
@@ -8,8 +9,10 @@ import {
   Post,
 } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
+import { BlockScaffoldRestGuard } from '../common/guards/block-scaffold-rest.guard';
 
 @Controller('notifications')
+@UseGuards(BlockScaffoldRestGuard)
 export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 

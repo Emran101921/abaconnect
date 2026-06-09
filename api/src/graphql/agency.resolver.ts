@@ -247,6 +247,7 @@ export class AgencyResolver {
       riskLevel,
       limit,
       { fromDate, toDate },
+      user.id,
     );
     return rows.map((r) => ({
       id: r.id,
@@ -330,7 +331,9 @@ export class AgencyResolver {
     };
   }
 
-  @Mutation(() => AdminInsuranceClaimType, { name: 'agencyUpdateInsuranceClaim' })
+  @Mutation(() => AdminInsuranceClaimType, {
+    name: 'agencyUpdateInsuranceClaim',
+  })
   async agencyUpdateInsuranceClaim(
     @CurrentUser() user: AuthUser,
     @Args('input') input: UpdateInsuranceClaimInput,
@@ -453,9 +456,7 @@ export class AgencyResolver {
       assessment: note.assessment ?? undefined,
       plan: note.plan ?? undefined,
       eipFormData:
-        note.eipFormData != null
-          ? JSON.stringify(note.eipFormData)
-          : undefined,
+        note.eipFormData != null ? JSON.stringify(note.eipFormData) : undefined,
       eipFormFullySigned:
         note.signedAt != null ||
         isEipFormFullySigned(

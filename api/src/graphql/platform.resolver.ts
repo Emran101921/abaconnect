@@ -221,6 +221,7 @@ export class PlatformResolver {
   }
 
   @Query(() => [HipaaConsentType], { name: 'myConsents' })
+  @Roles('PARENT', 'THERAPIST', 'AGENCY_ADMIN', 'PLATFORM_ADMIN')
   async myConsents(@CurrentUser() user: AuthUser): Promise<HipaaConsentType[]> {
     const rows = await this.compliance.listConsentsForUser(user.id);
     return rows.map((c) => ({
@@ -233,6 +234,7 @@ export class PlatformResolver {
   }
 
   @Mutation(() => HipaaConsentType, { name: 'grantConsent' })
+  @Roles('PARENT', 'THERAPIST', 'AGENCY_ADMIN', 'PLATFORM_ADMIN')
   async grantConsent(
     @CurrentUser() user: AuthUser,
     @Args('input') input: GrantConsentInput,
@@ -244,6 +246,41 @@ export class PlatformResolver {
       version: c.version,
       granted: c.granted,
       grantedAt: c.grantedAt,
+    };
+  }
+
+  @Mutation(() => HipaaConsentType, { name: 'revokeConsent' })
+  @Roles('PARENT', 'THERAPIST', 'AGENCY_ADMIN', 'PLATFORM_ADMIN')
+  async revokeConsent(
+    @CurrentUser() user: AuthUser,
+    @Args('consentId', { type: () => ID }) consentId: string,
+  ): Promise<HipaaConsentType> {
+    const c = await this.compliance.revokeConsent(user.id, consentId);
+    return {
+      id: c.id,
+      consentType: c.consentType,
+      version: c.version,
+      granted: c.granted,
+      grantedAt: c.grantedAt,
+    };
+  }
+
+  @Mutation(() => TelehealthRoomType, { name: 'grantTelehealthRecordingConsent' })
+  @Roles('PARENT', 'THERAPIST')
+  async grantTelehealthRecordingConsent(
+    @CurrentUser() user: AuthUser,
+    @Args('telehealthId', { type: () => ID }) telehealthId: string,
+  ): Promise<TelehealthRoomType> {
+    const row = await this.telehealth.grantRecordingConsent(user.id, telehealthId);
+    const isParent = user.roles?.includes('PARENT');
+    return {
+      id: row.id,
+      roomId: row.roomId,
+      joinUrl: isParent
+        ? (row.patientUrl ?? undefined)
+        : (row.providerUrl ?? undefined),
+      startedAt: row.startedAt ?? undefined,
+      vendor: row.vendor ?? undefined,
     };
   }
 

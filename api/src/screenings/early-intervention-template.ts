@@ -46,12 +46,12 @@ export const EARLY_INTERVENTION_SECTIONS: EISection[] = [
       },
       {
         id: 'a_hearing_concerns',
-        text: 'Do you have concerns about your child\'s hearing?',
+        text: "Do you have concerns about your child's hearing?",
         type: 'yes_no',
       },
       {
         id: 'a_vision_concerns',
-        text: 'Do you have concerns about your child\'s vision?',
+        text: "Do you have concerns about your child's vision?",
         type: 'yes_no',
       },
       {
@@ -349,7 +349,7 @@ export const EARLY_INTERVENTION_SECTIONS: EISection[] = [
     questions: [
       {
         id: 'g_top_concerns',
-        text: 'What are your top 3 concerns about your child\'s development?',
+        text: "What are your top 3 concerns about your child's development?",
         type: 'text',
       },
       {
@@ -383,10 +383,7 @@ export interface SanitizedSectionAnswer {
   }>;
 }
 
-function formatEiAnswer(
-  question: EIQuestion,
-  value: unknown,
-): string | null {
+function formatEiAnswer(question: EIQuestion, value: unknown): string | null {
   if (value == null || value === '') return null;
   if (question.type === 'yes_no') {
     if (value === true || value === 'yes') return 'Yes';

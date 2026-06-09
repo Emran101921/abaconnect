@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '../../generated/prisma/client';
+import { PhiAuditService } from '../audit/phi-audit.service';
 import { InsuranceService } from '../insurance/insurance.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -27,6 +28,7 @@ export interface SaveSoapNoteInput {
 export class SessionsService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly phiAudit: PhiAuditService,
     private readonly notifications: NotificationsService,
     private readonly insurance: InsuranceService,
   ) {}
@@ -188,10 +190,12 @@ export class SessionsService {
     }
   }
 
-  private isSoapNoteLocked(soapNote?: {
-    signedAt: Date | null;
-    eipFormData: Prisma.JsonValue;
-  } | null) {
+  private isSoapNoteLocked(
+    soapNote?: {
+      signedAt: Date | null;
+      eipFormData: Prisma.JsonValue;
+    } | null,
+  ) {
     if (!soapNote) return false;
     if (soapNote.signedAt != null) return true;
     const data = soapNote.eipFormData as Record<string, unknown> | null;
@@ -289,10 +293,7 @@ export class SessionsService {
       throw new NotFoundException('Session not found');
     }
 
-    if (
-      !options.allowLockedEdit &&
-      this.isSoapNoteLocked(session.soapNote)
-    ) {
+    if (!options.allowLockedEdit && this.isSoapNoteLocked(session.soapNote)) {
       throw new ForbiddenException(
         'Session note is fully signed and cannot be edited by the therapist.',
       );
@@ -395,7 +396,11 @@ export class SessionsService {
     });
   }
 
-  async getSessionForAgency(tenantId: string, sessionId: string) {
+  async getSessionForAgency(
+    tenantId: string,
+    sessionId: string,
+    actorId?: string,
+  ) {
     const agency = await this.prisma.agency.findFirst({
       where: { tenantId },
     });
@@ -427,10 +432,23 @@ export class SessionsService {
     if (!session) {
       throw new NotFoundException('Session not found');
     }
+    if (actorId) {
+      await this.phiAudit.logPhiAccess({
+        tenantId,
+        actorId,
+        action: 'READ',
+        resourceType: 'session',
+        resourceId: session.id,
+      });
+    }
     return session;
   }
 
-  async getSessionForAdmin(tenantId: string, sessionId: string) {
+  async getSessionForAdmin(
+    tenantId: string,
+    sessionId: string,
+    actorId?: string,
+  ) {
     const session = await this.prisma.session.findFirst({
       where: { id: sessionId, tenantId },
       include: {
@@ -447,6 +465,15 @@ export class SessionsService {
     });
     if (!session) {
       throw new NotFoundException('Session not found');
+    }
+    if (actorId) {
+      await this.phiAudit.logPhiAccess({
+        tenantId,
+        actorId,
+        action: 'READ',
+        resourceType: 'session',
+        resourceId: session.id,
+      });
     }
     return session;
   }
@@ -475,6 +502,14 @@ export class SessionsService {
       throw new NotFoundException('Session not found');
     }
 
+    await this.phiAudit.logPhiAccess({
+      tenantId: therapist.tenantId,
+      actorId: userId,
+      action: 'READ',
+      resourceType: 'soap_note',
+      resourceId: session.id,
+    });
+
     const agency = therapist.agencyLinks[0]?.agency;
     return this.buildSessionNoteFormContext(
       session,
@@ -489,24 +524,13 @@ export class SessionsService {
   ) {
     const session = await this.getSessionForAgency(tenantId, sessionId);
     const agency = session.therapist.agencyLinks[0]?.agency;
-    return this.buildSessionNoteFormContext(
-      session,
-      session.therapist,
-      agency,
-    );
+    return this.buildSessionNoteFormContext(session, session.therapist, agency);
   }
 
-  async getSessionNoteFormContextForAdmin(
-    tenantId: string,
-    sessionId: string,
-  ) {
+  async getSessionNoteFormContextForAdmin(tenantId: string, sessionId: string) {
     const session = await this.getSessionForAdmin(tenantId, sessionId);
     const agency = session.therapist.agencyLinks[0]?.agency;
-    return this.buildSessionNoteFormContext(
-      session,
-      session.therapist,
-      agency,
-    );
+    return this.buildSessionNoteFormContext(session, session.therapist, agency);
   }
 
   async listDocumentedSessionsForAgency(tenantId: string) {

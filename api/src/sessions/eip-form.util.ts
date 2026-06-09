@@ -17,7 +17,7 @@ export function missingFieldsForParentSignature(
     if (!ok) missing.push(label);
   };
 
-  add('Child\'s name', hasText(data.childName));
+  add("Child's name", hasText(data.childName));
   add('DOB', hasText(data.childDob));
   add('Sex', hasText(data.childSex));
   add('Interventionist name', hasText(data.interventionistName));

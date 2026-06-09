@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -81,7 +82,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                     )
                   : const Text('Send reset link'),
             ),
-            if (_devResetToken != null) ...[
+            if (kDebugMode && _devResetToken != null) ...[
               const SizedBox(height: 24),
               Text(
                 'Dev reset token (non-production API):',

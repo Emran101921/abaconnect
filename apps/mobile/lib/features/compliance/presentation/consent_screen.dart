@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/app_providers.dart';
+import '../../../core/router/app_router.dart';
+import '../../../core/providers/consent_gate_provider.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../platform/data/platform_repository.dart';
 
@@ -20,7 +23,9 @@ class ConsentScreen extends ConsumerWidget {
       title: 'Privacy & consent',
       body: consents.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (e, _) => const Center(
+          child: Text('Unable to load consent status. Please try again.'),
+        ),
         data: (list) => ListView(
           padding: const EdgeInsets.all(16),
           children: [
@@ -48,6 +53,10 @@ class ConsentScreen extends ConsumerWidget {
                   await ref
                       .read(platformRepositoryProvider)
                       .grantConsent('HIPAA_PRIVACY', '1.0');
+                  await ref
+                      .read(authRepositoryProvider)
+                      .setHipaaConsentGranted(true);
+                  ref.read(hipaaConsentGrantedProvider.notifier).state = true;
                   ref.invalidate(consentsProvider);
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -58,11 +67,20 @@ class ConsentScreen extends ConsumerWidget {
                   if (context.mounted) {
                     ScaffoldMessenger.of(
                       context,
-                    ).showSnackBar(SnackBar(content: Text('$e')));
+                    ).showSnackBar(
+                      const SnackBar(
+                        content: Text('Could not save consent. Try again.'),
+                      ),
+                    );
                   }
                 }
               },
               child: const Text('Grant HIPAA privacy policy v1.0'),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton(
+              onPressed: () => context.push(AppRoutes.phiAccessReport),
+              child: const Text('View PHI access report'),
             ),
           ],
         ),

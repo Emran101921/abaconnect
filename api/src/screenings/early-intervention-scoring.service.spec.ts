@@ -60,7 +60,9 @@ describe('EarlyInterventionScoringService', () => {
       e_toe_walking: 'Yes',
     });
 
-    expect(result.recommendations.some((r) => r.code === 'PHYSICAL')).toBe(true);
+    expect(result.recommendations.some((r) => r.code === 'PHYSICAL')).toBe(
+      true,
+    );
     expect(result.areaFlags.pt).toBe(true);
   });
 
@@ -86,9 +88,9 @@ describe('EarlyInterventionScoringService', () => {
       e_walks: 'No',
     });
 
-    expect(
-      result.recommendations.some((r) => r.code === 'DEVELOPMENTAL'),
-    ).toBe(true);
+    expect(result.recommendations.some((r) => r.code === 'DEVELOPMENTAL')).toBe(
+      true,
+    );
   });
 
   it('assigns HIGH risk for many concurrent concerns', () => {

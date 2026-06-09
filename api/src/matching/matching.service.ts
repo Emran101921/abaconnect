@@ -48,8 +48,10 @@ export class MatchingService {
       resourceType: 'MATCH_SEARCH',
       metadata: {
         therapyType,
-        latitude,
-        longitude,
+        locationBucket:
+          latitude != null && longitude != null
+            ? `${latitude.toFixed(1)},${longitude.toFixed(1)}`
+            : undefined,
         resultCount: results.length,
         topTherapistIds: results.slice(0, 10).map((r) => r.id),
       },

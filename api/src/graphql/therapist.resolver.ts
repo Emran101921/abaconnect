@@ -239,9 +239,7 @@ export class TherapistResolver {
       assessment: note.assessment ?? undefined,
       plan: note.plan ?? undefined,
       eipFormData:
-        note.eipFormData != null
-          ? JSON.stringify(note.eipFormData)
-          : undefined,
+        note.eipFormData != null ? JSON.stringify(note.eipFormData) : undefined,
       eipFormFullySigned:
         note.signedAt != null ||
         isEipFormFullySigned(

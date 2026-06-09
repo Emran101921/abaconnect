@@ -267,7 +267,9 @@ export class ClinicalService {
     const children = plans
       .filter((p) => p.child)
       .map((p) => {
-        const goals = Array.isArray(p.goals) ? (p.goals as { status?: string }[]) : [];
+        const goals = Array.isArray(p.goals)
+          ? (p.goals as { status?: string }[])
+          : [];
         const total = goals.length;
         const done = goals.filter((g) => g.status === 'done').length;
         const goalCompletionPercent =

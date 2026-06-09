@@ -1,19 +1,22 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/providers/consent_gate_provider.dart';
 import '../../../shared/models/user_role.dart';
 import '../data/auth_repository.dart';
 
 class AuthNotifier extends StateNotifier<AsyncValue<AuthSession?>> {
-  AuthNotifier(this._repository) : super(const AsyncValue.loading()) {
+  AuthNotifier(this._repository, this._ref) : super(const AsyncValue.loading()) {
     _restore();
   }
 
   final AuthRepository _repository;
+  final Ref _ref;
 
   Future<void> _restore() async {
     try {
       final session = await _repository.loadSession();
       state = AsyncValue.data(session);
+      await refreshHipaaConsentGate(_ref);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }
@@ -33,6 +36,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthSession?>> {
       }
       final session = await _repository.loadSession();
       state = AsyncValue.data(session);
+      await refreshHipaaConsentGate(_ref);
       return result;
     } catch (e, st) {
       state = AsyncValue.error(e, st);
@@ -52,6 +56,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthSession?>> {
       );
       final session = await _repository.loadSession();
       state = AsyncValue.data(session);
+      await refreshHipaaConsentGate(_ref);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
       rethrow;
@@ -74,6 +79,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthSession?>> {
       );
       final session = await _repository.loadSession();
       state = AsyncValue.data(session);
+      await refreshHipaaConsentGate(_ref);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }
@@ -82,5 +88,6 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthSession?>> {
   Future<void> logout() async {
     await _repository.logout();
     state = const AsyncValue.data(null);
+    _ref.read(hipaaConsentGrantedProvider.notifier).state = true;
   }
 }

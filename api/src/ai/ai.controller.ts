@@ -1,4 +1,5 @@
 import {
+  UseGuards,
   Body,
   Controller,
   Delete,
@@ -8,8 +9,10 @@ import {
   Post,
 } from '@nestjs/common';
 import { AiService } from './ai.service';
+import { BlockScaffoldRestGuard } from '../common/guards/block-scaffold-rest.guard';
 
 @Controller('ai')
+@UseGuards(BlockScaffoldRestGuard)
 export class AiController {
   constructor(private readonly aiService: AiService) {}
 

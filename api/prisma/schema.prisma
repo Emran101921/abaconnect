@@ -114,6 +114,12 @@ enum AuditAction {
   CONSENT_REVOKED
 }
 
+enum SecurityEventSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
 enum BadgeType {
   VERIFIED_LICENSE
   BACKGROUND_CHECK
@@ -184,6 +190,7 @@ model Tenant {
   telehealthSessions   TelehealthSession[]
   locationEvents       LocationEvent[]
   providerBadges       ProviderBadge[]
+  securityEvents       SecurityEvent[]
 
   @@map("tenants")
 }
@@ -207,9 +214,14 @@ model User {
   lastLoginAt     DateTime? @map("last_login_at")
   mfaSecret       String?   @map("mfa_secret")
   mfaEnabled      Boolean   @default(false) @map("mfa_enabled")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  tokenVersion        Int       @default(0) @map("token_version")
+  failedLoginAttempts Int       @default(0) @map("failed_login_attempts")
+  lockedUntil         DateTime? @map("locked_until")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
 
+  refreshTokens         RefreshToken[]
+  securityEvents        SecurityEvent[]
   tenant                Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   parent                Parent?
   therapist             Therapist?
@@ -441,10 +453,12 @@ model Agency {
   phone           String?
   email           String?
   website         String?
-  isVerified      Boolean  @default(false) @map("is_verified")
-  stripeAccountId String?  @map("stripe_account_id")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  isVerified      Boolean   @default(false) @map("is_verified")
+  stripeAccountId String?   @map("stripe_account_id")
+  baaSignedAt     DateTime? @map("baa_signed_at")
+  baaDocumentKey  String?   @map("baa_document_key")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
   tenant       Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   therapists   AgencyTherapist[]
@@ -762,11 +776,14 @@ model TelehealthSession {
   vendor        String?   @map("vendor")
   providerUrl   String?   @map("provider_url")
   patientUrl    String?   @map("patient_url")
-  startedAt     DateTime? @map("started_at")
-  endedAt       DateTime? @map("ended_at")
-  recordingKey  String?   @map("recording_key")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  startedAt                  DateTime? @map("started_at")
+  endedAt                    DateTime? @map("ended_at")
+  recordingKey               String?   @map("recording_key")
+  recordingConsentGranted    Boolean   @default(false) @map("recording_consent_granted")
+  recordingConsentAt         DateTime? @map("recording_consent_at")
+  recordingConsentByUserId   String?   @map("recording_consent_by_user_id") @db.Uuid
+  createdAt                  DateTime  @default(now()) @map("created_at")
+  updatedAt                  DateTime  @updatedAt @map("updated_at")
 
   tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
@@ -1012,6 +1029,27 @@ model AuditLog {
   @@map("audit_logs")
 }
 
+model SecurityEvent {
+  id        String                @id @default(uuid()) @db.Uuid
+  tenantId  String?               @map("tenant_id") @db.Uuid
+  userId    String?               @map("user_id") @db.Uuid
+  eventType String                @map("event_type")
+  severity  SecurityEventSeverity @default(INFO)
+  ipAddress String?               @map("ip_address")
+  userAgent String?               @map("user_agent")
+  metadata  Json                  @default("{}")
+  createdAt DateTime              @default(now()) @map("created_at")
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([eventType])
+  @@index([createdAt])
+  @@map("security_events")
+}
+
 model HipaaConsent {
   id          String    @id @default(uuid()) @db.Uuid
   tenantId    String    @map("tenant_id") @db.Uuid
@@ -1052,4 +1090,19 @@ model AnalyticsSnapshot {
   @@index([snapshotDate])
   @@index([metricKey])
   @@map("analytics_snapshots")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@map("refresh_tokens")
 }

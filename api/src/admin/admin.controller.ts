@@ -1,4 +1,5 @@
 import {
+  UseGuards,
   Body,
   Controller,
   Delete,
@@ -8,8 +9,10 @@ import {
   Post,
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
+import { BlockScaffoldRestGuard } from '../common/guards/block-scaffold-rest.guard';
 
 @Controller('admin')
+@UseGuards(BlockScaffoldRestGuard)
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 

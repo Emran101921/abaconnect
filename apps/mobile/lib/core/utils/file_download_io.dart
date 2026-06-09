@@ -1,9 +1,17 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-/// Saves bytes to a temp file. Returns the file path for user feedback (empty on web).
+import 'package:path_provider/path_provider.dart';
+
+/// Saves bytes to an app-private directory (not shared system temp).
 Future<String> downloadBytes(Uint8List bytes, String filename) async {
-  final file = File('${Directory.systemTemp.path}/$filename');
-  await file.writeAsBytes(bytes);
+  final safeName = filename.replaceAll(RegExp(r'[^\w.\-]'), '_');
+  final baseDir = await getApplicationDocumentsDirectory();
+  final dir = Directory('${baseDir.path}/secure_downloads');
+  if (!dir.existsSync()) {
+    await dir.create(recursive: true);
+  }
+  final file = File('${dir.path}/$safeName');
+  await file.writeAsBytes(bytes, flush: true);
   return file.path;
 }

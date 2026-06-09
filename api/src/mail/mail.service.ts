@@ -47,7 +47,7 @@ export class MailService {
     }
 
     this.logger.log(
-      `[mail:dev] To: ${options.to}\nSubject: ${options.subject}\n${options.text}`,
+      `[mail:dev] queued subject="${options.subject}" (${options.text.length} chars)`,
     );
     return { sent: false, mode: 'log' };
   }

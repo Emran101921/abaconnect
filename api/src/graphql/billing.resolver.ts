@@ -92,10 +92,11 @@ export class BillingResolver {
   @Mutation(() => DisputeType, { name: 'resolvePaymentDispute' })
   @Roles('PLATFORM_ADMIN')
   async resolvePaymentDispute(
+    @CurrentUser() user: AuthUser,
     @Args('disputeId', { type: () => ID }) disputeId: string,
     @Args('resolution') resolution: string,
   ): Promise<DisputeType> {
-    const d = await this.disputes.resolve(disputeId, resolution);
+    const d = await this.disputes.resolve(user.tenantId!, disputeId, resolution);
     return {
       id: d.id,
       status: d.status,

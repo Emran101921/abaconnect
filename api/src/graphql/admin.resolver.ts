@@ -5,6 +5,7 @@ import {
   CurrentUser,
 } from '../common/decorators/current-user.decorator';
 import { AdminService } from '../admin/admin.service';
+import { AgenciesService } from '../agencies/agencies.service';
 import { ComplaintsService } from '../complaints/complaints.service';
 import { InsuranceService } from '../insurance/insurance.service';
 import { isEipFormFullySigned } from '../sessions/eip-form.util';
@@ -13,6 +14,7 @@ import { ReviewsService } from '../reviews/reviews.service';
 import { ScreeningsService } from '../screenings/screenings.service';
 import { SaveSoapNoteInput } from './inputs/therapist.inputs';
 import {
+  SetAgencyBaaInput,
   SetUserActiveInput,
   UpdateInsuranceClaimInput,
 } from './inputs/admin.input';
@@ -44,6 +46,7 @@ import {
 export class AdminResolver {
   constructor(
     private readonly adminService: AdminService,
+    private readonly agenciesService: AgenciesService,
     private readonly complaintsService: ComplaintsService,
     private readonly reviewsService: ReviewsService,
     private readonly insuranceService: InsuranceService,
@@ -125,10 +128,12 @@ export class AdminResolver {
 
   @Mutation(() => AdminComplaintType, { name: 'resolveComplaint' })
   async resolveComplaint(
+    @CurrentUser() user: AuthUser,
     @Args('complaintId', { type: () => ID }) complaintId: string,
     @Args('resolution') resolution: string,
   ): Promise<AdminComplaintType> {
     const c = await this.complaintsService.resolveComplaint(
+      user.tenantId!,
       complaintId,
       resolution,
     );
@@ -165,10 +170,15 @@ export class AdminResolver {
 
   @Mutation(() => AdminReviewType, { name: 'moderateReview' })
   async moderateReview(
+    @CurrentUser() user: AuthUser,
     @Args('reviewId', { type: () => ID }) reviewId: string,
     @Args('publish') publish: boolean,
   ): Promise<AdminReviewType> {
-    const r = await this.reviewsService.setPublished(reviewId, publish);
+    const r = await this.reviewsService.setPublished(
+      reviewId,
+      publish,
+      user.tenantId,
+    );
     return {
       id: r.id,
       rating: r.rating,
@@ -290,6 +300,7 @@ export class AdminResolver {
       riskLevel,
       limit,
       { fromDate, toDate },
+      user.id,
     );
     return rows.map((r) => ({
       id: r.id,
@@ -398,9 +409,13 @@ export class AdminResolver {
 
   @Mutation(() => PendingTherapistType, { name: 'verifyTherapist' })
   async verifyTherapist(
+    @CurrentUser() user: AuthUser,
     @Args('therapistId', { type: () => ID }) therapistId: string,
   ): Promise<PendingTherapistType> {
-    const t = await this.adminService.verifyTherapist(therapistId);
+    const t = await this.adminService.verifyTherapist(
+      therapistId,
+      user.tenantId,
+    );
     return {
       id: t.id,
       isVerified: t.isVerified,
@@ -489,6 +504,21 @@ export class AdminResolver {
     );
   }
 
+  @Mutation(() => Boolean, { name: 'setAgencyBaaSigned' })
+  async setAgencyBaaSigned(
+    @CurrentUser() user: AuthUser,
+    @Args('input') input: SetAgencyBaaInput,
+  ): Promise<boolean> {
+    if (!user.tenantId) {
+      throw new Error('Tenant required');
+    }
+    await this.agenciesService.setAgencyBaaSigned(user.tenantId, input.agencyId, {
+      baaSignedAt: input.baaSignedAt,
+      baaDocumentKey: input.baaDocumentKey,
+    });
+    return true;
+  }
+
   @Mutation(() => SoapNoteType, { name: 'adminSaveSoapNote' })
   async adminSaveSoapNote(
     @CurrentUser() user: AuthUser,
@@ -509,9 +539,7 @@ export class AdminResolver {
       assessment: note.assessment ?? undefined,
       plan: note.plan ?? undefined,
       eipFormData:
-        note.eipFormData != null
-          ? JSON.stringify(note.eipFormData)
-          : undefined,
+        note.eipFormData != null ? JSON.stringify(note.eipFormData) : undefined,
       eipFormFullySigned:
         note.signedAt != null ||
         isEipFormFullySigned(

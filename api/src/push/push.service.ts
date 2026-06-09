@@ -50,7 +50,7 @@ export class PushService {
     payload: PushPayload,
   ): boolean {
     this.logger.log(
-      `[dev-push] ${device.platform} ${device.deviceToken.slice(0, 24)}… → ${payload.title}`,
+      `[dev-push] ${device.platform} token=${device.deviceToken.slice(0, 8)}… notification queued`,
     );
     return true;
   }

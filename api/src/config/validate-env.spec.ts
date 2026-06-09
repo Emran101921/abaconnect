@@ -26,12 +26,14 @@ describe('validateProductionEnv', () => {
     expect(() => validateProductionEnv()).toThrow(/JWT_SECRET/);
   });
 
-  it('throws when production uses the insecure JWT fallback', () => {
+  it('throws when production uses placeholder secrets', () => {
     process.env.NODE_ENV = 'production';
     process.env.JWT_SECRET = 'change-me';
-    process.env.JWT_REFRESH_SECRET = 'refresh-secret';
-    process.env.JWT_RESET_SECRET = 'reset-secret';
+    process.env.JWT_REFRESH_SECRET = 'refresh-secret-long-enough';
+    process.env.JWT_RESET_SECRET = 'reset-secret-long-enough';
+    process.env.PHI_ENCRYPTION_KEY = 'phi-encryption-key-32chars!!';
+    process.env.CORS_ORIGINS = 'https://app.example.com';
 
-    expect(() => validateProductionEnv()).toThrow(/fallback/);
+    expect(() => validateProductionEnv()).toThrow(/placeholder/);
   });
 });

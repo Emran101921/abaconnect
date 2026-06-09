@@ -94,8 +94,29 @@ export class TelehealthService {
     return this.withJoinUrls(created);
   }
 
+  async grantRecordingConsent(userId: string, telehealthId: string) {
+    const session = await this.findAccessibleTelehealth(userId, telehealthId);
+    return this.prisma.telehealthSession.update({
+      where: { id: session.id },
+      data: {
+        recordingConsentGranted: true,
+        recordingConsentAt: new Date(),
+        recordingConsentByUserId: userId,
+      },
+      include: { appointment: true },
+    });
+  }
+
   async startSession(userId: string, telehealthId: string) {
     const session = await this.findAccessibleTelehealth(userId, telehealthId);
+    if (
+      process.env.TELEHEALTH_RECORDING_ENABLED === 'true' &&
+      !session.recordingConsentGranted
+    ) {
+      throw new BadRequestException(
+        'Recording consent is required before starting this telehealth session',
+      );
+    }
     return this.prisma.telehealthSession.update({
       where: { id: session.id },
       data: { startedAt: new Date() },
