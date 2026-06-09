@@ -92,7 +92,9 @@ export class ComplianceService {
     });
     if (!user) throw new NotFoundException('User not found');
 
-    const documentWhere: Prisma.DocumentWhereInput = { tenantId: user.tenantId };
+    const documentWhere: Prisma.DocumentWhereInput = {
+      tenantId: user.tenantId,
+    };
     const phiAuditWhere: Prisma.AuditLogWhereInput = {
       tenantId: user.tenantId,
       metadata: { path: ['phi'], equals: true },
@@ -104,7 +106,9 @@ export class ComplianceService {
       phiAuditWhere.OR = [
         { actorId: userId },
         {
-          entityType: { in: ['child', 'document', 'session', 'message_thread'] },
+          entityType: {
+            in: ['child', 'document', 'session', 'message_thread'],
+          },
           entityId: { in: childIds },
         },
       ];

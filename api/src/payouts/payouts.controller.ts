@@ -1,5 +1,9 @@
 import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
 import { Roles } from '../common/decorators/roles.decorator';
+import {
+  AuthUser,
+  CurrentUser,
+} from '../common/decorators/current-user.decorator';
 import { PayoutsService } from './payouts.service';
 
 @Controller('payouts')
@@ -8,8 +12,8 @@ export class PayoutsController {
 
   @Get()
   @Roles('PLATFORM_ADMIN')
-  findAll() {
-    return this.payoutsService.findAll();
+  findAll(@CurrentUser() user: AuthUser) {
+    return this.payoutsService.listForTenant(user.tenantId ?? '');
   }
 
   @Post()
@@ -34,7 +38,7 @@ export class PayoutsController {
 
   @Patch(':id/paid')
   @Roles('PLATFORM_ADMIN')
-  markPaid(@Param('id') id: string) {
-    return this.payoutsService.markPaid(id);
+  markPaid(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.payoutsService.markPaid(user.tenantId ?? '', id);
   }
 }

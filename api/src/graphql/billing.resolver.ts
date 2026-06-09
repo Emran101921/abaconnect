@@ -96,7 +96,11 @@ export class BillingResolver {
     @Args('disputeId', { type: () => ID }) disputeId: string,
     @Args('resolution') resolution: string,
   ): Promise<DisputeType> {
-    const d = await this.disputes.resolve(user.tenantId!, disputeId, resolution);
+    const d = await this.disputes.resolve(
+      user.tenantId!,
+      disputeId,
+      resolution,
+    );
     return {
       id: d.id,
       status: d.status,
@@ -116,9 +120,10 @@ export class BillingResolver {
   @Mutation(() => PayoutType, { name: 'markPayoutPaid' })
   @Roles('PLATFORM_ADMIN')
   async markPayoutPaid(
+    @CurrentUser() user: AuthUser,
     @Args('payoutId', { type: () => ID }) payoutId: string,
   ): Promise<PayoutType> {
-    const p = await this.payouts.markPaid(payoutId);
+    const p = await this.payouts.markPaid(user.tenantId ?? '', payoutId);
     return this.mapPayout(p);
   }
 

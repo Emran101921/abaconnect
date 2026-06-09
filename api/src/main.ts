@@ -27,7 +27,10 @@ function parseCorsOrigins(): string[] | boolean {
   if (!raw) {
     return process.env.NODE_ENV === 'production' ? false : true;
   }
-  return raw.split(',').map((origin) => origin.trim()).filter(Boolean);
+  return raw
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
 }
 
 async function bootstrap() {

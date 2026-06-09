@@ -125,8 +125,11 @@ export class AuthService {
   }
 
   async login(dto: LoginDto, ctx?: LoginContext): Promise<LoginResult> {
-    const user = await this.prisma.user.findFirst({
-      where: { email: dto.email },
+    // Resolve login against a specific tenant so duplicate emails across
+    // tenants can never collapse to an arbitrary row (cross-tenant auth).
+    const tenantId = dto.tenantId ?? (await this.defaultTenantId());
+    const user = await this.prisma.user.findUnique({
+      where: { tenantId_email: { tenantId, email: dto.email } },
     });
 
     if (!user?.passwordHash) {

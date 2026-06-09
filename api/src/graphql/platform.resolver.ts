@@ -265,13 +265,18 @@ export class PlatformResolver {
     };
   }
 
-  @Mutation(() => TelehealthRoomType, { name: 'grantTelehealthRecordingConsent' })
+  @Mutation(() => TelehealthRoomType, {
+    name: 'grantTelehealthRecordingConsent',
+  })
   @Roles('PARENT', 'THERAPIST')
   async grantTelehealthRecordingConsent(
     @CurrentUser() user: AuthUser,
     @Args('telehealthId', { type: () => ID }) telehealthId: string,
   ): Promise<TelehealthRoomType> {
-    const row = await this.telehealth.grantRecordingConsent(user.id, telehealthId);
+    const row = await this.telehealth.grantRecordingConsent(
+      user.id,
+      telehealthId,
+    );
     const isParent = user.roles?.includes('PARENT');
     return {
       id: row.id,

@@ -67,26 +67,23 @@ export const tenantPrismaExtension = Prisma.defineExtension({
           return query(mergeTenantWhere(mutableArgs, tenantId));
         }
 
+        // Always bind writes to the active tenant context. We deliberately
+        // override any caller-supplied tenantId so a malicious or buggy caller
+        // cannot inject records into a different tenant.
         if (operation === 'create' && mutableArgs.data) {
           const data = mutableArgs.data as Record<string, unknown>;
-          if (data.tenantId == null) {
-            data.tenantId = tenantId;
-          }
+          data.tenantId = tenantId;
         }
 
         if (operation === 'createMany' && Array.isArray(mutableArgs.data)) {
-          mutableArgs.data = mutableArgs.data.map((row) =>
-            (row as Record<string, unknown>).tenantId == null
-              ? { ...row, tenantId }
-              : row,
-          ) as typeof mutableArgs.data;
+          mutableArgs.data = mutableArgs.data.map((row) => ({
+            ...(row as Record<string, unknown>),
+            tenantId,
+          })) as typeof mutableArgs.data;
         }
 
         if (operation === 'upsert' && mutableArgs.create) {
-          const create = mutableArgs.create;
-          if (create.tenantId == null) {
-            create.tenantId = tenantId;
-          }
+          mutableArgs.create.tenantId = tenantId;
         }
 
         return query(args);

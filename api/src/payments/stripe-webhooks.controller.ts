@@ -27,7 +27,9 @@ export class StripeWebhooksController {
     const secret = process.env.STRIPE_WEBHOOK_SECRET;
     if (!secret) {
       if (process.env.NODE_ENV === 'production') {
-        throw new BadRequestException('Stripe webhook secret is not configured');
+        throw new BadRequestException(
+          'Stripe webhook secret is not configured',
+        );
       }
       return {
         received: true,
