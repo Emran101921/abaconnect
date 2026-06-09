@@ -46,6 +46,40 @@ jobs:
       - run: npm run lint --if-present
       - run: npm run build
       - run: npm test -- --passWithNoTests
+      - name: E2E tests
+        env:
+          DATABASE_URL: postgresql://abaconnect:abaconnect@localhost:5432/abaconnect_test
+          JWT_SECRET: ci-test-jwt-secret
+          JWT_REFRESH_SECRET: ci-test-refresh-secret
+          JWT_RESET_SECRET: ci-test-reset-secret
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+        run: npm run test:e2e
+      - name: Seed demo data
+        env:
+          DATABASE_URL: postgresql://abaconnect:abaconnect@localhost:5432/abaconnect_test
+        run: npm run prisma:seed
+      - name: Smoke features
+        env:
+          DATABASE_URL: postgresql://abaconnect:abaconnect@localhost:5432/abaconnect_test
+          JWT_SECRET: ci-test-jwt-secret
+          JWT_REFRESH_SECRET: ci-test-refresh-secret
+          JWT_RESET_SECRET: ci-test-reset-secret
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+        run: |
+          npm run start:prod &
+          API_PID=$!
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3000/api/v1/health >/dev/null; then
+              break
+            fi
+            sleep 2
+          done
+          curl -sf http://localhost:3000/api/v1/health
+          cd ..
+          bash scripts/smoke-features.sh
+          kill "$API_PID"
       - name: Security audit
         run: npm audit --audit-level=high || true
 
@@ -62,3 +96,4 @@ jobs:
       - run: flutter pub get
       - run: flutter analyze --no-fatal-infos
       - run: flutter test
+      - run: flutter build web --release

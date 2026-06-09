@@ -55,6 +55,9 @@ import '../../features/therapist/presentation/therapist_home_screen.dart';
 import '../../features/therapist/presentation/therapist_payouts_screen.dart';
 import '../../features/therapist/presentation/therapist_plans_screen.dart';
 import '../../features/therapist/presentation/therapist_profile_screen.dart';
+import '../providers/app_providers.dart';
+import 'app_router_redirect.dart';
+import 'router_refresh_notifier.dart';
 
 abstract final class AppRoutes {
   static const splash = '/';
@@ -91,9 +94,19 @@ abstract final class AppRoutes {
 }
 
 final appRouterProvider = Provider<GoRouter>((ref) {
+  final refreshNotifier = ref.watch(routerRefreshNotifierProvider);
+
   return GoRouter(
     initialLocation: AppRoutes.splash,
     debugLogDiagnostics: true,
+    refreshListenable: refreshNotifier,
+    redirect: (context, state) {
+      final auth = ref.read(authStateProvider);
+      return resolveAuthRedirect(
+        auth: auth,
+        matchedLocation: state.matchedLocation,
+      );
+    },
     routes: [
       GoRoute(
         path: AppRoutes.splash,
