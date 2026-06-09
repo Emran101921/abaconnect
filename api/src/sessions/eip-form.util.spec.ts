@@ -33,7 +33,7 @@ const completeForm = (): Record<string, unknown> => ({
 
 describe('eip-form.util', () => {
   it('reports missing fields when form is incomplete', () => {
-    expect(missingFieldsForParentSignature({})).toContain('Child\'s name');
+    expect(missingFieldsForParentSignature({})).toContain("Child's name");
     expect(isReadyForParentSignature({})).toBe(false);
   });
 

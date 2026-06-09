@@ -5,10 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PhiAuditService } from '../audit/phi-audit.service';
-import {
-  decryptField,
-  encryptField,
-} from '../common/crypto/field-crypto.util';
+import { decryptField, encryptField } from '../common/crypto/field-crypto.util';
 import { MessageDeliveryStatus } from '../graphql/types/messaging.types';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -66,9 +63,7 @@ export class MessagingService {
           otherParticipantName: others.length
             ? `${others[0].firstName} ${others[0].lastName}`
             : 'Conversation',
-          lastMessageBody: last?.body
-            ? this.decryptBody(last.body)
-            : undefined,
+          lastMessageBody: last?.body ? this.decryptBody(last.body) : undefined,
           lastMessageAt: last?.sentAt ?? undefined,
           hasUnread: this.isThreadUnread(last, m.lastReadAt, userId),
           lastMessageIsMine,
@@ -413,9 +408,7 @@ export class MessagingService {
           otherParticipantName: peer
             ? `${peer.user.firstName} ${peer.user.lastName}`
             : 'Conversation',
-          lastMessageBody: last?.body
-            ? this.decryptBody(last.body)
-            : undefined,
+          lastMessageBody: last?.body ? this.decryptBody(last.body) : undefined,
           lastMessageAt: last?.sentAt ?? undefined,
           hasUnread: false,
         };

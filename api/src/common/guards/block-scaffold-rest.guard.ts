@@ -1,8 +1,4 @@
-import {
-  CanActivate,
-  ForbiddenException,
-  Injectable,
-} from '@nestjs/common';
+import { CanActivate, ForbiddenException, Injectable } from '@nestjs/common';
 
 /** Blocks legacy REST CRUD scaffolds; PHI must use role-scoped GraphQL. */
 @Injectable()

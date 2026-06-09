@@ -36,7 +36,10 @@ export function validateProductionEnv(): void {
   assertSecret('JWT_RESET_SECRET', process.env.JWT_RESET_SECRET);
 
   const databaseUrl = process.env.DATABASE_URL ?? '';
-  if (!databaseUrl.includes('sslmode=require') && !databaseUrl.includes('ssl=true')) {
+  if (
+    !databaseUrl.includes('sslmode=require') &&
+    !databaseUrl.includes('ssl=true')
+  ) {
     console.warn(
       'DATABASE_URL should use TLS (sslmode=require) in production-like environments',
     );
@@ -44,7 +47,7 @@ export function validateProductionEnv(): void {
 
   if (!process.env.PHI_ENCRYPTION_KEY?.trim()) {
     throw new Error(
-      'PHI_ENCRYPTION_KEY is required in production for MFA secrets and document encryption',
+      'PHI_ENCRYPTION_KEY is required in production for MFA secrets, message and field-level PHI encryption (SOAP notes, screening responses, child PHI), and document encryption',
     );
   }
 

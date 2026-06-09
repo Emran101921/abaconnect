@@ -38,7 +38,7 @@ export class SessionsService {
     if (!parent) {
       return [];
     }
-    return this.prisma.session.findMany({
+    const sessions = await this.prisma.session.findMany({
       where: {
         child: { parentId: parent.id },
         status: { in: ['COMPLETED', 'IN_PROGRESS', 'PENDING_DOCUMENTATION'] },
@@ -52,6 +52,13 @@ export class SessionsService {
       orderBy: { createdAt: 'desc' },
       take: 50,
     });
+    await this.phiAudit.logPhiAccess({
+      tenantId: parent.tenantId,
+      actorId: userId,
+      action: 'READ',
+      resourceType: 'session',
+    });
+    return sessions;
   }
 
   async findByTherapistUserId(userId: string) {
@@ -61,7 +68,7 @@ export class SessionsService {
     if (!therapist) {
       return [];
     }
-    return this.prisma.session.findMany({
+    const sessions = await this.prisma.session.findMany({
       where: { therapistId: therapist.id },
       include: {
         child: true,
@@ -71,6 +78,13 @@ export class SessionsService {
       orderBy: { createdAt: 'desc' },
       take: 50,
     });
+    await this.phiAudit.logPhiAccess({
+      tenantId: therapist.tenantId,
+      actorId: userId,
+      action: 'READ',
+      resourceType: 'soap_note',
+    });
+    return sessions;
   }
 
   async ensureSessionForAppointment(userId: string, appointmentId: string) {
@@ -521,19 +535,28 @@ export class SessionsService {
   async getSessionNoteFormContextForAgency(
     tenantId: string,
     sessionId: string,
+    actorId?: string,
   ) {
-    const session = await this.getSessionForAgency(tenantId, sessionId);
+    const session = await this.getSessionForAgency(
+      tenantId,
+      sessionId,
+      actorId,
+    );
     const agency = session.therapist.agencyLinks[0]?.agency;
     return this.buildSessionNoteFormContext(session, session.therapist, agency);
   }
 
-  async getSessionNoteFormContextForAdmin(tenantId: string, sessionId: string) {
-    const session = await this.getSessionForAdmin(tenantId, sessionId);
+  async getSessionNoteFormContextForAdmin(
+    tenantId: string,
+    sessionId: string,
+    actorId?: string,
+  ) {
+    const session = await this.getSessionForAdmin(tenantId, sessionId, actorId);
     const agency = session.therapist.agencyLinks[0]?.agency;
     return this.buildSessionNoteFormContext(session, session.therapist, agency);
   }
 
-  async listDocumentedSessionsForAgency(tenantId: string) {
+  async listDocumentedSessionsForAgency(tenantId: string, actorId?: string) {
     const agency = await this.prisma.agency.findFirst({
       where: { tenantId },
     });
@@ -541,7 +564,7 @@ export class SessionsService {
       return [];
     }
 
-    return this.prisma.session.findMany({
+    const sessions = await this.prisma.session.findMany({
       where: {
         soapNote: { isNot: null },
         therapist: {
@@ -559,10 +582,19 @@ export class SessionsService {
       orderBy: { updatedAt: 'desc' },
       take: 100,
     });
+    if (actorId) {
+      await this.phiAudit.logPhiAccess({
+        tenantId,
+        actorId,
+        action: 'READ',
+        resourceType: 'soap_note',
+      });
+    }
+    return sessions;
   }
 
-  async listDocumentedSessionsForAdmin(tenantId: string) {
-    return this.prisma.session.findMany({
+  async listDocumentedSessionsForAdmin(tenantId: string, actorId?: string) {
+    const sessions = await this.prisma.session.findMany({
       where: {
         tenantId,
         soapNote: { isNot: null },
@@ -576,6 +608,15 @@ export class SessionsService {
       orderBy: { updatedAt: 'desc' },
       take: 100,
     });
+    if (actorId) {
+      await this.phiAudit.logPhiAccess({
+        tenantId,
+        actorId,
+        action: 'READ',
+        resourceType: 'soap_note',
+      });
+    }
+    return sessions;
   }
 
   async create(data: Record<string, unknown>) {

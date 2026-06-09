@@ -474,6 +474,7 @@ export class AdminResolver {
     }
     const rows = await this.sessionsService.listDocumentedSessionsForAdmin(
       user.tenantId,
+      user.id,
     );
     return rows.map((s) => ({
       sessionId: s.id,
@@ -501,6 +502,7 @@ export class AdminResolver {
     return this.sessionsService.getSessionNoteFormContextForAdmin(
       user.tenantId,
       sessionId,
+      user.id,
     );
   }
 
@@ -512,10 +514,14 @@ export class AdminResolver {
     if (!user.tenantId) {
       throw new Error('Tenant required');
     }
-    await this.agenciesService.setAgencyBaaSigned(user.tenantId, input.agencyId, {
-      baaSignedAt: input.baaSignedAt,
-      baaDocumentKey: input.baaDocumentKey,
-    });
+    await this.agenciesService.setAgencyBaaSigned(
+      user.tenantId,
+      input.agencyId,
+      {
+        baaSignedAt: input.baaSignedAt,
+        baaDocumentKey: input.baaDocumentKey,
+      },
+    );
     return true;
   }
 

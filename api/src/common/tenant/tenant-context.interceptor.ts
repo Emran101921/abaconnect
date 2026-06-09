@@ -24,8 +24,9 @@ export class TenantContextInterceptor implements NestInterceptor {
 
   private resolveUser(context: ExecutionContext): AuthUser | undefined {
     if (context.getType<string>() === 'graphql') {
-      return GqlExecutionContext.create(context).getContext<{ req: { user?: AuthUser } }>()
-        .req.user;
+      return GqlExecutionContext.create(context).getContext<{
+        req: { user?: AuthUser };
+      }>().req.user;
     }
     const request = context.switchToHttp().getRequest<{ user?: AuthUser }>();
     return request.user;

@@ -406,6 +406,7 @@ export class AgencyResolver {
     }
     const rows = await this.sessionsService.listDocumentedSessionsForAgency(
       user.tenantId,
+      user.id,
     );
     return rows.map((s) => ({
       sessionId: s.id,
@@ -433,6 +434,7 @@ export class AgencyResolver {
     return this.sessionsService.getSessionNoteFormContextForAgency(
       user.tenantId,
       sessionId,
+      user.id,
     );
   }
 

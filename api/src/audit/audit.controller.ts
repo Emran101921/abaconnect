@@ -12,10 +12,7 @@ export class AuditController {
   constructor(private readonly auditService: AuditService) {}
 
   @Get()
-  findAll(
-    @CurrentUser() user: AuthUser,
-    @Query('take') take?: string,
-  ) {
+  findAll(@CurrentUser() user: AuthUser, @Query('take') take?: string) {
     return this.auditService.findAllForTenant(
       user.tenantId!,
       take ? Number(take) : 50,

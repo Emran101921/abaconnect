@@ -173,5 +173,4 @@ describe('API (e2e)', () => {
       .set('Authorization', `Bearer ${token}`)
       .expect(403);
   });
-
 });

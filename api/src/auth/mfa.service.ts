@@ -1,9 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { generateSecret, generateURI, verify } from 'otplib';
-import {
-  decryptField,
-  encryptField,
-} from '../common/crypto/field-crypto.util';
+import { decryptField, encryptField } from '../common/crypto/field-crypto.util';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()

@@ -1,4 +1,9 @@
-import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypto';
+import {
+  createCipheriv,
+  createDecipheriv,
+  createHash,
+  randomBytes,
+} from 'crypto';
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 12;
@@ -25,10 +30,9 @@ export function decryptField(payload: string, secret: string): string {
   const encrypted = data.subarray(IV_LENGTH + 16);
   const decipher = createDecipheriv(ALGORITHM, deriveKey(secret), iv);
   decipher.setAuthTag(tag);
-  return Buffer.concat([
-    decipher.update(encrypted),
-    decipher.final(),
-  ]).toString('utf8');
+  return Buffer.concat([decipher.update(encrypted), decipher.final()]).toString(
+    'utf8',
+  );
 }
 
 export function encryptBuffer(buffer: Buffer, secret: string): Buffer {

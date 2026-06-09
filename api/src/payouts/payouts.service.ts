@@ -63,13 +63,13 @@ export class PayoutsService {
     });
   }
 
-  async markPaid(payoutId: string) {
-    const row = await this.prisma.payout.findUnique({
-      where: { id: payoutId },
+  async markPaid(tenantId: string, payoutId: string) {
+    const row = await this.prisma.payout.findFirst({
+      where: { id: payoutId, tenantId },
     });
     if (!row) throw new NotFoundException('Payout not found');
     return this.prisma.payout.update({
-      where: { id: payoutId },
+      where: { id: row.id },
       data: { status: 'SUCCEEDED', paidAt: new Date() },
     });
   }
