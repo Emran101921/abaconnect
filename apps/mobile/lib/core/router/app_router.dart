@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -41,6 +42,8 @@ import '../../features/parent/presentation/reviews_screen.dart';
 import '../../features/parent/presentation/screening_screen.dart';
 import '../../features/parent/presentation/treatment_plans_screen.dart';
 import '../../features/compliance/presentation/consent_screen.dart';
+import '../../features/compliance/presentation/phi_access_report_screen.dart';
+import '../security/secure_clinical_scope.dart';
 import '../../features/documents/presentation/documents_screen.dart';
 import '../../features/insurance/presentation/insurance_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
@@ -55,6 +58,10 @@ import '../../features/therapist/presentation/therapist_home_screen.dart';
 import '../../features/therapist/presentation/therapist_payouts_screen.dart';
 import '../../features/therapist/presentation/therapist_plans_screen.dart';
 import '../../features/therapist/presentation/therapist_profile_screen.dart';
+import '../providers/app_providers.dart';
+import '../providers/consent_gate_provider.dart';
+import 'app_router_redirect.dart';
+import 'router_refresh_notifier.dart';
 
 abstract final class AppRoutes {
   static const splash = '/';
@@ -81,6 +88,7 @@ abstract final class AppRoutes {
   static const documents = '/documents';
   static const insurance = '/insurance';
   static const consent = '/consent';
+  static const phiAccessReport = '/phi-access-report';
   static const security = '/security';
   static const parentAppointments = '/parent/appointments';
   static const parentProfile = '/parent/profile';
@@ -91,9 +99,21 @@ abstract final class AppRoutes {
 }
 
 final appRouterProvider = Provider<GoRouter>((ref) {
+  final refreshNotifier = ref.watch(routerRefreshNotifierProvider);
+
   return GoRouter(
     initialLocation: AppRoutes.splash,
-    debugLogDiagnostics: true,
+    debugLogDiagnostics: kDebugMode,
+    refreshListenable: refreshNotifier,
+    redirect: (context, state) {
+      final auth = ref.read(authStateProvider);
+      final hipaaConsentGranted = ref.read(hipaaConsentGrantedProvider);
+      return resolveAuthRedirect(
+        auth: auth,
+        matchedLocation: state.matchedLocation,
+        hipaaConsentGranted: hipaaConsentGranted,
+      );
+    },
     routes: [
       GoRoute(
         path: AppRoutes.splash,
@@ -151,9 +171,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'screening',
             name: 'parentScreening',
-            builder: (context, state) => ScreeningScreen(
-              childId: state.uri.queryParameters['childId'],
-              autoStart: state.uri.queryParameters['autoStart'] == 'true',
+            builder: (context, state) => SecureClinicalScope(
+              child: ScreeningScreen(
+                childId: state.uri.queryParameters['childId'],
+                autoStart: state.uri.queryParameters['autoStart'] == 'true',
+              ),
             ),
           ),
           GoRoute(
@@ -187,8 +209,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'progress-notes',
             name: 'parentProgressNotes',
-            builder: (context, state) => ProgressNotesScreen(
-              sessionId: state.uri.queryParameters['sessionId'],
+            builder: (context, state) => SecureClinicalScope(
+              child: ProgressNotesScreen(
+                sessionId: state.uri.queryParameters['sessionId'],
+              ),
             ),
           ),
           GoRoute(
@@ -218,14 +242,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'session-notes',
             name: 'therapistSessionNotes',
-            builder: (context, state) => const SessionNotesScreen(),
+            builder: (context, state) => const SecureClinicalScope(
+              child: SessionNotesScreen(),
+            ),
             routes: [
               GoRoute(
                 path: ':sessionId/form',
                 name: 'therapistEipSessionNote',
-                builder: (context, state) => EipSessionNoteScreen(
-                  sessionId: state.pathParameters['sessionId']!,
-                  editorMode: SessionNoteEditorMode.therapist,
+                builder: (context, state) => SecureClinicalScope(
+                  child: EipSessionNoteScreen(
+                    sessionId: state.pathParameters['sessionId']!,
+                    editorMode: SessionNoteEditorMode.therapist,
+                  ),
                 ),
               ),
             ],
@@ -305,17 +333,21 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'session-notes',
             name: 'agencySessionNotes',
-            builder: (context, state) => StaffSessionNotesScreen(
-              editorMode: SessionNoteEditorMode.agency,
-              formRoutePrefix: '${AppRoutes.agencyHome}/session-notes',
+            builder: (context, state) => SecureClinicalScope(
+              child: StaffSessionNotesScreen(
+                editorMode: SessionNoteEditorMode.agency,
+                formRoutePrefix: '${AppRoutes.agencyHome}/session-notes',
+              ),
             ),
             routes: [
               GoRoute(
                 path: ':sessionId/form',
                 name: 'agencyEipSessionNote',
-                builder: (context, state) => EipSessionNoteScreen(
-                  sessionId: state.pathParameters['sessionId']!,
-                  editorMode: SessionNoteEditorMode.agency,
+                builder: (context, state) => SecureClinicalScope(
+                  child: EipSessionNoteScreen(
+                    sessionId: state.pathParameters['sessionId']!,
+                    editorMode: SessionNoteEditorMode.agency,
+                  ),
                 ),
               ),
             ],
@@ -408,17 +440,21 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'session-notes',
             name: 'adminSessionNotes',
-            builder: (context, state) => StaffSessionNotesScreen(
-              editorMode: SessionNoteEditorMode.admin,
-              formRoutePrefix: '${AppRoutes.adminHome}/session-notes',
+            builder: (context, state) => SecureClinicalScope(
+              child: StaffSessionNotesScreen(
+                editorMode: SessionNoteEditorMode.admin,
+                formRoutePrefix: '${AppRoutes.adminHome}/session-notes',
+              ),
             ),
             routes: [
               GoRoute(
                 path: ':sessionId/form',
                 name: 'adminEipSessionNote',
-                builder: (context, state) => EipSessionNoteScreen(
-                  sessionId: state.pathParameters['sessionId']!,
-                  editorMode: SessionNoteEditorMode.admin,
+                builder: (context, state) => SecureClinicalScope(
+                  child: EipSessionNoteScreen(
+                    sessionId: state.pathParameters['sessionId']!,
+                    editorMode: SessionNoteEditorMode.admin,
+                  ),
                 ),
               ),
             ],
@@ -433,13 +469,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.messages,
         name: 'messages',
-        builder: (context, state) => const MessagesScreen(),
+        builder: (context, state) => const SecureClinicalScope(
+          child: MessagesScreen(),
+        ),
         routes: [
           GoRoute(
             path: ':threadId',
             name: 'messageThread',
-            builder: (context, state) => MessageThreadScreen(
-              threadId: state.pathParameters['threadId']!,
+            builder: (context, state) => SecureClinicalScope(
+              child: MessageThreadScreen(
+                threadId: state.pathParameters['threadId']!,
+              ),
             ),
           ),
         ],
@@ -468,7 +508,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.documents,
         name: 'documents',
-        builder: (context, state) => const DocumentsScreen(),
+        builder: (context, state) => const SecureClinicalScope(
+          child: DocumentsScreen(),
+        ),
       ),
       GoRoute(
         path: AppRoutes.insurance,
@@ -480,10 +522,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         name: 'consent',
         builder: (context, state) => const ConsentScreen(),
       ),
+      GoRoute(
+        path: AppRoutes.phiAccessReport,
+        name: 'phiAccessReport',
+        builder: (context, state) => const PhiAccessReportScreen(),
+      ),
     ],
     errorBuilder: (context, state) => Scaffold(
       appBar: AppBar(title: const Text('Page Not Found')),
-      body: Center(child: Text('No route defined for ${state.uri}')),
+      body: const Center(child: Text('Page not found')),
     ),
   );
 });

@@ -2,10 +2,11 @@ import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../constants/api_constants.dart';
+import '../security/secure_storage_config.dart';
 
 class ApiClient {
-  ApiClient({FlutterSecureStorage? secureStorage})
-    : _secureStorage = secureStorage ?? const FlutterSecureStorage(),
+  ApiClient({FlutterSecureStorage? storage})
+    : _storage = storage ?? secureStorage,
       _dio = Dio(
         BaseOptions(
           baseUrl: ApiConstants.baseUrl,
@@ -17,9 +18,7 @@ class ApiClient {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          final token = await _secureStorage.read(
-            key: ApiConstants.authTokenKey,
-          );
+          final token = await _storage.read(key: ApiConstants.authTokenKey);
           if (token != null && token.isNotEmpty) {
             options.headers['Authorization'] = 'Bearer $token';
           }
@@ -28,12 +27,26 @@ class ApiClient {
           }
           handler.next(options);
         },
+        onError: (error, handler) async {
+          if (error.response?.statusCode == 401 &&
+              error.requestOptions.extra['retried'] != true) {
+            final refreshed = await _tryRefreshToken();
+            if (refreshed != null) {
+              final opts = error.requestOptions;
+              opts.headers['Authorization'] = 'Bearer $refreshed';
+              opts.extra['retried'] = true;
+              final response = await _dio.fetch(opts);
+              return handler.resolve(response);
+            }
+          }
+          handler.next(error);
+        },
       ),
     );
   }
 
   final Dio _dio;
-  final FlutterSecureStorage _secureStorage;
+  final FlutterSecureStorage _storage;
 
   Dio get dio => _dio;
 
@@ -69,10 +82,40 @@ class ApiClient {
   }
 
   Future<void> saveToken(String token) {
-    return _secureStorage.write(key: ApiConstants.authTokenKey, value: token);
+    return _storage.write(key: ApiConstants.authTokenKey, value: token);
   }
 
   Future<void> clearToken() {
-    return _secureStorage.delete(key: ApiConstants.authTokenKey);
+    return _storage.delete(key: ApiConstants.authTokenKey);
+  }
+
+  Future<String?> _tryRefreshToken() async {
+    final refreshToken = await _storage.read(
+      key: ApiConstants.refreshTokenKey,
+    );
+    if (refreshToken == null || refreshToken.isEmpty) {
+      return null;
+    }
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/auth/refresh',
+        data: {'refreshToken': refreshToken},
+      );
+      final accessToken = response.data?['accessToken'] as String?;
+      final newRefresh = response.data?['refreshToken'] as String?;
+      if (accessToken == null) return null;
+      await saveToken(accessToken);
+      if (newRefresh != null) {
+        await _storage.write(
+          key: ApiConstants.refreshTokenKey,
+          value: newRefresh,
+        );
+      }
+      return accessToken;
+    } catch (_) {
+      await clearToken();
+      await _storage.delete(key: ApiConstants.refreshTokenKey);
+      return null;
+    }
   }
 }

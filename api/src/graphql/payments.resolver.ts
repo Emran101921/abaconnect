@@ -1,3 +1,4 @@
+import { ForbiddenException } from '@nestjs/common';
 import { Args, ID, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Roles } from '../common/decorators/roles.decorator';
 import {
@@ -41,6 +42,9 @@ export class PaymentsResolver {
     @CurrentUser() user: AuthUser,
     @Args('paymentId', { type: () => ID }) paymentId: string,
   ): Promise<PaymentType> {
+    if (process.env.NODE_ENV === 'production') {
+      throw new ForbiddenException('Demo payment confirmation is disabled');
+    }
     const p = await this.paymentsService.markPaymentSucceeded(
       paymentId,
       user.id,

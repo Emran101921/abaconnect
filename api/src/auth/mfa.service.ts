@@ -1,10 +1,34 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { generateSecret, generateURI, verify } from 'otplib';
+import {
+  decryptField,
+  encryptField,
+} from '../common/crypto/field-crypto.util';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class MfaService {
   constructor(private readonly prisma: PrismaService) {}
+
+  private encryptionKey(): string {
+    return (
+      process.env.PHI_ENCRYPTION_KEY ??
+      process.env.JWT_SECRET ??
+      'dev-only-phi-key'
+    );
+  }
+
+  private encryptSecret(secret: string): string {
+    return encryptField(secret, this.encryptionKey());
+  }
+
+  private decryptSecret(stored: string): string {
+    try {
+      return decryptField(stored, this.encryptionKey());
+    } catch {
+      return stored;
+    }
+  }
 
   generateSecret(email: string): { secret: string; otpauthUrl: string } {
     const secret = generateSecret();
@@ -36,9 +60,9 @@ export class MfaService {
     const { secret, otpauthUrl } = this.generateSecret(user.email);
     await this.prisma.user.update({
       where: { id: userId },
-      data: { mfaSecret: secret, mfaEnabled: false },
+      data: { mfaSecret: this.encryptSecret(secret), mfaEnabled: false },
     });
-    return { secret, otpauthUrl };
+    return { otpauthUrl };
   }
 
   async enable(userId: string, code: string) {
@@ -46,7 +70,8 @@ export class MfaService {
     if (!user?.mfaSecret) {
       throw new BadRequestException('Run MFA setup first');
     }
-    if (!(await this.verifyCode(user.mfaSecret, code))) {
+    const secret = this.decryptSecret(user.mfaSecret);
+    if (!(await this.verifyCode(secret, code))) {
       throw new BadRequestException('Invalid verification code');
     }
     await this.prisma.user.update({
@@ -66,7 +91,8 @@ export class MfaService {
     if (!valid) {
       throw new BadRequestException('Invalid password');
     }
-    if (!(await this.verifyCode(user.mfaSecret, code))) {
+    const secret = this.decryptSecret(user.mfaSecret);
+    if (!(await this.verifyCode(secret, code))) {
       throw new BadRequestException('Invalid verification code');
     }
     await this.prisma.user.update({
@@ -88,6 +114,6 @@ export class MfaService {
     if (!user.mfaEnabled || !user.mfaSecret) {
       return true;
     }
-    return this.verifyCode(user.mfaSecret, code);
+    return this.verifyCode(this.decryptSecret(user.mfaSecret), code);
   }
 }

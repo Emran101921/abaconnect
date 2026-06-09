@@ -41,6 +41,7 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
       for (final child in _children) {
         if (child.id == widget.childId) return child;
       }
+      return null;
     }
     return _children.first;
   }
@@ -258,6 +259,12 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
+          : widget.childId != null && selectedChild == null
+          ? const Center(
+              child: Text(
+                'Child not found. Return to your children list and try again.',
+              ),
+            )
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView(

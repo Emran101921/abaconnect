@@ -1,55 +1,29 @@
+import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Roles } from '../common/decorators/roles.decorator';
 import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  Patch,
-  Post,
-} from '@nestjs/common';
+  AuthUser,
+  CurrentUser,
+} from '../common/decorators/current-user.decorator';
 import { AuditService } from './audit.service';
 
 @Controller('audit')
+@Roles('PLATFORM_ADMIN')
 export class AuditController {
   constructor(private readonly auditService: AuditService) {}
 
-  @Post()
-  create(@Body() data: Record<string, unknown>) {
-    return this.auditService.create(data);
-  }
-
   @Get()
-  findAll() {
-    return this.auditService.findAll();
+  findAll(
+    @CurrentUser() user: AuthUser,
+    @Query('take') take?: string,
+  ) {
+    return this.auditService.findAllForTenant(
+      user.tenantId!,
+      take ? Number(take) : 50,
+    );
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.auditService.findOne(id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() data: Record<string, unknown>) {
-    return this.auditService.update(id, data);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.auditService.remove(id);
-  }
-
-  @Post('log')
-  log(
-    @Body()
-    body: {
-      tenantId: string;
-      action: string;
-      resourceType: string;
-      actorId?: string;
-      resourceId?: string;
-      metadata?: Record<string, unknown>;
-    },
-  ) {
-    return this.auditService.log(body);
+  findOne(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.auditService.findOneForTenant(user.tenantId!, id);
   }
 }

@@ -410,12 +410,14 @@ export class ParentBookingResolver {
   })
   async requestEarlyInterventionEvaluation(
     @CurrentUser() user: AuthUser,
-    @Args('screeningResponseId', { type: () => ID }) screeningResponseId: string,
+    @Args('screeningResponseId', { type: () => ID })
+    screeningResponseId: string,
   ): Promise<EarlyInterventionEvaluationRequestType> {
-    const result = await this.screeningsService.requestEarlyInterventionEvaluation(
-      user.id,
-      screeningResponseId,
-    );
+    const result =
+      await this.screeningsService.requestEarlyInterventionEvaluation(
+        user.id,
+        screeningResponseId,
+      );
     return {
       id: result.id,
       screeningResponseId: result.screeningResponseId,

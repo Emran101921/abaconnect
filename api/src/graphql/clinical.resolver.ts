@@ -82,11 +82,15 @@ export class ClinicalResolver {
     @CurrentUser() user: AuthUser,
     @Args('input') input: UpdateTreatmentPlanInput,
   ): Promise<TreatmentPlanType> {
-    const p = await this.clinical.updatePlanForTherapist(user.id, input.planId, {
-      title: input.title,
-      isActive: input.isActive,
-      goals: input.goals,
-    });
+    const p = await this.clinical.updatePlanForTherapist(
+      user.id,
+      input.planId,
+      {
+        title: input.title,
+        isActive: input.isActive,
+        goals: input.goals,
+      },
+    );
     return this.mapPlan(p);
   }
 
@@ -131,7 +135,9 @@ export class ClinicalResolver {
   private mapGoals(raw: unknown): TreatmentPlanGoalType[] {
     if (!Array.isArray(raw)) return [];
     return raw
-      .filter((g): g is Record<string, unknown> => g != null && typeof g === 'object')
+      .filter(
+        (g): g is Record<string, unknown> => g != null && typeof g === 'object',
+      )
       .map((g) => ({
         id: String(g.id ?? ''),
         label: String(g.label ?? ''),

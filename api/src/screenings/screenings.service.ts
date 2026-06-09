@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '../../generated/prisma/client';
 import { AuditService } from '../audit/audit.service';
+import { PhiAuditService } from '../audit/phi-audit.service';
 import {
   DateRangeFilter,
   priorPeriodBounds,
@@ -29,6 +30,7 @@ export class ScreeningsService {
     private readonly prisma: PrismaService,
     private readonly eiScoring: EarlyInterventionScoringService,
     private readonly audit: AuditService,
+    private readonly phiAudit: PhiAuditService,
     private readonly notifications: NotificationsService,
   ) {}
 
@@ -47,7 +49,9 @@ export class ScreeningsService {
           'Comprehensive parent screening for Early Intervention services (sections A–G).',
         therapyType: 'EARLY_INTERVENTION',
         version: 1,
-        questions: JSON.parse(JSON.stringify(eiQuestions)) as Prisma.InputJsonValue,
+        questions: JSON.parse(
+          JSON.stringify(eiQuestions),
+        ) as Prisma.InputJsonValue,
         scoringRules: {
           engine: 'early_intervention_v1',
         } as Prisma.InputJsonValue,
@@ -75,7 +79,10 @@ export class ScreeningsService {
   ) {
     const parent = await this.requireParent(userId);
     const child = await this.requireChild(parent.id, data.childId);
-    const template = await this.requireTemplate(parent.tenantId, data.templateId);
+    const template = await this.requireTemplate(
+      parent.tenantId,
+      data.templateId,
+    );
 
     if (data.draftId) {
       const existing = await this.prisma.screeningResponse.findFirst({
@@ -146,7 +153,10 @@ export class ScreeningsService {
   ) {
     const parent = await this.requireParent(userId);
     const child = await this.requireChild(parent.id, data.childId);
-    const template = await this.requireTemplate(parent.tenantId, data.templateId);
+    const template = await this.requireTemplate(
+      parent.tenantId,
+      data.templateId,
+    );
 
     const scored = this.scoreForTemplate(template, data.responses);
     const consentGrantedAt = data.consentGranted ? new Date() : null;
@@ -240,14 +250,17 @@ export class ScreeningsService {
       include: { template: true, child: true },
     });
     if (!row) throw new NotFoundException('Screening not found');
+    await this.phiAudit.logPhiAccess({
+      tenantId: parent.tenantId,
+      actorId: userId,
+      action: 'READ',
+      resourceType: 'screening',
+      resourceId: row.id,
+    });
     return row;
   }
 
-  async getDraftForParent(
-    userId: string,
-    templateId: string,
-    childId: string,
-  ) {
+  async getDraftForParent(userId: string, templateId: string, childId: string) {
     const parent = await this.requireParent(userId);
     return this.prisma.screeningResponse.findFirst({
       where: {
@@ -320,7 +333,9 @@ export class ScreeningsService {
     }
 
     if (row.evaluationRequestedAt) {
-      throw new ConflictException('Evaluation already requested for this screening');
+      throw new ConflictException(
+        'Evaluation already requested for this screening',
+      );
     }
 
     const recommendations = Array.isArray(row.recommendations)
@@ -444,7 +459,16 @@ export class ScreeningsService {
     riskLevel?: string,
     limit = 50,
     dateRange?: { fromDate?: Date; toDate?: Date },
+    actorId?: string,
   ) {
+    if (actorId) {
+      await this.phiAudit.logPhiAccess({
+        tenantId,
+        actorId,
+        action: 'EXPORT',
+        resourceType: 'screening_analytics',
+      });
+    }
     const completedAt = prismaDateRange('completedAt', dateRange ?? {});
     return this.prisma.screeningResponse.findMany({
       where: {
@@ -464,10 +488,7 @@ export class ScreeningsService {
     dateRange?: DateRangeFilter,
   ) {
     const currentBounds = resolveAnalyticsBounds(dateRange);
-    const priorBounds = priorPeriodBounds(
-      currentBounds.from,
-      currentBounds.to,
-    );
+    const priorBounds = priorPeriodBounds(currentBounds.from, currentBounds.to);
 
     const [current, prior, recentScreenings] = await Promise.all([
       this.queryScreeningFunnelCounts(tenantId, currentBounds),
@@ -505,23 +526,19 @@ export class ScreeningsService {
       isDraft: false,
       ...prismaBoundsRange('completedAt', bounds),
     };
-    const [
-      completedCount,
-      lowRiskCount,
-      moderateRiskCount,
-      highRiskCount,
-    ] = await Promise.all([
-      this.prisma.screeningResponse.count({ where: baseWhere }),
-      this.prisma.screeningResponse.count({
-        where: { ...baseWhere, riskLevel: 'LOW' },
-      }),
-      this.prisma.screeningResponse.count({
-        where: { ...baseWhere, riskLevel: 'MODERATE' },
-      }),
-      this.prisma.screeningResponse.count({
-        where: { ...baseWhere, riskLevel: 'HIGH' },
-      }),
-    ]);
+    const [completedCount, lowRiskCount, moderateRiskCount, highRiskCount] =
+      await Promise.all([
+        this.prisma.screeningResponse.count({ where: baseWhere }),
+        this.prisma.screeningResponse.count({
+          where: { ...baseWhere, riskLevel: 'LOW' },
+        }),
+        this.prisma.screeningResponse.count({
+          where: { ...baseWhere, riskLevel: 'MODERATE' },
+        }),
+        this.prisma.screeningResponse.count({
+          where: { ...baseWhere, riskLevel: 'HIGH' },
+        }),
+      ]);
 
     return {
       completedCount,
@@ -639,7 +656,9 @@ export class ScreeningsService {
 
   async remove(id: string) {
     await this.findOne(id);
-    await this.prisma.screeningResponse.deleteMany({ where: { templateId: id } });
+    await this.prisma.screeningResponse.deleteMany({
+      where: { templateId: id },
+    });
     await this.prisma.screeningTemplate.delete({ where: { id } });
     return { id, deleted: true };
   }

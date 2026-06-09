@@ -37,7 +37,7 @@ export class PushService {
     for (const device of devices) {
       const ok = serverKey
         ? await this.sendFcm(serverKey, device.deviceToken, payload)
-        : this.logDevPush(device, payload);
+        : this.logDevPush(device);
       if (ok) sent++;
       else failed++;
     }
@@ -45,12 +45,12 @@ export class PushService {
     return { sent, failed };
   }
 
-  private logDevPush(
-    device: { platform: string; deviceToken: string },
-    payload: PushPayload,
-  ): boolean {
+  private logDevPush(device: {
+    platform: string;
+    deviceToken: string;
+  }): boolean {
     this.logger.log(
-      `[dev-push] ${device.platform} ${device.deviceToken.slice(0, 24)}… → ${payload.title}`,
+      `[dev-push] ${device.platform} token=${device.deviceToken.slice(0, 8)}… notification queued`,
     );
     return true;
   }

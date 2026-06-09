@@ -3,6 +3,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../../core/constants/api_constants.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/security/secure_storage_config.dart';
 import '../../../core/push/push_token_service.dart';
 import '../../../shared/models/user_role.dart';
 
@@ -22,9 +23,9 @@ class LoginResponse {
 }
 
 class MfaSetupResult {
-  const MfaSetupResult({required this.secret, required this.otpauthUrl});
+  const MfaSetupResult({required this.otpauthUrl, this.secret});
 
-  final String secret;
+  final String? secret;
   final String otpauthUrl;
 }
 
@@ -61,7 +62,7 @@ class MeProfile {
 
 class AuthRepository {
   AuthRepository(this._api, {FlutterSecureStorage? storage})
-    : _storage = storage ?? const FlutterSecureStorage();
+    : _storage = storage ?? secureStorage;
 
   final ApiClient _api;
   final FlutterSecureStorage _storage;
@@ -117,6 +118,15 @@ class AuthRepository {
     );
     final me = await fetchMe();
     await _persistMe(me);
+    final role = _apiRoleToUserRole(me.role);
+    if (role == UserRole.parent || role == UserRole.therapist) {
+      final granted = await hasHipaaConsentGranted();
+      if (!granted) {
+        await setHipaaConsentGranted(false);
+      }
+    } else {
+      await setHipaaConsentGranted(true);
+    }
     await registerPushDevice(userId: me.id);
   }
 
@@ -169,7 +179,7 @@ class AuthRepository {
     final data = response.data;
     if (data == null) throw Exception('MFA setup failed');
     return MfaSetupResult(
-      secret: data['secret'] as String,
+      secret: data['secret'] as String?,
       otpauthUrl: data['otpauthUrl'] as String,
     );
   }
@@ -244,24 +254,21 @@ class AuthRepository {
       final me = await fetchMe();
       return AuthSession(user: _meToAuthUser(me), accessToken: token);
     } catch (_) {
-      return _loadSessionFromStorage(token);
+      await _api.clearToken();
+      await _storage.delete(key: ApiConstants.refreshTokenKey);
+      return null;
     }
   }
 
-  Future<AuthSession?> _loadSessionFromStorage(String token) async {
-    final roleName = await _storage.read(key: ApiConstants.userRoleKey);
-    final email = await _storage.read(key: ApiConstants.userEmailKey);
-    final id = await _storage.read(key: ApiConstants.userIdKey);
-    if (roleName == null || email == null) {
-      return null;
-    }
-    final role = UserRole.values.firstWhere(
-      (r) => r.name == roleName,
-      orElse: () => UserRole.parent,
-    );
-    return AuthSession(
-      user: AuthUser(id: id ?? '', email: email, role: role),
-      accessToken: token,
+  Future<bool> hasHipaaConsentGranted() async {
+    final value = await _storage.read(key: ApiConstants.hipaaConsentKey);
+    return value == 'true';
+  }
+
+  Future<void> setHipaaConsentGranted(bool granted) async {
+    await _storage.write(
+      key: ApiConstants.hipaaConsentKey,
+      value: granted ? 'true' : 'false',
     );
   }
 
@@ -303,6 +310,9 @@ class AuthRepository {
   }
 
   Future<void> logout() async {
+    try {
+      await _api.post('/auth/logout');
+    } catch (_) {}
     await _api.clearToken();
     await _storage.delete(key: ApiConstants.refreshTokenKey);
     await _storage.delete(key: ApiConstants.userRoleKey);
@@ -311,6 +321,7 @@ class AuthRepository {
     await _storage.delete(key: ApiConstants.tenantIdKey);
     await _storage.delete(key: ApiConstants.parentIdKey);
     await _storage.delete(key: ApiConstants.therapistIdKey);
+    await _storage.delete(key: ApiConstants.hipaaConsentKey);
   }
 
   AuthUser _meToAuthUser(MeProfile me) {

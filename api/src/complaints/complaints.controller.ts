@@ -1,4 +1,8 @@
 import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import {
+  AuthUser,
+  CurrentUser,
+} from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { ComplaintsService } from './complaints.service';
 
@@ -14,21 +18,29 @@ export class ComplaintsController {
 
   @Post('file')
   file(
+    @CurrentUser() user: AuthUser,
     @Body()
     body: {
-      reporterUserId: string;
       category: string;
       subject: string;
       description: string;
       therapistId?: string;
     },
   ) {
-    return this.complaintsService.fileComplaint(body.reporterUserId, body);
+    return this.complaintsService.fileComplaint(user.id, body);
   }
 
   @Patch(':id/resolve')
   @Roles('PLATFORM_ADMIN')
-  resolve(@Param('id') id: string, @Body('resolution') resolution: string) {
-    return this.complaintsService.resolveComplaint(id, resolution);
+  resolve(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body('resolution') resolution: string,
+  ) {
+    return this.complaintsService.resolveComplaint(
+      user.tenantId!,
+      id,
+      resolution,
+    );
   }
 }

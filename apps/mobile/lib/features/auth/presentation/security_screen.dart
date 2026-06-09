@@ -31,7 +31,9 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Setup failed: $e')));
+        ).showSnackBar(
+          const SnackBar(content: Text('MFA setup failed. Please try again.')),
+        );
       }
     }
   }

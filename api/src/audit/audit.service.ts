@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { AuditAction, Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -16,6 +20,8 @@ export class AuditService {
     ipAddress?: string;
     userAgent?: string;
   }) {
+    const metadata = { ...(data.metadata ?? {}) };
+    this.assertMetadataSafe(metadata);
     return this.prisma.auditLog.create({
       data: {
         tenantId: data.tenantId,
@@ -23,41 +29,54 @@ export class AuditService {
         action: data.action as AuditAction,
         entityType: data.resourceType,
         entityId: data.resourceId,
-        metadata: (data.metadata ?? {}) as Prisma.InputJsonValue,
+        metadata: metadata as Prisma.InputJsonValue,
         ipAddress: data.ipAddress,
         userAgent: data.userAgent,
       },
     });
   }
 
-  async create(data: Record<string, unknown>) {
-    return this.log(data as Parameters<AuditService['log']>[0]);
-  }
-
-  async findAll() {
+  async findAllForTenant(tenantId: string, take = 50) {
     return this.prisma.auditLog.findMany({
+      where: { tenantId },
       orderBy: { createdAt: 'desc' },
-      take: 50,
+      take,
     });
   }
 
-  async findOne(id: string) {
-    const row = await this.prisma.auditLog.findUnique({ where: { id } });
+  async findOneForTenant(tenantId: string, id: string) {
+    const row = await this.prisma.auditLog.findFirst({
+      where: { id, tenantId },
+    });
     if (!row) throw new NotFoundException('Audit log not found');
     return row;
   }
 
-  async update(id: string, data: Record<string, unknown>) {
-    await this.findOne(id);
-    return this.prisma.auditLog.update({
-      where: { id },
-      data: data as Parameters<typeof this.prisma.auditLog.update>[0]['data'],
-    });
+  /** @deprecated Append-only — updates are not permitted */
+  async update(): Promise<never> {
+    throw new ForbiddenException('Audit logs are append-only');
   }
 
-  async remove(id: string) {
-    await this.findOne(id);
-    await this.prisma.auditLog.delete({ where: { id } });
-    return { id, deleted: true };
+  /** @deprecated Append-only — deletes are not permitted */
+  async remove(): Promise<never> {
+    throw new ForbiddenException('Audit logs are append-only');
+  }
+
+  private assertMetadataSafe(metadata: Record<string, unknown>): void {
+    const forbidden = [
+      'body',
+      'message',
+      'soap',
+      'diagnosis',
+      'childName',
+      'responses',
+    ];
+    for (const key of Object.keys(metadata)) {
+      if (forbidden.includes(key)) {
+        throw new ForbiddenException(
+          'Audit metadata must not contain PHI fields',
+        );
+      }
+    }
   }
 }

@@ -45,11 +45,24 @@ export class UsersService {
     throw new Error('Use auth register');
   }
 
-  async update(id: string, data: Record<string, unknown>) {
+  async update(
+    id: string,
+    data: Partial<{
+      firstName: string;
+      lastName: string;
+      phone: string;
+      avatarUrl: string;
+    }>,
+  ) {
     await this.findOne(id);
     return this.prisma.user.update({
       where: { id },
-      data: data as Parameters<typeof this.prisma.user.update>[0]['data'],
+      data: {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        phone: data.phone,
+        avatarUrl: data.avatarUrl,
+      },
     });
   }
 

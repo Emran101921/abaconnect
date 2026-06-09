@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { HipaaConsentInterceptor } from './common/interceptors/hipaa-consent.interceptor';
+import { TenantContextInterceptor } from './common/tenant/tenant-context.interceptor';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { GraphqlFeatureModule } from './graphql/graphql.module';
@@ -7,6 +9,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { GraphQLModule } from '@nestjs/graphql';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { AppThrottlerGuard } from './common/guards/app-throttler.guard';
 import { BullModule } from '@nestjs/bull';
 import { MailModule } from './mail/mail.module';
 import { AppController } from './app.controller';
@@ -38,6 +41,7 @@ import { ScreeningsModule } from './screenings/screenings.module';
 import { ComplaintsModule } from './complaints/complaints.module';
 import { DisputesModule } from './disputes/disputes.module';
 import { PayoutsModule } from './payouts/payouts.module';
+import { SecurityModule } from './security/security.module';
 
 @Module({
   imports: [
@@ -47,6 +51,8 @@ import { PayoutsModule } from './payouts/payouts.module';
       driver: ApolloDriver,
       autoSchemaFile: true,
       context: ({ req }: { req: unknown }) => ({ req }),
+      introspection: process.env.NODE_ENV !== 'production',
+      playground: process.env.NODE_ENV !== 'production',
     }),
     ThrottlerModule.forRoot([
       {
@@ -91,11 +97,15 @@ import { PayoutsModule } from './payouts/payouts.module';
     ComplaintsModule,
     DisputesModule,
     PayoutsModule,
+    SecurityModule,
     GraphqlFeatureModule,
   ],
   controllers: [AppController],
   providers: [
     AppService,
+    { provide: APP_INTERCEPTOR, useClass: TenantContextInterceptor },
+    { provide: APP_INTERCEPTOR, useClass: HipaaConsentInterceptor },
+    { provide: APP_GUARD, useClass: AppThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
   ],

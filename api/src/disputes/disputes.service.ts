@@ -73,9 +73,9 @@ export class DisputesService {
     });
   }
 
-  async resolve(disputeId: string, resolution: string) {
-    const row = await this.prisma.dispute.findUnique({
-      where: { id: disputeId },
+  async resolve(tenantId: string, disputeId: string, resolution: string) {
+    const row = await this.prisma.dispute.findFirst({
+      where: { id: disputeId, tenantId },
     });
     if (!row) throw new NotFoundException('Dispute not found');
     return this.prisma.dispute.update({

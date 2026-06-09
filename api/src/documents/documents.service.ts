@@ -4,38 +4,66 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
-  createReadStream,
+  decryptBuffer,
+  encryptBuffer,
+} from '../common/crypto/field-crypto.util';
+import {
   existsSync,
   mkdirSync,
+  readFileSync,
   unlinkSync,
   writeFileSync,
 } from 'fs';
 import { join } from 'path';
 import { Readable } from 'stream';
 import { DocumentType } from '../../generated/prisma/client';
+import { PhiAuditService } from '../audit/phi-audit.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { S3DocumentStorage } from './s3-document.storage';
 
 @Injectable()
 export class DocumentsService {
   private readonly uploadRoot =
     process.env.UPLOAD_DIR ?? join(process.cwd(), 'uploads');
 
-  constructor(private readonly prisma: PrismaService) {
-    if (!existsSync(this.uploadRoot)) {
+  private encryptionKey(): string | null {
+    const key = process.env.PHI_ENCRYPTION_KEY?.trim();
+    return key || null;
+  }
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly s3: S3DocumentStorage,
+    private readonly phiAudit: PhiAuditService,
+  ) {
+    if (!this.s3.isEnabled() && !existsSync(this.uploadRoot)) {
       mkdirSync(this.uploadRoot, { recursive: true });
     }
+  }
+
+  private useS3(): boolean {
+    return this.s3.isEnabled();
+  }
+
+  private preparePayload(buffer: Buffer): Buffer {
+    if (!this.encryptionKey()) {
+      return buffer;
+    }
+    return encryptBuffer(buffer, this.encryptionKey()!);
+  }
+
+  private revealPayload(buffer: Buffer): Buffer {
+    if (!this.encryptionKey()) {
+      return buffer;
+    }
+    return decryptBuffer(buffer, this.encryptionKey()!);
   }
 
   async listForUser(userId: string) {
     const parent = await this.prisma.parent.findUnique({ where: { userId } });
     if (parent) {
       return this.prisma.document.findMany({
-        where: {
-          OR: [
-            { child: { parentId: parent.id } },
-            { tenantId: parent.tenantId, childId: null },
-          ],
-        },
+        where: { child: { parentId: parent.id } },
         orderBy: { uploadedAt: 'desc' },
         take: 50,
       });
@@ -124,23 +152,28 @@ export class DocumentsService {
       childId: data.childId,
     });
 
-    const absolutePath = this.resolveAbsolutePath(doc.storageKey);
-    const dir = join(absolutePath, '..');
-    if (!existsSync(dir)) {
-      mkdirSync(dir, { recursive: true });
+    const payload = this.preparePayload(file.buffer);
+    if (this.useS3()) {
+      await this.s3.putObject(doc.storageKey, payload);
+    } else {
+      const absolutePath = this.resolveAbsolutePath(doc.storageKey);
+      const dir = join(absolutePath, '..');
+      if (!existsSync(dir)) {
+        mkdirSync(dir, { recursive: true });
+      }
+      writeFileSync(absolutePath, payload);
     }
-    writeFileSync(absolutePath, file.buffer);
 
     return doc;
   }
 
   async openFileStream(userId: string, documentId: string) {
     const doc = await this.logAccess(userId, documentId);
-    const absolutePath = this.resolveAbsolutePath(doc.storageKey);
-    if (!existsSync(absolutePath)) {
-      throw new NotFoundException('File content not found on server');
-    }
-    return { doc, stream: createReadStream(absolutePath) as Readable };
+    const buffer = this.useS3()
+      ? await this.s3.getObjectBuffer(doc.storageKey)
+      : readFileSync(this.resolveAbsolutePath(doc.storageKey));
+    const stream = Readable.from(this.revealPayload(buffer));
+    return { doc, stream };
   }
 
   private resolveAbsolutePath(storageKey: string): string {
@@ -152,14 +185,28 @@ export class DocumentsService {
     await this.prisma.documentAccessLog.create({
       data: { documentId: doc.id, userId, action: 'READ' },
     });
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (user) {
+      await this.phiAudit.logPhiAccess({
+        tenantId: user.tenantId,
+        actorId: userId,
+        action: 'READ',
+        resourceType: 'document',
+        resourceId: doc.id,
+      });
+    }
     return doc;
   }
 
   async deleteForUser(userId: string, documentId: string) {
     const doc = await this.findAccessible(userId, documentId);
-    const absolutePath = this.resolveAbsolutePath(doc.storageKey);
-    if (existsSync(absolutePath)) {
-      unlinkSync(absolutePath);
+    if (this.useS3()) {
+      await this.s3.deleteObject(doc.storageKey);
+    } else {
+      const absolutePath = this.resolveAbsolutePath(doc.storageKey);
+      if (existsSync(absolutePath)) {
+        unlinkSync(absolutePath);
+      }
     }
     await this.prisma.documentAccessLog.create({
       data: { documentId: doc.id, userId, action: 'DELETE' },
@@ -176,10 +223,7 @@ export class DocumentsService {
     if (!doc) throw new NotFoundException('Document not found');
 
     const parent = await this.prisma.parent.findUnique({ where: { userId } });
-    if (
-      parent &&
-      (doc.child?.parentId === parent.id || doc.tenantId === parent.tenantId)
-    ) {
+    if (parent && doc.child?.parentId === parent.id) {
       return doc;
     }
     const therapist = await this.prisma.therapist.findUnique({

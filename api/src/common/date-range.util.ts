@@ -47,10 +47,7 @@ export function resolveAnalyticsBounds(
 }
 
 /** Same-length window immediately before [from, to] (inclusive days). */
-export function priorPeriodBounds(
-  from: Date,
-  to: Date,
-): ResolvedDateBounds {
+export function priorPeriodBounds(from: Date, to: Date): ResolvedDateBounds {
   const start = startOfDay(from);
   const end = endOfDay(to);
   const dayMs = 86_400_000;

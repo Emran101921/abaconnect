@@ -1,12 +1,15 @@
-import { Field, ID, InputType } from '@nestjs/graphql';
+import { Field, ID, InputType, Int } from '@nestjs/graphql';
+import { IsInt, IsOptional, IsUUID, Min } from 'class-validator';
 import { LocationType, TherapyType } from '../../../generated/prisma/client';
 
 @InputType()
 export class BookAppointmentInput {
   @Field(() => ID)
+  @IsUUID()
   childId: string;
 
   @Field(() => ID)
+  @IsUUID()
   therapistId: string;
 
   @Field(() => TherapyType)
@@ -27,13 +30,16 @@ export class BookAppointmentInput {
 
 @InputType()
 export class BookRecurringAppointmentsInput extends BookAppointmentInput {
-  @Field()
+  @Field(() => Int)
+  @IsInt()
+  @Min(1)
   weeks: number;
 }
 
 @InputType()
 export class RescheduleAppointmentInput {
   @Field(() => ID)
+  @IsUUID()
   appointmentId: string;
 
   @Field()
@@ -52,8 +58,10 @@ export class TherapistDiscoveryInput {
   therapyTypes?: TherapyType[];
 
   @Field({ nullable: true })
+  @IsOptional()
   latitude?: number;
 
   @Field({ nullable: true })
+  @IsOptional()
   longitude?: number;
 }

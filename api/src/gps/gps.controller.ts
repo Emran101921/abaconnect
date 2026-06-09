@@ -1,4 +1,5 @@
 import {
+  UseGuards,
   Body,
   Controller,
   Delete,
@@ -8,8 +9,10 @@ import {
   Post,
 } from '@nestjs/common';
 import { GpsService } from './gps.service';
+import { BlockScaffoldRestGuard } from '../common/guards/block-scaffold-rest.guard';
 
 @Controller('gps')
+@UseGuards(BlockScaffoldRestGuard)
 export class GpsController {
   constructor(private readonly gpsService: GpsService) {}
 

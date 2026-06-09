@@ -1,4 +1,5 @@
 import {
+  UseGuards,
   Body,
   Controller,
   Delete,
@@ -8,8 +9,10 @@ import {
   Post,
 } from '@nestjs/common';
 import { ParentsService } from './parents.service';
+import { BlockScaffoldRestGuard } from '../common/guards/block-scaffold-rest.guard';
 
 @Controller('parents')
+@UseGuards(BlockScaffoldRestGuard)
 export class ParentsController {
   constructor(private readonly parentsService: ParentsService) {}
 

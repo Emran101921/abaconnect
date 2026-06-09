@@ -7,24 +7,19 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import { createHash } from 'crypto';
 import { MailService } from '../mail/mail.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { SecurityEventService } from '../security/security-event.service';
 import { MfaService } from './mfa.service';
+import { RefreshTokenService } from './refresh-token.service';
+import { LoginDto, RegisterDto } from './dto/auth.dto';
 import { JwtPayload } from './jwt.strategy';
 
-export interface RegisterDto {
-  email: string;
-  password: string;
-  firstName: string;
-  lastName: string;
-  role?: 'PARENT' | 'THERAPIST' | 'AGENCY_ADMIN' | 'PLATFORM_ADMIN';
-  tenantId?: string;
-}
+const MAX_FAILED_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_MINUTES = 15;
 
-export interface LoginDto {
-  email: string;
-  password: string;
-}
+export type { LoginDto, RegisterDto };
 
 export interface AuthTokens {
   accessToken: string;
@@ -34,6 +29,11 @@ export interface AuthTokens {
 export type LoginResult =
   | AuthTokens
   | { requiresMfa: true; mfaChallengeToken: string };
+
+export interface LoginContext {
+  ipAddress?: string;
+  userAgent?: string;
+}
 
 export interface AuthMeResponse {
   id: string;
@@ -54,6 +54,8 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly mfaService: MfaService,
     private readonly mailService: MailService,
+    private readonly refreshTokens: RefreshTokenService,
+    private readonly securityEvents: SecurityEventService,
   ) {}
 
   async me(userId: string): Promise<AuthMeResponse> {
@@ -84,7 +86,8 @@ export class AuthService {
       throw new ConflictException('Email already registered');
     }
     const passwordHash = await bcrypt.hash(dto.password, 10);
-    const role = dto.role ?? 'PARENT';
+    const requestedRole = dto.role ?? 'PARENT';
+    const role = this.resolvePublicRegisterRole(requestedRole);
     const user = await this.prisma.user.create({
       data: {
         tenantId,
@@ -115,22 +118,49 @@ export class AuthService {
         metadata: { event: 'register' },
       },
     });
-    return this.issueTokens(user.id, user.email, [role], tenantId);
+    const created = await this.prisma.user.findUniqueOrThrow({
+      where: { id: user.id },
+    });
+    return this.issueTokensForUser(created);
   }
 
-  async login(dto: LoginDto): Promise<LoginResult> {
+  async login(dto: LoginDto, ctx?: LoginContext): Promise<LoginResult> {
     const user = await this.prisma.user.findFirst({
       where: { email: dto.email },
     });
+
     if (!user?.passwordHash) {
+      await this.logUnknownLoginFailure(dto.email, 'unknown_email', ctx);
       throw new UnauthorizedException('Invalid credentials');
     }
+
+    if (user.lockedUntil && user.lockedUntil > new Date()) {
+      await this.securityEvents.log({
+        tenantId: user.tenantId,
+        userId: user.id,
+        eventType: 'ACCOUNT_LOCKED',
+        severity: 'WARNING',
+        ipAddress: ctx?.ipAddress,
+        userAgent: ctx?.userAgent,
+        metadata: { reason: 'lockout_active' },
+      });
+      throw new UnauthorizedException(
+        'Account temporarily locked. Try again later.',
+      );
+    }
+
     const valid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!valid) {
+      await this.handleFailedLogin(user, 'invalid_password', ctx);
+      throw new UnauthorizedException('Invalid credentials');
+    }
+    if (!user.isActive) {
+      await this.handleFailedLogin(user, 'inactive_account', ctx);
       throw new UnauthorizedException('Invalid credentials');
     }
 
     if (user.mfaEnabled && user.mfaSecret) {
+      await this.resetLoginAttempts(user.id);
       const mfaChallengeToken = this.jwtService.sign(
         { sub: user.id, purpose: 'mfa_challenge' },
         { expiresIn: '5m' },
@@ -138,11 +168,12 @@ export class AuthService {
       return { requiresMfa: true, mfaChallengeToken };
     }
 
+    await this.resetLoginAttempts(user.id);
     await this.prisma.user.update({
       where: { id: user.id },
       data: { lastLoginAt: new Date() },
     });
-    return this.issueTokens(user.id, user.email, [user.role], user.tenantId);
+    return this.issueTokensForUser(user);
   }
 
   async completeMfaLogin(
@@ -162,18 +193,41 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
     });
-    if (!user?.mfaSecret) {
+    if (!user?.mfaSecret || !user.isActive) {
       throw new UnauthorizedException('MFA not configured');
     }
     if (!(await this.mfaService.verifyForUser(user, code))) {
       throw new UnauthorizedException('Invalid authenticator code');
     }
 
+    await this.resetLoginAttempts(user.id);
     await this.prisma.user.update({
       where: { id: user.id },
       data: { lastLoginAt: new Date() },
     });
-    return this.issueTokens(user.id, user.email, [user.role], user.tenantId);
+    return this.issueTokensForUser(user);
+  }
+
+  async logout(userId: string): Promise<{ message: string }> {
+    await this.refreshTokens.revokeAllForUser(userId);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { tokenVersion: { increment: 1 } },
+    });
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (user) {
+      await this.prisma.auditLog.create({
+        data: {
+          tenantId: user.tenantId,
+          actorId: userId,
+          action: 'UPDATE',
+          entityType: 'user',
+          entityId: userId,
+          metadata: { event: 'logout' },
+        },
+      });
+    }
+    return { message: 'Logged out' };
   }
 
   async requestPasswordReset(email: string): Promise<{
@@ -240,7 +294,10 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(newPassword, 10);
     const user = await this.prisma.user.update({
       where: { id: payload.sub },
-      data: { passwordHash },
+      data: {
+        passwordHash,
+        tokenVersion: { increment: 1 },
+      },
     });
 
     await this.prisma.auditLog.create({
@@ -259,18 +316,53 @@ export class AuthService {
 
   async refresh(refreshToken: string): Promise<AuthTokens> {
     try {
+      const stored = await this.refreshTokens.assertValid(refreshToken);
       const payload = this.jwtService.verify<JwtPayload>(refreshToken, {
         secret: process.env.JWT_REFRESH_SECRET ?? process.env.JWT_SECRET,
       });
-      return this.issueTokens(
-        payload.sub,
-        payload.email,
-        payload.roles,
-        payload.tenantId,
-      );
-    } catch {
+      if (payload.sub !== stored.userId) {
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+      const user = await this.prisma.user.findUnique({
+        where: { id: payload.sub },
+      });
+      if (!user?.isActive) {
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+      if (
+        payload.tokenVersion != null &&
+        payload.tokenVersion !== user.tokenVersion
+      ) {
+        throw new UnauthorizedException('Session has been revoked');
+      }
+      await this.refreshTokens.revokeToken(refreshToken);
+      return this.issueTokensForUser(user);
+    } catch (error) {
+      if (error instanceof UnauthorizedException) throw error;
       throw new UnauthorizedException('Invalid refresh token');
     }
+  }
+
+  private async issueTokensForUser(user: {
+    id: string;
+    email: string;
+    role: string;
+    tenantId: string;
+    tokenVersion: number;
+  }): Promise<AuthTokens> {
+    const tokens = this.issueTokens(
+      user.id,
+      user.email,
+      [user.role],
+      user.tenantId,
+      user.tokenVersion,
+    );
+    await this.refreshTokens.store(
+      user.id,
+      tokens.refreshToken,
+      new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    );
+    return tokens;
   }
 
   private issueTokens(
@@ -278,14 +370,114 @@ export class AuthService {
     email: string,
     roles?: string[],
     tenantId?: string,
+    tokenVersion = 0,
   ): AuthTokens {
-    const payload: JwtPayload = { sub: userId, email, roles, tenantId };
+    const payload: JwtPayload = {
+      sub: userId,
+      email,
+      roles,
+      tenantId,
+      tokenVersion,
+    };
     const accessToken = this.jwtService.sign(payload);
     const refreshToken = this.jwtService.sign(payload, {
       secret: process.env.JWT_REFRESH_SECRET ?? process.env.JWT_SECRET,
       expiresIn: '7d',
     });
     return { accessToken, refreshToken };
+  }
+
+  private resolvePublicRegisterRole(
+    role: RegisterDto['role'],
+  ): 'PARENT' | 'THERAPIST' {
+    if (role === 'THERAPIST') return 'THERAPIST';
+    if (role && role !== 'PARENT') {
+      throw new BadRequestException(
+        'Only parent and therapist accounts can self-register',
+      );
+    }
+    return 'PARENT';
+  }
+
+  private async handleFailedLogin(
+    user: {
+      id: string;
+      tenantId: string;
+      failedLoginAttempts: number;
+    },
+    reason: string,
+    ctx?: LoginContext,
+  ): Promise<void> {
+    const attempts = user.failedLoginAttempts + 1;
+    const lockedUntil =
+      attempts >= MAX_FAILED_LOGIN_ATTEMPTS
+        ? new Date(Date.now() + LOCKOUT_MINUTES * 60 * 1000)
+        : null;
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        failedLoginAttempts: attempts,
+        lockedUntil,
+      },
+    });
+
+    await this.securityEvents.log({
+      tenantId: user.tenantId,
+      userId: user.id,
+      eventType: 'LOGIN_FAILED',
+      severity: lockedUntil ? 'WARNING' : 'INFO',
+      ipAddress: ctx?.ipAddress,
+      userAgent: ctx?.userAgent,
+      metadata: { reason, attempts },
+    });
+
+    if (lockedUntil) {
+      await this.securityEvents.log({
+        tenantId: user.tenantId,
+        userId: user.id,
+        eventType: 'ACCOUNT_LOCKED',
+        severity: 'WARNING',
+        ipAddress: ctx?.ipAddress,
+        userAgent: ctx?.userAgent,
+        metadata: { lockoutMinutes: LOCKOUT_MINUTES, attempts },
+      });
+    }
+
+    await this.prisma.auditLog.create({
+      data: {
+        tenantId: user.tenantId,
+        actorId: user.id,
+        action: 'UPDATE',
+        entityType: 'user',
+        entityId: user.id,
+        metadata: { event: 'login_failed', reason },
+      },
+    });
+  }
+
+  private async logUnknownLoginFailure(
+    email: string,
+    reason: string,
+    ctx?: LoginContext,
+  ): Promise<void> {
+    const emailHash = createHash('sha256')
+      .update(email.trim().toLowerCase())
+      .digest('hex');
+    await this.securityEvents.log({
+      eventType: 'LOGIN_FAILED',
+      severity: 'INFO',
+      ipAddress: ctx?.ipAddress,
+      userAgent: ctx?.userAgent,
+      metadata: { reason, emailHash },
+    });
+  }
+
+  private async resetLoginAttempts(userId: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { failedLoginAttempts: 0, lockedUntil: null },
+    });
   }
 
   async registerDevice(

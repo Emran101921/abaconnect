@@ -135,7 +135,7 @@ export class ParentsService {
       actionItems.push({
         id: `review-${session.id}`,
         title: 'Leave a session review',
-        subtitle: `${session.child.firstName} with ${t.user.firstName}`,
+        subtitle: 'A completed session is ready for your review',
         actionType: 'REVIEW',
         sessionId: session.id,
         therapistId: t.id,

@@ -71,5 +71,5 @@ final clinicalRepositoryProvider = Provider<ClinicalRepository>((ref) {
 
 final authStateProvider =
     StateNotifierProvider<AuthNotifier, AsyncValue<AuthSession?>>((ref) {
-      return AuthNotifier(ref.watch(authRepositoryProvider));
+      return AuthNotifier(ref.watch(authRepositoryProvider), ref);
     });

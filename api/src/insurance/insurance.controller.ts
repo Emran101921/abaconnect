@@ -1,4 +1,5 @@
 import {
+  UseGuards,
   Body,
   Controller,
   Delete,
@@ -8,8 +9,10 @@ import {
   Post,
 } from '@nestjs/common';
 import { InsuranceService } from './insurance.service';
+import { BlockScaffoldRestGuard } from '../common/guards/block-scaffold-rest.guard';
 
 @Controller('insurance')
+@UseGuards(BlockScaffoldRestGuard)
 export class InsuranceController {
   constructor(private readonly insuranceService: InsuranceService) {}
 

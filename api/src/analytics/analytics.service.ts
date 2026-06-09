@@ -23,10 +23,7 @@ export class AnalyticsService {
     const today = startOfDay(new Date());
     const hasExplicitRange = Boolean(dateRange?.fromDate || dateRange?.toDate);
     const currentBounds = resolveAnalyticsBounds(dateRange);
-    const priorBounds = priorPeriodBounds(
-      currentBounds.from,
-      currentBounds.to,
-    );
+    const priorBounds = priorPeriodBounds(currentBounds.from, currentBounds.to);
 
     const [current, prior] = await Promise.all([
       this.queryMetricCounts(tenantId, currentBounds),

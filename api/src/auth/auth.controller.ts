@@ -1,11 +1,14 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req } from '@nestjs/common';
+import type { Request } from 'express';
+import { Throttle } from '@nestjs/throttler';
 import {
   AuthUser,
   CurrentUser,
 } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { MfaService } from './mfa.service';
-import { AuthService, LoginDto, RegisterDto } from './auth.service';
+import { LoginDto, RegisterDto } from './dto/auth.dto';
+import { AuthService } from './auth.service';
 
 @Controller('auth')
 export class AuthController {
@@ -15,15 +18,20 @@ export class AuthController {
   ) {}
 
   @Public()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('register')
   register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
   }
 
   @Public()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('login')
-  login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+  login(@Body() dto: LoginDto, @Req() req: Request) {
+    return this.authService.login(dto, {
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
   }
 
   @Public()
@@ -33,6 +41,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('forgot-password')
   forgotPassword(@Body('email') email: string) {
     return this.authService.requestPasswordReset(email);
@@ -54,6 +63,11 @@ export class AuthController {
     @Body('code') code: string,
   ) {
     return this.authService.completeMfaLogin(mfaChallengeToken, code);
+  }
+
+  @Post('logout')
+  logout(@CurrentUser() user: AuthUser) {
+    return this.authService.logout(user.id);
   }
 
   @Get('me')

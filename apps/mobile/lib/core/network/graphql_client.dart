@@ -2,10 +2,11 @@ import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../constants/api_constants.dart';
+import '../security/secure_storage_config.dart';
 
 class GraphqlClient {
-  GraphqlClient({FlutterSecureStorage? secureStorage})
-    : _secureStorage = secureStorage ?? const FlutterSecureStorage(),
+  GraphqlClient({FlutterSecureStorage? storage})
+    : _secureStorage = storage ?? secureStorage,
       _dio = Dio(
         BaseOptions(
           connectTimeout: ApiConstants.connectTimeout,

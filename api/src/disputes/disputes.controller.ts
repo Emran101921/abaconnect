@@ -1,4 +1,8 @@
 import { Body, Controller, Get, Param, Patch } from '@nestjs/common';
+import {
+  AuthUser,
+  CurrentUser,
+} from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { DisputesService } from './disputes.service';
 
@@ -14,7 +18,11 @@ export class DisputesController {
 
   @Patch(':id/resolve')
   @Roles('PLATFORM_ADMIN')
-  resolve(@Param('id') id: string, @Body('resolution') resolution: string) {
-    return this.disputesService.resolve(id, resolution);
+  resolve(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body('resolution') resolution: string,
+  ) {
+    return this.disputesService.resolve(user.tenantId!, id, resolution);
   }
 }

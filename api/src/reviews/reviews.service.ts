@@ -76,9 +76,16 @@ export class ReviewsService {
     });
   }
 
-  async setPublished(reviewId: string, isPublished: boolean) {
-    const review = await this.prisma.review.findUnique({
-      where: { id: reviewId },
+  async setPublished(
+    reviewId: string,
+    isPublished: boolean,
+    tenantId?: string,
+  ) {
+    const review = await this.prisma.review.findFirst({
+      where: {
+        id: reviewId,
+        ...(tenantId ? { therapist: { tenantId } } : {}),
+      },
       include: { therapist: true },
     });
     if (!review) {

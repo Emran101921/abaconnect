@@ -4,6 +4,11 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { PhiAuditService } from '../audit/phi-audit.service';
+import {
+  decryptField,
+  encryptField,
+} from '../common/crypto/field-crypto.util';
 import { MessageDeliveryStatus } from '../graphql/types/messaging.types';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -26,6 +31,7 @@ export class MessagingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
+    private readonly phiAudit: PhiAuditService,
   ) {}
 
   async listThreadsForUser(userId: string) {
@@ -60,14 +66,14 @@ export class MessagingService {
           otherParticipantName: others.length
             ? `${others[0].firstName} ${others[0].lastName}`
             : 'Conversation',
-          lastMessageBody: last?.body ?? undefined,
+          lastMessageBody: last?.body
+            ? this.decryptBody(last.body)
+            : undefined,
           lastMessageAt: last?.sentAt ?? undefined,
           hasUnread: this.isThreadUnread(last, m.lastReadAt, userId),
           lastMessageIsMine,
           lastMessageStatus:
-            last && lastMessageIsMine
-              ? messageDeliveryStatus(last)
-              : undefined,
+            last && lastMessageIsMine ? messageDeliveryStatus(last) : undefined,
         };
       })
       .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
@@ -142,12 +148,26 @@ export class MessagingService {
   async getThreadMessages(userId: string, threadId: string) {
     await this.assertParticipant(userId, threadId);
     await this.markMessagesDelivered(userId, threadId);
-    return this.prisma.message.findMany({
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (user) {
+      await this.phiAudit.logPhiAccess({
+        tenantId: user.tenantId,
+        actorId: userId,
+        action: 'READ',
+        resourceType: 'message_thread',
+        resourceId: threadId,
+      });
+    }
+    const messages = await this.prisma.message.findMany({
       where: { threadId, deletedAt: null },
       include: { sender: true },
       orderBy: { sentAt: 'asc' },
       take: 200,
     });
+    return messages.map((message) => ({
+      ...message,
+      body: this.decryptBody(message.body),
+    }));
   }
 
   async sendMessage(userId: string, threadId: string, body: string) {
@@ -161,7 +181,7 @@ export class MessagingService {
       data: {
         threadId,
         senderId: userId,
-        body: trimmed,
+        body: this.encryptBody(trimmed),
         sentAt: new Date(),
       },
       include: { sender: true },
@@ -189,7 +209,29 @@ export class MessagingService {
       ),
     );
 
-    return message;
+    return { ...message, body: trimmed };
+  }
+
+  private encryptionKey(): string | undefined {
+    const key = process.env.PHI_ENCRYPTION_KEY?.trim();
+    return key || undefined;
+  }
+
+  private encryptBody(body: string): string {
+    const key = this.encryptionKey();
+    if (!key) return body;
+    return `enc:${encryptField(body, key)}`;
+  }
+
+  private decryptBody(body: string): string {
+    if (!body.startsWith('enc:')) return body;
+    const key = this.encryptionKey();
+    if (!key) return body;
+    try {
+      return decryptField(body.slice(4), key);
+    } catch {
+      return body;
+    }
   }
 
   async listParentContactsForTherapist(therapistUserId: string) {
@@ -371,7 +413,9 @@ export class MessagingService {
           otherParticipantName: peer
             ? `${peer.user.firstName} ${peer.user.lastName}`
             : 'Conversation',
-          lastMessageBody: last?.body ?? undefined,
+          lastMessageBody: last?.body
+            ? this.decryptBody(last.body)
+            : undefined,
           lastMessageAt: last?.sentAt ?? undefined,
           hasUnread: false,
         };

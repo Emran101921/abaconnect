@@ -70,12 +70,14 @@ export class NotificationsService {
       },
     });
 
+    const safeTitle = 'BloomOra';
+    const safeBody = 'You have a new notification. Open the app to view details.';
     await this.pushQueue.add(
       'send',
       {
         userId,
-        title: data.title,
-        body: data.body,
+        title: safeTitle,
+        body: safeBody,
         data: data.data,
       },
       { removeOnComplete: true, attempts: 2 },

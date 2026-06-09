@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { PhiAuditService } from '../audit/phi-audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 export type ChildProfileInput = {
@@ -24,17 +25,27 @@ export type ChildProfileInput = {
 
 @Injectable()
 export class ChildrenService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly phiAudit: PhiAuditService,
+  ) {}
 
   async findByParentUserId(userId: string) {
     const parent = await this.prisma.parent.findUnique({ where: { userId } });
     if (!parent) {
       return [];
     }
-    return this.prisma.child.findMany({
+    const children = await this.prisma.child.findMany({
       where: { parentId: parent.id },
       orderBy: { firstName: 'asc' },
     });
+    await this.phiAudit.logPhiAccess({
+      tenantId: parent.tenantId,
+      actorId: userId,
+      action: 'READ',
+      resourceType: 'children',
+    });
+    return children;
   }
 
   async updateForParentUserId(
@@ -107,10 +118,19 @@ export class ChildrenService {
     return this.prisma.child.findMany({ take: 100 });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, actorId?: string) {
     const child = await this.prisma.child.findUnique({ where: { id } });
     if (!child) {
       throw new NotFoundException('Child not found');
+    }
+    if (actorId) {
+      await this.phiAudit.logPhiAccess({
+        tenantId: child.tenantId,
+        actorId,
+        action: 'READ',
+        resourceType: 'child',
+        resourceId: child.id,
+      });
     }
     return child;
   }

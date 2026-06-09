@@ -329,10 +329,7 @@ export class InsuranceService {
     dateRange?: DateRangeFilter,
   ) {
     const currentBounds = resolveAnalyticsBounds(dateRange);
-    const priorBounds = priorPeriodBounds(
-      currentBounds.from,
-      currentBounds.to,
-    );
+    const priorBounds = priorPeriodBounds(currentBounds.from, currentBounds.to);
 
     const [current, prior, recentClaims] = await Promise.all([
       this.queryClaimsPipelineCounts(tenantId, currentBounds),
@@ -451,8 +448,7 @@ export class InsuranceService {
       | { externalId?: string }
       | undefined;
     const externalId =
-      clearinghouse?.externalId ??
-      `STUB-${claim.id.slice(0, 8).toUpperCase()}`;
+      clearinghouse?.externalId ?? `STUB-${claim.id.slice(0, 8).toUpperCase()}`;
 
     const remittance = await this.clearinghouse.poll835Remittance(
       claim.id,

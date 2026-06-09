@@ -28,7 +28,7 @@ export class AdminService {
         where: { ...where, isVerified: false },
       }),
       this.prisma.complaint.count({
-        where: { status: 'OPEN' },
+        where: { ...where, status: 'OPEN' },
       }),
       this.prisma.auditLog.findMany({
         where: tenantId ? { tenantId } : undefined,
@@ -106,9 +106,12 @@ export class AdminService {
     });
   }
 
-  async verifyTherapist(therapistId: string) {
-    const therapist = await this.prisma.therapist.findUnique({
-      where: { id: therapistId },
+  async verifyTherapist(therapistId: string, tenantId?: string) {
+    const therapist = await this.prisma.therapist.findFirst({
+      where: {
+        id: therapistId,
+        ...(tenantId ? { tenantId } : {}),
+      },
     });
     if (!therapist) {
       throw new NotFoundException('Therapist not found');

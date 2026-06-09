@@ -3,11 +3,16 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { SecurityEventService } from '../security/security-event.service';
 
 @Injectable()
 export class ComplianceService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly securityEvents: SecurityEventService,
+  ) {}
 
   async listConsentsForUser(userId: string) {
     return this.prisma.hipaaConsent.findMany({
@@ -15,6 +20,19 @@ export class ComplianceService {
       orderBy: { grantedAt: 'desc' },
       take: 20,
     });
+  }
+
+  async hasActiveHipaaConsent(userId: string): Promise<boolean> {
+    const row = await this.prisma.hipaaConsent.findFirst({
+      where: {
+        userId,
+        consentType: 'HIPAA_PRIVACY',
+        granted: true,
+        revokedAt: null,
+      },
+      orderBy: { grantedAt: 'desc' },
+    });
+    return Boolean(row);
   }
 
   async grantConsent(
@@ -34,7 +52,7 @@ export class ComplianceService {
       data: { granted: false, revokedAt: new Date() },
     });
 
-    return this.prisma.hipaaConsent.create({
+    const consent = await this.prisma.hipaaConsent.create({
       data: {
         tenantId: user.tenantId,
         userId,
@@ -43,6 +61,17 @@ export class ComplianceService {
         granted: true,
       },
     });
+
+    if (data.consentType === 'HIPAA_PRIVACY') {
+      await this.securityEvents.log({
+        tenantId: user.tenantId,
+        userId,
+        eventType: 'CONSENT_GRANTED',
+        metadata: { consentType: data.consentType, version: data.version },
+      });
+    }
+
+    return consent;
   }
 
   async revokeConsent(userId: string, consentId: string) {
@@ -54,6 +83,130 @@ export class ComplianceService {
       where: { id: consentId },
       data: { granted: false, revokedAt: new Date() },
     });
+  }
+
+  async getPhiAccessReportForUser(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { parent: { include: { children: true } }, therapist: true },
+    });
+    if (!user) throw new NotFoundException('User not found');
+
+    const documentWhere: Prisma.DocumentWhereInput = { tenantId: user.tenantId };
+    const phiAuditWhere: Prisma.AuditLogWhereInput = {
+      tenantId: user.tenantId,
+      metadata: { path: ['phi'], equals: true },
+    };
+
+    if (user.parent) {
+      const childIds = user.parent.children.map((c) => c.id);
+      documentWhere.childId = { in: childIds };
+      phiAuditWhere.OR = [
+        { actorId: userId },
+        {
+          entityType: { in: ['child', 'document', 'session', 'message_thread'] },
+          entityId: { in: childIds },
+        },
+      ];
+    } else if (user.therapist) {
+      documentWhere.therapistId = user.therapist.id;
+      const sessions = await this.prisma.session.findMany({
+        where: { therapistId: user.therapist.id },
+        select: { id: true },
+      });
+      const sessionIds = sessions.map((s) => s.id);
+      phiAuditWhere.OR = [
+        { actorId: userId },
+        {
+          entityType: { in: ['session', 'document', 'message_thread'] },
+          entityId: { in: sessionIds },
+        },
+      ];
+    } else {
+      return { documentAccess: [], phiAuditEntries: [] };
+    }
+
+    const documents = await this.prisma.document.findMany({
+      where: documentWhere,
+      select: { id: true, title: true },
+    });
+    const documentIds = documents.map((d) => d.id);
+    const titleById = new Map(documents.map((d) => [d.id, d.title]));
+
+    const documentAccess =
+      documentIds.length > 0
+        ? await this.prisma.documentAccessLog.findMany({
+            where: { documentId: { in: documentIds } },
+            orderBy: { accessedAt: 'desc' },
+            take: 200,
+          })
+        : [];
+
+    const phiAuditEntries = await this.prisma.auditLog.findMany({
+      where: phiAuditWhere,
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    });
+
+    return {
+      documentAccess: documentAccess.map((row) => ({
+        documentId: row.documentId,
+        documentTitle: titleById.get(row.documentId),
+        action: row.action,
+        accessedAt: row.accessedAt,
+        userId: row.userId,
+      })),
+      phiAuditEntries: phiAuditEntries.map((row) => ({
+        action: row.action,
+        resourceType: row.entityType,
+        resourceId: row.entityId,
+        createdAt: row.createdAt,
+        actorId: row.actorId,
+      })),
+    };
+  }
+
+  getRetentionPolicy() {
+    return {
+      clinicalRecordsYears: 7,
+      billingRecordsYears: 6,
+      auditLogsYears: 7,
+      securityEventsYears: 7,
+      description:
+        'Default CMS-aligned retention windows; confirm with legal counsel per tenant.',
+    };
+  }
+
+  async summarizeRetentionStatus(tenantId: string) {
+    const policy = this.getRetentionPolicy();
+    const clinicalCutoff = new Date();
+    clinicalCutoff.setFullYear(
+      clinicalCutoff.getFullYear() - policy.clinicalRecordsYears,
+    );
+    const billingCutoff = new Date();
+    billingCutoff.setFullYear(
+      billingCutoff.getFullYear() - policy.billingRecordsYears,
+    );
+
+    const [expiredDocuments, expiredClaims, auditLogCount, securityEventCount] =
+      await Promise.all([
+        this.prisma.document.count({
+          where: { tenantId, createdAt: { lt: clinicalCutoff } },
+        }),
+        this.prisma.insuranceClaim.count({
+          where: { tenantId, createdAt: { lt: billingCutoff } },
+        }),
+        this.prisma.auditLog.count({ where: { tenantId } }),
+        this.prisma.securityEvent.count({ where: { tenantId } }),
+      ]);
+
+    return {
+      policy,
+      expiredDocumentsEligibleForPurge: expiredDocuments,
+      expiredClaimsEligibleForPurge: expiredClaims,
+      auditLogCount,
+      securityEventCount,
+    };
   }
 
   async create(data: Record<string, unknown>) {
@@ -82,8 +235,7 @@ export class ComplianceService {
   }
 
   async remove(id: string) {
-    await this.findOne(id);
-    await this.prisma.hipaaConsent.delete({ where: { id } });
-    return { id, deleted: true };
+    void id;
+    throw new BadRequestException('HIPAA consent records cannot be deleted');
   }
 }

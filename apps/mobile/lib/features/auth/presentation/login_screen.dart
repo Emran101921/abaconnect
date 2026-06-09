@@ -21,8 +21,12 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _emailController = TextEditingController(text: 'parent@demo.local');
-  final _passwordController = TextEditingController(text: 'Parent123!');
+  final _emailController = TextEditingController(
+    text: kDebugMode ? 'parent@demo.local' : '',
+  );
+  final _passwordController = TextEditingController(
+    text: kDebugMode ? 'Parent123!' : '',
+  );
   bool _loading = false;
 
   @override

@@ -578,6 +578,19 @@ async function main() {
     },
   });
 
+  await prisma.hipaaConsent.upsert({
+    where: { id: '00000000-0000-4000-8000-000000000061' },
+    update: {},
+    create: {
+      id: '00000000-0000-4000-8000-000000000061',
+      tenantId: tenant.id,
+      userId: therapistUser.id,
+      consentType: 'HIPAA_PRIVACY',
+      version: '1.0',
+      granted: true,
+    },
+  });
+
   console.log('Seed complete.');
   console.log('  Admin:     admin@abaconnect.local / Admin123!');
   console.log('  Parent:    parent@demo.local / Parent123!');
