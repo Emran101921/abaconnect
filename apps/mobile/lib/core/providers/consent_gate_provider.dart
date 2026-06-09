@@ -10,9 +10,14 @@ bool roleRequiresHipaaConsent(UserRole role) {
   return role == UserRole.parent || role == UserRole.therapist;
 }
 
-Future<void> refreshHipaaConsentGate(Ref ref) async {
-  final auth = ref.read(authStateProvider).valueOrNull;
-  if (auth == null || !roleRequiresHipaaConsent(auth.user.role)) {
+/// Refreshes the HIPAA consent gate for the given [role].
+///
+/// The role is passed in explicitly (rather than read from [authStateProvider])
+/// because this is invoked from inside the AuthNotifier — reading the auth
+/// provider from its own Ref would trip Riverpod's "a provider cannot depend on
+/// itself" assertion.
+Future<void> refreshHipaaConsentGate(Ref ref, UserRole? role) async {
+  if (role == null || !roleRequiresHipaaConsent(role)) {
     ref.read(hipaaConsentGrantedProvider.notifier).state = true;
     return;
   }
