@@ -125,6 +125,79 @@ class EipSessionNoteModel {
       q2SessionDescription.trim().isNotEmpty &&
       q4HomeStrategies.trim().isNotEmpty;
 
+  bool get hasParentRelationship =>
+      parentRelationship?.trim().isNotEmpty ?? false;
+
+  bool get hasQ3Technique =>
+      q3ObservedRoutines ||
+      q3ParentTriedActivity ||
+      q3DemonstratedActivity ||
+      q3ReviewedCommTool ||
+      (q3Other?.trim().isNotEmpty ?? false);
+
+  bool get hasSessionParticipant =>
+      participantChild ||
+      participantParent ||
+      (participantOther?.trim().isNotEmpty ?? false);
+
+  bool get isReadyForParentSignature =>
+      missingFieldsForParentSignature().isEmpty;
+
+  List<String> missingFieldsForParentSignature() {
+    final missing = <String>[];
+
+    if (childName.trim().isEmpty) missing.add('Child\'s name');
+    if (childDob?.trim().isEmpty ?? true) missing.add('DOB');
+    if (childSex?.trim().isEmpty ?? true) missing.add('Sex');
+    if (interventionistName.trim().isEmpty) missing.add('Interventionist name');
+    if (credentials?.trim().isEmpty ?? true) missing.add('Credentials');
+    if (npi?.trim().isEmpty ?? true) missing.add('NPI');
+    if (licenseNumber?.trim().isEmpty ?? true) {
+      missing.add('State license number');
+    }
+    if (serviceType?.trim().isEmpty ?? true) missing.add('Service type');
+
+    if (sessionDate?.trim().isEmpty ?? true) missing.add('Session date');
+    if (ifspServiceLocation?.trim().isEmpty ?? true) {
+      missing.add('IFSP service location');
+    } else if (ifspServiceLocation == 'Other') {
+      missing.add('Specified IFSP service location');
+    }
+    if (timeFrom?.trim().isEmpty ?? true) missing.add('Time from');
+    if (timeTo?.trim().isEmpty ?? true) missing.add('Time to');
+    if (intensity.trim().isEmpty) {
+      missing.add('Intensity');
+    } else if (intensity == 'Other') {
+      missing.add('Specified intensity');
+    }
+    if (sessionDelivered.trim().isEmpty) missing.add('Session delivered');
+    if (dateNoteWritten?.trim().isEmpty ?? true) {
+      missing.add('Date note written');
+    }
+    if (icd10Code?.trim().isEmpty ?? true) missing.add('ICD-10 code');
+
+    if (!hasSessionParticipant) missing.add('Session participants');
+
+    if (q1IfspOutcomes.trim().isEmpty) missing.add('IFSP outcomes (#1)');
+    if (q2SessionDescription.trim().isEmpty) {
+      missing.add('Session description (#2)');
+    }
+    if (!hasQ3Technique) {
+      missing.add('Parent/caregiver technique (#3)');
+    }
+    if (q4HomeStrategies.trim().isEmpty) missing.add('Home strategies (#4)');
+
+    if (sessionCancelled && (cancellationReason?.trim().isEmpty ?? true)) {
+      missing.add('Cancellation reason');
+    }
+    if (isMakeup && (makeupForDate?.trim().isEmpty ?? true)) {
+      missing.add('Make-up for missed session date');
+    }
+
+    if (!hasParentRelationship) missing.add('Relationship to child');
+    return missing;
+  }
+
   bool get hasInterventionistSignature =>
       interventionistSignature?.trim().isNotEmpty ?? false;
 

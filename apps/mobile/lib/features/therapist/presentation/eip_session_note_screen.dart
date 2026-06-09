@@ -124,20 +124,20 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
               _section(
                 title: 'Demographics / Authorization',
                 children: [
-                  _field('Child\'s name', form.childName, (v) {
+                  _field('Child\'s name *', form.childName, (v) {
                     setState(() => _form = form.copyWith(childName: v));
                   }),
                   Row(
                     children: [
                       Expanded(
-                        child: _field('DOB', form.childDob ?? '', (v) {
+                        child: _field('DOB *', form.childDob ?? '', (v) {
                           setState(() => _form = form.copyWith(childDob: v));
                         }),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: _dropdown(
-                          label: 'Sex',
+                          label: 'Sex *',
                           value: form.childSex ?? '',
                           items: const ['', 'Male', 'Female'],
                           onChanged: (v) {
@@ -159,13 +159,13 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
                       () => _form = form.copyWith(interventionistName: v),
                     );
                   }),
-                  _field('Credentials (discipline)', form.credentials ?? '', (v) {
+                  _field('Credentials (discipline) *', form.credentials ?? '', (v) {
                     setState(() => _form = form.copyWith(credentials: v));
                   }),
-                  _field('National Provider ID (NPI)', form.npi ?? '', (v) {
+                  _field('National Provider ID (NPI) *', form.npi ?? '', (v) {
                     setState(() => _form = form.copyWith(npi: v));
                   }),
-                  _field('State license number', form.licenseNumber ?? '', (v) {
+                  _field('State license number *', form.licenseNumber ?? '', (v) {
                     setState(() {
                       _form = form.copyWith(
                         licenseNumber: v,
@@ -173,7 +173,7 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
                       );
                     });
                   }),
-                  _field('Service type', form.serviceType ?? '', (v) {
+                  _field('Service type *', form.serviceType ?? '', (v) {
                     setState(() => _form = form.copyWith(serviceType: v));
                   }),
                 ],
@@ -181,11 +181,11 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
               _section(
                 title: 'Session details',
                 children: [
-                  _field('Session date', form.sessionDate ?? '', (v) {
+                  _field('Session date *', form.sessionDate ?? '', (v) {
                     setState(() => _form = form.copyWith(sessionDate: v));
                   }),
                   _scrollableDropdown(
-                    label: 'IFSP service location',
+                    label: 'IFSP service location *',
                     value: _ifspLocationValue(form.ifspServiceLocation),
                     items: _ifspLocationItems(form.ifspServiceLocation),
                     onChanged: (v) {
@@ -213,7 +213,7 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
                     children: [
                       Expanded(
                         flex: 2,
-                        child: _field('Time from', form.timeFrom ?? '', (v) {
+                        child: _field('Time from *', form.timeFrom ?? '', (v) {
                           setState(() => _form = form.copyWith(timeFrom: v));
                         }),
                       ),
@@ -238,7 +238,7 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
                     children: [
                       Expanded(
                         flex: 2,
-                        child: _field('Time to', form.timeTo ?? '', (v) {
+                        child: _field('Time to *', form.timeTo ?? '', (v) {
                           setState(() => _form = form.copyWith(timeTo: v));
                         }),
                       ),
@@ -260,7 +260,7 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
                     ],
                   ),
                   _scrollableDropdown(
-                    label: 'Intensity',
+                    label: 'Intensity *',
                     value: _intensityValue(form.intensity),
                     items: _intensityItems(form.intensity),
                     onChanged: (v) {
@@ -283,7 +283,7 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
                       },
                     ),
                   _dropdown(
-                    label: 'Session delivered',
+                    label: 'Session delivered *',
                     value: form.sessionDelivered,
                     items: const ['In-person', 'Telehealth'],
                     onChanged: (v) {
@@ -294,10 +294,10 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
                       }
                     },
                   ),
-                  _field('Date note written', form.dateNoteWritten ?? '', (v) {
+                  _field('Date note written *', form.dateNoteWritten ?? '', (v) {
                     setState(() => _form = form.copyWith(dateNoteWritten: v));
                   }),
-                  _field('ICD-10 code', form.icd10Code ?? '', (v) {
+                  _field('ICD-10 code *', form.icd10Code ?? '', (v) {
                     setState(() => _form = form.copyWith(icd10Code: v));
                   }),
                   _field('HCPCS code (if applicable)', form.hcpcsCode ?? '', (v) {
@@ -474,13 +474,20 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
                 title: 'Signatures',
                 children: [
                   if (!readOnly) _locationNotice(),
+                  _field(
+                    'Relationship to child *',
+                    form.parentRelationship ?? '',
+                    (v) {
+                      setState(() => _form = form.copyWith(parentRelationship: v));
+                    },
+                  ),
                   _parentSignatureBlock(form, readOnly: readOnly),
-                  _field('Parent signature date', form.parentSignatureDate ?? '', (v) {
-                    setState(() => _form = form.copyWith(parentSignatureDate: v));
-                  }),
-                  _field('Relationship to child', form.parentRelationship ?? '', (v) {
-                    setState(() => _form = form.copyWith(parentRelationship: v));
-                  }),
+                  _field(
+                    'Parent signature date',
+                    form.parentSignatureDate ?? '',
+                    (_) {},
+                    readOnly: true,
+                  ),
                   const Divider(height: 24),
                   _interventionistSignatureBlock(form, readOnly: readOnly),
                   _field(
@@ -674,11 +681,54 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
     }
   }
 
+  bool _canSignParent(EipSessionNoteModel form) => form.isReadyForParentSignature;
+
+  void _showParentSignRequirements(BuildContext context, EipSessionNoteModel form) {
+    final missing = form.missingFieldsForParentSignature();
+    if (missing.isEmpty) return;
+
+    if (missing.length <= 4) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Complete required fields before parent signs: ${missing.join(', ')}.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Complete form before parent signs'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: missing
+                .map((field) => Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Text('• $field'),
+                    ))
+                .toList(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _parentSignatureBlock(
     EipSessionNoteModel form, {
     required bool readOnly,
   }) {
     final signed = form.hasGpsVerifiedParentSignature;
+    final canSign = _canSignParent(form);
     final gpsSummary = _gpsSummary(
       form.parentSignatureLatitude,
       form.parentSignatureLongitude,
@@ -708,7 +758,10 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
             )
           else
             Text(
-              'Capture parent or caregiver signature with GPS.',
+              canSign
+                  ? 'Capture parent or caregiver signature with GPS.'
+                  : 'Complete all required form fields and relationship to child '
+                      'before parent signs.',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
           if (gpsSummary != null) ...[
@@ -723,7 +776,9 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
             FilledButton.tonalIcon(
               onPressed: _capturingGps
                   ? null
-                  : () => _signParent(context, form),
+                  : canSign
+                      ? () => _signParent(context, form)
+                      : () => _showParentSignRequirements(context, form),
               icon: _capturingGps
                   ? const SizedBox(
                       width: 18,
@@ -743,6 +798,11 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
     BuildContext context,
     EipSessionNoteModel form,
   ) async {
+    if (!form.isReadyForParentSignature) {
+      _showParentSignRequirements(context, form);
+      return;
+    }
+
     final gps = await _captureGps(context);
     if (gps == null || !gps.isSuccess || !context.mounted) return;
 
@@ -1035,6 +1095,11 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
           ),
         ),
       );
+      return;
+    }
+
+    if (form.hasParentSignature && !form.isReadyForParentSignature) {
+      _showParentSignRequirements(context, form);
       return;
     }
 
