@@ -1,29 +1,17 @@
 import { ExecutionContext, Injectable } from '@nestjs/common';
-import { GqlExecutionContext } from '@nestjs/graphql';
 import { ThrottlerGuard } from '@nestjs/throttler';
 
-/** ThrottlerGuard with GraphQL request context support (global APP_GUARD). */
+/**
+ * ThrottlerGuard for the global APP_GUARD slot.
+ *
+ * GraphQL runs through a single POST /graphql endpoint and its context does
+ * not expose an Express response (no `res.header`), which makes the stock
+ * guard throw. Rate-limit-sensitive flows (login, register, reset, MFA) are
+ * all REST endpoints, so we skip throttling for GraphQL operations.
+ */
 @Injectable()
 export class AppThrottlerGuard extends ThrottlerGuard {
-  protected getRequestResponse(context: ExecutionContext): {
-    req: Record<string, unknown>;
-    res: Record<string, unknown>;
-  } {
-    if (context.getType<string>() === 'graphql') {
-      const gqlCtx = GqlExecutionContext.create(context).getContext<{
-        req?: Record<string, unknown>;
-        res?: Record<string, unknown>;
-      }>();
-      return {
-        req: gqlCtx.req ?? {},
-        res: gqlCtx.res ?? {},
-      };
-    }
-    return super.getRequestResponse(context);
-  }
-
-  protected async getTracker(req: Record<string, unknown>): Promise<string> {
-    const ip = req.ip;
-    return typeof ip === 'string' && ip.length > 0 ? ip : 'unknown';
+  protected async shouldSkip(context: ExecutionContext): Promise<boolean> {
+    return context.getType<string>() === 'graphql';
   }
 }
