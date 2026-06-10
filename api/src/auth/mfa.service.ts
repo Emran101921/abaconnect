@@ -2,10 +2,16 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { generateSecret, generateURI, verify } from 'otplib';
 import { decryptField, encryptField } from '../common/crypto/field-crypto.util';
 import { PrismaService } from '../prisma/prisma.service';
+import { DeviceContext, DeviceService } from './device.service';
+
+const ROLES_REQUIRING_MFA = new Set(['PARENT', 'THERAPIST', 'AGENCY_ADMIN']);
 
 @Injectable()
 export class MfaService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly devices: DeviceService,
+  ) {}
 
   private encryptionKey(): string {
     return (
@@ -62,7 +68,7 @@ export class MfaService {
     return { otpauthUrl };
   }
 
-  async enable(userId: string, code: string) {
+  async enable(userId: string, code: string, ctx?: DeviceContext) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user?.mfaSecret) {
       throw new BadRequestException('Run MFA setup first');
@@ -75,6 +81,12 @@ export class MfaService {
       where: { id: userId },
       data: { mfaEnabled: true },
     });
+    // Stamp the enrolling device with model + IP + approximate location and
+    // mark it trusted so future logins from it are recognized.
+    await this.devices.recordMfaSetup(
+      { id: user.id, tenantId: user.tenantId },
+      ctx,
+    );
     return { enabled: true };
   }
 
@@ -82,6 +94,11 @@ export class MfaService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user?.mfaSecret || !user.mfaEnabled) {
       throw new BadRequestException('MFA is not enabled');
+    }
+    if (ROLES_REQUIRING_MFA.has(user.role)) {
+      throw new BadRequestException(
+        'Two-factor authentication is required for this account and cannot be disabled',
+      );
     }
     const bcrypt = await import('bcrypt');
     const valid = await bcrypt.compare(password, user.passwordHash);

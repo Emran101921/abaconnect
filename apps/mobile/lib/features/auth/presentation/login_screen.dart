@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/api_constants.dart';
 import '../../../core/providers/app_providers.dart';
+import '../../../core/providers/consent_gate_provider.dart';
+import '../../../core/router/onboarding_navigation.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/models/user_role.dart';
@@ -48,7 +50,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           );
       if (!mounted) return;
       if (result.requiresMfa) {
-        final code = await _promptMfaCode();
+        final code = await _promptMfaCode(newDevice: result.newDevice);
         if (code == null || !mounted) return;
         await ref
             .read(authStateProvider.notifier)
@@ -60,7 +62,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (!mounted) return;
       final session = ref.read(authStateProvider).value;
       if (session != null) {
-        context.go(session.user.role.homeRoute);
+        final destination =
+            resolveOnboardingRoute(
+              role: session.user.role,
+              hipaaConsentGranted: ref.read(hipaaConsentGrantedProvider),
+              mfaEnabled: ref.read(mfaEnabledProvider),
+            ) ??
+            session.user.role.homeRoute;
+        context.go(destination);
       }
     } catch (e) {
       if (mounted) {
@@ -84,20 +93,34 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return 'Login failed: $error';
   }
 
-  Future<String?> _promptMfaCode() async {
+  Future<String?> _promptMfaCode({bool newDevice = false}) async {
     final controller = TextEditingController();
     return showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Authenticator code'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(
-            labelText: '6-digit code',
-            border: OutlineInputBorder(),
-          ),
-          keyboardType: TextInputType.number,
-          maxLength: 6,
+        title: Text(newDevice ? 'Verify new device' : 'Authenticator code'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (newDevice) ...[
+              const Text(
+                'We detected a sign-in from a new device. Enter your '
+                'authenticator code to trust this device. Your device model, '
+                'IP address, and approximate location will be recorded.',
+              ),
+              const SizedBox(height: 12),
+            ],
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                labelText: '6-digit code',
+                border: OutlineInputBorder(),
+              ),
+              keyboardType: TextInputType.number,
+              maxLength: 6,
+            ),
+          ],
         ),
         actions: [
           TextButton(

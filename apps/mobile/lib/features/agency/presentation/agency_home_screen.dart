@@ -261,6 +261,21 @@ class AgencyHomeScreen extends ConsumerWidget {
                 icon: Icons.message,
                 onTap: () => context.push(AppRoutes.messages),
               ),
+              const SizedBox(height: 12),
+              Text('Account', style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: 8),
+              _OpsTile(
+                title: 'Security',
+                subtitle: 'Two-factor authentication and trusted devices',
+                icon: Icons.security,
+                onTap: () => context.push(AppRoutes.security),
+              ),
+              _OpsTile(
+                title: 'Privacy',
+                subtitle: 'HIPAA consent and PHI access report',
+                icon: Icons.privacy_tip,
+                onTap: () => context.push(AppRoutes.consent),
+              ),
               const SizedBox(height: 8),
               Text(
                 'Tip: pull down to refresh counts on this screen.',

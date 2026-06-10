@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/app_providers.dart';
+import '../../../core/providers/consent_gate_provider.dart';
+import '../../../core/router/onboarding_navigation.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/app_brand_logo.dart';
@@ -46,7 +48,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       if (!mounted) return;
       final session = ref.read(authStateProvider).value;
       if (session != null) {
-        context.go(session.user.role.homeRoute);
+        final destination =
+            resolveOnboardingRoute(
+              role: session.user.role,
+              hipaaConsentGranted: ref.read(hipaaConsentGrantedProvider),
+              mfaEnabled: ref.read(mfaEnabledProvider),
+            ) ??
+            session.user.role.homeRoute;
+        context.go(destination);
       }
     } catch (e) {
       if (mounted) {

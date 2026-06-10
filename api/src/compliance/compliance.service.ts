@@ -22,6 +22,14 @@ export class ComplianceService {
     });
   }
 
+  async hasMfaEnabled(userId: string): Promise<boolean> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { mfaEnabled: true },
+    });
+    return user?.mfaEnabled ?? false;
+  }
+
   async hasActiveHipaaConsent(userId: string): Promise<boolean> {
     const row = await this.prisma.hipaaConsent.findFirst({
       where: {

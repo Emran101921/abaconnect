@@ -8,18 +8,54 @@ import '../../../core/push/push_token_service.dart';
 import '../../../shared/models/user_role.dart';
 
 class LoginResponse {
-  const LoginResponse._({this.tokens, this.mfaChallengeToken});
+  const LoginResponse._({
+    this.tokens,
+    this.mfaChallengeToken,
+    this.newDevice = false,
+  });
 
   factory LoginResponse.authenticated(AuthTokens tokens) =>
       LoginResponse._(tokens: tokens);
 
-  factory LoginResponse.mfaRequired(String challengeToken) =>
-      LoginResponse._(mfaChallengeToken: challengeToken);
+  factory LoginResponse.mfaRequired({
+    required String challengeToken,
+    bool newDevice = false,
+  }) => LoginResponse._(
+    mfaChallengeToken: challengeToken,
+    newDevice: newDevice,
+  );
 
   final AuthTokens? tokens;
   final String? mfaChallengeToken;
+  final bool newDevice;
 
   bool get requiresMfa => mfaChallengeToken != null;
+}
+
+class TrustedDevice {
+  const TrustedDevice({
+    required this.id,
+    this.deviceModel,
+    this.platform,
+    this.osVersion,
+    required this.trusted,
+    this.lastIp,
+    this.lastLocation,
+    required this.firstSeenAt,
+    required this.lastSeenAt,
+    this.mfaVerifiedAt,
+  });
+
+  final String id;
+  final String? deviceModel;
+  final String? platform;
+  final String? osVersion;
+  final bool trusted;
+  final String? lastIp;
+  final String? lastLocation;
+  final DateTime firstSeenAt;
+  final DateTime lastSeenAt;
+  final DateTime? mfaVerifiedAt;
 }
 
 class MfaSetupResult {
@@ -46,6 +82,9 @@ class MeProfile {
     required this.tenantId,
     this.parentId,
     this.therapistId,
+    this.mfaEnabled = false,
+    this.hipaaConsentGranted = false,
+    this.onboardingComplete = true,
   });
 
   final String id;
@@ -56,6 +95,9 @@ class MeProfile {
   final String tenantId;
   final String? parentId;
   final String? therapistId;
+  final bool mfaEnabled;
+  final bool hipaaConsentGranted;
+  final bool onboardingComplete;
 
   String get fullName => '$firstName $lastName';
 }
@@ -80,7 +122,10 @@ class AuthRepository {
       throw Exception('Invalid login response');
     }
     if (data['requiresMfa'] == true) {
-      return LoginResponse.mfaRequired(data['mfaChallengeToken'] as String);
+      return LoginResponse.mfaRequired(
+        challengeToken: data['mfaChallengeToken'] as String,
+        newDevice: data['newDevice'] as bool? ?? false,
+      );
     }
     final tokens = AuthTokens(
       accessToken: data['accessToken'] as String,
@@ -118,15 +163,7 @@ class AuthRepository {
     );
     final me = await fetchMe();
     await _persistMe(me);
-    final role = _apiRoleToUserRole(me.role);
-    if (role == UserRole.parent || role == UserRole.therapist) {
-      final granted = await hasHipaaConsentGranted();
-      if (!granted) {
-        await setHipaaConsentGranted(false);
-      }
-    } else {
-      await setHipaaConsentGranted(true);
-    }
+    await setHipaaConsentGranted(me.hipaaConsentGranted);
     await registerPushDevice(userId: me.id);
   }
 
@@ -172,6 +209,28 @@ class AuthRepository {
   Future<bool> fetchMfaStatus() async {
     final response = await _api.get<Map<String, dynamic>>('/auth/mfa/status');
     return response.data?['enabled'] as bool? ?? false;
+  }
+
+  Future<List<TrustedDevice>> fetchTrustedDevices() async {
+    final response = await _api.get<List<dynamic>>('/auth/devices');
+    final rows = response.data ?? [];
+    return rows.map((row) {
+      final map = row as Map<String, dynamic>;
+      return TrustedDevice(
+        id: map['id'] as String,
+        deviceModel: map['deviceModel'] as String?,
+        platform: map['platform'] as String?,
+        osVersion: map['osVersion'] as String?,
+        trusted: map['trusted'] as bool? ?? false,
+        lastIp: map['lastIp'] as String?,
+        lastLocation: map['lastLocation'] as String?,
+        firstSeenAt: DateTime.parse(map['firstSeenAt'] as String),
+        lastSeenAt: DateTime.parse(map['lastSeenAt'] as String),
+        mfaVerifiedAt: map['mfaVerifiedAt'] != null
+            ? DateTime.tryParse(map['mfaVerifiedAt'] as String)
+            : null,
+      );
+    }).toList();
   }
 
   Future<MfaSetupResult> beginMfaSetup() async {
@@ -242,6 +301,9 @@ class AuthRepository {
       tenantId: data['tenantId'] as String,
       parentId: data['parentId'] as String?,
       therapistId: data['therapistId'] as String?,
+      mfaEnabled: data['mfaEnabled'] as bool? ?? false,
+      hipaaConsentGranted: data['hipaaConsentGranted'] as bool? ?? false,
+      onboardingComplete: data['onboardingComplete'] as bool? ?? true,
     );
   }
 

@@ -13,11 +13,19 @@ import { PrismaService } from '../prisma/prisma.service';
 import { SecurityEventService } from '../security/security-event.service';
 import { MfaService } from './mfa.service';
 import { RefreshTokenService } from './refresh-token.service';
+import { DeviceContext, DeviceService } from './device.service';
 import { LoginDto, RegisterDto } from './dto/auth.dto';
 import { JwtPayload } from './jwt.strategy';
 
 const MAX_FAILED_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_MINUTES = 15;
+
+/// Roles that must complete HIPAA consent + MFA enrollment before use.
+const ROLES_REQUIRING_ONBOARDING = new Set<string>([
+  'PARENT',
+  'THERAPIST',
+  'AGENCY_ADMIN',
+]);
 
 export type { LoginDto, RegisterDto };
 
@@ -28,12 +36,9 @@ export interface AuthTokens {
 
 export type LoginResult =
   | AuthTokens
-  | { requiresMfa: true; mfaChallengeToken: string };
+  | { requiresMfa: true; mfaChallengeToken: string; newDevice: boolean };
 
-export interface LoginContext {
-  ipAddress?: string;
-  userAgent?: string;
-}
+export type LoginContext = DeviceContext;
 
 export interface AuthMeResponse {
   id: string;
@@ -45,6 +50,8 @@ export interface AuthMeResponse {
   parentId?: string;
   therapistId?: string;
   mfaEnabled: boolean;
+  hipaaConsentGranted: boolean;
+  onboardingComplete: boolean;
 }
 
 @Injectable()
@@ -56,6 +63,7 @@ export class AuthService {
     private readonly mailService: MailService,
     private readonly refreshTokens: RefreshTokenService,
     private readonly securityEvents: SecurityEventService,
+    private readonly devices: DeviceService,
   ) {}
 
   async me(userId: string): Promise<AuthMeResponse> {
@@ -66,6 +74,11 @@ export class AuthService {
     if (!user) {
       throw new NotFoundException('User not found');
     }
+    const hipaaConsentGranted = await this.hasActiveHipaaConsent(user.id);
+    const requiresOnboarding = ROLES_REQUIRING_ONBOARDING.has(user.role);
+    const onboardingComplete = requiresOnboarding
+      ? hipaaConsentGranted && user.mfaEnabled
+      : true;
     return {
       id: user.id,
       email: user.email,
@@ -76,7 +89,26 @@ export class AuthService {
       parentId: user.parent?.id,
       therapistId: user.therapist?.id,
       mfaEnabled: user.mfaEnabled,
+      hipaaConsentGranted,
+      onboardingComplete,
     };
+  }
+
+  private async hasActiveHipaaConsent(userId: string): Promise<boolean> {
+    const consent = await this.prisma.hipaaConsent.findFirst({
+      where: {
+        userId,
+        consentType: 'HIPAA_PRIVACY',
+        granted: true,
+        revokedAt: null,
+      },
+    });
+    return consent != null;
+  }
+
+  /** Devices a user has authenticated from (for the security/devices screen). */
+  listDevices(userId: string) {
+    return this.devices.listForUser(userId);
   }
 
   async register(dto: RegisterDto): Promise<AuthTokens> {
@@ -162,13 +194,27 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    if (user.mfaEnabled && user.mfaSecret) {
+    // Record the device this login originates from and detect whether it is a
+    // new/untrusted device. New devices always require a fresh MFA challenge.
+    const { isNewDevice } = await this.devices.recordLogin(
+      { id: user.id, tenantId: user.tenantId },
+      ctx,
+    );
+
+    // Step-up MFA is required only when signing in from a new or previously
+    // untrusted device. Known trusted devices may proceed with password only.
+    if (user.mfaEnabled && user.mfaSecret && isNewDevice) {
       await this.resetLoginAttempts(user.id);
       const mfaChallengeToken = this.jwtService.sign(
-        { sub: user.id, purpose: 'mfa_challenge' },
+        {
+          sub: user.id,
+          purpose: 'mfa_challenge',
+          deviceId: ctx?.deviceId,
+          newDevice: true,
+        },
         { expiresIn: '5m' },
       );
-      return { requiresMfa: true, mfaChallengeToken };
+      return { requiresMfa: true, mfaChallengeToken, newDevice: true };
     }
 
     await this.resetLoginAttempts(user.id);
@@ -182,8 +228,9 @@ export class AuthService {
   async completeMfaLogin(
     mfaChallengeToken: string,
     code: string,
+    ctx?: LoginContext,
   ): Promise<AuthTokens> {
-    let payload: { sub: string; purpose?: string };
+    let payload: { sub: string; purpose?: string; deviceId?: string };
     try {
       payload = this.jwtService.verify(mfaChallengeToken);
     } catch {
@@ -204,6 +251,12 @@ export class AuthService {
     }
 
     await this.resetLoginAttempts(user.id);
+    // Trust the device now that MFA has been satisfied, stamping it with the
+    // current model + IP + approximate location.
+    await this.devices.trustAfterMfa(
+      { id: user.id, tenantId: user.tenantId },
+      { ...ctx, deviceId: ctx?.deviceId ?? payload.deviceId },
+    );
     await this.prisma.user.update({
       where: { id: user.id },
       data: { lastLoginAt: new Date() },

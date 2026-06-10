@@ -108,10 +108,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final auth = ref.read(authStateProvider);
       final hipaaConsentGranted = ref.read(hipaaConsentGrantedProvider);
+      final mfaEnabled = ref.read(mfaEnabledProvider);
       return resolveAuthRedirect(
         auth: auth,
         matchedLocation: state.matchedLocation,
         hipaaConsentGranted: hipaaConsentGranted,
+        mfaEnabled: mfaEnabled,
       );
     },
     routes: [

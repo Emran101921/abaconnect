@@ -226,6 +226,7 @@ model User {
   parent                Parent?
   therapist             Therapist?
   devices               UserDevice[]
+  authDevices           AuthDevice[]
   sentMessages          Message[]             @relation("MessageSender")
   messageParticipants   MessageParticipant[]
   notifications         Notification[]
@@ -261,6 +262,34 @@ model UserDevice {
   @@unique([userId, deviceToken])
   @@index([userId])
   @@map("user_devices")
+}
+
+/// Tracks the physical devices a user authenticates from for MFA/security.
+/// Distinct from UserDevice (push tokens): this powers new-device detection,
+/// device-bound MFA, and IP/location stamping of auth events.
+model AuthDevice {
+  id            String    @id @default(uuid()) @db.Uuid
+  userId        String    @map("user_id") @db.Uuid
+  deviceId      String    @map("device_id")
+  deviceModel   String?   @map("device_model")
+  platform      String?
+  osVersion     String?   @map("os_version")
+  trusted       Boolean   @default(false)
+  lastIp        String?   @map("last_ip")
+  lastLocation  String?   @map("last_location")
+  lastLatitude  Decimal?  @map("last_latitude") @db.Decimal(10, 7)
+  lastLongitude Decimal?  @map("last_longitude") @db.Decimal(10, 7)
+  firstSeenAt   DateTime  @default(now()) @map("first_seen_at")
+  lastSeenAt    DateTime  @default(now()) @map("last_seen_at")
+  mfaVerifiedAt DateTime? @map("mfa_verified_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, deviceId])
+  @@index([userId])
+  @@map("auth_devices")
 }
 
 model Parent {

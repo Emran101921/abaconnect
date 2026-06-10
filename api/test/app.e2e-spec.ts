@@ -2,6 +2,20 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { closeE2eApp, createE2eApp } from './e2e-app.util';
 
+/** Matches the trusted device seeded for demo users in prisma/seed.ts. */
+const DEMO_DEVICE_HEADERS = {
+  'x-device-id': 'smoke-ci-device',
+  'x-device-model': 'CI smoke runner',
+  'x-device-platform': 'ci',
+};
+
+function loginDemoParent(app: INestApplication) {
+  return request(app.getHttpServer())
+    .post('/api/v1/auth/login')
+    .set(DEMO_DEVICE_HEADERS)
+    .send({ email: 'parent@demo.local', password: 'Parent123!' });
+}
+
 describe('API (e2e)', () => {
   let app: INestApplication | undefined;
 
@@ -55,12 +69,10 @@ describe('API (e2e)', () => {
   });
 
   it('blocks scaffold REST PHI endpoints for authenticated users', async () => {
-    const login = await request(app!.getHttpServer())
-      .post('/api/v1/auth/login')
-      .send({ email: 'parent@demo.local', password: 'Parent123!' })
-      .expect(201);
+    const login = await loginDemoParent(app!).expect(201);
 
     const token = login.body.accessToken as string;
+    expect(token).toBeDefined();
     await request(app!.getHttpServer())
       .get('/api/v1/children')
       .set('Authorization', `Bearer ${token}`)
@@ -69,6 +81,12 @@ describe('API (e2e)', () => {
       .get('/api/v1/screenings')
       .set('Authorization', `Bearer ${token}`)
       .expect(403);
+
+    // Demo parent is fully onboarded (consent + MFA); unknown doc id → 404.
+    await request(app!.getHttpServer())
+      .get('/api/v1/documents/00000000-0000-4000-8000-000000000001/file')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(404);
 
     const report = await request(app!.getHttpServer())
       .get('/api/v1/compliance/me/phi-access-report')
@@ -94,10 +112,7 @@ describe('API (e2e)', () => {
   });
 
   it('revokes refresh tokens on logout', async () => {
-    const login = await request(app!.getHttpServer())
-      .post('/api/v1/auth/login')
-      .send({ email: 'parent@demo.local', password: 'Parent123!' })
-      .expect(201);
+    const login = await loginDemoParent(app!).expect(201);
 
     const accessToken = login.body.accessToken as string;
     const refreshToken = login.body.refreshToken as string;
@@ -173,4 +188,5 @@ describe('API (e2e)', () => {
       .set('Authorization', `Bearer ${token}`)
       .expect(403);
   });
+
 });
