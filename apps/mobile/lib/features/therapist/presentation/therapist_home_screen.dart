@@ -346,6 +346,12 @@ class TherapistHomeScreen extends ConsumerWidget {
                 icon: Icons.security,
                 onTap: () => context.push(AppRoutes.security),
               ),
+              _OpsTile(
+                title: 'Privacy & HIPAA',
+                subtitle: 'Notice, policy, and your privacy rights',
+                icon: Icons.privacy_tip_outlined,
+                onTap: () => context.push(AppRoutes.settingsPrivacy),
+              ),
             ],
           ),
         ),

@@ -114,6 +114,24 @@ enum AuditAction {
   CONSENT_REVOKED
 }
 
+enum PrivacyRightsRequestType {
+  RECORD_ACCESS
+  CORRECTION
+  RESTRICTION
+  CONFIDENTIAL_COMMUNICATION
+  ACCOUNTING_OF_DISCLOSURES
+  CONTACT_PRIVACY_OFFICER
+  DATA_DELETION
+}
+
+enum PrivacyRightsRequestStatus {
+  NEW
+  IN_REVIEW
+  COMPLETED
+  DENIED
+  NEEDS_MORE_INFO
+}
+
 enum SecurityEventSeverity {
   INFO
   WARNING
@@ -183,6 +201,9 @@ model Tenant {
   disputes             Dispute[]
   auditLogs            AuditLog[]
   hipaaConsents        HipaaConsent[]
+  privacyNoticeVersions PrivacyNoticeVersion[]
+  hipaaNoticeAcknowledgments HipaaNoticeAcknowledgment[]
+  privacyRightsRequests PrivacyRightsRequest[]
   analyticsSnapshots   AnalyticsSnapshot[]
   screeningTemplates   ScreeningTemplate[]
   screeningResponses   ScreeningResponse[]
@@ -232,6 +253,9 @@ model User {
   notifications         Notification[]
   auditLogs             AuditLog[]
   hipaaConsents         HipaaConsent[]
+  hipaaNoticeAcknowledgments HipaaNoticeAcknowledgment[]
+  privacyRightsRequests PrivacyRightsRequest[]
+  privacyNoticeVersionsCreated PrivacyNoticeVersion[] @relation("NoticeCreatedBy")
   documentAccessLogs    DocumentAccessLog[]
   authoredSoapNotes     SoapNote[]            @relation("SoapNoteAuthor")
   authoredProgressNotes ProgressNote[]        @relation("ProgressNoteAuthor")
@@ -1101,6 +1125,84 @@ model HipaaConsent {
   @@index([userId])
   @@index([consentType])
   @@map("hipaa_consents")
+}
+
+/// Versioned Notice of Privacy Practices + Privacy Policy text (attorney-editable).
+model PrivacyNoticeVersion {
+  id                String   @id @default(uuid()) @db.Uuid
+  tenantId          String?  @map("tenant_id") @db.Uuid
+  versionNumber     String   @map("version_number")
+  title             String
+  fullNoticeText    String   @map("full_notice_text") @db.Text
+  privacyPolicyText String   @map("privacy_policy_text") @db.Text
+  effectiveDate     DateTime @map("effective_date")
+  isActive          Boolean  @default(false) @map("is_active")
+  createdByUserId   String?  @map("created_by_user_id") @db.Uuid
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  tenant          Tenant?                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy       User?                      @relation("NoticeCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  acknowledgments HipaaNoticeAcknowledgment[]
+
+  @@unique([tenantId, versionNumber])
+  @@index([tenantId])
+  @@index([isActive])
+  @@map("privacy_notice_versions")
+}
+
+/// Proof of which notice version a user acknowledged (receipt, not waiver).
+model HipaaNoticeAcknowledgment {
+  id                         String   @id @default(uuid()) @db.Uuid
+  tenantId                   String   @map("tenant_id") @db.Uuid
+  userId                     String   @map("user_id") @db.Uuid
+  noticeVersionId            String   @map("notice_version_id") @db.Uuid
+  noticeVersion              String   @map("notice_version")
+  acknowledgedAt             DateTime @default(now()) @map("acknowledged_at")
+  ipAddress                  String?  @map("ip_address")
+  userAgent                  String?  @map("user_agent")
+  appVersion                 String?  @map("app_version")
+  platform                   String?
+  deviceId                   String?  @map("device_id")
+  acknowledgmentTextSnapshot String   @map("acknowledgment_text_snapshot") @db.Text
+  createdAt                  DateTime @default(now()) @map("created_at")
+  updatedAt                  DateTime @updatedAt @map("updated_at")
+
+  tenant        Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  noticeVersionRecord PrivacyNoticeVersion @relation(fields: [noticeVersionId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([noticeVersionId])
+  @@index([acknowledgedAt])
+  @@map("hipaa_notice_acknowledgments")
+}
+
+/// Patient/user HIPAA rights requests (access, correction, restriction, etc.).
+model PrivacyRightsRequest {
+  id                       String                     @id @default(uuid()) @db.Uuid
+  tenantId                 String                     @map("tenant_id") @db.Uuid
+  userId                   String                     @map("user_id") @db.Uuid
+  requestType              PrivacyRightsRequestType   @map("request_type")
+  status                   PrivacyRightsRequestStatus @default(NEW)
+  payload                  Json                       @default("{}")
+  internalNotes            String?                    @map("internal_notes") @db.Text
+  adminResponseDocumentKey String?                    @map("admin_response_document_key")
+  ipAddress                String?                    @map("ip_address")
+  userAgent                String?                    @map("user_agent")
+  submittedAt              DateTime                   @default(now()) @map("submitted_at")
+  completedAt              DateTime?                  @map("completed_at")
+  updatedAt                DateTime                   @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([status])
+  @@index([requestType])
+  @@map("privacy_rights_requests")
 }
 
 model AnalyticsSnapshot {

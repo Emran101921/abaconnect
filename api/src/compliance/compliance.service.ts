@@ -6,12 +6,14 @@ import {
 import { Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { SecurityEventService } from '../security/security-event.service';
+import { PrivacyNoticeService } from './privacy-notice.service';
 
 @Injectable()
 export class ComplianceService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly securityEvents: SecurityEventService,
+    private readonly privacyNotices: PrivacyNoticeService,
   ) {}
 
   async listConsentsForUser(userId: string) {
@@ -31,16 +33,12 @@ export class ComplianceService {
   }
 
   async hasActiveHipaaConsent(userId: string): Promise<boolean> {
-    const row = await this.prisma.hipaaConsent.findFirst({
-      where: {
-        userId,
-        consentType: 'HIPAA_PRIVACY',
-        granted: true,
-        revokedAt: null,
-      },
-      orderBy: { grantedAt: 'desc' },
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { tenantId: true },
     });
-    return Boolean(row);
+    if (!user) return false;
+    return this.privacyNotices.hasAcknowledgedActiveNotice(userId, user.tenantId);
   }
 
   async grantConsent(

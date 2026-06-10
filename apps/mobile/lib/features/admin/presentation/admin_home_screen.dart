@@ -170,6 +170,12 @@ class AdminHomeScreen extends ConsumerWidget {
                 onTap: () => context.push('${AppRoutes.adminHome}/users'),
               ),
               _OpsTile(
+                title: 'Compliance dashboard',
+                subtitle: 'Acknowledgments, notices, privacy requests',
+                icon: Icons.verified_user,
+                onTap: () => context.push('${AppRoutes.adminHome}/compliance'),
+              ),
+              _OpsTile(
                 title: 'Audit logs',
                 subtitle: 'HIPAA audit trail (read-only)',
                 icon: Icons.history,

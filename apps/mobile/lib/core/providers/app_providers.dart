@@ -11,6 +11,7 @@ import '../../features/parent/data/parent_booking_repository.dart';
 import '../../features/payments/data/billing_repository.dart';
 import '../../features/payments/data/payments_repository.dart';
 import '../../features/clinical/data/clinical_repository.dart';
+import '../../features/compliance/data/privacy_repository.dart';
 import '../../features/platform/data/platform_repository.dart';
 import '../../features/therapist/data/therapist_repository.dart';
 
@@ -63,6 +64,10 @@ final platformRepositoryProvider = Provider<PlatformRepository>((ref) {
     ref.watch(graphqlClientProvider),
     ref.watch(apiClientProvider),
   );
+});
+
+final privacyRepositoryProvider = Provider<PrivacyRepository>((ref) {
+  return PrivacyRepository(ref.watch(apiClientProvider));
 });
 
 final clinicalRepositoryProvider = Provider<ClinicalRepository>((ref) {
