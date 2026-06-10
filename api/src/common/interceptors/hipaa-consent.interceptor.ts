@@ -10,6 +10,8 @@ import { Observable } from 'rxjs';
 import { ComplianceService } from '../../compliance/compliance.service';
 import { AuthUser } from '../decorators/current-user.decorator';
 
+const ONBOARDING_ROLES = new Set(['PARENT', 'THERAPIST', 'AGENCY_ADMIN']);
+
 const GRAPHQL_ALLOWLIST = new Set([
   'myConsents',
   'grantConsent',
@@ -27,7 +29,7 @@ export class HipaaConsentInterceptor implements NestInterceptor {
     next: CallHandler,
   ): Promise<Observable<unknown>> {
     const user = this.resolveUser(context);
-    if (!user || !this.requiresConsent(user)) {
+    if (!user || !this.requiresOnboarding(user)) {
       return next.handle();
     }
 
@@ -55,12 +57,19 @@ export class HipaaConsentInterceptor implements NestInterceptor {
       );
     }
 
+    const mfaEnabled = await this.compliance.hasMfaEnabled(user.id);
+    if (!mfaEnabled) {
+      throw new ForbiddenException(
+        'Two-factor authentication must be enabled before accessing clinical data',
+      );
+    }
+
     return next.handle();
   }
 
-  private requiresConsent(user: AuthUser): boolean {
+  private requiresOnboarding(user: AuthUser): boolean {
     const roles = user.roles ?? [];
-    return roles.includes('PARENT') || roles.includes('THERAPIST');
+    return roles.some((role) => ONBOARDING_ROLES.has(role));
   }
 
   private isAllowedHttpPath(path: string): boolean {

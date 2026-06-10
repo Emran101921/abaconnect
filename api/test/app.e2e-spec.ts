@@ -70,6 +70,12 @@ describe('API (e2e)', () => {
       .set('Authorization', `Bearer ${token}`)
       .expect(403);
 
+    const documents = await request(app!.getHttpServer())
+      .get('/api/v1/documents/00000000-0000-4000-8000-000000000001/file')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(403);
+    expect(documents.body.message).toContain('Two-factor authentication');
+
     const report = await request(app!.getHttpServer())
       .get('/api/v1/compliance/me/phi-access-report')
       .set('Authorization', `Bearer ${token}`)
@@ -173,4 +179,5 @@ describe('API (e2e)', () => {
       .set('Authorization', `Bearer ${token}`)
       .expect(403);
   });
+
 });

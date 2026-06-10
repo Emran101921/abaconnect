@@ -18,6 +18,10 @@ class ConsentScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final consents = ref.watch(consentsProvider);
+    final session = ref.watch(authStateProvider).valueOrNull;
+    final onboardingRole =
+        session != null && roleRequiresOnboarding(session.user.role);
+    final consentPending = !ref.watch(hipaaConsentGrantedProvider);
 
     return AppScaffold(
       title: 'Privacy & consent',
@@ -29,6 +33,36 @@ class ConsentScreen extends ConsumerWidget {
         data: (list) => ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            if (onboardingRole && consentPending) ...[
+              Card(
+                color: Theme.of(context).colorScheme.errorContainer,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.privacy_tip_outlined,
+                        color: Theme.of(context).colorScheme.onErrorContainer,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'You must accept the HIPAA privacy agreement before '
+                          'using the app. After consent, you will set up '
+                          'two-factor authentication.',
+                          style: TextStyle(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onErrorContainer,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
             const Text(
               'HIPAA consents required to use clinical features. '
               'Grant the latest policy version below.',
@@ -62,6 +96,9 @@ class ConsentScreen extends ConsumerWidget {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Consent granted')),
                     );
+                    if (onboardingRole && !ref.read(mfaEnabledProvider)) {
+                      context.go(AppRoutes.security);
+                    }
                   }
                 } catch (e) {
                   if (context.mounted) {

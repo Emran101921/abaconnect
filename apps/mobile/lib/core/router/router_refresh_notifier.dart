@@ -16,6 +16,10 @@ class RouterRefreshNotifier extends ChangeNotifier {
       hipaaConsentGrantedProvider,
       (_, _) => notifyListeners(),
     );
+    _ref.listen<bool>(
+      mfaEnabledProvider,
+      (_, _) => notifyListeners(),
+    );
   }
 
   final Ref _ref;

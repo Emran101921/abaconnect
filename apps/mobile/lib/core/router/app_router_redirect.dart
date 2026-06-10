@@ -2,29 +2,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/auth/data/auth_repository.dart';
 import '../../shared/models/user_role.dart';
-import '../providers/consent_gate_provider.dart';
 import 'app_router.dart';
-
-const _clinicalRoutes = <String>{
-  AppRoutes.messages,
-  AppRoutes.documents,
-  AppRoutes.insurance,
-  AppRoutes.telehealth,
-  AppRoutes.notifications,
-  AppRoutes.payments,
-  AppRoutes.matching,
-};
-
-bool _isClinicalRoute(String path) {
-  if (_clinicalRoutes.contains(path)) return true;
-  return path.startsWith('${AppRoutes.parentHome}/') ||
-      path.startsWith('${AppRoutes.therapistHome}/');
-}
+import 'onboarding_navigation.dart';
 
 String? resolveAuthRedirect({
   required AsyncValue<AuthSession?> auth,
   required String matchedLocation,
   required bool hipaaConsentGranted,
+  required bool mfaEnabled,
 }) {
   if (auth.isLoading) {
     final waitingRoutes = <String>{
@@ -57,11 +42,16 @@ String? resolveAuthRedirect({
   }
 
   final home = session.user.role.homeRoute;
+  final onboardingRoute = resolveOnboardingRoute(
+    role: session.user.role,
+    hipaaConsentGranted: hipaaConsentGranted,
+    mfaEnabled: mfaEnabled,
+  );
 
   if (matchedLocation == AppRoutes.login ||
       matchedLocation == AppRoutes.register ||
       matchedLocation == AppRoutes.forgotPassword) {
-    return home;
+    return onboardingRoute ?? home;
   }
 
   if (matchedLocation.startsWith('/parent') &&
@@ -81,14 +71,21 @@ String? resolveAuthRedirect({
     return home;
   }
 
-  if (matchedLocation == AppRoutes.consent) {
-    return null;
+  // Mandatory onboarding: parents, therapists, and agency admins must sign the
+  // HIPAA privacy agreement and enroll in MFA before reaching any other screen.
+  if (onboardingRoute != null) {
+    final onConsent = matchedLocation == AppRoutes.consent;
+    final onSecurity = matchedLocation == AppRoutes.security;
+    if (onboardingRoute == AppRoutes.consent && !onConsent) {
+      return AppRoutes.consent;
+    }
+    if (onboardingRoute == AppRoutes.security && !onSecurity && !onConsent) {
+      return AppRoutes.security;
+    }
   }
 
-  if (roleRequiresHipaaConsent(session.user.role) &&
-      !hipaaConsentGranted &&
-      _isClinicalRoute(matchedLocation)) {
-    return AppRoutes.consent;
+  if (matchedLocation == AppRoutes.consent || matchedLocation == AppRoutes.security) {
+    return null;
   }
 
   if (matchedLocation == AppRoutes.messages ||

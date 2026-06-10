@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../constants/api_constants.dart';
+import '../security/device_identity.dart';
 import '../security/secure_storage_config.dart';
 
 class ApiClient {
@@ -21,6 +22,12 @@ class ApiClient {
           final token = await _storage.read(key: ApiConstants.authTokenKey);
           if (token != null && token.isNotEmpty) {
             options.headers['Authorization'] = 'Bearer $token';
+          }
+          try {
+            final device = await DeviceIdentity.resolve();
+            options.headers.addAll(device.toHeaders());
+          } catch (_) {
+            // Device headers are best-effort; never block a request on them.
           }
           if (options.data is FormData) {
             options.headers.remove('Content-Type');

@@ -16,7 +16,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthSession?>> {
     try {
       final session = await _repository.loadSession();
       state = AsyncValue.data(session);
-      await refreshHipaaConsentGate(_ref, session?.user.role);
+      await refreshOnboardingGates(_ref, session?.user.role);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }
@@ -36,7 +36,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthSession?>> {
       }
       final session = await _repository.loadSession();
       state = AsyncValue.data(session);
-      await refreshHipaaConsentGate(_ref, session?.user.role);
+      await refreshOnboardingGates(_ref, session?.user.role);
       return result;
     } catch (e, st) {
       state = AsyncValue.error(e, st);
@@ -56,7 +56,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthSession?>> {
       );
       final session = await _repository.loadSession();
       state = AsyncValue.data(session);
-      await refreshHipaaConsentGate(_ref, session?.user.role);
+      await refreshOnboardingGates(_ref, session?.user.role);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
       rethrow;
@@ -79,7 +79,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthSession?>> {
       );
       final session = await _repository.loadSession();
       state = AsyncValue.data(session);
-      await refreshHipaaConsentGate(_ref, session?.user.role);
+      await refreshOnboardingGates(_ref, session?.user.role);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }
@@ -88,6 +88,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthSession?>> {
   Future<void> logout() async {
     await _repository.logout();
     state = const AsyncValue.data(null);
-    _ref.read(hipaaConsentGrantedProvider.notifier).state = true;
+    _ref.read(hipaaConsentGrantedProvider.notifier).state = false;
+    _ref.read(mfaEnabledProvider.notifier).state = false;
   }
 }

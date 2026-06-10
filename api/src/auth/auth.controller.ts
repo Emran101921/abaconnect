@@ -7,8 +7,26 @@ import {
 } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { MfaService } from './mfa.service';
+import { DeviceContext } from './device.service';
 import { LoginDto, RegisterDto } from './dto/auth.dto';
 import { AuthService } from './auth.service';
+
+function firstHeader(value: string | string[] | undefined): string | undefined {
+  if (Array.isArray(value)) return value[0];
+  return value;
+}
+
+/** Builds device + network context from request headers for auth events. */
+function deviceContextFromRequest(req: Request): DeviceContext {
+  return {
+    deviceId: firstHeader(req.headers['x-device-id']),
+    deviceModel: firstHeader(req.headers['x-device-model']),
+    platform: firstHeader(req.headers['x-device-platform']),
+    osVersion: firstHeader(req.headers['x-device-os']),
+    ipAddress: req.ip,
+    userAgent: firstHeader(req.headers['user-agent']),
+  };
+}
 
 @Controller('auth')
 export class AuthController {
@@ -28,10 +46,7 @@ export class AuthController {
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('login')
   login(@Body() dto: LoginDto, @Req() req: Request) {
-    return this.authService.login(dto, {
-      ipAddress: req.ip,
-      userAgent: req.headers['user-agent'],
-    });
+    return this.authService.login(dto, deviceContextFromRequest(req));
   }
 
   @Public()
@@ -61,8 +76,13 @@ export class AuthController {
   loginMfa(
     @Body('mfaChallengeToken') mfaChallengeToken: string,
     @Body('code') code: string,
+    @Req() req: Request,
   ) {
-    return this.authService.completeMfaLogin(mfaChallengeToken, code);
+    return this.authService.completeMfaLogin(
+      mfaChallengeToken,
+      code,
+      deviceContextFromRequest(req),
+    );
   }
 
   @Post('logout')
@@ -86,8 +106,17 @@ export class AuthController {
   }
 
   @Post('mfa/enable')
-  mfaEnable(@CurrentUser() user: AuthUser, @Body('code') code: string) {
-    return this.mfaService.enable(user.id, code);
+  mfaEnable(
+    @CurrentUser() user: AuthUser,
+    @Body('code') code: string,
+    @Req() req: Request,
+  ) {
+    return this.mfaService.enable(user.id, code, deviceContextFromRequest(req));
+  }
+
+  @Get('devices')
+  devices(@CurrentUser() user: AuthUser) {
+    return this.authService.listDevices(user.id);
   }
 
   @Post('mfa/disable')

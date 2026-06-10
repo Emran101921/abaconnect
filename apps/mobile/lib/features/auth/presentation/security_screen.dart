@@ -1,11 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../../core/providers/app_providers.dart';
+import '../../../core/providers/consent_gate_provider.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../data/auth_repository.dart';
 
 final mfaStatusProvider = FutureProvider<bool>((ref) async {
   return ref.watch(authRepositoryProvider).fetchMfaStatus();
+});
+
+final trustedDevicesProvider = FutureProvider<List<TrustedDevice>>((ref) async {
+  return ref.watch(authRepositoryProvider).fetchTrustedDevices();
 });
 
 class SecurityScreen extends ConsumerStatefulWidget {
@@ -46,10 +54,18 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
         _setupUrl = null;
       });
       ref.invalidate(mfaStatusProvider);
+      ref.invalidate(trustedDevicesProvider);
+      // Clear the onboarding MFA gate so the router can advance the user.
+      ref.read(mfaEnabledProvider.notifier).state = true;
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Two-factor authentication enabled')),
         );
+        // If MFA was required to finish onboarding, continue to the home tab.
+        final session = ref.read(authStateProvider).valueOrNull;
+        if (session != null && roleRequiresOnboarding(session.user.role)) {
+          context.go(session.user.role.homeRoute);
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -104,6 +120,7 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
             password: passwordController.text,
           );
       ref.invalidate(mfaStatusProvider);
+      ref.read(mfaEnabledProvider.notifier).state = false;
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -121,12 +138,47 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
   @override
   Widget build(BuildContext context) {
     final mfa = ref.watch(mfaStatusProvider);
+    final devices = ref.watch(trustedDevicesProvider);
+    final session = ref.watch(authStateProvider).valueOrNull;
+    final onboardingRole =
+        session != null && roleRequiresOnboarding(session.user.role);
+    final mfaPending = !ref.watch(mfaEnabledProvider);
+    final dateFormat = DateFormat.yMMMd().add_jm();
 
     return AppScaffold(
       title: 'Security',
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          if (onboardingRole && mfaPending) ...[
+            Card(
+              color: Theme.of(context).colorScheme.errorContainer,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.shield_outlined,
+                      color: Theme.of(context).colorScheme.onErrorContainer,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Two-factor authentication is required to finish '
+                        'setting up your account. Set it up below to continue.',
+                        style: TextStyle(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onErrorContainer,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
           mfa.when(
             data: (enabled) {
               return Card(
@@ -146,10 +198,16 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
                             : 'Add an extra layer of security with Google Authenticator or similar.',
                       ),
                       const SizedBox(height: 16),
-                      if (enabled)
+                      if (enabled && !onboardingRole)
                         OutlinedButton(
                           onPressed: _disable,
                           child: const Text('Disable MFA'),
+                        )
+                      else if (enabled && onboardingRole)
+                        Text(
+                          'Two-factor authentication is required for your '
+                          'account type and cannot be disabled.',
+                          style: Theme.of(context).textTheme.bodySmall,
                         )
                       else if (_setupSecret == null)
                         FilledButton(
@@ -172,6 +230,63 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
             },
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) => Text('Error: $e'),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Trusted devices',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Devices verified with MFA. Each sign-in records the device model, '
+            'IP address, and approximate location.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 12),
+          devices.when(
+            data: (list) {
+              if (list.isEmpty) {
+                return const Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Text(
+                      'No trusted devices yet. Complete MFA setup to register '
+                      'this device.',
+                    ),
+                  ),
+                );
+              }
+              return Column(
+                children: list.map((device) {
+                  final label = [
+                    device.deviceModel,
+                    device.platform,
+                  ].where((part) => part != null && part.isNotEmpty).join(' · ');
+                  return Card(
+                    child: ListTile(
+                      leading: Icon(
+                        device.trusted
+                            ? Icons.verified_user
+                            : Icons.phonelink_setup,
+                        color: device.trusted ? Colors.green : Colors.grey,
+                      ),
+                      title: Text(label.isEmpty ? 'Unknown device' : label),
+                      subtitle: Text(
+                        [
+                          if (device.lastLocation != null)
+                            device.lastLocation,
+                          if (device.lastIp != null) 'IP ${device.lastIp}',
+                          'Last seen ${dateFormat.format(device.lastSeenAt.toLocal())}',
+                        ].join(' · '),
+                      ),
+                      isThreeLine: true,
+                    ),
+                  );
+                }).toList(),
+              );
+            },
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => Text('Could not load devices: $e'),
           ),
         ],
       ),
