@@ -5,6 +5,12 @@ import {
   buildEarlyInterventionQuestionsJson,
   EARLY_INTERVENTION_TEMPLATE_NAME,
 } from '../src/screenings/early-intervention-template';
+import {
+  ACKNOWLEDGMENT_CHECKBOX_TEXT,
+  ACKNOWLEDGMENT_SHORT_TEXT,
+  buildDefaultNoticeOfPrivacyPractices,
+  buildDefaultPrivacyPolicy,
+} from '../src/compliance/privacy-notice.content';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
@@ -14,6 +20,51 @@ const prisma = new PrismaClient({ adapter });
 const DEMO_MFA_SECRET = 'JBSWY3DPEHPK3PXP';
 /** Device id used by scripts/smoke-features.sh so CI logins skip step-up MFA. */
 const SMOKE_DEVICE_ID = 'smoke-ci-device';
+
+async function seedActivePrivacyNotice(tenantId: string) {
+  return prisma.privacyNoticeVersion.upsert({
+    where: {
+      tenantId_versionNumber: { tenantId, versionNumber: '1.0' },
+    },
+    create: {
+      tenantId,
+      versionNumber: '1.0',
+      title: 'Notice of Privacy Practices',
+      fullNoticeText: buildDefaultNoticeOfPrivacyPractices(),
+      privacyPolicyText: buildDefaultPrivacyPolicy(),
+      effectiveDate: new Date('2025-06-01'),
+      isActive: true,
+    },
+    update: { isActive: true },
+  });
+}
+
+async function seedNoticeAcknowledgment(
+  tenantId: string,
+  userId: string,
+  noticeId: string,
+): Promise<void> {
+  const existing = await prisma.hipaaNoticeAcknowledgment.findFirst({
+    where: { userId, noticeVersionId: noticeId },
+  });
+  if (existing) return;
+
+  const snapshot = `${ACKNOWLEDGMENT_SHORT_TEXT}\n\n${ACKNOWLEDGMENT_CHECKBOX_TEXT}`;
+  await prisma.hipaaNoticeAcknowledgment.create({
+    data: {
+      tenantId,
+      userId,
+      noticeVersionId: noticeId,
+      noticeVersion: '1.0',
+      ipAddress: '127.0.0.1',
+      userAgent: 'seed',
+      appVersion: 'seed',
+      platform: 'ci',
+      deviceId: SMOKE_DEVICE_ID,
+      acknowledgmentTextSnapshot: snapshot,
+    },
+  });
+}
 
 async function seedDemoOnboarding(userId: string): Promise<void> {
   await prisma.user.update({
@@ -594,6 +645,8 @@ async function main() {
     },
   });
 
+  const activeNotice = await seedActivePrivacyNotice(tenant.id);
+
   await prisma.hipaaConsent.upsert({
     where: { id: '00000000-0000-4000-8000-000000000060' },
     update: {},
@@ -634,6 +687,9 @@ async function main() {
   });
 
   // Demo clinical-role accounts must satisfy onboarding gates used in CI smoke tests.
+  await seedNoticeAcknowledgment(tenant.id, parentUser.id, activeNotice.id);
+  await seedNoticeAcknowledgment(tenant.id, therapistUser.id, activeNotice.id);
+  await seedNoticeAcknowledgment(tenant.id, agencyUser.id, activeNotice.id);
   await seedDemoOnboarding(parentUser.id);
   await seedDemoOnboarding(therapistUser.id);
   await seedDemoOnboarding(agencyUser.id);

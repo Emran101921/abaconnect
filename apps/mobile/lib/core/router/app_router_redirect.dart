@@ -71,20 +71,39 @@ String? resolveAuthRedirect({
     return home;
   }
 
-  // Mandatory onboarding: parents, therapists, and agency admins must sign the
-  // HIPAA privacy agreement and enroll in MFA before reaching any other screen.
+  final privacyOnboardingRoutes = <String>{
+    AppRoutes.consent,
+    AppRoutes.signupPrivacyNotice,
+    AppRoutes.privacyNoticeOfPractices,
+    AppRoutes.privacyPolicy,
+  };
+  final isPrivacyOnboardingRoute = privacyOnboardingRoutes.contains(
+    matchedLocation,
+  );
+
+  // Mandatory onboarding: parents, therapists, and agency admins must
+  // acknowledge the Notice of Privacy Practices and enroll in MFA first.
   if (onboardingRoute != null) {
     final onConsent = matchedLocation == AppRoutes.consent;
     final onSecurity = matchedLocation == AppRoutes.security;
-    if (onboardingRoute == AppRoutes.consent && !onConsent) {
+    if (onboardingRoute == AppRoutes.consent &&
+        !onConsent &&
+        !isPrivacyOnboardingRoute) {
       return AppRoutes.consent;
     }
-    if (onboardingRoute == AppRoutes.security && !onSecurity && !onConsent) {
+    if (onboardingRoute == AppRoutes.security &&
+        !onSecurity &&
+        !onConsent &&
+        !isPrivacyOnboardingRoute) {
       return AppRoutes.security;
     }
   }
 
-  if (matchedLocation == AppRoutes.consent || matchedLocation == AppRoutes.security) {
+  if (matchedLocation == AppRoutes.consent ||
+      matchedLocation == AppRoutes.security ||
+      isPrivacyOnboardingRoute ||
+      matchedLocation == AppRoutes.settingsPrivacy ||
+      matchedLocation.startsWith('${AppRoutes.settingsPrivacy}/')) {
     return null;
   }
 

@@ -51,6 +51,9 @@ export interface AuthMeResponse {
   therapistId?: string;
   mfaEnabled: boolean;
   hipaaConsentGranted: boolean;
+  /** True when the user has acknowledged the currently active Notice of Privacy Practices. */
+  privacyNoticeAcknowledged: boolean;
+  activeNoticeVersion: string | null;
   onboardingComplete: boolean;
 }
 
@@ -74,7 +77,9 @@ export class AuthService {
     if (!user) {
       throw new NotFoundException('User not found');
     }
-    const hipaaConsentGranted = await this.hasActiveHipaaConsent(user.id);
+    const { acknowledged, activeVersion } =
+      await this.privacyNoticeAcknowledgmentStatus(user.id, user.tenantId);
+    const hipaaConsentGranted = acknowledged;
     const requiresOnboarding = ROLES_REQUIRING_ONBOARDING.has(user.role);
     const onboardingComplete = requiresOnboarding
       ? hipaaConsentGranted && user.mfaEnabled
@@ -90,20 +95,35 @@ export class AuthService {
       therapistId: user.therapist?.id,
       mfaEnabled: user.mfaEnabled,
       hipaaConsentGranted,
+      privacyNoticeAcknowledged: acknowledged,
+      activeNoticeVersion: activeVersion,
       onboardingComplete,
     };
   }
 
-  private async hasActiveHipaaConsent(userId: string): Promise<boolean> {
-    const consent = await this.prisma.hipaaConsent.findFirst({
+  private async privacyNoticeAcknowledgmentStatus(
+    userId: string,
+    tenantId: string,
+  ): Promise<{ acknowledged: boolean; activeVersion: string | null }> {
+    const active = await this.prisma.privacyNoticeVersion.findFirst({
       where: {
-        userId,
-        consentType: 'HIPAA_PRIVACY',
-        granted: true,
-        revokedAt: null,
+        isActive: true,
+        OR: [{ tenantId }, { tenantId: null }],
       },
+      orderBy: [{ tenantId: 'desc' }, { effectiveDate: 'desc' }],
+      select: { id: true, versionNumber: true },
     });
-    return consent != null;
+    if (!active) {
+      return { acknowledged: true, activeVersion: null };
+    }
+    const ack = await this.prisma.hipaaNoticeAcknowledgment.findFirst({
+      where: { userId, noticeVersionId: active.id },
+      select: { id: true },
+    });
+    return {
+      acknowledged: ack != null,
+      activeVersion: active.versionNumber,
+    };
   }
 
   /** Devices a user has authenticated from (for the security/devices screen). */

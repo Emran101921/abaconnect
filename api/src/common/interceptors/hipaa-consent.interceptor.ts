@@ -53,7 +53,7 @@ export class HipaaConsentInterceptor implements NestInterceptor {
     const hasConsent = await this.compliance.hasActiveHipaaConsent(user.id);
     if (!hasConsent) {
       throw new ForbiddenException(
-        'HIPAA privacy consent is required before accessing clinical data',
+        'You must acknowledge the Notice of Privacy Practices before accessing clinical data',
       );
     }
 

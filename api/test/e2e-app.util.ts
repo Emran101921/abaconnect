@@ -8,6 +8,11 @@ import { AppModule } from '../src/app.module';
 import { GraphqlValidationPipe } from '../src/common/pipes/graphql-validation.pipe';
 
 function ensureE2eSeedData(): void {
+  execSync('npx prisma migrate deploy', {
+    cwd: join(__dirname, '..'),
+    env: process.env,
+    stdio: 'pipe',
+  });
   execSync('npx prisma db seed', {
     cwd: join(__dirname, '..'),
     env: process.env,

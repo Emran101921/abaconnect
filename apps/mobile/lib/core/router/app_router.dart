@@ -41,8 +41,12 @@ import '../../features/parent/presentation/complaints_screen.dart';
 import '../../features/parent/presentation/reviews_screen.dart';
 import '../../features/parent/presentation/screening_screen.dart';
 import '../../features/parent/presentation/treatment_plans_screen.dart';
-import '../../features/compliance/presentation/consent_screen.dart';
+import '../../features/compliance/presentation/admin_compliance_screen.dart';
+import '../../features/compliance/presentation/hipaa_privacy_notice_screen.dart';
 import '../../features/compliance/presentation/phi_access_report_screen.dart';
+import '../../features/compliance/presentation/privacy_center_screen.dart';
+import '../../features/compliance/presentation/privacy_document_screen.dart';
+import '../../features/compliance/presentation/privacy_rights_request_screen.dart';
 import '../security/secure_clinical_scope.dart';
 import '../../features/documents/presentation/documents_screen.dart';
 import '../../features/insurance/presentation/insurance_screen.dart';
@@ -88,6 +92,27 @@ abstract final class AppRoutes {
   static const documents = '/documents';
   static const insurance = '/insurance';
   static const consent = '/consent';
+  static const signupPrivacyNotice = '/signup/privacy-notice';
+  static const privacyNoticeOfPractices = '/privacy/notice-of-privacy-practices';
+  static const privacyPolicy = '/privacy/privacy-policy';
+  static const settingsPrivacy = '/settings/privacy';
+  static const privacyRecordsRequest = '/settings/privacy/records-request';
+  static const privacyCorrectionRequest = '/settings/privacy/correction-request';
+  static const privacyRestrictionRequest = '/settings/privacy/restriction-request';
+  static const privacyConfidentialCommunication =
+      '/settings/privacy/confidential-communication';
+  static const privacyAccountingOfDisclosures =
+      '/settings/privacy/accounting-of-disclosures';
+  static const privacyContactOfficer = '/settings/privacy/contact-officer';
+  static const privacyDataDeletion = '/settings/privacy/data-deletion';
+  static const adminCompliance = '/admin/compliance';
+  static const adminComplianceNoticeVersions =
+      '/admin/compliance/notice-versions';
+  static const adminComplianceAcknowledgments =
+      '/admin/compliance/acknowledgments';
+  static const adminCompliancePrivacyRequests =
+      '/admin/compliance/privacy-requests';
+  static const adminComplianceAuditLogs = '/admin/compliance/audit-logs';
   static const phiAccessReport = '/phi-access-report';
   static const security = '/security';
   static const parentAppointments = '/parent/appointments';
@@ -440,6 +465,37 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const AdminAuditScreen(),
           ),
           GoRoute(
+            path: 'compliance',
+            name: 'adminCompliance',
+            builder: (context, state) => const AdminComplianceScreen(),
+            routes: [
+              GoRoute(
+                path: 'acknowledgments',
+                name: 'adminComplianceAcknowledgments',
+                builder: (context, state) =>
+                    const AdminComplianceAcknowledgmentsScreen(),
+              ),
+              GoRoute(
+                path: 'notice-versions',
+                name: 'adminComplianceNoticeVersions',
+                builder: (context, state) =>
+                    const AdminComplianceNoticeVersionsScreen(),
+              ),
+              GoRoute(
+                path: 'privacy-requests',
+                name: 'adminCompliancePrivacyRequests',
+                builder: (context, state) =>
+                    const AdminCompliancePrivacyRequestsScreen(),
+              ),
+              GoRoute(
+                path: 'audit-logs',
+                name: 'adminComplianceAuditLogs',
+                builder: (context, state) =>
+                    const AdminComplianceAuditLogsScreen(),
+              ),
+            ],
+          ),
+          GoRoute(
             path: 'session-notes',
             name: 'adminSessionNotes',
             builder: (context, state) => SecureClinicalScope(
@@ -522,7 +578,84 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.consent,
         name: 'consent',
-        builder: (context, state) => const ConsentScreen(),
+        builder: (context, state) => const HipaaPrivacyNoticeScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.signupPrivacyNotice,
+        name: 'signupPrivacyNotice',
+        builder: (context, state) => const HipaaPrivacyNoticeScreen(
+          onboardingMode: false,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.privacyNoticeOfPractices,
+        name: 'privacyNoticeOfPractices',
+        builder: (context, state) => const PrivacyDocumentScreen(
+          kind: PrivacyDocumentKind.noticeOfPractices,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.privacyPolicy,
+        name: 'privacyPolicy',
+        builder: (context, state) => const PrivacyDocumentScreen(
+          kind: PrivacyDocumentKind.privacyPolicy,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.settingsPrivacy,
+        name: 'settingsPrivacy',
+        builder: (context, state) => const PrivacyCenterScreen(),
+        routes: [
+          GoRoute(
+            path: 'records-request',
+            name: 'privacyRecordsRequest',
+            builder: (context, state) => const PrivacyRightsRequestScreen(
+              formType: PrivacyRightsFormType.recordAccess,
+            ),
+          ),
+          GoRoute(
+            path: 'correction-request',
+            name: 'privacyCorrectionRequest',
+            builder: (context, state) => const PrivacyRightsRequestScreen(
+              formType: PrivacyRightsFormType.correction,
+            ),
+          ),
+          GoRoute(
+            path: 'restriction-request',
+            name: 'privacyRestrictionRequest',
+            builder: (context, state) => const PrivacyRightsRequestScreen(
+              formType: PrivacyRightsFormType.restriction,
+            ),
+          ),
+          GoRoute(
+            path: 'confidential-communication',
+            name: 'privacyConfidentialCommunication',
+            builder: (context, state) => const PrivacyRightsRequestScreen(
+              formType: PrivacyRightsFormType.confidentialCommunication,
+            ),
+          ),
+          GoRoute(
+            path: 'accounting-of-disclosures',
+            name: 'privacyAccountingOfDisclosures',
+            builder: (context, state) => const PrivacyRightsRequestScreen(
+              formType: PrivacyRightsFormType.accountingOfDisclosures,
+            ),
+          ),
+          GoRoute(
+            path: 'contact-officer',
+            name: 'privacyContactOfficer',
+            builder: (context, state) => const PrivacyRightsRequestScreen(
+              formType: PrivacyRightsFormType.contactPrivacyOfficer,
+            ),
+          ),
+          GoRoute(
+            path: 'data-deletion',
+            name: 'privacyDataDeletion',
+            builder: (context, state) => const PrivacyRightsRequestScreen(
+              formType: PrivacyRightsFormType.dataDeletion,
+            ),
+          ),
+        ],
       ),
       GoRoute(
         path: AppRoutes.phiAccessReport,

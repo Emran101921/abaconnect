@@ -245,9 +245,9 @@ class ParentOperationsCategoryScreen extends ConsumerWidget {
           ),
           ParentOpsTile(
             title: 'Privacy',
-            subtitle: 'HIPAA consent',
+            subtitle: 'Notice, policy, and your HIPAA rights',
             icon: Icons.privacy_tip,
-            onTap: () => context.push(AppRoutes.consent),
+            onTap: () => context.push(AppRoutes.settingsPrivacy),
           ),
           ParentOpsTile(
             title: 'File complaint',

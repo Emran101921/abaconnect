@@ -271,10 +271,10 @@ class AgencyHomeScreen extends ConsumerWidget {
                 onTap: () => context.push(AppRoutes.security),
               ),
               _OpsTile(
-                title: 'Privacy',
-                subtitle: 'HIPAA consent and PHI access report',
+                title: 'Privacy & HIPAA',
+                subtitle: 'Notice, policy, rights requests, PHI access report',
                 icon: Icons.privacy_tip,
-                onTap: () => context.push(AppRoutes.consent),
+                onTap: () => context.push(AppRoutes.settingsPrivacy),
               ),
               const SizedBox(height: 8),
               Text(
