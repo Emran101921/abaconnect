@@ -26,8 +26,13 @@ login() {
   local email="$1" password="$2"
   curl -sf -X POST "$API/api/v1/auth/login" \
     -H 'Content-Type: application/json' \
+    -H 'x-device-id: smoke-ci-device' \
+    -H 'x-device-model: CI smoke runner' \
+    -H 'x-device-platform: ci' \
     -d "{\"email\":\"$email\",\"password\":\"$password\"}" \
-    | python3 -c "import sys,json; print(json.load(sys.stdin)['accessToken'])"
+    | python3 -c "import sys,json; d=json.load(sys.stdin); \
+assert not d.get('requiresMfa'), 'MFA challenge — seed smoke-ci-device as trusted'; \
+print(d['accessToken'])"
 }
 
 gql() {

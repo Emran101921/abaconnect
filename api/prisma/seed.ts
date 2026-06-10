@@ -10,6 +10,35 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
+/** Fixed TOTP secret for demo users (plaintext; MFA service falls back if not encrypted). */
+const DEMO_MFA_SECRET = 'JBSWY3DPEHPK3PXP';
+/** Device id used by scripts/smoke-features.sh so CI logins skip step-up MFA. */
+const SMOKE_DEVICE_ID = 'smoke-ci-device';
+
+async function seedDemoOnboarding(userId: string): Promise<void> {
+  await prisma.user.update({
+    where: { id: userId },
+    data: { mfaEnabled: true, mfaSecret: DEMO_MFA_SECRET },
+  });
+  await prisma.authDevice.upsert({
+    where: { userId_deviceId: { userId, deviceId: SMOKE_DEVICE_ID } },
+    create: {
+      userId,
+      deviceId: SMOKE_DEVICE_ID,
+      deviceModel: 'CI smoke runner',
+      platform: 'ci',
+      trusted: true,
+      mfaVerifiedAt: new Date(),
+      lastSeenAt: new Date(),
+    },
+    update: {
+      trusted: true,
+      mfaVerifiedAt: new Date(),
+      lastSeenAt: new Date(),
+    },
+  });
+}
+
 async function main() {
   const tenant = await prisma.tenant.upsert({
     where: { slug: 'abaconnect' },
@@ -317,7 +346,7 @@ async function main() {
     },
   });
 
-  await prisma.user.upsert({
+  const agencyUser = await prisma.user.upsert({
     where: {
       tenantId_email: { tenantId: tenant.id, email: 'agency@demo.local' },
     },
@@ -590,6 +619,24 @@ async function main() {
       granted: true,
     },
   });
+
+  await prisma.hipaaConsent.upsert({
+    where: { id: '00000000-0000-4000-8000-000000000062' },
+    update: {},
+    create: {
+      id: '00000000-0000-4000-8000-000000000062',
+      tenantId: tenant.id,
+      userId: agencyUser.id,
+      consentType: 'HIPAA_PRIVACY',
+      version: '1.0',
+      granted: true,
+    },
+  });
+
+  // Demo clinical-role accounts must satisfy onboarding gates used in CI smoke tests.
+  await seedDemoOnboarding(parentUser.id);
+  await seedDemoOnboarding(therapistUser.id);
+  await seedDemoOnboarding(agencyUser.id);
 
   console.log('Seed complete.');
   console.log('  Admin:     admin@abaconnect.local / Admin123!');
