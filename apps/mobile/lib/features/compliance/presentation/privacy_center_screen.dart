@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../data/privacy_repository.dart';
-import 'hipaa_privacy_notice_screen.dart';
 
 final privacyAckStatusProvider = FutureProvider<AcknowledgmentStatusModel>((
   ref,

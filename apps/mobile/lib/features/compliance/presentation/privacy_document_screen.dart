@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../data/privacy_repository.dart';
-import 'hipaa_privacy_notice_screen.dart';
 
 enum PrivacyDocumentKind { noticeOfPractices, privacyPolicy }
 

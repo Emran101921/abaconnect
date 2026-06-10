@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/providers/consent_gate_provider.dart';
 import '../../../core/router/app_router.dart';
-import '../../../core/router/onboarding_navigation.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../data/privacy_repository.dart';
 
