@@ -6,7 +6,6 @@ import {
 import {
   AuditAction,
   ComplianceDocumentType,
-  Prisma,
 } from '../../generated/prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -37,17 +36,17 @@ export class ComplianceDocumentsService {
     const docs = await Promise.all(
       types.map((t) => this.getActiveDocument(t, tenantId)),
     );
-    const acceptances = await this.prisma.complianceDocumentAcceptance.findMany({
-      where: { userId },
-    });
+    const acceptances = await this.prisma.complianceDocumentAcceptance.findMany(
+      {
+        where: { userId },
+      },
+    );
     const acceptedIds = new Set(acceptances.map((a) => a.documentId));
 
-    return docs
-      .filter(Boolean)
-      .map((doc) => ({
-        ...doc!,
-        accepted: acceptedIds.has(doc!.id),
-      }));
+    return docs.filter(Boolean).map((doc) => ({
+      ...doc!,
+      accepted: acceptedIds.has(doc!.id),
+    }));
   }
 
   async acceptDocument(
@@ -136,7 +135,9 @@ export class ComplianceDocumentsService {
     const doc = await this.prisma.complianceDocument.findFirst({
       where: {
         id: documentId,
-        OR: tenantId ? [{ tenantId }, { tenantId: null }] : [{ tenantId: null }],
+        OR: tenantId
+          ? [{ tenantId }, { tenantId: null }]
+          : [{ tenantId: null }],
       },
     });
     if (!doc) throw new NotFoundException('Document not found');

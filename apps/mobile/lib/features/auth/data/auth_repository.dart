@@ -409,6 +409,12 @@ class AuthRepository {
         return 'AGENCY_ADMIN';
       case UserRole.admin:
         return 'PLATFORM_ADMIN';
+      case UserRole.billing:
+        return 'BILLING_STAFF';
+      case UserRole.complianceAuditor:
+        return 'COMPLIANCE_AUDITOR';
+      case UserRole.support:
+        return 'SUPPORT_STAFF';
     }
   }
 
