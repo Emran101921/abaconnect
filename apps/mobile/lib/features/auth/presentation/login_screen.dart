@@ -111,6 +111,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
               const SizedBox(height: 12),
             ],
+            if (kDebugMode) ...[
+              const Text(
+                'Local dev: use MFA code 000000 when DEV_MFA_BYPASS_CODE is '
+                'set in api/.env, or run: cd api && npm run demo:mfa-code',
+                style: TextStyle(fontSize: 12),
+              ),
+              const SizedBox(height: 12),
+            ],
             TextField(
               controller: controller,
               decoration: const InputDecoration(

@@ -60,12 +60,20 @@ export class NotificationsService {
   ) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new BadRequestException('User not found');
+    const isSecureMessage =
+      data.data?.type === 'MESSAGE' ||
+      data.title.toLowerCase().includes('message');
+    const storedTitle = isSecureMessage ? 'New secure message' : data.title;
+    const storedBody = isSecureMessage
+      ? 'You have a new secure message. Please log in to view it.'
+      : data.body;
+
     const notification = await this.prisma.notification.create({
       data: {
         tenantId: user.tenantId,
         userId,
-        title: data.title,
-        body: data.body,
+        title: storedTitle,
+        body: storedBody,
         data: (data.data ?? {}) as Prisma.InputJsonValue,
       },
     });

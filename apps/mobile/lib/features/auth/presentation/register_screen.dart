@@ -7,6 +7,7 @@ import '../../../core/providers/consent_gate_provider.dart';
 import '../../../core/router/onboarding_navigation.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../shared/models/user_role.dart';
 import '../../../shared/widgets/app_brand_logo.dart';
 import '../../../shared/widgets/app_healthcare_illustration.dart';
 import '../../../shared/widgets/app_theme_toggle.dart';
@@ -23,6 +24,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _lastNameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  UserRole _role = UserRole.parent;
   bool _loading = false;
 
   @override
@@ -44,6 +46,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             password: _passwordController.text,
             firstName: _firstNameController.text.trim(),
             lastName: _lastNameController.text.trim(),
+            role: _role,
           );
       if (!mounted) return;
       final session = ref.read(authStateProvider).value;
@@ -205,6 +208,25 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             prefixIcon: Icon(Icons.person_outline),
           ),
           textInputAction: TextInputAction.next,
+        ),
+        const SizedBox(height: AppSpacing.md),
+        DropdownButtonFormField<UserRole>(
+          value: _role,
+          decoration: const InputDecoration(
+            labelText: 'Account type',
+            prefixIcon: Icon(Icons.badge_outlined),
+          ),
+          items: const [
+            DropdownMenuItem(
+              value: UserRole.parent,
+              child: Text('Parent / caregiver'),
+            ),
+            DropdownMenuItem(
+              value: UserRole.therapist,
+              child: Text('Therapist / provider'),
+            ),
+          ],
+          onChanged: (v) => setState(() => _role = v ?? UserRole.parent),
         ),
         const SizedBox(height: AppSpacing.md),
         TextField(

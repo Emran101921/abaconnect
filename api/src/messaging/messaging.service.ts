@@ -191,14 +191,11 @@ export class MessagingService {
       where: { threadId, userId: { not: userId } },
       select: { userId: true },
     });
-    const preview =
-      trimmed.length > 120 ? `${trimmed.slice(0, 117)}...` : trimmed;
-    const senderName = `${message.sender.firstName} ${message.sender.lastName}`;
     await Promise.all(
       recipients.map((r) =>
         this.notifications.createForUser(r.userId, {
-          title: `Message from ${senderName}`,
-          body: preview,
+          title: 'New secure message',
+          body: 'You have a new secure message. Please log in to view it.',
           data: { threadId, type: 'MESSAGE' },
         }),
       ),

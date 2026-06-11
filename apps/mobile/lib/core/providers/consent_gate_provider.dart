@@ -11,6 +11,9 @@ final hipaaConsentGrantedProvider = StateProvider<bool>((ref) => false);
 /// Defaults to false so users cannot slip past the gate before status loads.
 final mfaEnabledProvider = StateProvider<bool>((ref) => false);
 
+/// Therapists only — admin-approved PHI access.
+final providerPhiAccessApprovedProvider = StateProvider<bool>((ref) => true);
+
 /// Roles that must complete HIPAA consent + MFA enrollment before using the app.
 bool roleRequiresOnboarding(UserRole role) {
   return role == UserRole.parent ||
@@ -38,10 +41,13 @@ Future<void> refreshOnboardingGates(Ref ref, UserRole? role) async {
     ref.read(hipaaConsentGrantedProvider.notifier).state =
         me.hipaaConsentGranted;
     ref.read(mfaEnabledProvider.notifier).state = me.mfaEnabled;
+    ref.read(providerPhiAccessApprovedProvider.notifier).state =
+        me.providerPhiAccessApproved ?? true;
   } catch (_) {
     // If we cannot confirm onboarding status, keep the gates closed so the
     // user is routed through consent/MFA rather than slipping into the app.
     ref.read(hipaaConsentGrantedProvider.notifier).state = false;
     ref.read(mfaEnabledProvider.notifier).state = false;
+    ref.read(providerPhiAccessApprovedProvider.notifier).state = false;
   }
 }

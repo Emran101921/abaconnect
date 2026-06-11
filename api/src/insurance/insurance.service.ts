@@ -17,7 +17,10 @@ import {
   ResolvedDateBounds,
 } from '../common/date-range.util';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditAction } from '../../generated/prisma/client';
+import { AuditService } from '../audit/audit.service';
 import { ClearinghouseService } from './clearinghouse.service';
+import { ClaimSecurityService } from './claim-security.service';
 import { Edi837Service } from './edi837.service';
 
 const CPT_BY_THERAPY: Record<TherapyType, string> = {
@@ -37,6 +40,8 @@ export class InsuranceService {
     private readonly prisma: PrismaService,
     private readonly edi837: Edi837Service,
     private readonly clearinghouse: ClearinghouseService,
+    private readonly claimSecurity: ClaimSecurityService,
+    private readonly audit: AuditService,
   ) {}
 
   async listClaimsForParentUser(userId: string) {
@@ -67,19 +72,41 @@ export class InsuranceService {
     });
     if (!child) throw new NotFoundException('Child not found');
 
-    return this.prisma.insuranceClaim.create({
+    const duplicateHash = this.claimSecurity.computeDuplicateHash({
+      childId: child.id,
+      serviceDate: data.serviceDate,
+      billedAmount: data.billedAmount,
+      payerName: data.payerName,
+    });
+    await this.claimSecurity.assertNoDuplicate(parent.tenantId, duplicateHash);
+
+    const claim = await this.prisma.insuranceClaim.create({
       data: {
         tenantId: parent.tenantId,
         parentId: parent.id,
         childId: child.id,
+        createdById: userId,
         payerName: data.payerName,
         billedAmount: data.billedAmount,
         serviceDate: data.serviceDate,
-        status: 'SUBMITTED',
-        submittedAt: new Date(),
+        duplicateHash,
+        status: 'DRAFT',
       },
       include: { child: true },
     });
+
+    await this.audit.log({
+      tenantId: parent.tenantId,
+      actorId: userId,
+      action: AuditAction.CLAIM_CREATED,
+      resourceType: 'InsuranceClaim',
+      resourceId: claim.id,
+      patientId: child.id,
+    });
+
+    return this.claimSecurity.lockOnSubmit(claim.id, parent.tenantId, {
+      editorId: userId,
+    }, child.id);
   }
 
   async draftClaimFromSession(sessionId: string) {
@@ -112,15 +139,27 @@ export class InsuranceService {
       CPT_BY_THERAPY[session.appointment.therapyType] ?? CPT_BY_THERAPY.ABA;
     const agencyNpi = session.therapist.agencyLinks[0]?.agency?.npi ?? null;
 
+    const duplicateHash = this.claimSecurity.computeDuplicateHash({
+      childId: session.childId,
+      serviceDate: session.appointment.scheduledStart,
+      cptCode,
+      billedAmount,
+      payerName: parent.insuranceProvider ?? 'Demo Payer',
+    });
+    await this.claimSecurity.assertNoDuplicate(session.tenantId, duplicateHash);
+
     const claim = await this.prisma.insuranceClaim.create({
       data: {
         tenantId: session.tenantId,
         parentId: parent.id,
         childId: session.childId,
         sessionId: session.id,
+        therapistId: session.therapistId,
         payerName: parent.insuranceProvider ?? 'Demo Payer',
         billedAmount,
         serviceDate: session.appointment.scheduledStart,
+        cptCode,
+        duplicateHash,
         status: 'DRAFT',
         metadata: {
           cptCode,
@@ -131,6 +170,14 @@ export class InsuranceService {
         },
       },
       include: { child: true },
+    });
+
+    await this.audit.log({
+      tenantId: session.tenantId,
+      action: AuditAction.CLAIM_CREATED,
+      resourceType: 'InsuranceClaim',
+      resourceId: claim.id,
+      patientId: session.childId,
     });
 
     return claim;
@@ -255,8 +302,28 @@ export class InsuranceService {
     return row;
   }
 
-  async update(id: string, data: Record<string, unknown>) {
-    await this.findOne(id);
+  async update(
+    id: string,
+    data: Record<string, unknown>,
+    editorId?: string,
+    editorRole?: string,
+  ) {
+    const existing = await this.findOne(id);
+    this.claimSecurity.assertEditable(existing);
+    if (editorId) {
+      await this.claimSecurity.recordHistory(
+        id,
+        existing.tenantId,
+        { editorId, editorRole },
+        'UPDATE',
+        Object.fromEntries(
+          Object.keys(data).map((key) => [
+            key,
+            { old: (existing as Record<string, unknown>)[key], new: data[key] },
+          ]),
+        ),
+      );
+    }
     return this.prisma.insuranceClaim.update({
       where: { id },
       data: data as Parameters<
@@ -486,6 +553,25 @@ export class InsuranceService {
       },
       include: { child: true, parent: { include: { user: true } } },
     });
+  }
+
+  async resubmitClaimForTenant(
+    tenantId: string,
+    claimId: string,
+    editorId: string,
+    editorRole?: string,
+  ) {
+    const claim = await this.prisma.insuranceClaim.findFirst({
+      where: { id: claimId, tenantId },
+    });
+    if (!claim) throw new NotFoundException('Claim not found');
+
+    return this.claimSecurity.createResubmission(
+      claimId,
+      tenantId,
+      { editorId, editorRole },
+      { denialReason: claim.denialReason },
+    );
   }
 
   async updateClaimStatusForTenant(

@@ -38,34 +38,39 @@ class AdminVerificationsScreen extends ConsumerWidget {
                     title: Text(t.displayName),
                     subtitle: Text(
                       '${t.email}\n'
-                      'License: ${t.licenseNumber ?? '—'} (${t.licenseState ?? '—'})',
+                      'License: ${t.licenseNumber ?? '—'} (${t.licenseState ?? '—'})\n'
+                      'Onboarding: ${t.onboardingStatus ?? 'PENDING'}',
                     ),
                     isThreeLine: true,
-                    trailing: FilledButton(
-                      onPressed: () async {
-                        try {
-                          await ref
-                              .read(adminRepositoryProvider)
-                              .verifyTherapist(t.id);
-                          ref.invalidate(pendingTherapistsProvider);
-                          ref.invalidate(adminDashboardProvider);
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Verified ${t.displayName}'),
-                              ),
-                            );
-                          }
-                        } catch (e) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Failed: $e')),
-                            );
-                          }
-                        }
-                      },
-                      child: const Text('Verify'),
-                    ),
+                    trailing: t.onboardingStatus == 'IN_REVIEW'
+                        ? FilledButton(
+                            onPressed: () async {
+                              try {
+                                await ref
+                                    .read(adminRepositoryProvider)
+                                    .verifyTherapist(t.id);
+                                ref.invalidate(pendingTherapistsProvider);
+                                ref.invalidate(adminDashboardProvider);
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Approved PHI access for ${t.displayName}',
+                                      ),
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Failed: $e')),
+                                  );
+                                }
+                              }
+                            },
+                            child: const Text('Approve PHI'),
+                          )
+                        : null,
                   ),
                 );
               },

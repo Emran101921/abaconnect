@@ -8,6 +8,7 @@ import {
 import { GqlExecutionContext } from '@nestjs/graphql';
 import { Observable } from 'rxjs';
 import { ComplianceService } from '../../compliance/compliance.service';
+import { ProviderOnboardingService } from '../../compliance/provider-onboarding.service';
 import { AuthUser } from '../decorators/current-user.decorator';
 
 const ONBOARDING_ROLES = new Set(['PARENT', 'THERAPIST', 'AGENCY_ADMIN']);
@@ -22,7 +23,10 @@ const HTTP_PATH_PREFIXES = ['/auth', '/health', '/compliance'];
 
 @Injectable()
 export class HipaaConsentInterceptor implements NestInterceptor {
-  constructor(private readonly compliance: ComplianceService) {}
+  constructor(
+    private readonly compliance: ComplianceService,
+    private readonly providerOnboarding: ProviderOnboardingService,
+  ) {}
 
   async intercept(
     context: ExecutionContext,
@@ -63,6 +67,11 @@ export class HipaaConsentInterceptor implements NestInterceptor {
         'Two-factor authentication must be enabled before accessing clinical data',
       );
     }
+
+    await this.providerOnboarding.assertPhiAccess(
+      user.id,
+      user.roles ?? [],
+    );
 
     return next.handle();
   }

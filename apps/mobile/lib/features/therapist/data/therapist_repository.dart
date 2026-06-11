@@ -83,6 +83,26 @@ class TherapistAppointmentModel {
   bool get isTelehealth => locationType == 'TELEHEALTH';
 }
 
+class TherapistServiceLogModel {
+  const TherapistServiceLogModel({
+    required this.id,
+    required this.childName,
+    this.therapistSignatureName,
+    this.therapistSignedAt,
+    this.parentSignatureName,
+    this.parentSignedAt,
+    this.parentSignatureDate,
+  });
+
+  final String id;
+  final String childName;
+  final String? therapistSignatureName;
+  final String? therapistSignedAt;
+  final String? parentSignatureName;
+  final String? parentSignedAt;
+  final String? parentSignatureDate;
+}
+
 class TherapistSessionModel {
   const TherapistSessionModel({
     required this.id,
@@ -96,6 +116,7 @@ class TherapistSessionModel {
     this.assessment,
     this.plan,
     this.eipFormFullySigned = false,
+    this.serviceLog,
   });
 
   final String id;
@@ -109,9 +130,12 @@ class TherapistSessionModel {
   final String? objective;
   final String? assessment;
   final String? plan;
+  final TherapistServiceLogModel? serviceLog;
 
   bool get needsDocumentation =>
       status == 'IN_PROGRESS' || status == 'PENDING_DOCUMENTATION';
+
+  bool get hasServiceLog => serviceLog != null;
 }
 
 class TherapistRepository {
@@ -233,6 +257,10 @@ class TherapistRepository {
           soapNote {
             id subjective objective assessment plan eipFormFullySigned
           }
+          serviceLog {
+            id childName therapistSignatureName therapistSignedAt
+            parentSignatureName parentSignatureDate parentSignedAt
+          }
         }
       }
     ''';
@@ -241,6 +269,7 @@ class TherapistRepository {
     return list.map((e) {
       final child = e['child'] as Map<String, dynamic>;
       final soap = e['soapNote'] as Map<String, dynamic>?;
+      final log = e['serviceLog'] as Map<String, dynamic>?;
       return TherapistSessionModel(
         id: e['id'] as String,
         status: e['status'] as String? ?? '',
@@ -253,8 +282,29 @@ class TherapistRepository {
         assessment: soap?['assessment'] as String?,
         plan: soap?['plan'] as String?,
         eipFormFullySigned: soap?['eipFormFullySigned'] as bool? ?? false,
+        serviceLog: log == null
+            ? null
+            : TherapistServiceLogModel(
+                id: log['id'] as String,
+                childName: log['childName'] as String? ?? '',
+                therapistSignatureName:
+                    log['therapistSignatureName'] as String?,
+                therapistSignedAt: log['therapistSignedAt'] as String?,
+                parentSignatureName: log['parentSignatureName'] as String?,
+                parentSignedAt: log['parentSignedAt'] as String?,
+                parentSignatureDate: log['parentSignatureDate'] as String?,
+              ),
       );
     }).toList();
+  }
+
+  Future<String> downloadServiceLogPdf(String sessionId) async {
+    final response = await _api.dio.get<List<int>>(
+      '/service-logs/therapist/$sessionId/pdf',
+      options: Options(responseType: ResponseType.bytes),
+    );
+    final bytes = Uint8List.fromList(response.data ?? []);
+    return downloadBytes(bytes, 'service-log-$sessionId.pdf');
   }
 
   Future<void> updateProfile({
@@ -350,7 +400,7 @@ class TherapistRepository {
     return result['data']?['startSession']?['id'] as String;
   }
 
-  Future<void> saveSoapNote({
+  Future<bool> saveSoapNote({
     required String sessionId,
     String? subjective,
     String? objective,
@@ -360,10 +410,13 @@ class TherapistRepository {
   }) async {
     const mutation = r'''
       mutation Save($input: SaveSoapNoteInput!) {
-        saveSoapNote(input: $input) { id }
+        saveSoapNote(input: $input) {
+          id
+          serviceLog { id childName therapistSignatureName }
+        }
       }
     ''';
-    await _graphql.query(
+    final result = await _graphql.query(
       mutation,
       variables: {
         'input': {
@@ -376,6 +429,8 @@ class TherapistRepository {
         },
       },
     );
+    final log = result['data']?['saveSoapNote']?['serviceLog'];
+    return log is Map<String, dynamic> && log['id'] != null;
   }
 
   Future<Map<String, dynamic>> fetchSessionNoteFormContext(
@@ -402,14 +457,85 @@ class TherapistRepository {
     return data;
   }
 
-  Future<void> saveEipSessionNote(EipSessionNoteModel form) async {
-    await saveSoapNote(
+  Future<bool> saveEipSessionNote(EipSessionNoteModel form) async {
+    return saveSoapNote(
       sessionId: form.sessionId,
       subjective: form.toSoapSubjective(),
       objective: form.toSoapObjective(),
       assessment: form.toSoapAssessment(),
       plan: form.toSoapPlan(),
       eipFormData: jsonEncode(form.toJson()),
+    );
+  }
+
+  Future<ProviderOnboardingChecklistModel> fetchOnboardingChecklist() async {
+    const query = r'''
+      query {
+        providerOnboardingChecklist {
+          identityComplete licenseComplete npiComplete taxIdComplete
+          backgroundCheckComplete hipaaTrainingComplete
+          confidentialityAgreementComplete agencyApprovalComplete
+          isActive phiAccessApproved onboardingStatus
+        }
+      }
+    ''';
+    final result = await _graphql.query(query);
+    final data = result['data']?['providerOnboardingChecklist'];
+    if (data is! Map<String, dynamic>) {
+      throw Exception('Could not load onboarding checklist');
+    }
+    return ProviderOnboardingChecklistModel.fromJson(data);
+  }
+
+  Future<void> attestHipaaTraining() async {
+    await _graphql.query(r'mutation { attestHipaaTraining { onboardingStatus } }');
+  }
+
+  Future<void> attestConfidentialityAgreement() async {
+    await _graphql.query(
+      r'mutation { attestConfidentialityAgreement { onboardingStatus } }',
+    );
+  }
+
+  Future<void> submitProviderOnboarding() async {
+    await _graphql.query(
+      r'mutation { submitProviderOnboarding { onboardingStatus } }',
+    );
+  }
+}
+
+class ProviderOnboardingChecklistModel {
+  const ProviderOnboardingChecklistModel({
+    required this.identityComplete,
+    required this.licenseComplete,
+    required this.npiComplete,
+    required this.hipaaTrainingComplete,
+    required this.confidentialityAgreementComplete,
+    required this.agencyApprovalComplete,
+    required this.phiAccessApproved,
+    required this.onboardingStatus,
+  });
+
+  final bool identityComplete;
+  final bool licenseComplete;
+  final bool npiComplete;
+  final bool hipaaTrainingComplete;
+  final bool confidentialityAgreementComplete;
+  final bool agencyApprovalComplete;
+  final bool phiAccessApproved;
+  final String onboardingStatus;
+
+  factory ProviderOnboardingChecklistModel.fromJson(Map<String, dynamic> json) {
+    return ProviderOnboardingChecklistModel(
+      identityComplete: json['identityComplete'] as bool? ?? false,
+      licenseComplete: json['licenseComplete'] as bool? ?? false,
+      npiComplete: json['npiComplete'] as bool? ?? false,
+      hipaaTrainingComplete: json['hipaaTrainingComplete'] as bool? ?? false,
+      confidentialityAgreementComplete:
+          json['confidentialityAgreementComplete'] as bool? ?? false,
+      agencyApprovalComplete: json['agencyApprovalComplete'] as bool? ?? false,
+      phiAccessApproved: json['phiAccessApproved'] as bool? ?? false,
+      onboardingStatus: json['onboardingStatus'] as String? ?? 'PENDING',
     );
   }
 }

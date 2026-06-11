@@ -1,6 +1,11 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
+import 'package:dio/dio.dart';
+
+import '../../../core/network/api_client.dart';
 import '../../../core/network/graphql_client.dart';
+import '../../../core/utils/file_download.dart';
 import '../../../shared/models/analytics_metric.dart';
 import '../../therapist/models/eip_session_note_model.dart';
 
@@ -55,6 +60,7 @@ class StaffSessionNoteSummaryModel {
     required this.therapistName,
     this.sessionDate,
     required this.isFullySigned,
+    this.hasServiceLog = false,
   });
 
   final String sessionId;
@@ -62,6 +68,7 @@ class StaffSessionNoteSummaryModel {
   final String therapistName;
   final String? sessionDate;
   final bool isFullySigned;
+  final bool hasServiceLog;
 }
 
 class AgencyTherapistModel {
@@ -251,9 +258,10 @@ class AgencyScreeningFunnelModel {
 }
 
 class AgencyRepository {
-  AgencyRepository(this._graphql);
+  AgencyRepository(this._graphql, this._api);
 
   final GraphqlClient _graphql;
+  final ApiClient _api;
 
   static const _dashboardQuery = r'''
     query AgencyDashboard {
@@ -735,7 +743,7 @@ class AgencyRepository {
     const query = r'''
       query {
         agencySessionNotes {
-          sessionId childName therapistName sessionDate isFullySigned
+          sessionId childName therapistName sessionDate isFullySigned hasServiceLog
         }
       }
     ''';
@@ -749,9 +757,19 @@ class AgencyRepository {
             therapistName: e['therapistName'] as String? ?? '',
             sessionDate: e['sessionDate'] as String?,
             isFullySigned: e['isFullySigned'] as bool? ?? false,
+            hasServiceLog: e['hasServiceLog'] as bool? ?? false,
           ),
         )
         .toList();
+  }
+
+  Future<String> downloadServiceLogPdf(String sessionId) async {
+    final response = await _api.dio.get<List<int>>(
+      '/service-logs/agency/$sessionId/pdf',
+      options: Options(responseType: ResponseType.bytes),
+    );
+    final bytes = Uint8List.fromList(response.data ?? []);
+    return downloadBytes(bytes, 'service-log-$sessionId.pdf');
   }
 
   Future<Map<String, dynamic>> fetchSessionNoteFormContext(

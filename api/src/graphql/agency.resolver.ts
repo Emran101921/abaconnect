@@ -418,6 +418,7 @@ export class AgencyResolver {
         isEipFormFullySigned(
           s.soapNote?.eipFormData as Record<string, unknown> | null,
         ),
+      hasServiceLog: s.serviceLog != null,
     }));
   }
 

@@ -63,10 +63,24 @@ Run migrations before deploy:
 cd api && npx prisma migrate deploy
 ```
 
+## June 2026 security architecture expansion
+
+| Area | Implementation |
+|------|----------------|
+| Extended RBAC | `BILLING_STAFF`, `COMPLIANCE_AUDITOR`, `SUPPORT_STAFF` + `permissions.ts` matrix |
+| Permissions guard | `@Permissions()` + `PermissionsGuard` on admin security routes |
+| Audit enrichment | `actorRole`, `patientId`, `success`, `deviceId`, `fieldChanges` (redacted) |
+| Claim security | `ClaimSecurityService` — lock on submit, edit history, duplicate detection, resubmit |
+| Provider onboarding gate | `ProviderOnboardingService` blocks therapist PHI until approved |
+| Legal documents | `ComplianceDocument` + acceptance tracking with IP/user agent |
+| Admin security dashboard | `GET /admin/security/dashboard`, user disable / MFA reset |
+| PHI in notifications | Generic in-app + push bodies for messages |
+| Hosting guide | `docs/hipaa/HOSTING.md` |
+
 ## Known gaps (not yet in code)
 
 - Postgres RLS (app-layer tenant middleware only)
-- Field-level encryption for all PHI columns in Postgres
+- Field-level encryption for all PHI columns in Postgres (expanded but not exhaustive)
 - Email verification gate (`emailVerifiedAt` unused)
 - Automated retention purge / legal-hold scheduler
 - WORM / immutable audit storage backend

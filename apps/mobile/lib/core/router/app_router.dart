@@ -42,6 +42,8 @@ import '../../features/parent/presentation/reviews_screen.dart';
 import '../../features/parent/presentation/screening_screen.dart';
 import '../../features/parent/presentation/treatment_plans_screen.dart';
 import '../../features/compliance/presentation/admin_compliance_screen.dart';
+import '../../features/compliance/presentation/admin_security_dashboard_screen.dart';
+import '../../features/compliance/presentation/legal_documents_screen.dart';
 import '../../features/compliance/presentation/hipaa_privacy_notice_screen.dart';
 import '../../features/compliance/presentation/phi_access_report_screen.dart';
 import '../../features/compliance/presentation/privacy_center_screen.dart';
@@ -58,6 +60,7 @@ import '../../features/therapist/presentation/eip_session_note_screen.dart';
 import '../../features/therapist/presentation/session_notes_screen.dart';
 import '../../features/therapist/presentation/staff_session_notes_screen.dart';
 import '../../features/therapist/presentation/therapist_appointments_screen.dart';
+import '../../features/therapist/presentation/provider_onboarding_screen.dart';
 import '../../features/therapist/presentation/therapist_home_screen.dart';
 import '../../features/therapist/presentation/therapist_payouts_screen.dart';
 import '../../features/therapist/presentation/therapist_plans_screen.dart';
@@ -79,6 +82,7 @@ abstract final class AppRoutes {
   static const parentScreening = '/parent/screening';
   static const parentReviews = '/parent/reviews';
   static const therapistHome = '/therapist';
+  static const providerOnboarding = '/therapist/onboarding';
   static const therapistProfile = '/therapist/profile';
   static const therapistAppointments = '/therapist/appointments';
   static const therapistSessionNotes = '/therapist/session-notes';
@@ -113,6 +117,9 @@ abstract final class AppRoutes {
   static const adminCompliancePrivacyRequests =
       '/admin/compliance/privacy-requests';
   static const adminComplianceAuditLogs = '/admin/compliance/audit-logs';
+  static const adminSecurityDashboard = '/admin/compliance/security-dashboard';
+  static const legalDocuments = '/legal-documents';
+  static const legalDocumentDetail = '/legal-documents/detail';
   static const phiAccessReport = '/phi-access-report';
   static const security = '/security';
   static const parentAppointments = '/parent/appointments';
@@ -134,11 +141,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final auth = ref.read(authStateProvider);
       final hipaaConsentGranted = ref.read(hipaaConsentGrantedProvider);
       final mfaEnabled = ref.read(mfaEnabledProvider);
+      final providerPhiAccessApproved =
+          ref.read(providerPhiAccessApprovedProvider);
       return resolveAuthRedirect(
         auth: auth,
         matchedLocation: state.matchedLocation,
         hipaaConsentGranted: hipaaConsentGranted,
         mfaEnabled: mfaEnabled,
+        providerPhiAccessApproved: providerPhiAccessApproved,
       );
     },
     routes: [
@@ -250,6 +260,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             ),
           ),
         ],
+      ),
+      GoRoute(
+        path: AppRoutes.providerOnboarding,
+        name: 'providerOnboarding',
+        builder: (context, state) => const ProviderOnboardingScreen(),
       ),
       GoRoute(
         path: AppRoutes.therapistHome,
@@ -493,6 +508,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 builder: (context, state) =>
                     const AdminComplianceAuditLogsScreen(),
               ),
+              GoRoute(
+                path: 'security-dashboard',
+                name: 'adminSecurityDashboard',
+                builder: (context, state) =>
+                    const AdminSecurityDashboardScreen(),
+              ),
             ],
           ),
           GoRoute(
@@ -600,6 +621,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const PrivacyDocumentScreen(
           kind: PrivacyDocumentKind.privacyPolicy,
         ),
+      ),
+      GoRoute(
+        path: AppRoutes.legalDocuments,
+        name: 'legalDocuments',
+        builder: (context, state) => const LegalDocumentsScreen(),
+        routes: [
+          GoRoute(
+            path: 'detail',
+            name: 'legalDocumentDetail',
+            builder: (context, state) => LegalDocumentDetailScreen(
+              documentId: state.uri.queryParameters['id'] ?? '',
+            ),
+          ),
+        ],
       ),
       GoRoute(
         path: AppRoutes.settingsPrivacy,

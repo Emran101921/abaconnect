@@ -18,6 +18,9 @@ enum UserRole {
   THERAPIST
   AGENCY_ADMIN
   PLATFORM_ADMIN
+  BILLING_STAFF
+  COMPLIANCE_AUDITOR
+  SUPPORT_STAFF
 }
 
 enum TherapyType {
@@ -108,10 +111,43 @@ enum AuditAction {
   DELETE
   LOGIN
   LOGOUT
+  LOGIN_FAILED
   EXPORT
   ACCESS_DENIED
   CONSENT_GRANTED
   CONSENT_REVOKED
+  FILE_UPLOADED
+  FILE_DOWNLOADED
+  NOTE_CREATED
+  NOTE_EDITED
+  CLAIM_CREATED
+  CLAIM_SUBMITTED
+  CLAIM_RESUBMITTED
+  PERMISSION_CHANGED
+  USER_INVITED
+  USER_DISABLED
+  REPORT_EXPORTED
+  PAYMENT_EVENT
+  MESSAGE_SENT
+  ARCHIVE
+}
+
+enum ComplianceDocumentType {
+  PRIVACY_POLICY
+  TERMS_OF_USE
+  HIPAA_NOTICE
+  CONSENT_FORM
+  DATA_RETENTION_POLICY
+  BREACH_NOTIFICATION_POLICY
+  CONTACT_COMPLIANCE_OFFICER
+}
+
+enum ProviderOnboardingStatus {
+  PENDING
+  IN_REVIEW
+  APPROVED
+  SUSPENDED
+  INACTIVE
 }
 
 enum PrivacyRightsRequestType {
@@ -210,8 +246,12 @@ model Tenant {
   treatmentPlans       TreatmentPlan[]
   telehealthSessions   TelehealthSession[]
   locationEvents       LocationEvent[]
+  serviceLogs          ServiceLog[]
   providerBadges       ProviderBadge[]
   securityEvents       SecurityEvent[]
+  complianceDocuments  ComplianceDocument[]
+  complianceDocumentAcceptances ComplianceDocumentAcceptance[]
+  claimEditHistories   ClaimEditHistory[]
 
   @@map("tenants")
 }
@@ -264,6 +304,12 @@ model User {
   complaintsFiled       Complaint[]           @relation("ComplaintReporter")
   complaintsAssigned    Complaint[]           @relation("ComplaintAssignee")
   disputesOpened        Dispute[]             @relation("DisputeOpener")
+  complianceDocumentsCreated ComplianceDocument[] @relation("ComplianceDocCreatedBy")
+  complianceDocumentAcceptances ComplianceDocumentAcceptance[]
+  claimsCreated         InsuranceClaim[]      @relation("ClaimCreatedBy")
+  claimsSubmitted       InsuranceClaim[]      @relation("ClaimSubmittedBy")
+  claimEdits            ClaimEditHistory[]    @relation("ClaimEditor")
+  therapistsApproved    Therapist[]           @relation("TherapistApprovedBy")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -382,6 +428,7 @@ model Child {
   treatmentPlans     TreatmentPlan[]
   documents          Document[]
   insuranceClaims    InsuranceClaim[]
+  serviceLogs        ServiceLog[]
 
   @@index([parentId])
   @@index([tenantId])
@@ -471,10 +518,20 @@ model Therapist {
   ratingAverage     Decimal       @default(0) @map("rating_average") @db.Decimal(3, 2)
   ratingCount       Int           @default(0) @map("rating_count")
   stripeAccountId   String?       @map("stripe_account_id")
+  taxId             String?       @map("tax_id")
+  backgroundCheckStatus String?     @map("background_check_status")
+  backgroundCheckCompletedAt DateTime? @map("background_check_completed_at")
+  hipaaTrainingAttestedAt DateTime? @map("hipaa_training_attested_at")
+  confidentialityAgreementSignedAt DateTime? @map("confidentiality_agreement_signed_at")
+  agencyApprovedAt  DateTime?     @map("agency_approved_at")
+  agencyApprovedById String?        @map("agency_approved_by_id") @db.Uuid
+  onboardingStatus  ProviderOnboardingStatus @default(PENDING) @map("onboarding_status")
+  phiAccessApproved Boolean       @default(false) @map("phi_access_approved")
   createdAt         DateTime      @default(now()) @map("created_at")
   updatedAt         DateTime      @updatedAt @map("updated_at")
 
   user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agencyApprovedBy  User?             @relation("TherapistApprovedBy", fields: [agencyApprovedById], references: [id], onDelete: SetNull)
   tenant            Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   agencyLinks       AgencyTherapist[]
   appointments      Appointment[]
@@ -485,8 +542,11 @@ model Therapist {
   reviews           Review[]
   providerBadges    ProviderBadge[]
   complaints        Complaint[]
+  serviceLogs       ServiceLog[]
+  insuranceClaims   InsuranceClaim[]
 
   @@index([tenantId])
+  @@index([onboardingStatus])
   @@index([isVerified, isAcceptingClients])
   @@index([latitude, longitude])
   @@map("therapists")
@@ -608,6 +668,7 @@ model Session {
   child          Child           @relation(fields: [childId], references: [id], onDelete: Cascade)
   therapist      Therapist       @relation(fields: [therapistId], references: [id], onDelete: Cascade)
   soapNote        SoapNote?
+  serviceLog      ServiceLog?
   progressNote    ProgressNote?
   locationEvents  LocationEvent[]
   payment         Payment?
@@ -634,11 +695,44 @@ model SoapNote {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  author  User    @relation("SoapNoteAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  session    Session     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  author     User        @relation("SoapNoteAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  serviceLog ServiceLog?
 
   @@index([authorId])
   @@map("soap_notes")
+}
+
+model ServiceLog {
+  id                     String    @id @default(uuid()) @db.Uuid
+  tenantId               String    @map("tenant_id") @db.Uuid
+  sessionId              String    @unique @map("session_id") @db.Uuid
+  soapNoteId             String    @unique @map("soap_note_id") @db.Uuid
+  childId                String    @map("child_id") @db.Uuid
+  therapistId            String    @map("therapist_id") @db.Uuid
+  therapistSignatureName String?   @map("therapist_signature_name")
+  therapistSignedAt      DateTime? @map("therapist_signed_at")
+  parentSignatureName    String?   @map("parent_signature_name")
+  parentSignatureDate    String?   @map("parent_signature_date")
+  parentSignedAt         DateTime? @map("parent_signed_at")
+  parentSignatureLat     Decimal?  @map("parent_signature_lat") @db.Decimal(10, 7)
+  parentSignatureLng     Decimal?  @map("parent_signature_lng") @db.Decimal(10, 7)
+  logData                Json      @map("log_data")
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
+
+  session   Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  soapNote  SoapNote  @relation(fields: [soapNoteId], references: [id], onDelete: Cascade)
+  child     Child     @relation(fields: [childId], references: [id], onDelete: Cascade)
+  therapist Therapist @relation(fields: [therapistId], references: [id], onDelete: Cascade)
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([childId])
+  @@index([therapistId])
+  @@index([parentSignedAt])
+  @@index([therapistSignedAt])
+  @@map("service_logs")
 }
 
 model ProgressNote {
@@ -927,16 +1021,25 @@ model InsuranceClaim {
   parentId        String      @map("parent_id") @db.Uuid
   childId         String      @map("child_id") @db.Uuid
   sessionId       String?     @unique @map("session_id") @db.Uuid
+  therapistId     String?     @map("therapist_id") @db.Uuid
+  createdById     String?     @map("created_by_id") @db.Uuid
+  submittedById   String?     @map("submitted_by_id") @db.Uuid
+  resubmissionOfId String?    @unique @map("resubmission_of_id") @db.Uuid
   claimNumber     String?     @map("claim_number")
   payerName       String      @map("payer_name")
   status          ClaimStatus @default(DRAFT)
+  paymentStatus   String?     @map("payment_status")
+  cptCode         String?     @map("cpt_code")
+  authorizationNumber String? @map("authorization_number")
   billedAmount    Decimal     @map("billed_amount") @db.Decimal(10, 2)
   approvedAmount  Decimal?    @map("approved_amount") @db.Decimal(10, 2)
   paidAmount      Decimal?    @map("paid_amount") @db.Decimal(10, 2)
   serviceDate     DateTime    @map("service_date") @db.Date
   submittedAt     DateTime?   @map("submitted_at")
+  lockedAt        DateTime?   @map("locked_at")
   resolvedAt      DateTime?   @map("resolved_at")
   denialReason    String?     @map("denial_reason")
+  duplicateHash   String?     @map("duplicate_hash")
   metadata        Json        @default("{}")
   createdAt       DateTime    @default(now()) @map("created_at")
   updatedAt       DateTime    @updatedAt @map("updated_at")
@@ -945,12 +1048,42 @@ model InsuranceClaim {
   parent  Parent   @relation(fields: [parentId], references: [id], onDelete: Cascade)
   child   Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
   session Session? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  therapist Therapist? @relation(fields: [therapistId], references: [id], onDelete: SetNull)
+  createdBy User?  @relation("ClaimCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  submittedBy User? @relation("ClaimSubmittedBy", fields: [submittedById], references: [id], onDelete: SetNull)
+  resubmissionOf InsuranceClaim? @relation("ClaimResubmission", fields: [resubmissionOfId], references: [id], onDelete: SetNull)
+  resubmissions InsuranceClaim[] @relation("ClaimResubmission")
+  editHistory ClaimEditHistory[]
 
   @@index([tenantId])
   @@index([parentId])
   @@index([childId])
+  @@index([therapistId])
   @@index([status])
+  @@index([duplicateHash])
   @@map("insurance_claims")
+}
+
+model ClaimEditHistory {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  claimId      String   @map("claim_id") @db.Uuid
+  editorId     String   @map("editor_id") @db.Uuid
+  editorRole   String?  @map("editor_role")
+  action       String
+  fieldChanges Json     @default("{}") @map("field_changes")
+  ipAddress    String?  @map("ip_address")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  claim  InsuranceClaim @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  editor User @relation("ClaimEditor", fields: [editorId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([claimId])
+  @@index([editorId])
+  @@index([createdAt])
+  @@map("claim_edit_history")
 }
 
 // ---------------------------------------------------------------------------
@@ -1063,9 +1196,13 @@ model AuditLog {
   id         String      @id @default(uuid()) @db.Uuid
   tenantId   String      @map("tenant_id") @db.Uuid
   actorId    String?     @map("actor_id") @db.Uuid
+  actorRole  String?     @map("actor_role")
   action     AuditAction
   entityType String      @map("entity_type")
   entityId   String?     @map("entity_id") @db.Uuid
+  patientId  String?     @map("patient_id") @db.Uuid
+  success    Boolean     @default(true)
+  deviceId   String?     @map("device_id")
   metadata   Json        @default("{}")
   ipAddress  String?     @map("ip_address")
   userAgent  String?     @map("user_agent")
@@ -1076,10 +1213,54 @@ model AuditLog {
 
   @@index([tenantId])
   @@index([actorId])
+  @@index([actorRole])
   @@index([action])
   @@index([entityType, entityId])
+  @@index([patientId])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+model ComplianceDocument {
+  id            String                 @id @default(uuid()) @db.Uuid
+  tenantId      String?                @map("tenant_id") @db.Uuid
+  documentType  ComplianceDocumentType @map("document_type")
+  version       String
+  title         String
+  content       String                 @db.Text
+  effectiveDate DateTime               @map("effective_date")
+  isActive      Boolean                @default(false) @map("is_active")
+  createdById   String?                @map("created_by_id") @db.Uuid
+  publishedAt   DateTime?              @map("published_at")
+  createdAt     DateTime               @default(now()) @map("created_at")
+  updatedAt     DateTime               @updatedAt @map("updated_at")
+
+  tenant      Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy   User?   @relation("ComplianceDocCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  acceptances ComplianceDocumentAcceptance[]
+
+  @@unique([tenantId, documentType, version])
+  @@index([tenantId, documentType, isActive])
+  @@map("compliance_documents")
+}
+
+model ComplianceDocumentAcceptance {
+  id         String   @id @default(uuid()) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  documentId String   @map("document_id") @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
+  acceptedAt DateTime @default(now()) @map("accepted_at")
+
+  tenant   Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  document ComplianceDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, documentId])
+  @@index([tenantId])
+  @@index([documentId])
+  @@map("compliance_document_acceptances")
 }
 
 model SecurityEvent {

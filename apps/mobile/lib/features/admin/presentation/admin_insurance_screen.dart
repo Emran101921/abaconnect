@@ -59,6 +59,19 @@ class AdminInsuranceScreen extends ConsumerWidget {
                           const Text('837 EDI payload ready'),
                         if (c.clearinghouseStatus != null)
                           Text('Clearinghouse: ${c.clearinghouseStatus}'),
+                        if (c.resubmissionOfId != null)
+                          const Text('Resubmission draft'),
+                        if (c.isLocked &&
+                            c.status == 'DENIED' &&
+                            c.resubmissionOfId == null) ...[
+                          const SizedBox(height: 12),
+                          OutlinedButton.icon(
+                            onPressed: () =>
+                                _resubmit(context, ref, c),
+                            icon: const Icon(Icons.replay),
+                            label: const Text('Create resubmission'),
+                          ),
+                        ],
                         if (actionable) ...[
                           const SizedBox(height: 12),
                           Wrap(
@@ -114,6 +127,28 @@ class AdminInsuranceScreen extends ConsumerWidget {
         },
       ),
     );
+  }
+
+  Future<void> _resubmit(
+    BuildContext context,
+    WidgetRef ref,
+    AdminInsuranceClaimModel c,
+  ) async {
+    try {
+      await ref.read(adminRepositoryProvider).resubmitInsuranceClaim(c.id);
+      ref.invalidate(adminInsuranceClaimsProvider);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Resubmission draft created')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Resubmit failed: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _submitClearinghouse(

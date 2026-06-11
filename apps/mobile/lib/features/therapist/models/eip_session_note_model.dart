@@ -60,6 +60,7 @@ class EipSessionNoteModel {
     this.supervisorName,
     this.supervisorSignatureDate,
     this.supervisorLicense,
+    this.serverLocked = false,
   });
 
   final String sessionId;
@@ -119,6 +120,9 @@ class EipSessionNoteModel {
   final String? supervisorName;
   final String? supervisorSignatureDate;
   final String? supervisorLicense;
+
+  /// True when the server has a fully signed, locked note (not merely local signatures).
+  final bool serverLocked;
 
   bool get hasRequiredClinicalFields =>
       q1IfspOutcomes.trim().isNotEmpty &&
@@ -279,6 +283,7 @@ class EipSessionNoteModel {
     String? supervisorName,
     String? supervisorSignatureDate,
     String? supervisorLicense,
+    bool? serverLocked,
   }) {
     return EipSessionNoteModel(
       sessionId: sessionId,
@@ -352,10 +357,12 @@ class EipSessionNoteModel {
       supervisorSignatureDate:
           supervisorSignatureDate ?? this.supervisorSignatureDate,
       supervisorLicense: supervisorLicense ?? this.supervisorLicense,
+      serverLocked: serverLocked ?? this.serverLocked,
     );
   }
 
   factory EipSessionNoteModel.fromContext(Map<String, dynamic> ctx) {
+    final serverLocked = ctx['isFullySigned'] as bool? ?? false;
     EipSessionNoteModel? existing;
     final raw = ctx['existingEipFormData'] as String?;
     if (raw != null && raw.isNotEmpty) {
@@ -395,13 +402,15 @@ class EipSessionNoteModel {
     );
 
     if (existing != null) {
-      return existing.withProfileCredentials(
-        npi: base.npi,
-        licenseNumber: base.licenseNumber,
-        licenseState: base.licenseState,
-      );
+      return existing
+          .withProfileCredentials(
+            npi: base.npi,
+            licenseNumber: base.licenseNumber,
+            licenseState: base.licenseState,
+          )
+          .copyWith(serverLocked: serverLocked);
     }
-    return base;
+    return base.copyWith(serverLocked: serverLocked);
   }
 
   /// Fills NPI and license from therapist profile when not already on the form.

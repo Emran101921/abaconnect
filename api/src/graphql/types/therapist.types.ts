@@ -25,6 +25,42 @@ export class TherapistDashboardType {
 }
 
 @ObjectType()
+export class ProviderOnboardingChecklistType {
+  @Field()
+  identityComplete: boolean;
+
+  @Field()
+  licenseComplete: boolean;
+
+  @Field()
+  npiComplete: boolean;
+
+  @Field()
+  taxIdComplete: boolean;
+
+  @Field()
+  backgroundCheckComplete: boolean;
+
+  @Field()
+  hipaaTrainingComplete: boolean;
+
+  @Field()
+  confidentialityAgreementComplete: boolean;
+
+  @Field()
+  agencyApprovalComplete: boolean;
+
+  @Field()
+  isActive: boolean;
+
+  @Field()
+  phiAccessApproved: boolean;
+
+  @Field()
+  onboardingStatus: string;
+}
+
+@ObjectType()
 export class TherapistProfileType {
   @Field(() => ID)
   id: string;
@@ -85,6 +121,30 @@ export class TherapistAppointmentType {
 }
 
 @ObjectType()
+export class ServiceLogType {
+  @Field(() => ID)
+  id: string;
+
+  @Field({ nullable: true })
+  therapistSignatureName?: string;
+
+  @Field({ nullable: true })
+  therapistSignedAt?: string;
+
+  @Field({ nullable: true })
+  parentSignatureName?: string;
+
+  @Field({ nullable: true })
+  parentSignatureDate?: string;
+
+  @Field({ nullable: true })
+  parentSignedAt?: string;
+
+  @Field()
+  childName: string;
+}
+
+@ObjectType()
 export class SoapNoteType {
   @Field(() => ID)
   id: string;
@@ -106,6 +166,9 @@ export class SoapNoteType {
 
   @Field()
   eipFormFullySigned: boolean;
+
+  @Field(() => ServiceLogType, { nullable: true })
+  serviceLog?: ServiceLogType;
 }
 
 @ObjectType()
@@ -184,6 +247,9 @@ export class StaffSessionNoteSummaryType {
 
   @Field()
   isFullySigned: boolean;
+
+  @Field()
+  hasServiceLog: boolean;
 }
 
 @ObjectType()
@@ -199,4 +265,7 @@ export class TherapistSessionType {
 
   @Field(() => SoapNoteType, { nullable: true })
   soapNote?: SoapNoteType;
+
+  @Field(() => ServiceLogType, { nullable: true })
+  serviceLog?: ServiceLogType;
 }

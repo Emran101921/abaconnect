@@ -1,3 +1,4 @@
+import { NotFoundException } from '@nestjs/common';
 import { Args, ID, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Roles } from '../common/decorators/roles.decorator';
 import {
@@ -5,6 +6,7 @@ import {
   CurrentUser,
 } from '../common/decorators/current-user.decorator';
 import { AdminService } from '../admin/admin.service';
+import { ProviderOnboardingService } from '../compliance/provider-onboarding.service';
 import { AgenciesService } from '../agencies/agencies.service';
 import { ComplaintsService } from '../complaints/complaints.service';
 import { InsuranceService } from '../insurance/insurance.service';
@@ -52,6 +54,7 @@ export class AdminResolver {
     private readonly insuranceService: InsuranceService,
     private readonly screeningsService: ScreeningsService,
     private readonly sessionsService: SessionsService,
+    private readonly providerOnboarding: ProviderOnboardingService,
   ) {}
 
   @Query(() => AdminDashboardType, { name: 'adminDashboard' })
@@ -86,6 +89,8 @@ export class AdminResolver {
       isVerified: t.isVerified,
       licenseNumber: t.licenseNumber ?? undefined,
       licenseState: t.licenseState ?? undefined,
+      onboardingStatus: t.onboardingStatus,
+      phiAccessApproved: t.phiAccessApproved,
       user: {
         firstName: t.user.firstName,
         lastName: t.user.lastName,
@@ -387,6 +392,20 @@ export class AdminResolver {
     return this.mapInsuranceClaim(row);
   }
 
+  @Mutation(() => AdminInsuranceClaimType, { name: 'resubmitInsuranceClaim' })
+  async resubmitInsuranceClaim(
+    @CurrentUser() user: AuthUser,
+    @Args('claimId', { type: () => ID }) claimId: string,
+  ): Promise<AdminInsuranceClaimType> {
+    const row = await this.insuranceService.resubmitClaimForTenant(
+      user.tenantId ?? '',
+      claimId,
+      user.id,
+      user.roles?.[0],
+    );
+    return this.mapInsuranceClaim(row);
+  }
+
   @Mutation(() => AdminUserType, { name: 'setUserActive' })
   async setUserActive(
     @CurrentUser() user: AuthUser,
@@ -412,15 +431,21 @@ export class AdminResolver {
     @CurrentUser() user: AuthUser,
     @Args('therapistId', { type: () => ID }) therapistId: string,
   ): Promise<PendingTherapistType> {
-    const t = await this.adminService.verifyTherapist(
+    const t = await this.providerOnboarding.approveProvider(
       therapistId,
-      user.tenantId,
+      user.id,
+      user.tenantId ?? '',
     );
+    if (!t) {
+      throw new NotFoundException('Therapist not found');
+    }
     return {
       id: t.id,
       isVerified: t.isVerified,
       licenseNumber: t.licenseNumber ?? undefined,
       licenseState: t.licenseState ?? undefined,
+      onboardingStatus: t.onboardingStatus,
+      phiAccessApproved: t.phiAccessApproved,
       user: {
         firstName: t.user.firstName,
         lastName: t.user.lastName,
@@ -439,6 +464,8 @@ export class AdminResolver {
     denialReason?: string | null;
     claimNumber?: string | null;
     sessionId?: string | null;
+    lockedAt?: Date | null;
+    resubmissionOfId?: string | null;
     metadata?: unknown;
     child?: { firstName: string; lastName: string };
     parent?: { user: { email: string } };
@@ -462,6 +489,8 @@ export class AdminResolver {
       sessionId: c.sessionId ?? undefined,
       ediReady: Boolean(meta.ediReady),
       clearinghouseStatus: clearinghouse?.status,
+      lockedAt: c.lockedAt ?? undefined,
+      resubmissionOfId: c.resubmissionOfId ?? undefined,
     };
   }
 
@@ -486,6 +515,7 @@ export class AdminResolver {
         isEipFormFullySigned(
           s.soapNote?.eipFormData as Record<string, unknown> | null,
         ),
+      hasServiceLog: s.serviceLog != null,
     }));
   }
 

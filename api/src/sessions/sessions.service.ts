@@ -10,10 +10,12 @@ import { InsuranceService } from '../insurance/insurance.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
+  hasInterventionistSignature,
   hasParentSignature,
   isEipFormFullySigned,
   isReadyForParentSignature,
 } from './eip-form.util';
+import { ServiceLogService } from './service-log.service';
 
 export interface SaveSoapNoteInput {
   sessionId: string;
@@ -31,6 +33,7 @@ export class SessionsService {
     private readonly phiAudit: PhiAuditService,
     private readonly notifications: NotificationsService,
     private readonly insurance: InsuranceService,
+    private readonly serviceLogs: ServiceLogService,
   ) {}
 
   async findHistoryForParentUserId(userId: string) {
@@ -48,6 +51,7 @@ export class SessionsService {
         therapist: { include: { user: true } },
         appointment: true,
         progressNote: true,
+        serviceLog: true,
       },
       orderBy: { createdAt: 'desc' },
       take: 50,
@@ -74,6 +78,7 @@ export class SessionsService {
         child: true,
         appointment: true,
         soapNote: true,
+        serviceLog: true,
       },
       orderBy: { createdAt: 'desc' },
       take: 50,
@@ -352,6 +357,23 @@ export class SessionsService {
       },
     });
 
+    if (eipFormData != null) {
+      const mergedEip = {
+        ...(session.soapNote?.eipFormData as Record<string, unknown> | null),
+        ...eipFormData,
+      };
+      if (
+        hasInterventionistSignature(mergedEip) ||
+        hasParentSignature(mergedEip)
+      ) {
+        await this.serviceLogs.ensureFromSessionNote(
+          session.id,
+          note.id,
+          mergedEip,
+        );
+      }
+    }
+
     if (session.status === 'PENDING_DOCUMENTATION') {
       await this.prisma.session.update({
         where: { id: session.id },
@@ -366,6 +388,10 @@ export class SessionsService {
     }
 
     return note;
+  }
+
+  async findServiceLogBySessionId(sessionId: string) {
+    return this.serviceLogs.findBySessionId(sessionId);
   }
 
   async saveSoapNote(userId: string, input: SaveSoapNoteInput) {
@@ -577,6 +603,7 @@ export class SessionsService {
         child: true,
         appointment: true,
         soapNote: true,
+        serviceLog: true,
         therapist: { include: { user: true } },
       },
       orderBy: { updatedAt: 'desc' },
@@ -603,6 +630,7 @@ export class SessionsService {
         child: true,
         appointment: true,
         soapNote: true,
+        serviceLog: true,
         therapist: { include: { user: true } },
       },
       orderBy: { updatedAt: 'desc' },

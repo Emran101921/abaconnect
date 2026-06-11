@@ -306,4 +306,34 @@ class PrivacyRepository {
     );
     return (res.data ?? []).cast<Map<String, dynamic>>();
   }
+
+  Future<Map<String, dynamic>> adminSecurityDashboard() async {
+    final res = await _api.get<Map<String, dynamic>>(
+      '/admin/security/dashboard',
+    );
+    return res.data ?? {};
+  }
+
+  Future<List<Map<String, dynamic>>> listPendingLegalDocuments() async {
+    final res = await _api.get<List<dynamic>>(
+      '/compliance/documents/me/pending',
+    );
+    return (res.data ?? []).cast<Map<String, dynamic>>();
+  }
+
+  Future<void> acceptLegalDocument(String documentId) async {
+    await _api.post('/compliance/documents/$documentId/accept', data: {});
+  }
+
+  Future<void> adminDisableUser(String userId) async {
+    await _api.post('/admin/security/users/$userId/disable');
+  }
+
+  Future<void> adminForcePasswordReset(String userId) async {
+    await _api.post('/admin/security/users/$userId/force-password-reset');
+  }
+
+  Future<void> adminResetMfa(String userId) async {
+    await _api.post('/admin/security/users/$userId/reset-mfa');
+  }
 }

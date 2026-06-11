@@ -188,6 +188,8 @@ class PendingTherapistModel {
     required this.email,
     this.licenseNumber,
     this.licenseState,
+    this.onboardingStatus,
+    this.phiAccessApproved,
   });
 
   final String id;
@@ -195,6 +197,8 @@ class PendingTherapistModel {
   final String email;
   final String? licenseNumber;
   final String? licenseState;
+  final String? onboardingStatus;
+  final bool? phiAccessApproved;
 }
 
 class AdminComplaintModel {
@@ -252,6 +256,8 @@ class AdminInsuranceClaimModel {
     this.sessionId,
     this.ediReady,
     this.clearinghouseStatus,
+    this.lockedAt,
+    this.resubmissionOfId,
   });
 
   final String id;
@@ -267,6 +273,12 @@ class AdminInsuranceClaimModel {
   final String? sessionId;
   final bool? ediReady;
   final String? clearinghouseStatus;
+  final DateTime? lockedAt;
+  final String? resubmissionOfId;
+
+  bool get isLocked =>
+      lockedAt != null ||
+      ['SUBMITTED', 'PAID', 'APPROVED'].contains(status);
 }
 
 class AuditLogModel {
@@ -646,6 +658,8 @@ class AdminRepository {
           id
           licenseNumber
           licenseState
+          onboardingStatus
+          phiAccessApproved
           user { firstName lastName email }
         }
       }
@@ -662,6 +676,8 @@ class AdminRepository {
         email: user['email'] as String,
         licenseNumber: e['licenseNumber'] as String?,
         licenseState: e['licenseState'] as String?,
+        onboardingStatus: e['onboardingStatus'] as String?,
+        phiAccessApproved: e['phiAccessApproved'] as bool?,
       );
     }).toList();
   }
@@ -801,6 +817,7 @@ class AdminRepository {
           id status payerName billedAmount approvedAmount serviceDate
           childName parentEmail denialReason
           claimNumber sessionId ediReady clearinghouseStatus
+          lockedAt resubmissionOfId
         }
       }
     ''';
@@ -823,9 +840,22 @@ class AdminRepository {
             sessionId: e['sessionId'] as String?,
             ediReady: e['ediReady'] as bool?,
             clearinghouseStatus: e['clearinghouseStatus'] as String?,
+            lockedAt: e['lockedAt'] != null
+                ? DateTime.parse(e['lockedAt'] as String)
+                : null,
+            resubmissionOfId: e['resubmissionOfId'] as String?,
           ),
         )
         .toList();
+  }
+
+  Future<void> resubmitInsuranceClaim(String claimId) async {
+    const mutation = r'''
+      mutation Resubmit($claimId: ID!) {
+        resubmitInsuranceClaim(claimId: $claimId) { id status }
+      }
+    ''';
+    await _graphql.query(mutation, variables: {'claimId': claimId});
   }
 
   Future<void> submitClaimToClearinghouse(String claimId) async {
@@ -874,7 +904,7 @@ class AdminRepository {
     const query = r'''
       query {
         adminSessionNotes {
-          sessionId childName therapistName sessionDate isFullySigned
+          sessionId childName therapistName sessionDate isFullySigned hasServiceLog
         }
       }
     ''';
@@ -888,6 +918,7 @@ class AdminRepository {
             therapistName: e['therapistName'] as String? ?? '',
             sessionDate: e['sessionDate'] as String?,
             isFullySigned: e['isFullySigned'] as bool? ?? false,
+            hasServiceLog: e['hasServiceLog'] as bool? ?? false,
           ),
         )
         .toList();

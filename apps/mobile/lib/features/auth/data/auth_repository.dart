@@ -85,6 +85,7 @@ class MeProfile {
     this.mfaEnabled = false,
     this.hipaaConsentGranted = false,
     this.onboardingComplete = true,
+    this.providerPhiAccessApproved,
   });
 
   final String id;
@@ -98,6 +99,7 @@ class MeProfile {
   final bool mfaEnabled;
   final bool hipaaConsentGranted;
   final bool onboardingComplete;
+  final bool? providerPhiAccessApproved;
 
   String get fullName => '$firstName $lastName';
 }
@@ -304,6 +306,8 @@ class AuthRepository {
       mfaEnabled: data['mfaEnabled'] as bool? ?? false,
       hipaaConsentGranted: data['hipaaConsentGranted'] as bool? ?? false,
       onboardingComplete: data['onboardingComplete'] as bool? ?? true,
+      providerPhiAccessApproved:
+          data['providerPhiAccessApproved'] as bool?,
     );
   }
 
@@ -405,6 +409,12 @@ class AuthRepository {
         return 'AGENCY_ADMIN';
       case UserRole.admin:
         return 'PLATFORM_ADMIN';
+      case UserRole.billing:
+        return 'BILLING_STAFF';
+      case UserRole.complianceAuditor:
+        return 'COMPLIANCE_AUDITOR';
+      case UserRole.support:
+        return 'SUPPORT_STAFF';
     }
   }
 
@@ -416,6 +426,12 @@ class AuthRepository {
         return UserRole.agency;
       case 'PLATFORM_ADMIN':
         return UserRole.admin;
+      case 'BILLING_STAFF':
+        return UserRole.billing;
+      case 'COMPLIANCE_AUDITOR':
+        return UserRole.complianceAuditor;
+      case 'SUPPORT_STAFF':
+        return UserRole.support;
       default:
         return UserRole.parent;
     }

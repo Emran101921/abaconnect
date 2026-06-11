@@ -55,6 +55,9 @@ export interface AuthMeResponse {
   privacyNoticeAcknowledged: boolean;
   activeNoticeVersion: string | null;
   onboardingComplete: boolean;
+  /** Therapists only — true when admin has approved PHI access. */
+  providerPhiAccessApproved?: boolean;
+  providerOnboardingStatus?: string;
 }
 
 @Injectable()
@@ -81,8 +84,12 @@ export class AuthService {
       await this.privacyNoticeAcknowledgmentStatus(user.id, user.tenantId);
     const hipaaConsentGranted = acknowledged;
     const requiresOnboarding = ROLES_REQUIRING_ONBOARDING.has(user.role);
+    const providerPhiAccessApproved = user.therapist?.phiAccessApproved;
+    const providerOnboardingStatus = user.therapist?.onboardingStatus;
     const onboardingComplete = requiresOnboarding
-      ? hipaaConsentGranted && user.mfaEnabled
+      ? hipaaConsentGranted &&
+        user.mfaEnabled &&
+        (user.role !== 'THERAPIST' || providerPhiAccessApproved === true)
       : true;
     return {
       id: user.id,
@@ -98,6 +105,8 @@ export class AuthService {
       privacyNoticeAcknowledged: acknowledged,
       activeNoticeVersion: activeVersion,
       onboardingComplete,
+      providerPhiAccessApproved,
+      providerOnboardingStatus,
     };
   }
 
@@ -524,10 +533,14 @@ export class AuthService {
       data: {
         tenantId: user.tenantId,
         actorId: user.id,
-        action: 'UPDATE',
-        entityType: 'user',
+        action: 'LOGIN_FAILED',
+        entityType: 'User',
         entityId: user.id,
-        metadata: { event: 'login_failed', reason },
+        success: false,
+        ipAddress: ctx?.ipAddress,
+        userAgent: ctx?.userAgent,
+        deviceId: ctx?.deviceId,
+        metadata: { reason, attempts },
       },
     });
   }

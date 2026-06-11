@@ -1,3 +1,4 @@
+import { NotFoundException } from '@nestjs/common';
 import { Args, ID, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { LocationType, TherapyType } from '../../generated/prisma/client';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -8,15 +9,18 @@ import {
 import { AppointmentsService } from '../appointments/appointments.service';
 import { isEipFormFullySigned } from '../sessions/eip-form.util';
 import { SessionsService } from '../sessions/sessions.service';
+import { ProviderOnboardingService } from '../compliance/provider-onboarding.service';
 import { TherapistsService } from '../therapists/therapists.service';
 import {
   SaveSoapNoteInput,
   UpdateTherapistProfileInput,
 } from './inputs/therapist.inputs';
 import {
+  ServiceLogType,
   SessionNoteFormContextType,
   SoapNoteType,
   TherapistAppointmentType,
+  ProviderOnboardingChecklistType,
   TherapistDashboardType,
   TherapistProfileType,
   TherapistSessionType,
@@ -29,7 +33,51 @@ export class TherapistResolver {
     private readonly therapistsService: TherapistsService,
     private readonly sessionsService: SessionsService,
     private readonly appointmentsService: AppointmentsService,
+    private readonly providerOnboarding: ProviderOnboardingService,
   ) {}
+
+  @Query(() => ProviderOnboardingChecklistType, {
+    name: 'providerOnboardingChecklist',
+  })
+  async providerOnboardingChecklist(
+    @CurrentUser() user: AuthUser,
+  ): Promise<ProviderOnboardingChecklistType> {
+    const checklist = await this.providerOnboarding.getChecklist(user.id);
+    if (!checklist) {
+      throw new NotFoundException('Provider profile not found');
+    }
+    return checklist;
+  }
+
+  @Mutation(() => ProviderOnboardingChecklistType, {
+    name: 'attestHipaaTraining',
+  })
+  async attestHipaaTraining(
+    @CurrentUser() user: AuthUser,
+  ): Promise<ProviderOnboardingChecklistType> {
+    await this.providerOnboarding.attestHipaaTraining(user.id);
+    return (await this.providerOnboarding.getChecklist(user.id))!;
+  }
+
+  @Mutation(() => ProviderOnboardingChecklistType, {
+    name: 'attestConfidentialityAgreement',
+  })
+  async attestConfidentialityAgreement(
+    @CurrentUser() user: AuthUser,
+  ): Promise<ProviderOnboardingChecklistType> {
+    await this.providerOnboarding.attestConfidentialityAgreement(user.id);
+    return (await this.providerOnboarding.getChecklist(user.id))!;
+  }
+
+  @Mutation(() => ProviderOnboardingChecklistType, {
+    name: 'submitProviderOnboarding',
+  })
+  async submitProviderOnboarding(
+    @CurrentUser() user: AuthUser,
+  ): Promise<ProviderOnboardingChecklistType> {
+    await this.providerOnboarding.submitForReview(user.id);
+    return (await this.providerOnboarding.getChecklist(user.id))!;
+  }
 
   @Query(() => TherapistDashboardType, { name: 'therapistDashboard' })
   async therapistDashboard(
@@ -102,6 +150,7 @@ export class TherapistResolver {
               ),
           }
         : undefined,
+      serviceLog: this.mapServiceLog(s.serviceLog, s.child),
     }));
   }
 
@@ -232,6 +281,9 @@ export class TherapistResolver {
     @Args('input') input: SaveSoapNoteInput,
   ): Promise<SoapNoteType> {
     const note = await this.sessionsService.saveSoapNote(user.id, input);
+    const serviceLog = await this.sessionsService.findServiceLogBySessionId(
+      input.sessionId,
+    );
     return {
       id: note.id,
       subjective: note.subjective ?? undefined,
@@ -245,6 +297,40 @@ export class TherapistResolver {
         isEipFormFullySigned(
           note.eipFormData as Record<string, unknown> | null,
         ),
+      serviceLog: serviceLog
+        ? this.mapServiceLog(serviceLog, serviceLog.session.child)
+        : undefined,
+    };
+  }
+
+  private mapServiceLog(
+    log: {
+      id: string;
+      therapistSignatureName: string | null;
+      therapistSignedAt: Date | null;
+      parentSignatureName: string | null;
+      parentSignatureDate: string | null;
+      parentSignedAt: Date | null;
+      logData: unknown;
+    } | null,
+    child?: { firstName: string; lastName: string },
+  ): ServiceLogType | undefined {
+    if (!log) return undefined;
+    const data = log.logData as Record<string, unknown> | null;
+    const childName =
+      typeof data?.childName === 'string'
+        ? data.childName
+        : child
+          ? `${child.firstName} ${child.lastName}`
+          : '';
+    return {
+      id: log.id,
+      therapistSignatureName: log.therapistSignatureName ?? undefined,
+      therapistSignedAt: log.therapistSignedAt?.toISOString(),
+      parentSignatureName: log.parentSignatureName ?? undefined,
+      parentSignatureDate: log.parentSignatureDate ?? undefined,
+      parentSignedAt: log.parentSignedAt?.toISOString(),
+      childName,
     };
   }
 

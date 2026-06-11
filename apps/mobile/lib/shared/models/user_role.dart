@@ -4,18 +4,27 @@ enum UserRole {
   parent,
   therapist,
   agency,
-  admin;
+  admin,
+  billing,
+  complianceAuditor,
+  support;
 
   String get displayName {
     switch (this) {
       case UserRole.parent:
-        return 'Parent';
+        return 'Parent / Patient';
       case UserRole.therapist:
-        return 'Therapist';
+        return 'Provider / Therapist';
       case UserRole.agency:
-        return 'Agency';
+        return 'Agency Admin';
       case UserRole.admin:
-        return 'Admin';
+        return 'Super Admin';
+      case UserRole.billing:
+        return 'Billing Staff';
+      case UserRole.complianceAuditor:
+        return 'Compliance Auditor';
+      case UserRole.support:
+        return 'Support Staff';
     }
   }
 
@@ -28,6 +37,9 @@ enum UserRole {
       case UserRole.agency:
         return '/agency';
       case UserRole.admin:
+      case UserRole.billing:
+      case UserRole.complianceAuditor:
+      case UserRole.support:
         return '/admin';
     }
   }

@@ -94,17 +94,53 @@ class SessionHistoryScreen extends ConsumerWidget {
                           ),
                         Padding(
                           padding: const EdgeInsets.only(left: 8, bottom: 8),
-                          child: TextButton.icon(
-                            onPressed: () => context.push(
-                              '${AppRoutes.parentHome}/progress-notes'
-                              '?sessionId=${s.id}',
-                            ),
-                            icon: const Icon(Icons.feedback_outlined),
-                            label: Text(
-                              s.parentFeedback == null
-                                  ? 'Leave feedback'
-                                  : 'Edit feedback',
-                            ),
+                          child: Wrap(
+                            spacing: 8,
+                            children: [
+                              TextButton.icon(
+                                onPressed: () => context.push(
+                                  '${AppRoutes.parentHome}/progress-notes'
+                                  '?sessionId=${s.id}',
+                                ),
+                                icon: const Icon(Icons.feedback_outlined),
+                                label: Text(
+                                  s.parentFeedback == null
+                                      ? 'Leave feedback'
+                                      : 'Edit feedback',
+                                ),
+                              ),
+                              if (s.hasServiceLog)
+                                TextButton.icon(
+                                  onPressed: () async {
+                                    try {
+                                      final path = await ref
+                                          .read(
+                                            parentBookingRepositoryProvider,
+                                          )
+                                          .downloadServiceLogPdf(s.id);
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content: Text('Saved to $path'),
+                                          ),
+                                        );
+                                      }
+                                    } catch (e) {
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content: Text('Download failed: $e'),
+                                          ),
+                                        );
+                                      }
+                                    }
+                                  },
+                                  icon: const Icon(Icons.picture_as_pdf_outlined),
+                                  label: const Text('Service log PDF'),
+                                ),
+                            ],
                           ),
                         ),
                       ] else
