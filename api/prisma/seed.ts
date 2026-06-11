@@ -183,15 +183,24 @@ async function main() {
     where: { userId: therapistUser.id },
     update: {
       isVerified: true,
+      phiAccessApproved: true,
+      onboardingStatus: 'APPROVED',
       therapyTypes: ['ABA', 'SPEECH'],
       npi: '1234567893',
       licenseNumber: 'SLP-123456',
       licenseState: 'NY',
+      backgroundCheckStatus: 'PASSED',
+      backgroundCheckCompletedAt: new Date('2025-01-01'),
+      hipaaTrainingAttestedAt: new Date('2025-01-01'),
+      confidentialityAgreementSignedAt: new Date('2025-01-01'),
+      agencyApprovedAt: new Date('2025-01-01'),
     },
     create: {
       userId: therapistUser.id,
       tenantId: tenant.id,
       isVerified: true,
+      phiAccessApproved: true,
+      onboardingStatus: 'APPROVED',
       isAcceptingClients: true,
       therapyTypes: ['ABA', 'SPEECH'],
       npi: '1234567893',
@@ -204,6 +213,11 @@ async function main() {
       longitude: -97.7431,
       city: 'Austin',
       state: 'TX',
+      backgroundCheckStatus: 'PASSED',
+      backgroundCheckCompletedAt: new Date('2025-01-01'),
+      hipaaTrainingAttestedAt: new Date('2025-01-01'),
+      confidentialityAgreementSignedAt: new Date('2025-01-01'),
+      agencyApprovedAt: new Date('2025-01-01'),
     },
   });
 
@@ -693,6 +707,76 @@ async function main() {
   await seedDemoOnboarding(parentUser.id);
   await seedDemoOnboarding(therapistUser.id);
   await seedDemoOnboarding(agencyUser.id);
+
+  const legalDocs: Array<{
+    documentType:
+      | 'PRIVACY_POLICY'
+      | 'TERMS_OF_USE'
+      | 'HIPAA_NOTICE'
+      | 'DATA_RETENTION_POLICY'
+      | 'BREACH_NOTIFICATION_POLICY'
+      | 'CONTACT_COMPLIANCE_OFFICER';
+    title: string;
+    content: string;
+  }> = [
+    {
+      documentType: 'PRIVACY_POLICY',
+      title: 'Privacy Policy',
+      content:
+        'This Privacy Policy describes how BloomOra collects, uses, and protects your information.',
+    },
+    {
+      documentType: 'TERMS_OF_USE',
+      title: 'Terms of Use',
+      content: 'By using BloomOra you agree to these Terms of Use.',
+    },
+    {
+      documentType: 'HIPAA_NOTICE',
+      title: 'HIPAA Notice of Privacy Practices',
+      content:
+        'This Notice describes how medical information about you may be used and disclosed.',
+    },
+    {
+      documentType: 'DATA_RETENTION_POLICY',
+      title: 'Data Retention Policy',
+      content:
+        'Clinical records are retained for seven (7) years; billing records for six (6) years.',
+    },
+    {
+      documentType: 'BREACH_NOTIFICATION_POLICY',
+      title: 'Breach Notification Policy',
+      content:
+        'Affected individuals and HHS will be notified as required by applicable breach notification rules.',
+    },
+    {
+      documentType: 'CONTACT_COMPLIANCE_OFFICER',
+      title: 'Contact the Compliance Officer',
+      content:
+        'Report privacy concerns to privacy@bloomora.health or via the in-app Privacy Center.',
+    },
+  ];
+  for (const doc of legalDocs) {
+    const existing = await prisma.complianceDocument.findFirst({
+      where: {
+        tenantId: tenant.id,
+        documentType: doc.documentType,
+        isActive: true,
+      },
+    });
+    if (existing) continue;
+    await prisma.complianceDocument.create({
+      data: {
+        tenantId: tenant.id,
+        documentType: doc.documentType,
+        version: '1.0',
+        title: doc.title,
+        content: doc.content,
+        effectiveDate: new Date('2025-06-01'),
+        isActive: true,
+        publishedAt: new Date(),
+      },
+    });
+  }
 
   console.log('Seed complete.');
   console.log('  Admin:     admin@abaconnect.local / Admin123!');

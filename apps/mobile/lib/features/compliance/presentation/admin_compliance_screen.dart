@@ -60,6 +60,21 @@ class AdminComplianceScreen extends ConsumerWidget {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push(AppRoutes.adminComplianceAuditLogs),
           ),
+          ListTile(
+            leading: const Icon(Icons.security),
+            title: const Text('Security dashboard'),
+            subtitle: const Text(
+              'Users, failed logins, PHI access, alerts',
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push(AppRoutes.adminSecurityDashboard),
+          ),
+          ListTile(
+            leading: const Icon(Icons.gavel),
+            title: const Text('Legal & policy documents'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push(AppRoutes.legalDocuments),
+          ),
         ],
       ),
     );

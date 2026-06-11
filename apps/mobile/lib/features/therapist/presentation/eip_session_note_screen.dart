@@ -8,6 +8,7 @@ import '../models/eip_session_note_model.dart';
 import '../models/session_note_editor_mode.dart';
 import '../therapist_providers.dart';
 import 'session_notes_screen.dart';
+import 'staff_session_notes_screen.dart';
 import 'therapist_weekly_progress_section.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 
@@ -89,7 +90,7 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
       );
 
   bool _isReadOnly(EipSessionNoteModel form) =>
-      widget.editorMode == SessionNoteEditorMode.therapist && form.isFullySigned;
+      widget.editorMode == SessionNoteEditorMode.therapist && form.serverLocked;
 
   @override
   Widget build(BuildContext context) {
@@ -815,15 +816,19 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
     if (name == null || name.trim().isEmpty || !context.mounted) return;
 
     final today = DateTime.now().toIso8601String().substring(0, 10);
-    setState(() {
-      _form = form.copyWith(
-        parentSignature: name.trim(),
-        parentSignatureDate: today,
-        parentSignatureLatitude: gps.latitude,
-        parentSignatureLongitude: gps.longitude,
-        parentSignatureLocationAt: DateTime.now().toIso8601String(),
-      );
-    });
+    final updated = form.copyWith(
+      parentSignature: name.trim(),
+      parentSignatureDate: today,
+      parentSignatureLatitude: gps.latitude,
+      parentSignatureLongitude: gps.longitude,
+      parentSignatureLocationAt: DateTime.now().toIso8601String(),
+    );
+    setState(() => _form = updated);
+    await _persistForm(
+      context,
+      updated,
+      autoSaveAfterParentSign: true,
+    );
   }
 
   Widget _interventionistSignatureBlock(
@@ -899,15 +904,22 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
     if (gps == null || !gps.isSuccess || !mounted) return;
 
     final today = DateTime.now().toIso8601String().substring(0, 10);
-    setState(() {
-      _form = form.copyWith(
-        interventionistSignature: form.interventionistName,
-        interventionistSignatureDate: today,
-        interventionistSignatureLatitude: gps.latitude,
-        interventionistSignatureLongitude: gps.longitude,
-        interventionistSignatureLocationAt: DateTime.now().toIso8601String(),
-      );
-    });
+    final signatureName = form.interventionistName.trim().isNotEmpty
+        ? form.interventionistName.trim()
+        : form.interventionistSignature?.trim() ?? 'Therapist';
+    final updated = form.copyWith(
+      interventionistSignature: signatureName,
+      interventionistSignatureDate: today,
+      interventionistSignatureLatitude: gps.latitude,
+      interventionistSignatureLongitude: gps.longitude,
+      interventionistSignatureLocationAt: DateTime.now().toIso8601String(),
+    );
+    setState(() => _form = updated);
+    await _persistForm(
+      context,
+      updated,
+      autoSaveAfterTherapistSign: true,
+    );
   }
 
   Widget _field(
@@ -1063,8 +1075,17 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
   Future<void> _save(BuildContext context) async {
     final form = _form;
     if (form == null) return;
+    await _persistForm(context, form);
+  }
 
+  Future<void> _persistForm(
+    BuildContext context,
+    EipSessionNoteModel form, {
+    bool autoSaveAfterTherapistSign = false,
+    bool autoSaveAfterParentSign = false,
+  }) async {
     if (_isReadOnly(form)) {
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -1075,65 +1096,108 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
       return;
     }
 
-    if (!form.hasRequiredClinicalFields) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Complete required fields: IFSP outcomes (#1), session description (#2), '
-            'and home strategies (#4).',
-          ),
-        ),
-      );
-      return;
-    }
+    final autoSave = autoSaveAfterTherapistSign || autoSaveAfterParentSign;
 
-    if (form.hasInvalidSignatures) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Signatures require GPS location. Turn on location services and sign again.',
+    if (!autoSave) {
+      if (!form.hasRequiredClinicalFields) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Complete required fields: IFSP outcomes (#1), session description (#2), '
+              'and home strategies (#4).',
+            ),
           ),
-        ),
-      );
-      return;
-    }
+        );
+        return;
+      }
 
-    if (form.hasParentSignature && !form.isReadyForParentSignature) {
-      _showParentSignRequirements(context, form);
+      if (form.hasInvalidSignatures) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Signatures require GPS location. Turn on location services and sign again.',
+            ),
+          ),
+        );
+        return;
+      }
+
+      if (form.hasParentSignature && !form.isReadyForParentSignature) {
+        _showParentSignRequirements(context, form);
+        return;
+      }
+    } else if (autoSaveAfterTherapistSign &&
+        !form.hasGpsVerifiedInterventionistSignature) {
       return;
+    } else if (autoSaveAfterParentSign) {
+      if (!form.hasGpsVerifiedParentSignature) return;
+      if (!form.isReadyForParentSignature) {
+        _showParentSignRequirements(context, form);
+        return;
+      }
     }
 
     setState(() => _saving = true);
+    var serviceLogMissing = false;
     try {
       switch (widget.editorMode) {
         case SessionNoteEditorMode.agency:
           await ref.read(agencyRepositoryProvider).saveEipSessionNote(form);
+          ref.invalidate(agencySessionNotesProvider);
           break;
         case SessionNoteEditorMode.admin:
           await ref.read(adminRepositoryProvider).saveEipSessionNote(form);
+          ref.invalidate(adminSessionNotesProvider);
           break;
         case SessionNoteEditorMode.therapist:
-          await ref.read(therapistRepositoryProvider).saveEipSessionNote(form);
-          await ref.read(clinicalRepositoryProvider).saveProgressNote(
-                sessionId: form.sessionId,
-                summary: form.toProgressSummary(),
-              );
+          final serviceLogCreated = await ref
+              .read(therapistRepositoryProvider)
+              .saveEipSessionNote(form);
+          if (!autoSave) {
+            await ref.read(clinicalRepositoryProvider).saveProgressNote(
+                  sessionId: form.sessionId,
+                  summary: form.toProgressSummary(),
+                );
+          }
           ref.invalidate(therapistSessionsProvider);
           ref.invalidate(therapistDashboardProvider);
           ref.invalidate(therapistWeeklyProgressProvider);
+          serviceLogMissing = form.hasGpsVerifiedInterventionistSignature &&
+              !serviceLogCreated;
       }
 
       ref.invalidate(sessionNoteFormContextProvider(_request));
 
       if (!context.mounted) return;
+      if (form.isFullySigned) {
+        setState(() => _form = form.copyWith(serverLocked: true));
+      }
+      final savedMessage = autoSaveAfterParentSign
+          ? 'Session note auto-saved — parent signature recorded.'
+          : autoSaveAfterTherapistSign
+              ? 'Session note auto-saved — therapist signature recorded.'
+              : form.isFullySigned
+                  ? 'Session note saved and locked — both signatures recorded.'
+                  : form.hasGpsVerifiedParentSignature
+                      ? 'Session note saved — service log updated (signed by parent).'
+                      : form.hasGpsVerifiedInterventionistSignature
+                          ? 'Session note saved — service log created.'
+                          : 'NYC EIP session note saved — parent can view progress summary';
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'NYC EIP session note saved — parent can view progress summary',
-          ),
-        ),
+        SnackBar(content: Text(savedMessage)),
       );
-      context.pop();
+      if (serviceLogMissing) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Service log was not created — pull to refresh Session Notes.',
+            ),
+          ),
+        );
+      }
+      if (!autoSave) {
+        context.pop();
+      }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

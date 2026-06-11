@@ -10,8 +10,10 @@ import '../../../shared/widgets/app_bottom_nav.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_section_header.dart';
 import '../../../shared/widgets/app_stat_card.dart';
-import '../../../shared/widgets/app_welcome_banner.dart';
-import '../../../shared/widgets/app_healthcare_illustration.dart';
+import '../../../shared/widgets/app_glossy_button.dart';
+import '../../../shared/widgets/app_wellness_action_menu.dart';
+import '../../../shared/widgets/app_wellness_home_header.dart';
+import '../../../shared/widgets/app_wellness_journey_card.dart';
 import '../../../shared/widgets/dashboard_action_inbox.dart';
 import '../../messaging/messaging_providers.dart';
 import '../../messaging/presentation/messages_screen.dart';
@@ -68,6 +70,9 @@ class TherapistHomeScreen extends ConsumerWidget {
       data: (c) => c,
       orElse: () => 0,
     );
+    final user = ref.watch(authStateProvider).valueOrNull?.user;
+    final greetingName =
+        user?.fullName?.split(' ').first ?? user?.email.split('@').first ?? 'there';
 
     return AppScaffold(
       title: 'Therapist',
@@ -97,12 +102,79 @@ class TherapistHomeScreen extends ConsumerWidget {
           padding: EdgeInsets.zero,
           child: ListView(
             children: [
-              AppWelcomeBanner(
-                greeting: 'Clinical dashboard',
-                subtitle:
-                    'Sessions, documentation, and parent communication in one place.',
-                illustrationType: AppIllustrationType.therapy,
+              AppWellnessHomeHeader(
+                greeting: 'Welcome back, $greetingName 👋',
+                notificationCount: unreadCount,
+                onNotificationsTap: () => context.push(AppRoutes.notifications),
               ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: dashboard.when(
+                  data: (d) {
+                    final docProgress = d.pendingDocumentation > 0
+                        ? 0.5
+                        : (d.inProgressSessions > 0 ? 0.75 : 1.0);
+                    return AppWellnessJourneyCard(
+                      title: 'Clinical Day',
+                      subtitle: d.pendingDocumentation > 0
+                          ? '${d.pendingDocumentation} session note(s) due'
+                          : 'You are caught up on documentation',
+                      progress: docProgress,
+                      icon: Icons.medical_services_outlined,
+                      iconColor: Theme.of(context).colorScheme.primary,
+                    );
+                  },
+                  loading: () => const AppWellnessJourneyCard(
+                    title: 'Clinical Day',
+                    subtitle: 'Loading…',
+                    progress: 0,
+                  ),
+                  error: (_, _) => const AppWellnessJourneyCard(
+                    title: 'Clinical Day',
+                    subtitle: 'Your clinical day at a glance',
+                    progress: 0,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: AppWellnessActionMenu(
+                  items: [
+                    AppWellnessActionItem(
+                      label: 'Session Notes',
+                      icon: Icons.edit_note_outlined,
+                      variant: AppGlossyButtonVariant.primary,
+                      onTap: () => context.push(
+                        '${AppRoutes.therapistHome}/session-notes',
+                      ),
+                    ),
+                    AppWellnessActionItem(
+                      label: 'Appointments',
+                      icon: Icons.calendar_month_outlined,
+                      variant: AppGlossyButtonVariant.secondary,
+                      onTap: () => context.push(
+                        '${AppRoutes.therapistHome}/appointments',
+                      ),
+                    ),
+                    AppWellnessActionItem(
+                      label: 'Messages',
+                      icon: Icons.chat_bubble_outline_rounded,
+                      variant: AppGlossyButtonVariant.tertiary,
+                      onTap: () => context.push(AppRoutes.messages),
+                    ),
+                    AppWellnessActionItem(
+                      label: 'My Profile',
+                      icon: Icons.badge_outlined,
+                      variant: AppGlossyButtonVariant.info,
+                      onTap: () => context.push(
+                        '${AppRoutes.therapistHome}/profile',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16),
                 child: AppSectionHeader(
@@ -110,10 +182,7 @@ class TherapistHomeScreen extends ConsumerWidget {
                   subtitle: 'Your clinical day at a glance',
                 ),
               ),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: SizedBox(height: 12),
-              ),
+              const SizedBox(height: 12),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: dashboard.when(
@@ -277,8 +346,8 @@ class TherapistHomeScreen extends ConsumerWidget {
                     context.push('${AppRoutes.therapistHome}/appointments'),
               ),
               _OpsTile(
-                title: 'Session notes',
-                subtitle: 'NYC EIP form & SOAP documentation',
+                title: 'Session Notes and Service logs',
+                subtitle: 'NYC EIP form, SOAP documentation & parent-signed logs',
                 icon: Icons.note_alt,
                 onTap: () =>
                     context.push('${AppRoutes.therapistHome}/session-notes'),

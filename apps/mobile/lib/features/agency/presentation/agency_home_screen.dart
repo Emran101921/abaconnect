@@ -9,9 +9,11 @@ import '../../../shared/models/dashboard_action_model.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_section_header.dart';
 import '../../../shared/widgets/app_stat_card.dart';
-import '../../../shared/widgets/app_welcome_banner.dart';
-import '../../../shared/widgets/app_healthcare_illustration.dart';
+import '../../../shared/widgets/app_glossy_button.dart';
 import '../../../shared/widgets/app_theme_toggle.dart';
+import '../../../shared/widgets/app_wellness_action_menu.dart';
+import '../../../shared/widgets/app_wellness_home_header.dart';
+import '../../../shared/widgets/app_wellness_journey_card.dart';
 import '../../../shared/widgets/dashboard_action_inbox.dart';
 import '../../messaging/messaging_providers.dart';
 import '../../notifications/notification_providers.dart';
@@ -31,6 +33,9 @@ class AgencyHomeScreen extends ConsumerWidget {
       data: (c) => c,
       orElse: () => 0,
     );
+    final user = ref.watch(authStateProvider).valueOrNull?.user;
+    final greetingName =
+        user?.fullName?.split(' ').first ?? user?.email.split('@').first ?? 'there';
 
     return AppScaffold(
       title: 'Agency',
@@ -65,12 +70,78 @@ class AgencyHomeScreen extends ConsumerWidget {
           padding: EdgeInsets.zero,
           child: ListView(
             children: [
-              const AppWelcomeBanner(
-                greeting: 'Agency operations',
-                subtitle:
-                    'Roster, scheduling, analytics, and parent communication.',
-                illustrationType: AppIllustrationType.scheduling,
+              AppWellnessHomeHeader(
+                greeting: 'Welcome back, $greetingName 👋',
+                notificationCount: unreadCount,
+                onNotificationsTap: () => context.push(AppRoutes.notifications),
               ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: dashboard.when(
+                  data: (d) {
+                    final opsLoad = (d.missingEvvCount + d.draftClaimsCount) > 0
+                        ? 0.55
+                        : 0.9;
+                    return AppWellnessJourneyCard(
+                      title: 'Agency Operations',
+                      subtitle: d.pendingTherapists > 0
+                          ? '${d.pendingTherapists} provider(s) awaiting approval'
+                          : 'Roster and billing on track',
+                      progress: opsLoad,
+                      icon: Icons.business_outlined,
+                    );
+                  },
+                  loading: () => const AppWellnessJourneyCard(
+                    title: 'Agency Operations',
+                    subtitle: 'Loading…',
+                    progress: 0,
+                  ),
+                  error: (_, _) => const AppWellnessJourneyCard(
+                    title: 'Agency Operations',
+                    subtitle: 'Agency operations at a glance',
+                    progress: 0,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: AppWellnessActionMenu(
+                  items: [
+                    AppWellnessActionItem(
+                      label: 'Therapist Roster',
+                      icon: Icons.groups_outlined,
+                      variant: AppGlossyButtonVariant.primary,
+                      onTap: () =>
+                          context.push('${AppRoutes.agencyHome}/roster'),
+                    ),
+                    AppWellnessActionItem(
+                      label: 'Appointments',
+                      icon: Icons.event_outlined,
+                      variant: AppGlossyButtonVariant.secondary,
+                      onTap: () => context.push(
+                        '${AppRoutes.agencyHome}/appointments',
+                      ),
+                    ),
+                    AppWellnessActionItem(
+                      label: 'Session Notes',
+                      icon: Icons.description_outlined,
+                      variant: AppGlossyButtonVariant.tertiary,
+                      onTap: () => context.push(
+                        '${AppRoutes.agencyHome}/session-notes',
+                      ),
+                    ),
+                    AppWellnessActionItem(
+                      label: 'Analytics',
+                      icon: Icons.analytics_outlined,
+                      variant: AppGlossyButtonVariant.warning,
+                      onTap: () =>
+                          context.push('${AppRoutes.agencyHome}/analytics'),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16),
                 child: AppSectionHeader(
@@ -245,8 +316,8 @@ class AgencyHomeScreen extends ConsumerWidget {
                     context.push('${AppRoutes.agencyHome}/appointments'),
               ),
               _OpsTile(
-                title: 'Session notes',
-                subtitle: 'Review and edit signed therapist documentation',
+                title: 'Session Notes and Service logs',
+                subtitle: 'Review session notes and download parent-signed logs',
                 icon: Icons.assignment_outlined,
                 onTap: () =>
                     context.push('${AppRoutes.agencyHome}/session-notes'),

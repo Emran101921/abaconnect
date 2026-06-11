@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -314,7 +315,17 @@ class _EnableMfaFormState extends State<_EnableMfaForm> {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (kDebugMode) ...[
+          const Text(
+            'Local dev: use 000000 when DEV_MFA_BYPASS_CODE is set in api/.env',
+            style: TextStyle(fontSize: 12),
+          ),
+          const SizedBox(height: 8),
+        ],
+        Row(
       children: [
         Expanded(
           child: TextField(
@@ -329,6 +340,8 @@ class _EnableMfaFormState extends State<_EnableMfaForm> {
         FilledButton(
           onPressed: () => widget.onEnable(_code.text.trim()),
           child: const Text('Enable'),
+        ),
+      ],
         ),
       ],
     );

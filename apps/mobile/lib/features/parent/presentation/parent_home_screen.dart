@@ -8,11 +8,12 @@ import '../../../core/router/app_router.dart';
 import '../../../shared/models/dashboard_action_model.dart';
 import '../../../shared/widgets/app_bottom_nav.dart';
 import '../../../shared/widgets/app_scaffold.dart';
-import '../../../shared/widgets/app_dashboard_card.dart';
 import '../../../shared/widgets/app_section_header.dart';
 import '../../../shared/widgets/app_stat_card.dart';
-import '../../../shared/widgets/app_welcome_banner.dart';
-import '../../../shared/widgets/app_healthcare_illustration.dart';
+import '../../../shared/widgets/app_wellness_action_menu.dart';
+import '../../../shared/widgets/app_wellness_home_header.dart';
+import '../../../shared/widgets/app_wellness_journey_card.dart';
+import '../../../shared/widgets/app_glossy_button.dart';
 import '../../../shared/widgets/app_theme_toggle.dart';
 import '../../../shared/widgets/dashboard_action_inbox.dart';
 import '../../messaging/messaging_providers.dart';
@@ -105,47 +106,106 @@ class ParentHomeScreen extends ConsumerWidget {
           padding: EdgeInsets.zero,
           child: ListView(
             children: [
-              AppWelcomeBanner(
-                greeting: 'Welcome back, $greetingName',
-                subtitle:
-                    'Your family care hub — screening, therapy, and progress in one place.',
-                trailing: dashboard.maybeWhen(
-                  data: (d) => AppDashboardCard(
-                    child: Row(
-                      children: [
-                        const AppHealthcareIllustration(
-                          type: AppIllustrationType.progress,
-                          size: 56,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '${d.childrenCount} child${d.childrenCount == 1 ? '' : 'ren'} · ${d.upcomingAppointments} upcoming',
-                                style: Theme.of(context).textTheme.titleSmall,
-                              ),
-                              Text(
-                                d.hasScreening
-                                    ? 'Screening complete — explore recommendations'
-                                    : 'Complete screening to unlock therapy matches',
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  orElse: () => const SizedBox.shrink(),
-                ),
+              AppWellnessHomeHeader(
+                greeting: 'Welcome back, $greetingName 👋',
+                notificationCount: unreadCount,
+                onNotificationsTap: () => context.push(AppRoutes.notifications),
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    dashboard.when(
+                      data: (d) {
+                        final progress = d.onboardingStepsTotal > 0
+                            ? d.onboardingStepsCompleted /
+                                d.onboardingStepsTotal
+                            : (d.onboardingComplete ? 1.0 : 0.0);
+                        final subtitle = d.hasScreening
+                            ? 'Take the next step in your care journey'
+                            : 'Complete screening to unlock therapy matches';
+                        return AppWellnessJourneyCard(
+                          title: 'Your Wellness Journey',
+                          subtitle: subtitle,
+                          progress: progress,
+                          icon: Icons.monitor_heart_outlined,
+                        );
+                      },
+                      loading: () => const AppWellnessJourneyCard(
+                        title: 'Your Wellness Journey',
+                        subtitle: 'Loading your progress…',
+                        progress: 0,
+                      ),
+                      error: (_, _) => const AppWellnessJourneyCard(
+                        title: 'Your Wellness Journey',
+                        subtitle: 'Take the next step in your care journey',
+                        progress: 0,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    AppWellnessActionMenu(
+                      items: [
+                        AppWellnessActionItem(
+                          label: 'Start Screening',
+                          icon: Icons.fact_check_outlined,
+                          variant: AppGlossyButtonVariant.primary,
+                          onTap: () => context.push(
+                            dashboard.maybeWhen(
+                              data: (d) => d.hasChild
+                                  ? '${AppRoutes.parentScreening}?autoStart=true'
+                                  : AppRoutes.parentChildren,
+                              orElse: () => AppRoutes.parentScreening,
+                            ),
+                          ),
+                        ),
+                        AppWellnessActionItem(
+                          label: 'Book Session',
+                          icon: Icons.calendar_month_outlined,
+                          variant: AppGlossyButtonVariant.secondary,
+                          onTap: () => context.push(AppRoutes.matching),
+                        ),
+                        AppWellnessActionItem(
+                          label: 'Messages',
+                          icon: Icons.chat_bubble_outline_rounded,
+                          variant: AppGlossyButtonVariant.tertiary,
+                          onTap: () => context.push(AppRoutes.messages),
+                        ),
+                        AppWellnessActionItem(
+                          label: 'Upload Documents',
+                          icon: Icons.upload_file_outlined,
+                          variant: AppGlossyButtonVariant.info,
+                          onTap: () => context.push(AppRoutes.documents),
+                        ),
+                        AppWellnessActionItem(
+                          label: 'Track Progress',
+                          icon: Icons.trending_up_rounded,
+                          variant: AppGlossyButtonVariant.warning,
+                          onTap: () => context.push(
+                            '${AppRoutes.parentHome}/progress-notes',
+                          ),
+                        ),
+                        if (pendingReviews.maybeWhen(
+                          data: (t) => t.isNotEmpty,
+                          orElse: () => false,
+                        ))
+                          AppWellnessActionItem(
+                            label: 'Confirm Session',
+                            icon: Icons.check_circle_outline_rounded,
+                            variant: AppGlossyButtonVariant.success,
+                            onTap: () {
+                              final therapists = pendingReviews.valueOrNull;
+                              if (therapists != null && therapists.isNotEmpty) {
+                                context.push(
+                                  '${AppRoutes.parentHome}/reviews'
+                                  '?therapistId=${therapists.first.id}&submit=true',
+                                );
+                              }
+                            },
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
                     const AppSectionHeader(
                       title: 'Overview',
                       subtitle: 'Your family care at a glance',

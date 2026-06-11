@@ -221,6 +221,7 @@ class SessionHistoryModel {
     this.durationMinutes,
     this.progressNoteSummary,
     this.hasProgressNote = false,
+    this.hasServiceLog = false,
     this.parentFeedback,
   });
 
@@ -233,6 +234,7 @@ class SessionHistoryModel {
   final int? durationMinutes;
   final String? progressNoteSummary;
   final bool hasProgressNote;
+  final bool hasServiceLog;
   final String? parentFeedback;
 
   String get statusLabel {
@@ -477,7 +479,7 @@ class ParentBookingRepository {
         mySessionHistory {
           id status childName therapistName therapyType
           completedAt durationMinutes
-          progressNoteSummary hasProgressNote parentFeedback
+          progressNoteSummary hasProgressNote hasServiceLog parentFeedback
         }
       }
     ''';
@@ -494,9 +496,19 @@ class ParentBookingRepository {
         durationMinutes: e['durationMinutes'] as int?,
         progressNoteSummary: e['progressNoteSummary'] as String?,
         hasProgressNote: e['hasProgressNote'] as bool? ?? false,
+        hasServiceLog: e['hasServiceLog'] as bool? ?? false,
         parentFeedback: e['parentFeedback'] as String?,
       );
     }).toList();
+  }
+
+  Future<String> downloadServiceLogPdf(String sessionId) async {
+    final response = await _api.dio.get<List<int>>(
+      '/service-logs/parent/$sessionId/pdf',
+      options: Options(responseType: ResponseType.bytes),
+    );
+    final bytes = Uint8List.fromList(response.data ?? []);
+    return downloadBytes(bytes, 'service-log-$sessionId.pdf');
   }
 
   Future<List<ChildModel>> fetchChildren() async {

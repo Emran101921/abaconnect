@@ -27,11 +27,15 @@ const STRING_FIELDS_BY_MODEL: Record<string, string[]> = {
     'pediatricianName',
     'notes',
   ],
+  Parent: ['insuranceMemberId', 'insuranceGroupNumber', 'emergencyContactPhone'],
+  Therapist: ['taxId', 'bio'],
 };
 
 // JSON columns that hold raw clinical answers.
 const JSON_FIELDS_BY_MODEL: Record<string, string[]> = {
   ScreeningResponse: ['responses'],
+  ServiceLog: ['logData'],
+  InsuranceClaim: ['metadata'],
 };
 
 // Flattened field-name lookups used by the recursive read-side decryptor so

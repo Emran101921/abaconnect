@@ -11,8 +11,10 @@ import {
 import { PrivacyNoticeService } from './privacy-notice.service';
 import { PrivacyRightsRequestStatus } from '../../generated/prisma/client';
 import { PrivacyRightsService } from './privacy-rights.service';
+import { ComplianceDocumentType } from '../../generated/prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { SecurityEventService } from '../security/security-event.service';
+import { ComplianceDocumentsService } from './compliance-documents.service';
 
 @Controller('admin/compliance')
 @Roles('PLATFORM_ADMIN')
@@ -22,6 +24,7 @@ export class AdminComplianceController {
     private readonly rights: PrivacyRightsService,
     private readonly audit: AuditService,
     private readonly securityEvents: SecurityEventService,
+    private readonly legalDocuments: ComplianceDocumentsService,
   ) {}
 
   @Get('acknowledgments')
@@ -87,5 +90,40 @@ export class AdminComplianceController {
   @Get('security-events')
   listSecurityEvents(@CurrentUser() user: AuthUser) {
     return this.securityEvents.listForTenant(user.tenantId ?? '', 100);
+  }
+
+  @Post('legal-documents')
+  createLegalDocument(
+    @CurrentUser() user: AuthUser,
+    @Body()
+    dto: {
+      documentType: ComplianceDocumentType;
+      version: string;
+      title: string;
+      content: string;
+      effectiveDate?: string;
+      publish?: boolean;
+    },
+  ) {
+    return this.legalDocuments.createVersion(user.id, user.tenantId ?? null, {
+      documentType: dto.documentType,
+      version: dto.version,
+      title: dto.title,
+      content: dto.content,
+      effectiveDate: dto.effectiveDate ? new Date(dto.effectiveDate) : undefined,
+      publish: dto.publish,
+    });
+  }
+
+  @Patch('legal-documents/:id/publish')
+  publishLegalDocument(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+  ) {
+    return this.legalDocuments.publishVersion(
+      user.id,
+      id,
+      user.tenantId ?? null,
+    );
   }
 }

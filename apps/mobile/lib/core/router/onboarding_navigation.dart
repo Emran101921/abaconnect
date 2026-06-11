@@ -10,6 +10,7 @@ String? resolveOnboardingRoute({
   required UserRole role,
   required bool hipaaConsentGranted,
   required bool mfaEnabled,
+  bool providerPhiAccessApproved = true,
 }) {
   if (!roleRequiresOnboarding(role)) {
     return null;
@@ -19,6 +20,9 @@ String? resolveOnboardingRoute({
   }
   if (!mfaEnabled) {
     return AppRoutes.security;
+  }
+  if (role == UserRole.therapist && !providerPhiAccessApproved) {
+    return AppRoutes.providerOnboarding;
   }
   return null;
 }

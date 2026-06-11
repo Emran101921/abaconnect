@@ -121,6 +121,9 @@ export class SessionHistoryType {
 
   @Field({ nullable: true })
   parentFeedback?: string;
+
+  @Field()
+  hasServiceLog: boolean;
 }
 
 @ObjectType()

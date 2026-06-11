@@ -4,6 +4,7 @@ import { HipaaConsentInterceptor } from './common/interceptors/hipaa-consent.int
 import { TenantContextInterceptor } from './common/tenant/tenant-context.interceptor';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
+import { PermissionsGuard } from './common/guards/permissions.guard';
 import { GraphqlFeatureModule } from './graphql/graphql.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { GraphQLModule } from '@nestjs/graphql';
@@ -108,6 +109,7 @@ import { SecurityModule } from './security/security.module';
     { provide: APP_GUARD, useClass: AppThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
+    { provide: APP_GUARD, useClass: PermissionsGuard },
   ],
 })
 export class AppModule {}

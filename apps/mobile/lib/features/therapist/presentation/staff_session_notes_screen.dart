@@ -17,6 +17,29 @@ final adminSessionNotesProvider =
   return ref.read(adminRepositoryProvider).fetchSessionNotes();
 });
 
+Future<void> _downloadAgencyServiceLog(
+  BuildContext context,
+  WidgetRef ref,
+  String sessionId,
+) async {
+  try {
+    final path = await ref
+        .read(agencyRepositoryProvider)
+        .downloadServiceLogPdf(sessionId);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Service log saved: $path')),
+      );
+    }
+  } catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Download failed: $e')),
+      );
+    }
+  }
+}
+
 class StaffSessionNotesScreen extends ConsumerWidget {
   const StaffSessionNotesScreen({
     super.key,
@@ -34,7 +57,7 @@ class StaffSessionNotesScreen extends ConsumerWidget {
         : ref.watch(adminSessionNotesProvider);
 
     final title = editorMode == SessionNoteEditorMode.agency
-        ? 'Session notes'
+        ? 'Session Notes and Service logs'
         : 'Session notes (admin)';
 
     return AppScaffold(
@@ -80,9 +103,26 @@ class StaffSessionNotesScreen extends ConsumerWidget {
                         note.therapistName,
                         if (note.sessionDate != null) note.sessionDate!,
                         if (note.isFullySigned) 'Fully signed',
+                        if (note.hasServiceLog) 'Service log available',
                       ].join(' · '),
                     ),
-                    trailing: const Icon(Icons.chevron_right),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (note.hasServiceLog &&
+                            editorMode == SessionNoteEditorMode.agency)
+                          IconButton(
+                            tooltip: 'Download service log PDF',
+                            icon: const Icon(Icons.picture_as_pdf_outlined),
+                            onPressed: () => _downloadAgencyServiceLog(
+                              context,
+                              ref,
+                              note.sessionId,
+                            ),
+                          ),
+                        const Icon(Icons.chevron_right),
+                      ],
+                    ),
                     onTap: () => context.push('$formRoutePrefix/${note.sessionId}/form'),
                   ),
                 );

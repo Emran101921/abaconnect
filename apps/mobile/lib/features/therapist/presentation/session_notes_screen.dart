@@ -242,6 +242,29 @@ class SessionNotesScreen extends ConsumerWidget {
     }
   }
 
+  Future<void> _downloadServiceLog(
+    BuildContext context,
+    WidgetRef ref,
+    TherapistSessionModel session,
+  ) async {
+    try {
+      final path = await ref
+          .read(therapistRepositoryProvider)
+          .downloadServiceLogPdf(session.id);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Service log saved: $path')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Download failed: $e')),
+        );
+      }
+    }
+  }
+
   Future<void> _evv(
     BuildContext context,
     WidgetRef ref,
@@ -288,7 +311,7 @@ class SessionNotesScreen extends ConsumerWidget {
     final sessionDocs = ref.watch(sessionNoteDocumentsProvider);
 
     return AppScaffold(
-      title: 'Session Notes',
+      title: 'Session Notes and Service logs',
       bottomNavigationBar: const TherapistBottomNav(
         current: TherapistNavTab.sessions,
       ),
@@ -348,8 +371,8 @@ class SessionNotesScreen extends ConsumerWidget {
                   padding: EdgeInsets.all(16),
                   child: Text(
                     'Use "Session note (EIP)" for the NYC Early Intervention '
-                    'fillable form. Quick SOAP is still available for brief notes. '
-                    'Parents see the progress summary after you save.',
+                    'fillable form. When a parent signs, a service log is '
+                    'created automatically and can be downloaded as a PDF.',
                   ),
                 ),
               ),
@@ -422,6 +445,15 @@ class SessionNotesScreen extends ConsumerWidget {
                                 icon: const Icon(Icons.attach_file),
                                 label: const Text('Attach PDF'),
                               ),
+                              if (s.hasServiceLog)
+                                OutlinedButton.icon(
+                                  onPressed: () =>
+                                      _downloadServiceLog(context, ref, s),
+                                  icon: const Icon(Icons.picture_as_pdf_outlined),
+                                  label: Text(
+                                    'Service log · ${s.serviceLog!.childName}',
+                                  ),
+                                ),
                               if (s.status == 'IN_PROGRESS')
                                 FilledButton(
                                   onPressed: () =>

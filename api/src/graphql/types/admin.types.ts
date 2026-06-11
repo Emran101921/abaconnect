@@ -57,6 +57,12 @@ export class PendingTherapistType {
   @Field({ nullable: true })
   licenseState?: string;
 
+  @Field({ nullable: true })
+  onboardingStatus?: string;
+
+  @Field({ nullable: true })
+  phiAccessApproved?: boolean;
+
   @Field(() => TherapistUserType)
   user: TherapistUserType;
 }
@@ -167,4 +173,10 @@ export class AdminInsuranceClaimType {
 
   @Field({ nullable: true })
   clearinghouseStatus?: string;
+
+  @Field({ nullable: true })
+  lockedAt?: Date;
+
+  @Field({ nullable: true })
+  resubmissionOfId?: string;
 }

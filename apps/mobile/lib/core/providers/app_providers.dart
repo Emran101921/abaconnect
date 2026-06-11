@@ -44,7 +44,10 @@ final adminRepositoryProvider = Provider<AdminRepository>((ref) {
 });
 
 final agencyRepositoryProvider = Provider<AgencyRepository>((ref) {
-  return AgencyRepository(ref.watch(graphqlClientProvider));
+  return AgencyRepository(
+    ref.watch(graphqlClientProvider),
+    ref.watch(apiClientProvider),
+  );
 });
 
 final messagingRepositoryProvider = Provider<MessagingRepository>((ref) {

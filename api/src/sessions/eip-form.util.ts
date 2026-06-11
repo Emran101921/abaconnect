@@ -1,11 +1,20 @@
 const hasText = (value: unknown) =>
   typeof value === 'string' && value.trim().length > 0;
 
-const hasGps = (lat: unknown, lng: unknown) =>
-  typeof lat === 'number' &&
-  typeof lng === 'number' &&
-  !Number.isNaN(lat) &&
-  !Number.isNaN(lng);
+const asCoord = (value: unknown): number | null => {
+  if (typeof value === 'number' && !Number.isNaN(value)) return value;
+  if (typeof value === 'string' && value.trim().length > 0) {
+    const parsed = Number(value);
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+  return null;
+};
+
+const hasGps = (lat: unknown, lng: unknown) => {
+  const latitude = asCoord(lat);
+  const longitude = asCoord(lng);
+  return latitude != null && longitude != null;
+};
 
 export function missingFieldsForParentSignature(
   data: Record<string, unknown> | null | undefined,
@@ -84,6 +93,19 @@ export function isReadyForParentSignature(
   return missingFieldsForParentSignature(data).length === 0;
 }
 
+export function hasInterventionistSignature(
+  data: Record<string, unknown> | null | undefined,
+): boolean {
+  if (!data) return false;
+  return (
+    hasText(data.interventionistSignature) &&
+    hasGps(
+      data.interventionistSignatureLatitude,
+      data.interventionistSignatureLongitude,
+    )
+  );
+}
+
 export function hasParentSignature(
   data: Record<string, unknown> | null | undefined,
 ): boolean {
@@ -99,12 +121,5 @@ export function isEipFormFullySigned(
 ): boolean {
   if (!data) return false;
 
-  const interventionistSigned =
-    hasText(data.interventionistSignature) &&
-    hasGps(
-      data.interventionistSignatureLatitude,
-      data.interventionistSignatureLongitude,
-    );
-
-  return interventionistSigned && hasParentSignature(data);
+  return hasInterventionistSignature(data) && hasParentSignature(data);
 }

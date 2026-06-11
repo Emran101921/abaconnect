@@ -103,6 +103,7 @@ export class ParentBookingResolver {
       progressNoteSummary: s.progressNote?.summary ?? undefined,
       hasProgressNote: Boolean(s.progressNote?.signedAt),
       parentFeedback: s.progressNote?.parentFeedback ?? undefined,
+      hasServiceLog: Boolean(s.serviceLog?.parentSignedAt),
     }));
   }
 

@@ -1,4 +1,5 @@
 import {
+  hasInterventionistSignature,
   hasParentSignature,
   isEipFormFullySigned,
   isReadyForParentSignature,
@@ -55,5 +56,15 @@ describe('eip-form.util', () => {
     };
     expect(hasParentSignature(signed)).toBe(true);
     expect(isEipFormFullySigned(signed)).toBe(true);
+  });
+
+  it('detects interventionist signature with string GPS coordinates', () => {
+    expect(
+      hasInterventionistSignature({
+        interventionistSignature: 'Dr. Jane Doe',
+        interventionistSignatureLatitude: '40.7128',
+        interventionistSignatureLongitude: '-74.006',
+      }),
+    ).toBe(true);
   });
 });

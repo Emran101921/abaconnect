@@ -11,6 +11,7 @@ export class PhiAuditService {
     action: 'READ' | 'EXPORT' | 'UPDATE' | 'DELETE';
     resourceType: string;
     resourceId?: string;
+    patientId?: string;
     ipAddress?: string;
     userAgent?: string;
   }): Promise<void> {
@@ -20,6 +21,7 @@ export class PhiAuditService {
       action: data.action,
       resourceType: data.resourceType,
       resourceId: data.resourceId,
+      patientId: data.patientId,
       ipAddress: data.ipAddress,
       userAgent: data.userAgent,
       metadata: { phi: true },

@@ -25,7 +25,7 @@ export class AdminService {
       this.prisma.therapist.count({ where }),
       this.prisma.appointment.count({ where }),
       this.prisma.therapist.count({
-        where: { ...where, isVerified: false },
+        where: { ...where, phiAccessApproved: false },
       }),
       this.prisma.complaint.count({
         where: { ...where, status: 'OPEN' },
@@ -71,10 +71,10 @@ export class AdminService {
     return this.prisma.therapist.findMany({
       where: {
         ...(tenantId ? { tenantId } : {}),
-        isVerified: false,
+        phiAccessApproved: false,
       },
       include: { user: true },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { updatedAt: 'desc' },
       take: 50,
     });
   }
