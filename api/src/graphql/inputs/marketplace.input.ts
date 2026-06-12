@@ -1,5 +1,5 @@
 import { Field, ID, InputType } from '@nestjs/graphql';
-import { IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsOptional, IsString, MinLength } from 'class-validator';
 import {
   MarketplaceAuthorizationStatus,
   MarketplaceLocationType,
@@ -124,4 +124,30 @@ export class CompleteProviderMarketplaceOnboardingInput {
 
   @Field()
   confidentialityTermsAccepted!: boolean;
+}
+
+@InputType()
+export class SaveMarketplaceSearchInput {
+  @Field()
+  @IsString()
+  @MinLength(1)
+  name!: string;
+
+  @Field(() => MarketplaceBrowseInput)
+  filters!: MarketplaceBrowseInput;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsBoolean()
+  alertsEnabled?: boolean;
+}
+
+@InputType()
+export class SetMarketplaceSavedSearchAlertsInput {
+  @Field(() => ID)
+  savedSearchId!: string;
+
+  @Field()
+  @IsBoolean()
+  alertsEnabled!: boolean;
 }

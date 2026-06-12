@@ -33,7 +33,8 @@ class NotificationsScreen extends ConsumerWidget {
     if (n.marketplaceRequestId != null &&
         (n.actionType == 'MARKETPLACE_INTEREST' ||
             n.actionType == 'MARKETPLACE_CONSENT_GRANTED' ||
-            n.actionType == 'MARKETPLACE_CONSENT_REVOKED')) {
+            n.actionType == 'MARKETPLACE_CONSENT_REVOKED' ||
+            n.actionType == 'MARKETPLACE_SAVED_SEARCH_MATCH')) {
       return true;
     }
     return false;
@@ -104,6 +105,11 @@ class NotificationsScreen extends ConsumerWidget {
         return;
       }
       if (n.actionType == 'MARKETPLACE_CONSENT_REVOKED' &&
+          role == UserRole.therapist) {
+        context.push(AppRoutes.therapistMarketplace);
+        return;
+      }
+      if (n.actionType == 'MARKETPLACE_SAVED_SEARCH_MATCH' &&
           role == UserRole.therapist) {
         context.push(AppRoutes.therapistMarketplace);
       }

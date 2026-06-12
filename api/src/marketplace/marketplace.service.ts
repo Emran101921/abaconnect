@@ -32,6 +32,11 @@ import {
   jitterMapPin,
   zipToApproxCentroid,
 } from './marketplace-zip.util';
+import {
+  parseSavedSearchFilters,
+  requestMatchesSavedSearchFilters,
+  SavedSearchFilters,
+} from './marketplace-saved-search.util';
 
 type RequestContext = {
   ipAddress?: string;
@@ -164,6 +169,8 @@ export class MarketplaceService {
       userAgent: ctx.userAgent,
       metadata: { anonymousPublicId },
     });
+
+    await this.notifySavedSearchMatches(request);
 
     return request;
   }
@@ -708,6 +715,93 @@ export class MarketplaceService {
           }
         : null,
     }));
+  }
+
+  async listProviderSavedSearches(userId: string) {
+    await this.requireActiveProviderProfile(userId);
+    return this.prisma.marketplaceSavedSearch.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async saveProviderSearch(
+    userId: string,
+    input: {
+      name: string;
+      filters: SavedSearchFilters;
+      alertsEnabled?: boolean;
+    },
+  ) {
+    const profile = await this.requireActiveProviderProfile(userId);
+    return this.prisma.marketplaceSavedSearch.create({
+      data: {
+        tenantId: profile.tenantId,
+        userId,
+        name: input.name.trim(),
+        filters: input.filters as Prisma.InputJsonValue,
+        alertsEnabled: input.alertsEnabled ?? true,
+      },
+    });
+  }
+
+  async deleteProviderSavedSearch(userId: string, searchId: string) {
+    const row = await this.prisma.marketplaceSavedSearch.findFirst({
+      where: { id: searchId, userId },
+    });
+    if (!row) throw new NotFoundException('Saved search not found');
+    await this.prisma.marketplaceSavedSearch.delete({
+      where: { id: searchId },
+    });
+    return { deleted: true };
+  }
+
+  async setSavedSearchAlerts(
+    userId: string,
+    searchId: string,
+    alertsEnabled: boolean,
+  ) {
+    const row = await this.prisma.marketplaceSavedSearch.findFirst({
+      where: { id: searchId, userId },
+    });
+    if (!row) throw new NotFoundException('Saved search not found');
+    return this.prisma.marketplaceSavedSearch.update({
+      where: { id: searchId },
+      data: { alertsEnabled },
+    });
+  }
+
+  private async notifySavedSearchMatches(
+    request: Awaited<ReturnType<typeof this.prisma.marketplaceRequest.create>>,
+  ) {
+    const searches = await this.prisma.marketplaceSavedSearch.findMany({
+      where: { tenantId: request.tenantId, alertsEnabled: true },
+    });
+    for (const search of searches) {
+      const profile = await this.prisma.providerMarketplaceProfile.findUnique({
+        where: { userId: search.userId },
+      });
+      if (
+        !profile ||
+        !profile.confidentialityTermsAccepted ||
+        profile.verifiedStatus === 'SUSPENDED'
+      ) {
+        continue;
+      }
+      const filters = parseSavedSearchFilters(search.filters);
+      if (!requestMatchesSavedSearchFilters(request, filters, profile)) {
+        continue;
+      }
+      await this.notifications.createForUser(search.userId, {
+        title: 'New request matches your saved search',
+        body: `Anonymous request ${request.anonymousPublicId} matches "${search.name}".`,
+        data: {
+          type: 'MARKETPLACE_SAVED_SEARCH_MATCH',
+          marketplaceRequestId: request.id,
+          savedSearchId: search.id,
+        },
+      });
+    }
   }
 
   async reportListing(

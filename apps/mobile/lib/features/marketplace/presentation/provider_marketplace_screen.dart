@@ -207,6 +207,161 @@ class _ProviderMarketplaceScreenState
     );
   }
 
+  void _applySavedSearch(MarketplaceSavedSearchModel search) {
+    setState(() {
+      _zipController.text = search.zipCode ?? '';
+      _languageController.text = search.language ?? '';
+      _radius = search.radiusMiles ?? 25;
+      _locationType = search.locationType;
+      _urgency = search.urgency;
+      _authorizationStatus = search.authorizationStatus;
+    });
+    _search();
+  }
+
+  Future<void> _saveCurrentSearch() async {
+    final nameController = TextEditingController();
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Save search & alerts'),
+        content: TextField(
+          controller: nameController,
+          decoration: const InputDecoration(
+            labelText: 'Search name',
+            hintText: 'e.g. Brooklyn speech — urgent',
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    if (saved != true || nameController.text.trim().isEmpty) {
+      nameController.dispose();
+      return;
+    }
+    try {
+      await ref.read(marketplaceRepositoryProvider).saveSearch(
+            name: nameController.text.trim(),
+            zipCode: _zipController.text.trim().isEmpty
+                ? null
+                : _zipController.text.trim(),
+            radiusMiles: _radius,
+            language: _languageController.text.trim().isEmpty
+                ? null
+                : _languageController.text.trim(),
+            locationType: _locationType,
+            urgency: _urgency,
+            authorizationStatus: _authorizationStatus,
+          );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Saved search created. Alerts are on by default.'),
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not save search: $e')),
+        );
+      }
+    } finally {
+      nameController.dispose();
+    }
+  }
+
+  Future<void> _showSavedSearches() async {
+    try {
+      final searches =
+          await ref.read(marketplaceRepositoryProvider).fetchSavedSearches();
+      if (!mounted) return;
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        builder: (ctx) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Saved searches',
+                  style: Theme.of(ctx).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 12),
+                if (searches.isEmpty)
+                  const Text(
+                    'No saved searches yet. Save your current filters to get alerts when new anonymous requests match.',
+                  )
+                else
+                  ...searches.map(
+                    (search) => Card(
+                      child: ListTile(
+                        title: Text(search.name),
+                        subtitle: Text(
+                          [
+                            if (search.zipCode != null) 'ZIP ${search.zipCode}',
+                            if (search.language != null)
+                              search.language!,
+                            if (search.radiusMiles != null)
+                              '${search.radiusMiles!.round()} mi',
+                          ].join(' · '),
+                        ),
+                        trailing: Switch(
+                          value: search.alertsEnabled,
+                          onChanged: (enabled) async {
+                            await ref
+                                .read(marketplaceRepositoryProvider)
+                                .setSavedSearchAlerts(
+                                  savedSearchId: search.id,
+                                  alertsEnabled: enabled,
+                                );
+                          },
+                        ),
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          _applySavedSearch(search);
+                        },
+                        onLongPress: () async {
+                          await ref
+                              .read(marketplaceRepositoryProvider)
+                              .deleteSavedSearch(search.id);
+                          if (ctx.mounted) Navigator.pop(ctx);
+                          _showSavedSearches();
+                        },
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Tap to apply · toggle alerts · long-press to delete',
+                  style: TextStyle(fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not load saved searches: $e')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final profile = ref.watch(providerMarketplaceProfileProvider);
@@ -233,6 +388,16 @@ class _ProviderMarketplaceScreenState
       title: 'Marketplace',
       subtitle: 'Anonymous requests by ZIP area',
       actions: [
+        IconButton(
+          tooltip: 'Saved searches',
+          onPressed: _showSavedSearches,
+          icon: const Icon(Icons.bookmarks_outlined),
+        ),
+        IconButton(
+          tooltip: 'Save current search',
+          onPressed: _saveCurrentSearch,
+          icon: const Icon(Icons.bookmark_add_outlined),
+        ),
         IconButton(
           tooltip: _mapView ? 'List view' : 'Map view',
           onPressed: () => setState(() => _mapView = !_mapView),

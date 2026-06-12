@@ -14,15 +14,19 @@ import {
   GrantMarketplaceShareConsentInput,
   MarketplaceBrowseInput,
   RevokeMarketplaceConsentInput,
+  SaveMarketplaceSearchInput,
+  SetMarketplaceSavedSearchAlertsInput,
   SubmitMarketplaceInterestInput,
 } from './inputs/marketplace.input';
 import {
   AuthorizedChildDetailsType,
   MarketplaceConsentRecordType,
   MarketplaceInterestType,
+  MarketplaceSavedSearchType,
   ProviderMarketplaceProfileType,
   PublicMarketplaceRequestType,
 } from './types/marketplace.types';
+import { parseSavedSearchFilters } from '../marketplace/marketplace-saved-search.util';
 
 function ctx(req: Request) {
   return {
@@ -242,6 +246,77 @@ export class MarketplaceResolver {
       parentPhone: details.parentContact.phone ?? undefined,
       marketplaceRequestId: details.marketplaceRequestId,
       anonymousPublicId: details.anonymousPublicId,
+    };
+  }
+
+  @Query(() => [MarketplaceSavedSearchType], {
+    name: 'myMarketplaceSavedSearches',
+  })
+  @Roles('THERAPIST', 'AGENCY_ADMIN')
+  async myMarketplaceSavedSearches(@CurrentUser() user: AuthUser) {
+    const rows = await this.marketplace.listProviderSavedSearches(user.id);
+    return rows.map((row) => this.mapSavedSearch(row));
+  }
+
+  @Mutation(() => MarketplaceSavedSearchType, {
+    name: 'saveMarketplaceSearch',
+  })
+  @Roles('THERAPIST', 'AGENCY_ADMIN')
+  async saveMarketplaceSearch(
+    @CurrentUser() user: AuthUser,
+    @Args('input') input: SaveMarketplaceSearchInput,
+  ) {
+    const row = await this.marketplace.saveProviderSearch(user.id, input);
+    return this.mapSavedSearch(row);
+  }
+
+  @Mutation(() => Boolean, { name: 'deleteMarketplaceSavedSearch' })
+  @Roles('THERAPIST', 'AGENCY_ADMIN')
+  async deleteMarketplaceSavedSearch(
+    @CurrentUser() user: AuthUser,
+    @Args('savedSearchId', { type: () => ID }) savedSearchId: string,
+  ) {
+    await this.marketplace.deleteProviderSavedSearch(user.id, savedSearchId);
+    return true;
+  }
+
+  @Mutation(() => MarketplaceSavedSearchType, {
+    name: 'setMarketplaceSavedSearchAlerts',
+  })
+  @Roles('THERAPIST', 'AGENCY_ADMIN')
+  async setMarketplaceSavedSearchAlerts(
+    @CurrentUser() user: AuthUser,
+    @Args('input') input: SetMarketplaceSavedSearchAlertsInput,
+  ) {
+    const row = await this.marketplace.setSavedSearchAlerts(
+      user.id,
+      input.savedSearchId,
+      input.alertsEnabled,
+    );
+    return this.mapSavedSearch(row);
+  }
+
+  private mapSavedSearch(row: {
+    id: string;
+    name: string;
+    alertsEnabled: boolean;
+    createdAt: Date;
+    filters: unknown;
+  }): MarketplaceSavedSearchType {
+    const filters = parseSavedSearchFilters(row.filters);
+    return {
+      id: row.id,
+      name: row.name,
+      alertsEnabled: row.alertsEnabled,
+      createdAt: row.createdAt,
+      zipCode: filters.zipCode,
+      radiusMiles: filters.radiusMiles,
+      serviceCategory: filters.serviceCategory,
+      ageRange: filters.ageRange,
+      language: filters.language,
+      locationType: filters.locationType,
+      urgency: filters.urgency,
+      authorizationStatus: filters.authorizationStatus,
     };
   }
 }

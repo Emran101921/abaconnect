@@ -215,3 +215,42 @@ export class AuthorizedChildDetailsType {
   @Field()
   anonymousPublicId: string;
 }
+
+@ObjectType()
+export class MarketplaceSavedSearchType {
+  @Field(() => ID)
+  id: string;
+
+  @Field()
+  name: string;
+
+  @Field()
+  alertsEnabled: boolean;
+
+  @Field()
+  createdAt: Date;
+
+  @Field({ nullable: true })
+  zipCode?: string;
+
+  @Field(() => Float, { nullable: true })
+  radiusMiles?: number;
+
+  @Field({ nullable: true })
+  serviceCategory?: string;
+
+  @Field({ nullable: true })
+  ageRange?: string;
+
+  @Field({ nullable: true })
+  language?: string;
+
+  @Field(() => MarketplaceLocationType, { nullable: true })
+  locationType?: MarketplaceLocationType;
+
+  @Field(() => MarketplaceUrgency, { nullable: true })
+  urgency?: MarketplaceUrgency;
+
+  @Field(() => MarketplaceAuthorizationStatus, { nullable: true })
+  authorizationStatus?: MarketplaceAuthorizationStatus;
+}
