@@ -30,6 +30,13 @@ class NotificationsScreen extends ConsumerWidget {
     }
     if (n.actionType == 'SESSION_COMPLETED') return true;
     if (n.actionType == 'SOAP_DUE') return true;
+    if (n.marketplaceRequestId != null &&
+        (n.actionType == 'MARKETPLACE_INTEREST' ||
+            n.actionType == 'MARKETPLACE_CONSENT_GRANTED' ||
+            n.actionType == 'MARKETPLACE_CONSENT_REVOKED' ||
+            n.actionType == 'MARKETPLACE_SAVED_SEARCH_MATCH')) {
+      return true;
+    }
     return false;
   }
 
@@ -81,6 +88,31 @@ class NotificationsScreen extends ConsumerWidget {
 
     if (n.actionType == 'SESSION_COMPLETED') {
       context.push('${AppRoutes.parentHome}/reviews');
+      return;
+    }
+
+    final marketplaceId = n.marketplaceRequestId;
+    if (marketplaceId != null) {
+      if (n.actionType == 'MARKETPLACE_INTEREST' && role == UserRole.parent) {
+        context.push('${AppRoutes.parentMarketplace}/$marketplaceId/interests');
+        return;
+      }
+      if (n.actionType == 'MARKETPLACE_CONSENT_GRANTED' &&
+          role == UserRole.therapist) {
+        context.push(
+          '${AppRoutes.therapistMarketplace}/$marketplaceId/authorized-child',
+        );
+        return;
+      }
+      if (n.actionType == 'MARKETPLACE_CONSENT_REVOKED' &&
+          role == UserRole.therapist) {
+        context.push(AppRoutes.therapistMarketplace);
+        return;
+      }
+      if (n.actionType == 'MARKETPLACE_SAVED_SEARCH_MATCH' &&
+          role == UserRole.therapist) {
+        context.push(AppRoutes.therapistMarketplace);
+      }
     }
   }
 

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/network/api_client.dart';
 import '../../../core/network/graphql_client.dart';
 import '../../../core/providers/app_providers.dart';
 
@@ -139,10 +140,41 @@ class ProviderMarketplaceProfileModel {
       confidentialityTermsAccepted && verifiedStatus != 'SUSPENDED';
 }
 
+class MarketplaceSavedSearchModel {
+  const MarketplaceSavedSearchModel({
+    required this.id,
+    required this.name,
+    required this.alertsEnabled,
+    required this.createdAt,
+    this.zipCode,
+    this.radiusMiles,
+    this.serviceCategory,
+    this.ageRange,
+    this.language,
+    this.locationType,
+    this.urgency,
+    this.authorizationStatus,
+  });
+
+  final String id;
+  final String name;
+  final bool alertsEnabled;
+  final DateTime createdAt;
+  final String? zipCode;
+  final double? radiusMiles;
+  final String? serviceCategory;
+  final String? ageRange;
+  final String? language;
+  final String? locationType;
+  final String? urgency;
+  final String? authorizationStatus;
+}
+
 class MarketplaceRepository {
-  MarketplaceRepository(this._graphql);
+  MarketplaceRepository(this._graphql, this._api);
 
   final GraphqlClient _graphql;
+  final ApiClient _api;
 
   Future<ProviderMarketplaceProfileModel?> fetchProviderProfile() async {
     const query = r'''
@@ -332,6 +364,11 @@ class MarketplaceRepository {
     String? zipCode,
     double? radiusMiles,
     String? serviceCategory,
+    String? ageRange,
+    String? language,
+    String? locationType,
+    String? urgency,
+    String? authorizationStatus,
   }) async {
     const query = r'''
       query($input: MarketplaceBrowseInput) {
@@ -359,6 +396,12 @@ class MarketplaceRepository {
         if (zipCode != null) 'zipCode': zipCode,
         if (radiusMiles != null) 'radiusMiles': radiusMiles,
         if (serviceCategory != null) 'serviceCategory': serviceCategory,
+        if (ageRange != null) 'ageRange': ageRange,
+        if (language != null) 'language': language,
+        if (locationType != null) 'locationType': locationType,
+        if (urgency != null) 'urgency': urgency,
+        if (authorizationStatus != null)
+          'authorizationStatus': authorizationStatus,
       },
     });
     final list =
@@ -383,6 +426,154 @@ class MarketplaceRepository {
         if (message != null) 'message': message,
       },
     });
+  }
+
+  Future<List<MarketplaceSavedSearchModel>> fetchSavedSearches() async {
+    const query = r'''
+      query {
+        myMarketplaceSavedSearches {
+          id
+          name
+          alertsEnabled
+          createdAt
+          zipCode
+          radiusMiles
+          serviceCategory
+          ageRange
+          language
+          locationType
+          urgency
+          authorizationStatus
+        }
+      }
+    ''';
+    final result = await _graphql.query(query);
+    final list =
+        result['data']?['myMarketplaceSavedSearches'] as List<dynamic>? ?? [];
+    return list.map((e) {
+      final row = e as Map<String, dynamic>;
+      return MarketplaceSavedSearchModel(
+        id: row['id'] as String,
+        name: row['name'] as String,
+        alertsEnabled: row['alertsEnabled'] as bool? ?? true,
+        createdAt: DateTime.parse(row['createdAt'] as String),
+        zipCode: row['zipCode'] as String?,
+        radiusMiles: (row['radiusMiles'] as num?)?.toDouble(),
+        serviceCategory: row['serviceCategory'] as String?,
+        ageRange: row['ageRange'] as String?,
+        language: row['language'] as String?,
+        locationType: row['locationType'] as String?,
+        urgency: row['urgency'] as String?,
+        authorizationStatus: row['authorizationStatus'] as String?,
+      );
+    }).toList();
+  }
+
+  Future<MarketplaceSavedSearchModel> saveSearch({
+    required String name,
+    String? zipCode,
+    double? radiusMiles,
+    String? serviceCategory,
+    String? ageRange,
+    String? language,
+    String? locationType,
+    String? urgency,
+    String? authorizationStatus,
+    bool alertsEnabled = true,
+  }) async {
+    const mutation = r'''
+      mutation($input: SaveMarketplaceSearchInput!) {
+        saveMarketplaceSearch(input: $input) {
+          id
+          name
+          alertsEnabled
+          createdAt
+          zipCode
+          radiusMiles
+          serviceCategory
+          ageRange
+          language
+          locationType
+          urgency
+          authorizationStatus
+        }
+      }
+    ''';
+    final result = await _graphql.query(mutation, variables: {
+      'input': {
+        'name': name,
+        'alertsEnabled': alertsEnabled,
+        'filters': {
+          if (zipCode != null) 'zipCode': zipCode,
+          if (radiusMiles != null) 'radiusMiles': radiusMiles,
+          if (serviceCategory != null) 'serviceCategory': serviceCategory,
+          if (ageRange != null) 'ageRange': ageRange,
+          if (language != null) 'language': language,
+          if (locationType != null) 'locationType': locationType,
+          if (urgency != null) 'urgency': urgency,
+          if (authorizationStatus != null)
+            'authorizationStatus': authorizationStatus,
+        },
+      },
+    });
+    final row =
+        result['data']?['saveMarketplaceSearch'] as Map<String, dynamic>;
+    return MarketplaceSavedSearchModel(
+      id: row['id'] as String,
+      name: row['name'] as String,
+      alertsEnabled: row['alertsEnabled'] as bool? ?? true,
+      createdAt: DateTime.parse(row['createdAt'] as String),
+      zipCode: row['zipCode'] as String?,
+      radiusMiles: (row['radiusMiles'] as num?)?.toDouble(),
+      serviceCategory: row['serviceCategory'] as String?,
+      ageRange: row['ageRange'] as String?,
+      language: row['language'] as String?,
+      locationType: row['locationType'] as String?,
+      urgency: row['urgency'] as String?,
+      authorizationStatus: row['authorizationStatus'] as String?,
+    );
+  }
+
+  Future<void> deleteSavedSearch(String savedSearchId) async {
+    const mutation = r'''
+      mutation($id: ID!) {
+        deleteMarketplaceSavedSearch(savedSearchId: $id)
+      }
+    ''';
+    await _graphql.query(mutation, variables: {'id': savedSearchId});
+  }
+
+  Future<void> setSavedSearchAlerts({
+    required String savedSearchId,
+    required bool alertsEnabled,
+  }) async {
+    const mutation = r'''
+      mutation($input: SetMarketplaceSavedSearchAlertsInput!) {
+        setMarketplaceSavedSearchAlerts(input: $input) {
+          id
+        }
+      }
+    ''';
+    await _graphql.query(mutation, variables: {
+      'input': {
+        'savedSearchId': savedSearchId,
+        'alertsEnabled': alertsEnabled,
+      },
+    });
+  }
+
+  Future<void> reportListing({
+    required String marketplaceRequestId,
+    required String reason,
+    String? details,
+  }) async {
+    await _api.post(
+      '/marketplace-requests/$marketplaceRequestId/report',
+      data: {
+        'reason': reason,
+        if (details != null && details.isNotEmpty) 'details': details,
+      },
+    );
   }
 
   Future<List<MarketplaceConsentModel>> fetchConsentHistory(
@@ -533,7 +724,10 @@ class MarketplaceRepository {
 }
 
 final marketplaceRepositoryProvider = Provider<MarketplaceRepository>((ref) {
-  return MarketplaceRepository(ref.watch(graphqlClientProvider));
+  return MarketplaceRepository(
+    ref.watch(graphqlClientProvider),
+    ref.watch(apiClientProvider),
+  );
 });
 
 final providerMarketplaceProfileProvider =

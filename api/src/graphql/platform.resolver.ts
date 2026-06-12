@@ -168,6 +168,7 @@ export class PlatformResolver {
     const actionType = data.type;
     const appointmentId = data.appointmentId;
     const sessionId = data.sessionId;
+    const marketplaceRequestId = data.marketplaceRequestId;
     return {
       id: n.id,
       title: n.title,
@@ -179,6 +180,10 @@ export class PlatformResolver {
       appointmentId:
         typeof appointmentId === 'string' ? appointmentId : undefined,
       sessionId: typeof sessionId === 'string' ? sessionId : undefined,
+      marketplaceRequestId:
+        typeof marketplaceRequestId === 'string'
+          ? marketplaceRequestId
+          : undefined,
     };
   }
 

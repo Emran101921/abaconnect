@@ -84,6 +84,9 @@ export class NotificationType {
 
   @Field({ nullable: true })
   sessionId?: string;
+
+  @Field({ nullable: true })
+  marketplaceRequestId?: string;
 }
 
 @ObjectType()
