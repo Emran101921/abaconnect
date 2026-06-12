@@ -1,5 +1,7 @@
 import { Field, ID, InputType } from '@nestjs/graphql';
+import { IsOptional, IsString } from 'class-validator';
 import {
+  MarketplaceAuthorizationStatus,
   MarketplaceLocationType,
   MarketplaceUrgency,
 } from '../../../generated/prisma/client';
@@ -31,19 +33,40 @@ export class CreateMarketplaceRequestInput {
 @InputType()
 export class MarketplaceBrowseInput {
   @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
   zipCode?: string;
 
   @Field({ nullable: true })
+  @IsOptional()
   radiusMiles?: number;
 
   @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
   serviceCategory?: string;
 
   @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
   ageRange?: string;
 
   @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
   language?: string;
+
+  @Field(() => MarketplaceLocationType, { nullable: true })
+  @IsOptional()
+  locationType?: MarketplaceLocationType;
+
+  @Field(() => MarketplaceUrgency, { nullable: true })
+  @IsOptional()
+  urgency?: MarketplaceUrgency;
+
+  @Field(() => MarketplaceAuthorizationStatus, { nullable: true })
+  @IsOptional()
+  authorizationStatus?: MarketplaceAuthorizationStatus;
 }
 
 @InputType()

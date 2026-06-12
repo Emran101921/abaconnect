@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/network/api_client.dart';
 import '../../../core/network/graphql_client.dart';
 import '../../../core/providers/app_providers.dart';
 
@@ -140,9 +141,10 @@ class ProviderMarketplaceProfileModel {
 }
 
 class MarketplaceRepository {
-  MarketplaceRepository(this._graphql);
+  MarketplaceRepository(this._graphql, this._api);
 
   final GraphqlClient _graphql;
+  final ApiClient _api;
 
   Future<ProviderMarketplaceProfileModel?> fetchProviderProfile() async {
     const query = r'''
@@ -332,6 +334,11 @@ class MarketplaceRepository {
     String? zipCode,
     double? radiusMiles,
     String? serviceCategory,
+    String? ageRange,
+    String? language,
+    String? locationType,
+    String? urgency,
+    String? authorizationStatus,
   }) async {
     const query = r'''
       query($input: MarketplaceBrowseInput) {
@@ -359,6 +366,12 @@ class MarketplaceRepository {
         if (zipCode != null) 'zipCode': zipCode,
         if (radiusMiles != null) 'radiusMiles': radiusMiles,
         if (serviceCategory != null) 'serviceCategory': serviceCategory,
+        if (ageRange != null) 'ageRange': ageRange,
+        if (language != null) 'language': language,
+        if (locationType != null) 'locationType': locationType,
+        if (urgency != null) 'urgency': urgency,
+        if (authorizationStatus != null)
+          'authorizationStatus': authorizationStatus,
       },
     });
     final list =
@@ -383,6 +396,20 @@ class MarketplaceRepository {
         if (message != null) 'message': message,
       },
     });
+  }
+
+  Future<void> reportListing({
+    required String marketplaceRequestId,
+    required String reason,
+    String? details,
+  }) async {
+    await _api.post(
+      '/marketplace-requests/$marketplaceRequestId/report',
+      data: {
+        'reason': reason,
+        if (details != null && details.isNotEmpty) 'details': details,
+      },
+    );
   }
 
   Future<List<MarketplaceConsentModel>> fetchConsentHistory(
@@ -533,7 +560,10 @@ class MarketplaceRepository {
 }
 
 final marketplaceRepositoryProvider = Provider<MarketplaceRepository>((ref) {
-  return MarketplaceRepository(ref.watch(graphqlClientProvider));
+  return MarketplaceRepository(
+    ref.watch(graphqlClientProvider),
+    ref.watch(apiClientProvider),
+  );
 });
 
 final providerMarketplaceProfileProvider =

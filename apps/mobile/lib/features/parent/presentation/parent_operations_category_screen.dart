@@ -213,6 +213,12 @@ class ParentOperationsCategoryScreen extends ConsumerWidget {
             icon: Icons.assignment,
             onTap: () => context.push(AppRoutes.parentScreening),
           ),
+          ParentOpsTile(
+            title: 'Service marketplace',
+            subtitle: 'Anonymous provider requests in your ZIP area',
+            icon: Icons.storefront_outlined,
+            onTap: () => context.push(AppRoutes.parentMarketplace),
+          ),
         ];
       case 'payments':
         return [

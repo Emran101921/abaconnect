@@ -7,12 +7,16 @@ import {
   registerEnumType,
 } from '@nestjs/graphql';
 import {
+  MarketplaceAuthorizationStatus,
   MarketplaceLocationType,
   MarketplaceUrgency,
 } from '../../../generated/prisma/client';
 
 registerEnumType(MarketplaceLocationType, { name: 'MarketplaceLocationType' });
 registerEnumType(MarketplaceUrgency, { name: 'MarketplaceUrgency' });
+registerEnumType(MarketplaceAuthorizationStatus, {
+  name: 'MarketplaceAuthorizationStatus',
+});
 
 @ObjectType()
 export class PublicMarketplaceRequestType {

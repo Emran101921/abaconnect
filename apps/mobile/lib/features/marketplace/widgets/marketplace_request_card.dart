@@ -9,6 +9,7 @@ class MarketplaceRequestCard extends StatelessWidget {
     this.onAvailable,
     this.onRequestPermission,
     this.onViewAuthorizedDetails,
+    this.onReport,
     this.showProviderActions = false,
   });
 
@@ -16,6 +17,7 @@ class MarketplaceRequestCard extends StatelessWidget {
   final VoidCallback? onAvailable;
   final VoidCallback? onRequestPermission;
   final VoidCallback? onViewAuthorizedDetails;
+  final VoidCallback? onReport;
   final bool showProviderActions;
 
   @override
@@ -72,6 +74,11 @@ class MarketplaceRequestCard extends StatelessWidget {
                     TextButton(
                       onPressed: onViewAuthorizedDetails,
                       child: const Text('Authorized child details'),
+                    ),
+                  if (onReport != null)
+                    TextButton(
+                      onPressed: onReport,
+                      child: const Text('Report listing'),
                     ),
                 ],
               ),

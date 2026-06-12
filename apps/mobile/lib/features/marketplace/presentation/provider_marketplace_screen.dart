@@ -20,14 +20,19 @@ class ProviderMarketplaceScreen extends ConsumerStatefulWidget {
 class _ProviderMarketplaceScreenState
     extends ConsumerState<ProviderMarketplaceScreen> {
   final _zipController = TextEditingController();
+  final _languageController = TextEditingController();
   double _radius = 25;
   bool _mapView = false;
   bool _loading = false;
+  String? _locationType;
+  String? _urgency;
+  String? _authorizationStatus;
   List<MarketplaceRequestModel> _requests = [];
 
   @override
   void dispose() {
     _zipController.dispose();
+    _languageController.dispose();
     super.dispose();
   }
 
@@ -39,6 +44,12 @@ class _ProviderMarketplaceScreenState
                 ? null
                 : _zipController.text.trim(),
             radiusMiles: _radius,
+            language: _languageController.text.trim().isEmpty
+                ? null
+                : _languageController.text.trim(),
+            locationType: _locationType,
+            urgency: _urgency,
+            authorizationStatus: _authorizationStatus,
           );
       if (mounted) setState(() => _requests = list);
     } catch (e) {
@@ -52,15 +63,27 @@ class _ProviderMarketplaceScreenState
     }
   }
 
-  Future<void> _expressInterest(MarketplaceRequestModel request) async {
+  Future<void> _expressInterest(
+    MarketplaceRequestModel request, {
+    required bool requestPermission,
+  }) async {
+    final message = requestPermission
+        ? 'I would like parent permission to review authorized child details for care coordination.'
+        : "I'm available to support this anonymous service request in my coverage area.";
     try {
       await ref.read(marketplaceRepositoryProvider).submitInterest(
             marketplaceRequestId: request.id,
-            message: "I'm available to support this service request.",
+            message: message,
           );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Interest submitted for parent review.')),
+        SnackBar(
+          content: Text(
+            requestPermission
+                ? 'Permission request sent for parent review.'
+                : 'Availability submitted for parent review.',
+          ),
+        ),
       );
     } catch (e) {
       if (mounted) {
@@ -69,6 +92,119 @@ class _ProviderMarketplaceScreenState
         );
       }
     }
+  }
+
+  Future<void> _reportListing(MarketplaceRequestModel request) async {
+    final reasonController = TextEditingController();
+    final detailsController = TextEditingController();
+    final submitted = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Report listing'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: reasonController,
+              decoration: const InputDecoration(
+                labelText: 'Reason',
+                hintText: 'e.g. Suspected PHI exposure',
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: detailsController,
+              decoration: const InputDecoration(
+                labelText: 'Details (optional)',
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Submit report'),
+          ),
+        ],
+      ),
+    );
+    if (submitted != true || reasonController.text.trim().isEmpty) return;
+    try {
+      await ref.read(marketplaceRepositoryProvider).reportListing(
+            marketplaceRequestId: request.id,
+            reason: reasonController.text.trim(),
+            details: detailsController.text.trim(),
+          );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Report submitted to compliance review.')),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Report failed: $e')),
+        );
+      }
+    } finally {
+      reasonController.dispose();
+      detailsController.dispose();
+    }
+  }
+
+  void _showRequestDetail(MarketplaceRequestModel request) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: 16,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+        ),
+        child: MarketplaceRequestCard(
+          request: request,
+          showProviderActions: true,
+          onAvailable: () {
+            Navigator.pop(ctx);
+            _expressInterest(request, requestPermission: false);
+          },
+          onRequestPermission: () {
+            Navigator.pop(ctx);
+            _expressInterest(request, requestPermission: true);
+          },
+          onViewAuthorizedDetails: () {
+            Navigator.pop(ctx);
+            context.push(
+              '${AppRoutes.therapistMarketplace}/${request.id}/authorized-child',
+            );
+          },
+          onReport: () {
+            Navigator.pop(ctx);
+            _reportListing(request);
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _requestCard(MarketplaceRequestModel request) {
+    return MarketplaceRequestCard(
+      request: request,
+      showProviderActions: true,
+      onAvailable: () => _expressInterest(request, requestPermission: false),
+      onRequestPermission: () =>
+          _expressInterest(request, requestPermission: true),
+      onViewAuthorizedDetails: () => context.push(
+        '${AppRoutes.therapistMarketplace}/${request.id}/authorized-child',
+      ),
+      onReport: () => _reportListing(request),
+    );
   }
 
   @override
@@ -117,6 +253,14 @@ class _ProviderMarketplaceScreenState
                   ),
                 ),
                 const SizedBox(height: 8),
+                TextField(
+                  controller: _languageController,
+                  decoration: const InputDecoration(
+                    labelText: 'Language',
+                    hintText: 'e.g. English, Spanish',
+                  ),
+                ),
+                const SizedBox(height: 8),
                 Row(
                   children: [
                     const Text('Radius (mi)'),
@@ -132,6 +276,58 @@ class _ProviderMarketplaceScreenState
                     ),
                   ],
                 ),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    DropdownMenu<String?>(
+                      label: const Text('Location'),
+                      initialSelection: _locationType,
+                      dropdownMenuEntries: const [
+                        DropdownMenuEntry(value: null, label: 'Any'),
+                        DropdownMenuEntry(value: 'HOME', label: 'Home'),
+                        DropdownMenuEntry(value: 'CLINIC', label: 'Clinic'),
+                        DropdownMenuEntry(
+                          value: 'TELEHEALTH',
+                          label: 'Telehealth',
+                        ),
+                      ],
+                      onSelected: (v) => setState(() => _locationType = v),
+                    ),
+                    DropdownMenu<String?>(
+                      label: const Text('Urgency'),
+                      initialSelection: _urgency,
+                      dropdownMenuEntries: const [
+                        DropdownMenuEntry(value: null, label: 'Any'),
+                        DropdownMenuEntry(value: 'ROUTINE', label: 'Routine'),
+                        DropdownMenuEntry(value: 'URGENT', label: 'Urgent'),
+                      ],
+                      onSelected: (v) => setState(() => _urgency = v),
+                    ),
+                    DropdownMenu<String?>(
+                      label: const Text('Authorization'),
+                      initialSelection: _authorizationStatus,
+                      dropdownMenuEntries: const [
+                        DropdownMenuEntry(value: null, label: 'Any'),
+                        DropdownMenuEntry(
+                          value: 'PARENT_SCREENING_ONLY',
+                          label: 'Screening only',
+                        ),
+                        DropdownMenuEntry(
+                          value: 'EVALUATION_NEEDED',
+                          label: 'Evaluation needed',
+                        ),
+                        DropdownMenuEntry(
+                          value: 'SERVICE_AUTHORIZED',
+                          label: 'Service authorized',
+                        ),
+                      ],
+                      onSelected: (v) =>
+                          setState(() => _authorizationStatus = v),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
                 FilledButton(
                   onPressed: _loading ? null : _search,
                   child: _loading
@@ -151,7 +347,7 @@ class _ProviderMarketplaceScreenState
                     children: [
                       MarketplaceApproxMap(
                         requests: _requests,
-                        onPinTap: _expressInterest,
+                        onPinTap: _showRequestDetail,
                       ),
                       ..._requests.map(
                         (request) => Padding(
@@ -159,12 +355,7 @@ class _ProviderMarketplaceScreenState
                             horizontal: 16,
                             vertical: 6,
                           ),
-                          child: MarketplaceRequestCard(
-                            request: request,
-                            showProviderActions: true,
-                            onAvailable: () => _expressInterest(request),
-                            onRequestPermission: () => _expressInterest(request),
-                          ),
+                          child: _requestCard(request),
                         ),
                       ),
                     ],
@@ -174,16 +365,7 @@ class _ProviderMarketplaceScreenState
                     itemCount: _requests.length,
                     separatorBuilder: (_, _) => const SizedBox(height: 12),
                     itemBuilder: (context, index) {
-                      final request = _requests[index];
-                      return MarketplaceRequestCard(
-                        request: request,
-                        showProviderActions: true,
-                        onAvailable: () => _expressInterest(request),
-                        onRequestPermission: () => _expressInterest(request),
-                        onViewAuthorizedDetails: () => context.push(
-                          '${AppRoutes.therapistMarketplace}/${request.id}/authorized-child',
-                        ),
-                      );
+                      return _requestCard(_requests[index]);
                     },
                   ),
           ),
