@@ -104,9 +104,14 @@ export class InsuranceService {
       patientId: child.id,
     });
 
-    return this.claimSecurity.lockOnSubmit(claim.id, parent.tenantId, {
-      editorId: userId,
-    }, child.id);
+    return this.claimSecurity.lockOnSubmit(
+      claim.id,
+      parent.tenantId,
+      {
+        editorId: userId,
+      },
+      child.id,
+    );
   }
 
   async draftClaimFromSession(sessionId: string) {

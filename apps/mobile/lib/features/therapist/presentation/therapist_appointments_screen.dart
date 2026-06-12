@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../data/therapist_repository.dart';
+import '../therapist_providers.dart';
 import 'session_notes_screen.dart';
 import 'therapist_home_screen.dart';
 import '../../../shared/widgets/app_bottom_nav.dart';
@@ -24,6 +25,7 @@ class TherapistAppointmentsScreen extends ConsumerWidget {
           .read(therapistRepositoryProvider)
           .confirmAppointment(appointment.id);
       ref.invalidate(therapistAppointmentsProvider);
+      ref.invalidate(therapistDashboardProvider);
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
@@ -48,6 +50,7 @@ class TherapistAppointmentsScreen extends ConsumerWidget {
           .read(therapistRepositoryProvider)
           .cancelAppointment(appointment.id, reason: 'Therapist unavailable');
       ref.invalidate(therapistAppointmentsProvider);
+      ref.invalidate(therapistDashboardProvider);
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
@@ -72,6 +75,7 @@ class TherapistAppointmentsScreen extends ConsumerWidget {
           .read(therapistRepositoryProvider)
           .declineAppointment(appointment.id, reason: 'Schedule conflict');
       ref.invalidate(therapistAppointmentsProvider);
+      ref.invalidate(therapistDashboardProvider);
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
@@ -95,6 +99,7 @@ class TherapistAppointmentsScreen extends ConsumerWidget {
       await ref.read(therapistRepositoryProvider).startSession(appointment.id);
       ref.invalidate(therapistSessionsProvider);
       ref.invalidate(therapistAppointmentsProvider);
+      ref.invalidate(therapistDashboardProvider);
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -141,7 +146,7 @@ class TherapistAppointmentsScreen extends ConsumerWidget {
 
     return AppScaffold(
       title: 'My Appointments',
-      bottomNavigationBar: const TherapistBottomNav(
+      bottomNavigationBar: TherapistBottomNav(
         current: TherapistNavTab.appointments,
       ),
       actions: [

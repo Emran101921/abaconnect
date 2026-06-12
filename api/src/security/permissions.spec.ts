@@ -1,14 +1,18 @@
 import { UserRole } from '../../generated/prisma/client';
-import { Permission, permissionsForRole, roleHasPermission } from './permissions';
+import {
+  Permission,
+  permissionsForRole,
+  roleHasPermission,
+} from './permissions';
 
 describe('permissions', () => {
   it('grants platform admin all permissions', () => {
-    expect(roleHasPermission(UserRole.PLATFORM_ADMIN, Permission.USER_DISABLE)).toBe(
-      true,
-    );
-    expect(roleHasPermission(UserRole.PLATFORM_ADMIN, Permission.BILLING_EXPORT)).toBe(
-      true,
-    );
+    expect(
+      roleHasPermission(UserRole.PLATFORM_ADMIN, Permission.USER_DISABLE),
+    ).toBe(true);
+    expect(
+      roleHasPermission(UserRole.PLATFORM_ADMIN, Permission.BILLING_EXPORT),
+    ).toBe(true);
   });
 
   it('restricts parent to own PHI and messaging', () => {
@@ -19,12 +23,12 @@ describe('permissions', () => {
   });
 
   it('allows billing staff billing operations without user disable', () => {
-    expect(roleHasPermission(UserRole.BILLING_STAFF, Permission.BILLING_SUBMIT)).toBe(
-      true,
-    );
-    expect(roleHasPermission(UserRole.BILLING_STAFF, Permission.USER_DISABLE)).toBe(
-      false,
-    );
+    expect(
+      roleHasPermission(UserRole.BILLING_STAFF, Permission.BILLING_SUBMIT),
+    ).toBe(true);
+    expect(
+      roleHasPermission(UserRole.BILLING_STAFF, Permission.USER_DISABLE),
+    ).toBe(false);
   });
 
   it('allows compliance auditor audit search only', () => {
@@ -38,10 +42,13 @@ describe('permissions', () => {
 
   it('limits support staff to support read', () => {
     expect(
-      roleHasPermission(UserRole.SUPPORT_STAFF, Permission.SUPPORT_READ_LIMITED),
+      roleHasPermission(
+        UserRole.SUPPORT_STAFF,
+        Permission.SUPPORT_READ_LIMITED,
+      ),
     ).toBe(true);
-    expect(roleHasPermission(UserRole.SUPPORT_STAFF, Permission.PHI_READ_OWN)).toBe(
-      false,
-    );
+    expect(
+      roleHasPermission(UserRole.SUPPORT_STAFF, Permission.PHI_READ_OWN),
+    ).toBe(false);
   });
 });

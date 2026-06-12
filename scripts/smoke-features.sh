@@ -50,7 +50,7 @@ curl -sf "$API/api/v1/health" | python3 -m json.tool
 echo
 
 echo "=== Parent dashboards & messaging ==="
-PARENT=$(login parent@demo.local 'Parent123!')
+PARENT=$(login parent1@demo.local 'Parent1Demo!')
 PD=$(gql "$PARENT" 'query { parentDashboard { childrenCount upcomingAppointments appointmentsToday pendingReviews onboardingStepsCompleted onboardingStepsTotal hasChild hasScreening hasBookedTherapist } }')
 check "parentDashboard query" "d.get('data',{}).get('parentDashboard') is not None" "$PD"
 check "parentDashboard childrenCount >= 0" "d['data']['parentDashboard']['childrenCount'] >= 0" "$PD"

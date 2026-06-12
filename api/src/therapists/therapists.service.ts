@@ -164,6 +164,117 @@ export class TherapistsService {
     });
   }
 
+  async findCaseloadChartsByUserId(userId: string) {
+    const therapist = await this.findByUserId(userId);
+    const now = new Date();
+
+    const [appointments, sessions] = await Promise.all([
+      this.prisma.appointment.findMany({
+        where: {
+          therapistId: therapist.id,
+          status: { notIn: ['CANCELLED', 'NO_SHOW'] },
+        },
+        include: {
+          child: { include: { parent: { include: { user: true } } } },
+        },
+        orderBy: { scheduledStart: 'desc' },
+      }),
+      this.prisma.session.findMany({
+        where: { therapistId: therapist.id },
+        orderBy: { checkOutAt: 'desc' },
+      }),
+    ]);
+
+    const byChild = new Map<
+      string,
+      {
+        child: (typeof appointments)[0]['child'];
+        parentName: string;
+        therapyTypes: Set<string>;
+        upcomingAppointments: number;
+        completedSessions: number;
+        pendingDocumentation: number;
+        lastVisitAt?: Date;
+      }
+    >();
+
+    for (const row of appointments) {
+      const key = row.childId;
+      const parentName = `${row.child.parent.user.firstName} ${row.child.parent.user.lastName}`;
+      const existing = byChild.get(key);
+      if (existing) {
+        existing.therapyTypes.add(row.therapyType);
+        if (
+          row.scheduledStart >= now &&
+          !['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(row.status)
+        ) {
+          existing.upcomingAppointments += 1;
+        }
+      } else {
+        byChild.set(key, {
+          child: row.child,
+          parentName,
+          therapyTypes: new Set([row.therapyType]),
+          upcomingAppointments:
+            row.scheduledStart >= now &&
+            !['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(row.status)
+              ? 1
+              : 0,
+          completedSessions: 0,
+          pendingDocumentation: 0,
+          lastVisitAt: undefined,
+        });
+      }
+    }
+
+    for (const session of sessions) {
+      const key = session.childId;
+      const existing = byChild.get(key);
+      if (!existing) continue;
+      if (session.status === 'COMPLETED') {
+        existing.completedSessions += 1;
+        const visitAt = session.checkOutAt ?? session.checkInAt;
+        if (
+          visitAt &&
+          (!existing.lastVisitAt || visitAt > existing.lastVisitAt)
+        ) {
+          existing.lastVisitAt = visitAt;
+        }
+      }
+      if (session.status === 'PENDING_DOCUMENTATION') {
+        existing.pendingDocumentation += 1;
+      }
+    }
+
+    return [...byChild.values()]
+      .map((entry) => {
+        const c = entry.child;
+        return {
+          childId: c.id,
+          chartNumber: `CH-${c.id.replace(/-/g, '').slice(-8).toUpperCase()}`,
+          firstName: c.firstName,
+          lastName: c.lastName,
+          dateOfBirth: c.dateOfBirth,
+          gender: c.gender ?? undefined,
+          primaryLanguage: c.primaryLanguage ?? undefined,
+          guardianName: c.guardianName ?? undefined,
+          pediatricianName: c.pediatricianName ?? undefined,
+          insuranceType: c.insuranceType ?? undefined,
+          parentName: entry.parentName,
+          therapyTypes: [...entry.therapyTypes],
+          upcomingAppointments: entry.upcomingAppointments,
+          completedSessions: entry.completedSessions,
+          pendingDocumentation: entry.pendingDocumentation,
+          lastVisitAt: entry.lastVisitAt,
+        };
+      })
+      .sort((a, b) =>
+        `${a.lastName} ${a.firstName}`.localeCompare(
+          `${b.lastName} ${b.firstName}`,
+        ),
+      );
+  }
+
   async create(data: Record<string, unknown>) {
     void data;
     throw new BadRequestException('Use registration flow');

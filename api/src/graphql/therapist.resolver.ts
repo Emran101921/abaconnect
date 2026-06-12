@@ -20,6 +20,7 @@ import {
   SessionNoteFormContextType,
   SoapNoteType,
   TherapistAppointmentType,
+  TherapistCaseloadChartType,
   ProviderOnboardingChecklistType,
   TherapistDashboardType,
   TherapistProfileType,
@@ -108,6 +109,21 @@ export class TherapistResolver {
         email: t.user.email,
       },
     };
+  }
+
+  @Query(() => [TherapistCaseloadChartType], {
+    name: 'myTherapistCaseloadCharts',
+  })
+  async myTherapistCaseloadCharts(
+    @CurrentUser() user: AuthUser,
+  ): Promise<TherapistCaseloadChartType[]> {
+    const rows = await this.therapistsService.findCaseloadChartsByUserId(
+      user.id,
+    );
+    return rows.map((row) => ({
+      ...row,
+      therapyTypes: row.therapyTypes as TherapyType[],
+    }));
   }
 
   @Query(() => [TherapistAppointmentType], { name: 'myTherapistAppointments' })

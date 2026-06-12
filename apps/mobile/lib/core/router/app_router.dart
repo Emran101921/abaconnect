@@ -65,6 +65,14 @@ import '../../features/therapist/presentation/therapist_home_screen.dart';
 import '../../features/therapist/presentation/therapist_payouts_screen.dart';
 import '../../features/therapist/presentation/therapist_plans_screen.dart';
 import '../../features/therapist/presentation/therapist_profile_screen.dart';
+import '../../features/marketplace/presentation/admin_marketplace_screen.dart';
+import '../../features/marketplace/presentation/marketplace_opt_in_screen.dart';
+import '../../features/marketplace/presentation/parent_consent_history_screen.dart';
+import '../../features/marketplace/presentation/parent_consent_share_screen.dart';
+import '../../features/marketplace/presentation/parent_marketplace_dashboard_screen.dart';
+import '../../features/marketplace/presentation/parent_provider_compare_screen.dart';
+import '../../features/marketplace/presentation/provider_authorized_child_screen.dart';
+import '../../features/marketplace/presentation/provider_marketplace_screen.dart';
 import '../providers/app_providers.dart';
 import '../providers/consent_gate_provider.dart';
 import 'app_router_redirect.dart';
@@ -128,6 +136,10 @@ abstract final class AppRoutes {
   static const treatmentPlans = '/treatment-plans';
   static const complaints = '/complaints';
   static const therapistPlans = '/therapist/plans';
+  static const parentMarketplace = '/parent/marketplace';
+  static const parentMarketplaceOptIn = '/parent/marketplace/opt-in';
+  static const therapistMarketplace = '/therapist/marketplace';
+  static const adminMarketplace = '/admin/marketplace';
 }
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -259,6 +271,49 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               categoryId: state.pathParameters['category']!,
             ),
           ),
+          GoRoute(
+            path: 'marketplace',
+            name: 'parentMarketplace',
+            builder: (context, state) =>
+                const ParentMarketplaceDashboardScreen(),
+            routes: [
+              GoRoute(
+                path: 'opt-in',
+                name: 'parentMarketplaceOptIn',
+                builder: (context, state) => MarketplaceOptInScreen(
+                  childId: state.uri.queryParameters['childId'] ?? '',
+                  screeningResponseId:
+                      state.uri.queryParameters['screeningResponseId'],
+                  languagePreference:
+                      state.uri.queryParameters['languagePreference'],
+                ),
+              ),
+              GoRoute(
+                path: ':requestId/interests',
+                name: 'parentMarketplaceInterests',
+                builder: (context, state) => ParentProviderCompareScreen(
+                  marketplaceRequestId: state.pathParameters['requestId']!,
+                ),
+              ),
+              GoRoute(
+                path: ':requestId/consent/:providerId',
+                name: 'parentMarketplaceConsent',
+                builder: (context, state) => ParentConsentShareScreen(
+                  marketplaceRequestId: state.pathParameters['requestId']!,
+                  providerProfileId: state.pathParameters['providerId']!,
+                  providerName:
+                      state.uri.queryParameters['name'] ?? 'Provider',
+                ),
+              ),
+              GoRoute(
+                path: ':requestId/consents',
+                name: 'parentMarketplaceConsentHistory',
+                builder: (context, state) => ParentConsentHistoryScreen(
+                  marketplaceRequestId: state.pathParameters['requestId']!,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
       GoRoute(
@@ -280,6 +335,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: 'profile',
             name: 'therapistProfile',
             builder: (context, state) => const TherapistProfileScreen(),
+          ),
+          GoRoute(
+            path: 'marketplace',
+            name: 'therapistMarketplace',
+            builder: (context, state) => const ProviderMarketplaceScreen(),
+            routes: [
+              GoRoute(
+                path: ':requestId/authorized-child',
+                name: 'therapistMarketplaceAuthorizedChild',
+                builder: (context, state) => ProviderAuthorizedChildScreen(
+                  marketplaceRequestId: state.pathParameters['requestId']!,
+                ),
+              ),
+            ],
           ),
           GoRoute(
             path: 'session-notes',
@@ -478,6 +547,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: 'audit',
             name: 'adminAudit',
             builder: (context, state) => const AdminAuditScreen(),
+          ),
+          GoRoute(
+            path: 'marketplace',
+            name: 'adminMarketplace',
+            builder: (context, state) => const AdminMarketplaceScreen(),
           ),
           GoRoute(
             path: 'compliance',

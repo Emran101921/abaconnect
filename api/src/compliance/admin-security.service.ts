@@ -36,7 +36,9 @@ export class AdminSecurityService {
       this.prisma.auditLog.count({
         where: {
           tenantId,
-          action: { in: [AuditAction.CLAIM_SUBMITTED, AuditAction.CLAIM_RESUBMITTED] },
+          action: {
+            in: [AuditAction.CLAIM_SUBMITTED, AuditAction.CLAIM_RESUBMITTED],
+          },
           createdAt: { gte: new Date(Date.now() - 7 * 86_400_000) },
         },
       }),

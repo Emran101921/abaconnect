@@ -38,7 +38,10 @@ export class ComplianceService {
       select: { tenantId: true },
     });
     if (!user) return false;
-    return this.privacyNotices.hasAcknowledgedActiveNotice(userId, user.tenantId);
+    return this.privacyNotices.hasAcknowledgedActiveNotice(
+      userId,
+      user.tenantId,
+    );
   }
 
   async grantConsent(

@@ -37,6 +37,20 @@ describe('phiEncryptionExtension helpers', () => {
     expect(row.plan).toBe('next steps');
   });
 
+  it('encrypts Child first and last name on write', () => {
+    const args = {
+      data: {
+        firstName: 'Alex',
+        lastName: 'Demo',
+        zipCode: '11230',
+      },
+    };
+    applyWriteEncryption('Child', args, KEY);
+    expect(args.data.firstName).toMatch(/^enc:/);
+    expect(args.data.lastName).toMatch(/^enc:/);
+    expect(args.data.zipCode).toBe('11230');
+  });
+
   it('decrypts nested relation payloads (session include soapNote)', () => {
     const writeArgs = { data: { subjective: 'nested note' } };
     applyWriteEncryption('SoapNote', writeArgs, KEY);

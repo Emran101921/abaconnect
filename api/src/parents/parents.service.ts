@@ -144,15 +144,6 @@ export class ParentsService {
       if (actionItems.filter((a) => a.actionType === 'REVIEW').length >= 2)
         break;
     }
-    if (openClaimsCount > 0) {
-      actionItems.push({
-        id: 'claims',
-        title: 'Insurance claims in progress',
-        subtitle: `${openClaimsCount} open claim(s)`,
-        actionType: 'CLAIM',
-        priority: 3,
-      });
-    }
     if (nextTelehealth) {
       actionItems.push({
         id: `telehealth-${nextTelehealth.id}`,

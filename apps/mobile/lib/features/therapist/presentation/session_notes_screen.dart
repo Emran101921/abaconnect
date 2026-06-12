@@ -13,6 +13,7 @@ import '../therapist_providers.dart';
 import 'therapist_weekly_progress_section.dart';
 import '../../../shared/widgets/app_bottom_nav.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/speech_dictation.dart';
 
 final therapistSessionsProvider = FutureProvider<List<TherapistSessionModel>>((
   ref,
@@ -312,7 +313,7 @@ class SessionNotesScreen extends ConsumerWidget {
 
     return AppScaffold(
       title: 'Session Notes and Service logs',
-      bottomNavigationBar: const TherapistBottomNav(
+      bottomNavigationBar: TherapistBottomNav(
         current: TherapistNavTab.sessions,
       ),
       body: sessions.when(
@@ -600,33 +601,43 @@ class _SoapEditorSheetState extends State<_SoapEditorSheet> {
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 12),
-            TextField(
+            SpeechDictationTextField(
+              fieldKey: 'soap-subjective-${widget.session.id}',
               controller: _subjective,
               decoration: const InputDecoration(labelText: 'Subjective'),
-              maxLines: 2,
+              maxLines: 4,
+              minLines: 2,
             ),
-            TextField(
+            SpeechDictationTextField(
+              fieldKey: 'soap-objective-${widget.session.id}',
               controller: _objective,
               decoration: const InputDecoration(labelText: 'Objective'),
-              maxLines: 2,
+              maxLines: 4,
+              minLines: 2,
             ),
-            TextField(
+            SpeechDictationTextField(
+              fieldKey: 'soap-assessment-${widget.session.id}',
               controller: _assessment,
               decoration: const InputDecoration(labelText: 'Assessment'),
-              maxLines: 2,
+              maxLines: 4,
+              minLines: 2,
             ),
-            TextField(
+            SpeechDictationTextField(
+              fieldKey: 'soap-plan-${widget.session.id}',
               controller: _plan,
               decoration: const InputDecoration(labelText: 'Plan'),
-              maxLines: 2,
+              maxLines: 4,
+              minLines: 2,
             ),
             const SizedBox(height: 12),
-            TextField(
+            SpeechDictationTextField(
+              fieldKey: 'soap-progress-${widget.session.id}',
               controller: _progressSummary,
               decoration: const InputDecoration(
                 labelText: 'Progress summary (optional)',
               ),
-              maxLines: 2,
+              maxLines: 4,
+              minLines: 2,
             ),
             const SizedBox(height: 16),
             OutlinedButton(

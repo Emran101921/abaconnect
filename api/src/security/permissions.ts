@@ -84,9 +84,7 @@ export function roleHasPermission(
   permission: Permission,
 ): boolean {
   const perms = permissionsForRole(role);
-  return (
-    perms.includes(Permission.ADMIN_ALL) || perms.includes(permission)
-  );
+  return perms.includes(Permission.ADMIN_ALL) || perms.includes(permission);
 }
 
 export function roleDisplayName(role: UserRole | string): string {

@@ -81,7 +81,10 @@ export function buildServiceLogPdf(
     }
 
     if (log.parentSignatureName) {
-      doc.fontSize(12).font('Helvetica-Bold').text('Parent / caregiver signature');
+      doc
+        .fontSize(12)
+        .font('Helvetica-Bold')
+        .text('Parent / caregiver signature');
       doc.moveDown(0.3);
       doc
         .fontSize(11)
@@ -112,7 +115,11 @@ export function buildServiceLogPdf(
     doc.fontSize(12).font('Helvetica-Bold').text('Session summary');
     doc.moveDown(0.3);
     line(doc, 'IFSP outcomes (#1)', String(data.q1IfspOutcomes ?? ''));
-    line(doc, 'Session description (#2)', String(data.q2SessionDescription ?? ''));
+    line(
+      doc,
+      'Session description (#2)',
+      String(data.q2SessionDescription ?? ''),
+    );
     line(doc, 'Home strategies (#4)', String(data.q4HomeStrategies ?? ''));
 
     doc.end();

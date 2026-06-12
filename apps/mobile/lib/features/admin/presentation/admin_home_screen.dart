@@ -182,6 +182,12 @@ class AdminHomeScreen extends ConsumerWidget {
                 onTap: () => context.push('${AppRoutes.adminHome}/audit'),
               ),
               _OpsTile(
+                title: 'Marketplace moderation',
+                subtitle: 'Review anonymous listings and consent audit trail',
+                icon: Icons.storefront_outlined,
+                onTap: () => context.push('${AppRoutes.adminHome}/marketplace'),
+              ),
+              _OpsTile(
                 title: 'Session notes',
                 subtitle: 'Edit fully signed therapist session documentation',
                 icon: Icons.assignment_outlined,

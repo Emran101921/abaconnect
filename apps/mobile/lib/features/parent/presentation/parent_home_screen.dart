@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
-
 import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/models/dashboard_action_model.dart';
@@ -43,13 +41,21 @@ final parentPendingReviewsProvider = FutureProvider<List<TherapistModel>>((
       .fetchPendingReviewTherapists();
 });
 
+final parentChildrenProvider = FutureProvider<List<ChildModel>>((ref) async {
+  return ref.watch(parentBookingRepositoryProvider).fetchChildren();
+});
+
+final parentShowsPaymentsProvider = FutureProvider<bool>((ref) async {
+  final children = await ref.watch(parentChildrenProvider.future);
+  return ParentOperationsCategory.childrenShowPayments(children);
+});
+
 class ParentHomeScreen extends ConsumerWidget {
   const ParentHomeScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final dashboard = ref.watch(parentDashboardProvider);
-    final appointments = ref.watch(parentAppointmentsProvider);
     final pendingReviews = ref.watch(parentPendingReviewsProvider);
     final unread = ref.watch(unreadNotificationsProvider);
     final unreadCount = unread.maybeWhen(data: (c) => c, orElse: () => 0);
@@ -58,6 +64,9 @@ class ParentHomeScreen extends ConsumerWidget {
       data: (c) => c,
       orElse: () => 0,
     );
+    final showPayments = ref
+        .watch(parentShowsPaymentsProvider)
+        .maybeWhen(data: (v) => v, orElse: () => true);
 
     final user = ref.watch(authStateProvider).valueOrNull?.user;
     final greetingName =
@@ -67,7 +76,7 @@ class ParentHomeScreen extends ConsumerWidget {
 
     return AppScaffold(
       title: 'Parent',
-      bottomNavigationBar: const ParentBottomNav(current: ParentNavTab.home),
+      bottomNavigationBar: ParentBottomNav(current: ParentNavTab.home),
       actions: [
         const AppThemeToggle(compact: true),
         IconButton(
@@ -96,8 +105,9 @@ class ParentHomeScreen extends ConsumerWidget {
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(parentDashboardProvider);
-          ref.invalidate(parentAppointmentsProvider);
           ref.invalidate(parentPendingReviewsProvider);
+          ref.invalidate(parentChildrenProvider);
+          ref.invalidate(parentShowsPaymentsProvider);
           ref.invalidate(unreadNotificationsProvider);
           ref.invalidate(unreadMessageThreadsProvider);
           ref.invalidate(messageThreadsProvider);
@@ -108,8 +118,6 @@ class ParentHomeScreen extends ConsumerWidget {
             children: [
               AppWellnessHomeHeader(
                 greeting: 'Welcome back, $greetingName 👋',
-                notificationCount: unreadCount,
-                onNotificationsTap: () => context.push(AppRoutes.notifications),
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -296,17 +304,12 @@ class ParentHomeScreen extends ConsumerWidget {
                             ),
                           ),
                           AppStatCard(
-                            label: 'Upcoming',
+                            label: d.appointmentsToday > 0
+                                ? 'Schedule · ${d.appointmentsToday} today'
+                                : 'Schedule',
                             value: '${d.upcomingAppointments}',
-                            icon: Icons.event_outlined,
-                            onTap: () => context.push(
-                              '${AppRoutes.parentHome}/appointments',
-                            ),
-                          ),
-                          AppStatCard(
-                            label: 'Today',
-                            value: '${d.appointmentsToday}',
-                            icon: Icons.today_outlined,
+                            icon: Icons.calendar_month_outlined,
+                            highlight: d.appointmentsToday > 0,
                             accent: d.appointmentsToday > 0,
                             onTap: () => context.push(
                               '${AppRoutes.parentHome}/appointments',
@@ -330,17 +333,17 @@ class ParentHomeScreen extends ConsumerWidget {
                       data: (d) {
                         final actions = d.actionItems
                             .map((e) => DashboardActionModel.fromJson(e))
+                            .where((a) => a.actionType != 'CLAIM')
                             .toList();
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             DashboardActionInbox(items: actions),
                             if (d.lastSessionSummary != null ||
-                                d.openClaimsCount > 0 ||
                                 d.nextTelehealthAppointmentId != null) ...[
                               const SizedBox(height: 12),
                               Text(
-                                'Care & billing',
+                                'Care updates',
                                 style: Theme.of(context).textTheme.titleMedium,
                               ),
                               const SizedBox(height: 8),
@@ -360,20 +363,6 @@ class ParentHomeScreen extends ConsumerWidget {
                                     onTap: () => context.push(
                                       '${AppRoutes.parentHome}/progress-notes',
                                     ),
-                                  ),
-                                ),
-                              if (d.openClaimsCount > 0)
-                                Card(
-                                  child: ListTile(
-                                    leading: const Icon(
-                                      Icons.receipt_long_outlined,
-                                    ),
-                                    title: Text(
-                                      '${d.openClaimsCount} open claim(s)',
-                                    ),
-                                    trailing: const Icon(Icons.chevron_right),
-                                    onTap: () =>
-                                        context.push(AppRoutes.insurance),
                                   ),
                                 ),
                               if (d.nextTelehealthAppointmentId != null)
@@ -424,55 +413,17 @@ class ParentHomeScreen extends ConsumerWidget {
                       loading: () => const SizedBox.shrink(),
                       error: (_, _) => const SizedBox.shrink(),
                     ),
-                    appointments.when(
-                      data: (list) {
-                        if (list.isEmpty) {
-                          return Card(
-                            child: ListTile(
-                              title: const Text('No upcoming appointments'),
-                              subtitle: const Text(
-                                'Book a session to get started',
-                              ),
-                              trailing: const Icon(Icons.chevron_right),
-                              onTap: () => context.push(AppRoutes.matching),
-                            ),
-                          );
-                        }
-                        return Column(
-                          children: [
-                            ...list
-                                .take(3)
-                                .map(
-                                  (a) => Card(
-                                    margin: const EdgeInsets.only(bottom: 8),
-                                    child: ListTile(
-                                      title: Text(a.therapyType),
-                                      subtitle: Text(
-                                        '${a.childName} with ${a.therapistName}\n'
-                                        '${DateFormat.yMMMd().add_jm().format(a.scheduledStart)}',
-                                      ),
-                                      trailing: Chip(label: Text(a.status)),
-                                      onTap: () => context.push(
-                                        '${AppRoutes.parentHome}/appointments',
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                            if (list.length > 3)
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: TextButton(
-                                  onPressed: () => context.push(
-                                    '${AppRoutes.parentHome}/appointments',
-                                  ),
-                                  child: Text('View all ${list.length}'),
-                                ),
-                              ),
-                          ],
-                        );
-                      },
-                      loading: () => const LinearProgressIndicator(),
-                      error: (e, _) => Text('Appointments: $e'),
+                    Card(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      child: ListTile(
+                        leading: const Icon(Icons.storefront_outlined),
+                        title: const Text('Anonymous service requests'),
+                        subtitle: const Text(
+                          'Post or manage marketplace requests after screening',
+                        ),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => context.push(AppRoutes.parentMarketplace),
+                      ),
                     ),
                     const SizedBox(height: 24),
                     const AppSectionHeader(
@@ -480,11 +431,13 @@ class ParentHomeScreen extends ConsumerWidget {
                       subtitle: 'Tap a category to see all options',
                     ),
                     const SizedBox(height: 12),
-                    ...ParentOperationsCategory.all.map((category) {
+                    ...ParentOperationsCategory.visibleFor(
+                      showPayments: showPayments,
+                    ).map((category) {
                       final itemCount = switch (category.id) {
                         'scheduling' => 3,
                         'care-team' => 7,
-                        'billing' => 3,
+                        'payments' => 2,
                         'account' => 6,
                         _ => 0,
                       };

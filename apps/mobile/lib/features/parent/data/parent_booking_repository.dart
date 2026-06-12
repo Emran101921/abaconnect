@@ -271,6 +271,16 @@ class AppointmentModel {
   final String? locationType;
 
   bool get isTelehealth => locationType == 'TELEHEALTH';
+
+  bool get isCompleted => status == 'COMPLETED';
+
+  bool get isToday {
+    final now = DateTime.now();
+    final local = scheduledStart.toLocal();
+    return local.year == now.year &&
+        local.month == now.month &&
+        local.day == now.day;
+  }
 }
 
 class ParentDashboardModel {

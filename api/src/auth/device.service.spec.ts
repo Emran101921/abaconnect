@@ -1,7 +1,9 @@
 import { DeviceService } from './device.service';
 
 describe('DeviceService', () => {
-  const geoip = { lookup: jest.fn().mockResolvedValue({ label: 'Austin, TX, US' }) };
+  const geoip = {
+    lookup: jest.fn().mockResolvedValue({ label: 'Austin, TX, US' }),
+  };
   const securityEvents = { log: jest.fn().mockResolvedValue(undefined) };
   const prisma = {
     authDevice: {

@@ -7,6 +7,7 @@ import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_section_header.dart';
 import '../../messaging/messaging_providers.dart';
 import '../../notifications/notification_providers.dart';
+import '../data/parent_booking_repository.dart';
 import 'parent_ops_tile.dart';
 
 class ParentOperationsCategory {
@@ -36,11 +37,11 @@ class ParentOperationsCategory {
     icon: Icons.groups_outlined,
   );
 
-  static const billing = ParentOperationsCategory(
-    id: 'billing',
-    title: 'Billing',
-    subtitle: 'Payments, insurance, and documents',
-    icon: Icons.receipt_long_outlined,
+  static const payments = ParentOperationsCategory(
+    id: 'payments',
+    title: 'Payments',
+    subtitle: 'Session invoices and receipts',
+    icon: Icons.payment_outlined,
   );
 
   static const account = ParentOperationsCategory(
@@ -50,7 +51,28 @@ class ParentOperationsCategory {
     icon: Icons.manage_accounts_outlined,
   );
 
-  static const all = [scheduling, careTeam, billing, account];
+  static const all = [scheduling, careTeam, payments, account];
+
+  /// Insurance-billed families use agency back-office; parents only see payments
+  /// when children are self-pay (or not yet assigned a payer type).
+  static List<ParentOperationsCategory> visibleFor({
+    required bool showPayments,
+  }) {
+    return [
+      scheduling,
+      careTeam,
+      if (showPayments) payments,
+      account,
+    ];
+  }
+
+  static bool childrenShowPayments(List<ChildModel> children) {
+    if (children.isEmpty) return true;
+    return children.every((child) {
+      final type = child.insuranceType;
+      return type == null || type == 'Self-pay';
+    });
+  }
 
   static ParentOperationsCategory? fromId(String id) {
     for (final c in all) {
@@ -192,23 +214,17 @@ class ParentOperationsCategoryScreen extends ConsumerWidget {
             onTap: () => context.push(AppRoutes.parentScreening),
           ),
         ];
-      case 'billing':
+      case 'payments':
         return [
           ParentOpsTile(
-            title: 'Payments',
-            subtitle: 'Invoices and Stripe checkout',
+            title: 'Pay for sessions',
+            subtitle: 'View invoices and pay online',
             icon: Icons.payment,
             onTap: () => context.push(AppRoutes.payments),
           ),
           ParentOpsTile(
-            title: 'Insurance',
-            subtitle: 'Claims and coverage',
-            icon: Icons.health_and_safety,
-            onTap: () => context.push(AppRoutes.insurance),
-          ),
-          ParentOpsTile(
             title: 'Documents',
-            subtitle: 'Upload insurance cards and reports',
+            subtitle: 'Upload care documents and receipts',
             icon: Icons.folder,
             onTap: () => context.push(AppRoutes.documents),
           ),
