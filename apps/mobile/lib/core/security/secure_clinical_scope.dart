@@ -1,7 +1,12 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:screen_protector/screen_protector.dart';
 
 /// Blocks screenshots and screen recording on clinical PHI screens.
+///
+/// Screenshot protection is disabled in debug builds because the iOS
+/// implementation overlays a secure layer that makes the UI look blurry
+/// in the simulator and during local development.
 class SecureClinicalScope extends StatefulWidget {
   const SecureClinicalScope({super.key, required this.child});
 
@@ -12,15 +17,21 @@ class SecureClinicalScope extends StatefulWidget {
 }
 
 class _SecureClinicalScopeState extends State<SecureClinicalScope> {
+  static bool get _enableScreenProtection => kReleaseMode;
+
   @override
   void initState() {
     super.initState();
-    ScreenProtector.preventScreenshotOn();
+    if (_enableScreenProtection) {
+      ScreenProtector.preventScreenshotOn();
+    }
   }
 
   @override
   void dispose() {
-    ScreenProtector.preventScreenshotOff();
+    if (_enableScreenProtection) {
+      ScreenProtector.preventScreenshotOff();
+    }
     super.dispose();
   }
 

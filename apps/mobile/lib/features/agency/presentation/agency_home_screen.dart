@@ -72,8 +72,6 @@ class AgencyHomeScreen extends ConsumerWidget {
             children: [
               AppWellnessHomeHeader(
                 greeting: 'Welcome back, $greetingName 👋',
-                notificationCount: unreadCount,
-                onNotificationsTap: () => context.push(AppRoutes.notifications),
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),

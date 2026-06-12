@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/speech_dictation.dart';
 import '../../notifications/notification_providers.dart';
 import '../data/messaging_repository.dart';
 import '../messaging_providers.dart';
@@ -238,12 +239,20 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
                 ),
               ),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
+                  SpeechMicButton(
+                    fieldKey: 'message-${widget.threadId}',
+                    controller: _controller,
+                    compact: true,
+                  ),
                   Expanded(
                     child: TextField(
                       controller: _controller,
+                      minLines: 1,
+                      maxLines: 4,
                       decoration: const InputDecoration(
-                        hintText: 'Type a secure message…',
+                        hintText: 'Type or dictate a secure message…',
                         filled: true,
                       ),
                       onSubmitted: (_) => _send(),

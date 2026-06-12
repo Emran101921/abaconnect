@@ -90,6 +90,204 @@ async function seedDemoOnboarding(userId: string): Promise<void> {
   });
 }
 
+const LEGACY_DEMO_CHILD_IDS = [
+  '00000000-0000-4000-8000-000000000001',
+  '00000000-0000-4000-8000-000000000002',
+];
+
+const LEGACY_DEMO_SEED_IDS = {
+  appointments: [
+    '00000000-0000-4000-8000-000000000010',
+    '00000000-0000-4000-8000-000000000011',
+    '00000000-0000-4000-8000-000000000012',
+  ],
+  messageThread: '00000000-0000-4000-8000-000000000020',
+  payments: [
+    '00000000-0000-4000-8000-000000000030',
+    '00000000-0000-4000-8000-000000000031',
+  ],
+  document: '00000000-0000-4000-8000-000000000040',
+  claim: '00000000-0000-4000-8000-000000000050',
+  treatmentPlan: '00000000-0000-4000-8000-000000000080',
+  dispute: '00000000-0000-4000-8000-000000000091',
+  complaint: '00000000-0000-4000-8000-000000000070',
+};
+
+async function cleanupTherapistCaseload(
+  therapistId: string,
+  therapistUserId: string,
+): Promise<void> {
+  await prisma.session.deleteMany({ where: { therapistId } });
+  await prisma.telehealthSession.deleteMany({
+    where: { appointment: { therapistId } },
+  });
+  await prisma.appointment.deleteMany({ where: { therapistId } });
+  await prisma.treatmentPlan.deleteMany({ where: { therapistId } });
+  await prisma.complaint.deleteMany({ where: { therapistId } });
+  await prisma.review.deleteMany({ where: { therapistId } });
+
+  const threadParticipants = await prisma.messageParticipant.findMany({
+    where: { userId: therapistUserId },
+    select: { threadId: true },
+  });
+  const threadIds = [
+    ...new Set(threadParticipants.map((row: { threadId: string }) => row.threadId)),
+  ];
+  if (threadIds.length > 0) {
+    await prisma.message.deleteMany({ where: { threadId: { in: threadIds } } });
+    await prisma.messageParticipant.deleteMany({
+      where: { threadId: { in: threadIds } },
+    });
+    await prisma.messageThread.deleteMany({ where: { id: { in: threadIds } } });
+  }
+}
+
+async function deleteLegacyParentDemoAccount(tenantId: string): Promise<void> {
+  const legacyParent = await prisma.user.findUnique({
+    where: {
+      tenantId_email: { tenantId, email: 'parent@demo.local' },
+    },
+    include: { parent: true },
+  });
+  if (!legacyParent) return;
+
+  const parentId = legacyParent.parent?.id;
+  if (parentId) {
+    const children = await prisma.child.findMany({
+      where: { parentId },
+      select: { id: true },
+    });
+    const childIds = children.map((child) => child.id);
+
+    await prisma.insuranceClaim.deleteMany({ where: { parentId } });
+    await prisma.payment.deleteMany({ where: { parentId } });
+    await prisma.dispute.deleteMany({ where: { parentId } });
+    await prisma.complaint.deleteMany({ where: { parentId } });
+    await prisma.screeningResponse.deleteMany({ where: { parentId } });
+    if (childIds.length > 0) {
+      await prisma.document.deleteMany({ where: { childId: { in: childIds } } });
+      await prisma.session.deleteMany({ where: { childId: { in: childIds } } });
+    }
+    await prisma.appointment.deleteMany({ where: { parentId } });
+    await prisma.child.deleteMany({ where: { parentId } });
+  }
+
+  await prisma.message.deleteMany({ where: { senderId: legacyParent.id } });
+  await prisma.messageParticipant.deleteMany({
+    where: { userId: legacyParent.id },
+  });
+  await prisma.notification.deleteMany({ where: { userId: legacyParent.id } });
+  await prisma.hipaaConsent.deleteMany({ where: { userId: legacyParent.id } });
+  await prisma.hipaaNoticeAcknowledgment.deleteMany({
+    where: { userId: legacyParent.id },
+  });
+  await prisma.authDevice.deleteMany({ where: { userId: legacyParent.id } });
+  await prisma.user.delete({ where: { id: legacyParent.id } });
+}
+
+async function cleanupLegacyDemoClinicalData(
+  tenantId: string,
+  therapistId: string,
+  therapistUserId: string,
+): Promise<void> {
+  await deleteLegacyParentDemoAccount(tenantId);
+  await cleanupTherapistCaseload(therapistId, therapistUserId);
+
+  await prisma.messageThread.deleteMany({
+    where: { id: LEGACY_DEMO_SEED_IDS.messageThread },
+  });
+  await prisma.child.deleteMany({
+    where: { id: { in: LEGACY_DEMO_CHILD_IDS } },
+  });
+  await prisma.dispute.deleteMany({
+    where: { id: LEGACY_DEMO_SEED_IDS.dispute },
+  });
+  await prisma.complaint.deleteMany({
+    where: { id: LEGACY_DEMO_SEED_IDS.complaint },
+  });
+  await prisma.insuranceClaim.deleteMany({
+    where: { id: LEGACY_DEMO_SEED_IDS.claim },
+  });
+  await prisma.treatmentPlan.deleteMany({
+    where: { id: LEGACY_DEMO_SEED_IDS.treatmentPlan },
+  });
+  await prisma.document.deleteMany({
+    where: { id: LEGACY_DEMO_SEED_IDS.document },
+  });
+  await prisma.payment.deleteMany({
+    where: { id: { in: LEGACY_DEMO_SEED_IDS.payments } },
+  });
+  await prisma.session.deleteMany({
+    where: {
+      appointmentId: { in: LEGACY_DEMO_SEED_IDS.appointments },
+    },
+  });
+  await prisma.telehealthSession.deleteMany({
+    where: {
+      appointmentId: { in: LEGACY_DEMO_SEED_IDS.appointments },
+    },
+  });
+  await prisma.appointment.deleteMany({
+    where: { id: { in: LEGACY_DEMO_SEED_IDS.appointments } },
+  });
+}
+
+async function seedEmptyParentAccount(
+  tenantId: string,
+  email: string,
+  passwordHash: string,
+  firstName: string,
+  lastName: string,
+  noticeId: string,
+) {
+  const user = await prisma.user.upsert({
+    where: { tenantId_email: { tenantId, email } },
+    update: {
+      passwordHash,
+      firstName,
+      lastName,
+      role: 'PARENT',
+      isActive: true,
+    },
+    create: {
+      tenantId,
+      email,
+      passwordHash,
+      role: 'PARENT',
+      firstName,
+      lastName,
+    },
+  });
+
+  await prisma.parent.upsert({
+    where: { userId: user.id },
+    update: {},
+    create: {
+      userId: user.id,
+      tenantId,
+    },
+  });
+
+  const existingConsent = await prisma.hipaaConsent.findFirst({
+    where: { userId: user.id, consentType: 'HIPAA_PRIVACY' },
+  });
+  if (!existingConsent) {
+    await prisma.hipaaConsent.create({
+      data: {
+        tenantId,
+        userId: user.id,
+        consentType: 'HIPAA_PRIVACY',
+        version: '1.0',
+        granted: true,
+      },
+    });
+  }
+
+  await seedNoticeAcknowledgment(tenantId, user.id, noticeId);
+  await seedDemoOnboarding(user.id);
+  return user;
+}
+
 async function main() {
   const tenant = await prisma.tenant.upsert({
     where: { slug: 'abaconnect' },
@@ -104,7 +302,8 @@ async function main() {
 
   const bcrypt = await import('bcrypt');
   const adminHash = await bcrypt.hash('Admin123!', 10);
-  const parentHash = await bcrypt.hash('Parent123!', 10);
+  const parent1Hash = await bcrypt.hash('Parent1Demo!', 10);
+  const parent2Hash = await bcrypt.hash('Parent2Demo!', 10);
   const agencyHash = await bcrypt.hash('Agency123!', 10);
   const therapistHash = await bcrypt.hash('Therapist123!', 10);
 
@@ -120,47 +319,6 @@ async function main() {
       role: 'PLATFORM_ADMIN',
       firstName: 'Platform',
       lastName: 'Admin',
-    },
-  });
-
-  const parentUser = await prisma.user.upsert({
-    where: {
-      tenantId_email: { tenantId: tenant.id, email: 'parent@demo.local' },
-    },
-    update: {},
-    create: {
-      tenantId: tenant.id,
-      email: 'parent@demo.local',
-      passwordHash: parentHash,
-      role: 'PARENT',
-      firstName: 'Jamie',
-      lastName: 'Parent',
-    },
-  });
-
-  const parentProfile = await prisma.parent.upsert({
-    where: { userId: parentUser.id },
-    update: {},
-    create: {
-      userId: parentUser.id,
-      tenantId: tenant.id,
-      city: 'Austin',
-      state: 'TX',
-      zipCode: '78701',
-    },
-  });
-
-  await prisma.child.upsert({
-    where: { id: '00000000-0000-4000-8000-000000000001' },
-    update: {},
-    create: {
-      id: '00000000-0000-4000-8000-000000000001',
-      parentId: parentProfile.id,
-      tenantId: tenant.id,
-      firstName: 'Alex',
-      lastName: 'Parent',
-      dateOfBirth: new Date('2018-06-15'),
-      gender: 'non-binary',
     },
   });
 
@@ -221,116 +379,40 @@ async function main() {
     },
   });
 
-  const start = new Date();
-  start.setDate(start.getDate() + 2);
-  const end = new Date(start);
-  end.setHours(end.getHours() + 1);
-
-  await prisma.appointment.upsert({
-    where: { id: '00000000-0000-4000-8000-000000000010' },
-    update: {},
+  await prisma.providerMarketplaceProfile.upsert({
+    where: { userId: therapistUser.id },
+    update: {
+      verifiedStatus: 'VERIFIED',
+      confidentialityTermsAccepted: true,
+      confidentialityAcceptedAt: new Date('2025-01-01'),
+      serviceCategories: ['SPEECH', 'ABA', 'EVALUATION'],
+      coverageZipCodes: ['11230', '11201', '10001', '78701'],
+      languages: ['English', 'Spanish'],
+    },
     create: {
-      id: '00000000-0000-4000-8000-000000000010',
       tenantId: tenant.id,
-      parentId: parentProfile.id,
-      childId: '00000000-0000-4000-8000-000000000001',
+      userId: therapistUser.id,
+      accountType: 'THERAPIST',
       therapistId: therapistProfile.id,
-      therapyType: 'ABA',
-      status: 'CONFIRMED',
-      scheduledStart: start,
-      scheduledEnd: end,
+      legalName: 'Sam Therapist',
+      displayName: 'Sam Therapist, SLP',
+      licenseNumber: 'SLP-123456',
+      npi: '1234567893',
+      serviceCategories: ['SPEECH', 'ABA', 'EVALUATION'],
+      coverageZipCodes: ['11230', '11201', '10001', '78701'],
+      languages: ['English', 'Spanish'],
+      availability: { weekdays: ['morning', 'afternoon'] },
+      verifiedStatus: 'VERIFIED',
+      confidentialityTermsAccepted: true,
+      confidentialityAcceptedAt: new Date('2025-01-01'),
     },
   });
 
-  const pendingStart = new Date();
-  pendingStart.setDate(pendingStart.getDate() + 5);
-  const pendingEnd = new Date(pendingStart);
-  pendingEnd.setHours(pendingEnd.getHours() + 1);
-
-  await prisma.appointment.upsert({
-    where: { id: '00000000-0000-4000-8000-000000000011' },
-    update: { status: 'REQUESTED' },
-    create: {
-      id: '00000000-0000-4000-8000-000000000011',
-      tenantId: tenant.id,
-      parentId: parentProfile.id,
-      childId: '00000000-0000-4000-8000-000000000001',
-      therapistId: therapistProfile.id,
-      therapyType: 'SPEECH',
-      status: 'REQUESTED',
-      scheduledStart: pendingStart,
-      scheduledEnd: pendingEnd,
-      notes: 'Demo pending confirmation',
-    },
-  });
-
-  const threadId = '00000000-0000-4000-8000-000000000020';
-  await prisma.messageThread.upsert({
-    where: { id: threadId },
-    update: {},
-    create: {
-      id: threadId,
-      tenantId: tenant.id,
-      subject: 'Care team — Sam Therapist',
-      participants: {
-        create: [
-          { userId: parentUser.id },
-          { userId: therapistUser.id },
-        ],
-      },
-    },
-  });
-
-  const existingMessages = await prisma.message.count({
-    where: { threadId },
-  });
-  if (existingMessages === 0) {
-    await prisma.message.createMany({
-      data: [
-        {
-          threadId,
-          senderId: therapistUser.id,
-          body: 'Hi Jamie! Looking forward to Alex\'s first session.',
-        },
-        {
-          threadId,
-          senderId: parentUser.id,
-          body: 'Thanks Sam! We are excited to get started.',
-        },
-      ],
-    });
-  }
-
-  await prisma.payment.upsert({
-    where: { id: '00000000-0000-4000-8000-000000000030' },
-    update: {},
-    create: {
-      id: '00000000-0000-4000-8000-000000000030',
-      tenantId: tenant.id,
-      parentId: parentProfile.id,
-      amount: 150,
-      currency: 'USD',
-      status: 'SUCCEEDED',
-      description: 'ABA session — May 2026',
-      paidAt: new Date(),
-      stripePaymentIntentId: 'pi_seed_succeeded',
-    },
-  });
-
-  await prisma.payment.upsert({
-    where: { id: '00000000-0000-4000-8000-000000000031' },
-    update: {},
-    create: {
-      id: '00000000-0000-4000-8000-000000000031',
-      tenantId: tenant.id,
-      parentId: parentProfile.id,
-      amount: 175,
-      currency: 'USD',
-      status: 'PENDING',
-      description: 'Upcoming ABA session',
-      stripePaymentIntentId: 'pi_seed_pending',
-    },
-  });
+  await cleanupLegacyDemoClinicalData(
+    tenant.id,
+    therapistProfile.id,
+    therapistUser.id,
+  );
 
   const screeningTypes = [
     { therapyType: 'ABA' as const, name: 'ABA Intake', questions: [{ id: 'aggression', label: 'Aggression' }] },
@@ -457,126 +539,6 @@ async function main() {
     },
   });
 
-  await prisma.telehealthSession.upsert({
-    where: { appointmentId: '00000000-0000-4000-8000-000000000010' },
-    update: {},
-    create: {
-      tenantId: tenant.id,
-      appointmentId: '00000000-0000-4000-8000-000000000010',
-      roomId: 'demo_room_aba_001',
-      providerUrl: 'https://meet.abaconnect.local/demo_room_aba_001?role=provider',
-      patientUrl: 'https://meet.abaconnect.local/demo_room_aba_001?role=patient',
-    },
-  });
-
-  await prisma.session.upsert({
-    where: { appointmentId: '00000000-0000-4000-8000-000000000010' },
-    update: {
-      status: 'COMPLETED',
-      checkInAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
-      checkOutAt: new Date(Date.now() - 60 * 60 * 1000),
-      durationMinutes: 60,
-      evvVerified: true,
-    },
-    create: {
-      appointmentId: '00000000-0000-4000-8000-000000000010',
-      tenantId: tenant.id,
-      childId: '00000000-0000-4000-8000-000000000001',
-      therapistId: therapistProfile.id,
-      status: 'COMPLETED',
-      checkInAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
-      checkOutAt: new Date(Date.now() - 60 * 60 * 1000),
-      durationMinutes: 60,
-      evvVerified: true,
-    },
-  });
-
-  const notifCount = await prisma.notification.count({
-    where: { userId: parentUser.id },
-  });
-  if (notifCount === 0) {
-    await prisma.notification.createMany({
-      data: [
-        {
-          tenantId: tenant.id,
-          userId: parentUser.id,
-          title: 'Appointment confirmed',
-          body: 'Your ABA session is confirmed for 2 days from now.',
-        },
-        {
-          tenantId: tenant.id,
-          userId: parentUser.id,
-          title: 'Complete screening',
-          body: 'Please finish intake forms before the first visit.',
-        },
-      ],
-    });
-  }
-
-  await prisma.document.upsert({
-    where: { id: '00000000-0000-4000-8000-000000000040' },
-    update: {},
-    create: {
-      id: '00000000-0000-4000-8000-000000000040',
-      tenantId: tenant.id,
-      childId: '00000000-0000-4000-8000-000000000001',
-      type: 'INSURANCE_CARD',
-      title: 'Insurance card — Alex',
-      fileName: 'insurance_card.pdf',
-      mimeType: 'application/pdf',
-      fileSize: 245000,
-      storageKey: `tenants/${tenant.id}/docs/insurance_card.pdf`,
-    },
-  });
-
-  await prisma.insuranceClaim.upsert({
-    where: { id: '00000000-0000-4000-8000-000000000050' },
-    update: {},
-    create: {
-      id: '00000000-0000-4000-8000-000000000050',
-      tenantId: tenant.id,
-      parentId: parentProfile.id,
-      childId: '00000000-0000-4000-8000-000000000001',
-      payerName: 'Demo Health Plan',
-      billedAmount: 200,
-      serviceDate: new Date(),
-      status: 'PENDING',
-    },
-  });
-
-  await prisma.treatmentPlan.upsert({
-    where: { id: '00000000-0000-4000-8000-000000000080' },
-    update: {},
-    create: {
-      id: '00000000-0000-4000-8000-000000000080',
-      tenantId: tenant.id,
-      childId: '00000000-0000-4000-8000-000000000001',
-      therapistId: therapistProfile.id,
-      authorId: therapistUser.id,
-      therapyType: 'ABA',
-      title: 'ABA Goals — Q2 2026',
-      goals: [
-        {
-          id: 'communication',
-          label: 'Increase functional communication',
-          status: 'done',
-        },
-        {
-          id: 'behavior',
-          label: 'Reduce challenging behaviors',
-          status: 'in_progress',
-        },
-        {
-          id: 'social',
-          label: 'Initiate peer interactions',
-          status: 'active',
-        },
-      ],
-      startDate: new Date(),
-      isActive: true,
-    },
-  });
-
   await prisma.providerBadge.upsert({
     where: {
       therapistId_type: {
@@ -628,51 +590,50 @@ async function main() {
     },
   });
 
-  await prisma.dispute.upsert({
-    where: { id: '00000000-0000-4000-8000-000000000091' },
-    update: {},
-    create: {
-      id: '00000000-0000-4000-8000-000000000091',
-      tenantId: tenant.id,
-      paymentId: '00000000-0000-4000-8000-000000000031',
-      parentId: parentProfile.id,
-      openerId: parentUser.id,
-      reason: 'Demo: charged twice for same session',
-      amount: 175,
-      status: 'OPEN',
+  await prisma.providerMarketplaceProfile.upsert({
+    where: { userId: therapistUser.id },
+    update: {
+      confidentialityTermsAccepted: true,
+      confidentialityAcceptedAt: new Date(),
+      verifiedStatus: 'VERIFIED',
     },
-  });
-
-  await prisma.complaint.upsert({
-    where: { id: '00000000-0000-4000-8000-000000000070' },
-    update: {},
     create: {
-      id: '00000000-0000-4000-8000-000000000070',
       tenantId: tenant.id,
-      reporterId: parentUser.id,
-      parentId: parentProfile.id,
+      userId: therapistUser.id,
+      accountType: 'THERAPIST',
       therapistId: therapistProfile.id,
-      category: 'SERVICE',
-      subject: 'Demo scheduling question',
-      description: 'Need to confirm first session time window.',
-      status: 'OPEN',
+      legalName: 'Sam Therapist',
+      displayName: 'Sam Therapist, SLP',
+      licenseNumber: 'SLP-123456',
+      npi: '1234567893',
+      serviceCategories: ['SPEECH', 'ABA', 'EVALUATION', 'OT'],
+      coverageZipCodes: ['11230', '11201', '78701'],
+      languages: ['English', 'Spanish'],
+      availability: { weekdays: ['Mon', 'Wed', 'Fri'], times: 'afternoons' },
+      confidentialityTermsAccepted: true,
+      confidentialityAcceptedAt: new Date(),
+      verifiedStatus: 'VERIFIED',
     },
   });
 
   const activeNotice = await seedActivePrivacyNotice(tenant.id);
 
-  await prisma.hipaaConsent.upsert({
-    where: { id: '00000000-0000-4000-8000-000000000060' },
-    update: {},
-    create: {
-      id: '00000000-0000-4000-8000-000000000060',
-      tenantId: tenant.id,
-      userId: parentUser.id,
-      consentType: 'HIPAA_PRIVACY',
-      version: '1.0',
-      granted: true,
-    },
-  });
+  await seedEmptyParentAccount(
+    tenant.id,
+    'parent1@demo.local',
+    parent1Hash,
+    'Parent',
+    'One',
+    activeNotice.id,
+  );
+  await seedEmptyParentAccount(
+    tenant.id,
+    'parent2@demo.local',
+    parent2Hash,
+    'Parent',
+    'Two',
+    activeNotice.id,
+  );
 
   await prisma.hipaaConsent.upsert({
     where: { id: '00000000-0000-4000-8000-000000000061' },
@@ -701,10 +662,8 @@ async function main() {
   });
 
   // Demo clinical-role accounts must satisfy onboarding gates used in CI smoke tests.
-  await seedNoticeAcknowledgment(tenant.id, parentUser.id, activeNotice.id);
   await seedNoticeAcknowledgment(tenant.id, therapistUser.id, activeNotice.id);
   await seedNoticeAcknowledgment(tenant.id, agencyUser.id, activeNotice.id);
-  await seedDemoOnboarding(parentUser.id);
   await seedDemoOnboarding(therapistUser.id);
   await seedDemoOnboarding(agencyUser.id);
 
@@ -780,7 +739,8 @@ async function main() {
 
   console.log('Seed complete.');
   console.log('  Admin:     admin@abaconnect.local / Admin123!');
-  console.log('  Parent:    parent@demo.local / Parent123!');
+  console.log('  Parent 1:  parent1@demo.local / Parent1Demo!  (MFA: 000000)');
+  console.log('  Parent 2:  parent2@demo.local / Parent2Demo!  (MFA: 000000)');
   console.log('  Therapist: therapist@demo.local / Therapist123!');
   console.log('  Agency:    agency@demo.local / Agency123!');
   console.log('  Pending:   pending@demo.local / Pending123! (unverified)');

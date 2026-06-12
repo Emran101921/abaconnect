@@ -5,17 +5,27 @@ import {
   CurrentUser,
 } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
-import { AcknowledgeNoticeDto, SubmitPrivacyRightsRequestDto } from './dto/privacy.dto';
-import { PrivacyClientContext, PrivacyNoticeService } from './privacy-notice.service';
+import {
+  AcknowledgeNoticeDto,
+  SubmitPrivacyRightsRequestDto,
+} from './dto/privacy.dto';
+import {
+  PrivacyClientContext,
+  PrivacyNoticeService,
+} from './privacy-notice.service';
 import { PrivacyRightsService } from './privacy-rights.service';
 
-function clientContext(req: Request, body?: AcknowledgeNoticeDto): PrivacyClientContext {
+function clientContext(
+  req: Request,
+  body?: AcknowledgeNoticeDto,
+): PrivacyClientContext {
   return {
     ipAddress: req.ip,
     userAgent: req.headers['user-agent'] as string | undefined,
     appVersion: body?.appVersion,
     platform: body?.platform,
-    deviceId: body?.deviceId ?? (req.headers['x-device-id'] as string | undefined),
+    deviceId:
+      body?.deviceId ?? (req.headers['x-device-id'] as string | undefined),
   };
 }
 
@@ -46,7 +56,11 @@ export class UserPrivacyController {
   @Get('policy')
   @Roles('PARENT', 'THERAPIST', 'AGENCY_ADMIN', 'PLATFORM_ADMIN')
   async getPolicy(@CurrentUser() user: AuthUser, @Req() req: Request) {
-    await this.notices.logNoticeViewed(user.id, 'privacy_policy', clientContext(req));
+    await this.notices.logNoticeViewed(
+      user.id,
+      'privacy_policy',
+      clientContext(req),
+    );
     return this.notices.getPrivacyPolicy(user.tenantId);
   }
 
@@ -84,12 +98,10 @@ export class UserPrivacyController {
     @Body() dto: SubmitPrivacyRightsRequestDto,
     @Req() req: Request,
   ) {
-    return this.rights.submitRequest(
-      user.id,
-      dto.requestType,
-      dto.payload,
-      { ipAddress: req.ip, userAgent: req.headers['user-agent'] as string },
-    );
+    return this.rights.submitRequest(user.id, dto.requestType, dto.payload, {
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'] as string,
+    });
   }
 
   @Get('rights-requests')

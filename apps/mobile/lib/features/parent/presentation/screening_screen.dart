@@ -254,7 +254,7 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
 
     return AppScaffold(
       title: 'Early Intervention Screening',
-      bottomNavigationBar: const ParentBottomNav(
+      bottomNavigationBar: ParentBottomNav(
         current: ParentNavTab.screening,
       ),
       body: _loading

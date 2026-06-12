@@ -254,7 +254,7 @@ class _ChildrenListScreenState extends ConsumerState<ChildrenListScreen> {
     return AppScaffold(
       title: 'My Children',
       subtitle: 'Child profiles for screening & care',
-      bottomNavigationBar: const ParentBottomNav(
+      bottomNavigationBar: ParentBottomNav(
         current: ParentNavTab.children,
       ),
       floatingActionButton: FloatingActionButton(

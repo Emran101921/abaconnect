@@ -5,7 +5,11 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { createHash } from 'crypto';
-import { AuditAction, ClaimStatus, Prisma } from '../../generated/prisma/client';
+import {
+  AuditAction,
+  ClaimStatus,
+  Prisma,
+} from '../../generated/prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -148,7 +152,9 @@ export class ClaimSecurityService {
       where: { resubmissionOfId: originalClaimId },
     });
     if (existingResub) {
-      throw new ConflictException('A resubmission already exists for this claim');
+      throw new ConflictException(
+        'A resubmission already exists for this claim',
+      );
     }
 
     const resub = await this.prisma.insuranceClaim.create({

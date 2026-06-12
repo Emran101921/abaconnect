@@ -32,6 +32,8 @@ import { BillingResolver } from './billing.resolver';
 import { PaymentsResolver } from './payments.resolver';
 import { PlatformResolver } from './platform.resolver';
 import { TherapistResolver } from './therapist.resolver';
+import { MarketplaceModule } from '../marketplace/marketplace.module';
+import { MarketplaceResolver } from './marketplace.resolver';
 
 @Module({
   imports: [
@@ -59,6 +61,7 @@ import { TherapistResolver } from './therapist.resolver';
     ClinicalModule,
     DisputesModule,
     PayoutsModule,
+    MarketplaceModule,
   ],
   providers: [
     ParentBookingResolver,
@@ -70,6 +73,7 @@ import { TherapistResolver } from './therapist.resolver';
     PaymentsResolver,
     BillingResolver,
     PlatformResolver,
+    MarketplaceResolver,
   ],
 })
 export class GraphqlFeatureModule {}

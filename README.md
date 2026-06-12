@@ -38,7 +38,7 @@ HIPAA-oriented therapy marketplace connecting parents with licensed providers (A
 
 ## Demo walkthrough
 
-1. **Parent** (`parent@demo.local` / `Parent123!`) — Home shows onboarding progress if incomplete. Add child → screening auto-starts → submit redirects to therapist matching → book session.
+1. **Parent** (`parent1@demo.local` / `Parent1Demo!` or `parent2@demo.local` / `Parent2Demo!`, MFA `000000`) — Fresh empty accounts. Add child → screening auto-starts → submit redirects to therapist matching → book session.
 2. **Therapist** — Confirm appointments, start session, document SOAP, EVV check-in (location permission dialog if denied).
 3. **Agency** — Operations hub: roster, analytics (claims pipeline with paid $ totals), denied-claim appeals from analytics detail.
 4. **Admin** — Insurance claims: submit 837 (stub clearinghouse auto-posts 835 remittance). Analytics overview flags revenue mismatch when session payments ≠ paid claims total.
@@ -93,7 +93,7 @@ cd api && npx prisma migrate deploy && npx prisma db seed
 
 ### GraphQL (parent booking)
 
-With a parent JWT (`parent@demo.local` / `Parent123!` after seed):
+With a parent JWT (`parent1@demo.local` / `Parent1Demo!` after seed):
 
 ```graphql
 query {
@@ -129,7 +129,8 @@ Demo logins (after seed):
 
 | Role | Email | Password |
 |------|-------|----------|
-| Parent | `parent@demo.local` | `Parent123!` |
+| Parent 1 | `parent1@demo.local` | `Parent1Demo!` |
+| Parent 2 | `parent2@demo.local` | `Parent2Demo!` |
 | Therapist | `therapist@demo.local` | `Therapist123!` |
 | Agency | `agency@demo.local` | `Agency123!` |
 | Admin | `admin@abaconnect.local` | `Admin123!` |

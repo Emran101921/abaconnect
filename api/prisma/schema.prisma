@@ -130,6 +130,89 @@ enum AuditAction {
   PAYMENT_EVENT
   MESSAGE_SENT
   ARCHIVE
+  MARKETPLACE_REQUEST_VIEWED
+  MARKETPLACE_INTEREST_SUBMITTED
+  MARKETPLACE_IDENTIFIABLE_SHARED
+}
+
+enum MarketplaceRequestStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  MATCHED
+  CLOSED
+}
+
+enum MarketplaceInterestStatus {
+  PENDING_PARENT_REVIEW
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+}
+
+enum MarketplaceConsentType {
+  ANONYMOUS_MARKETPLACE_POSTING
+  SHARE_IDENTIFIABLE_INFO
+  SHARE_DOCUMENTS
+  REVOKE_CONSENT
+}
+
+enum MarketplaceUrgency {
+  ROUTINE
+  SOON
+  URGENT
+}
+
+enum MarketplaceAuthorizationStatus {
+  PARENT_SCREENING_ONLY
+  EVALUATION_NEEDED
+  SERVICE_AUTHORIZED
+  IFSP_AVAILABLE_AFTER_CONSENT
+}
+
+enum MarketplaceLocationType {
+  HOME
+  DAYCARE
+  CLINIC
+  TELEHEALTH
+  SCHOOL
+  COMMUNITY
+}
+
+enum MarketplaceAgeRange {
+  MONTHS_0_12
+  MONTHS_13_24
+  MONTHS_25_36
+  YEARS_3_5
+  YEARS_6_8
+  YEARS_9_12
+  YEARS_13_PLUS
+}
+
+enum MarketplaceServiceCategory {
+  SPEECH
+  OCCUPATIONAL
+  PHYSICAL
+  ABA
+  SPECIAL_INSTRUCTION
+  EVALUATION
+  NURSING
+  FEEDING
+  SOCIAL_WORK
+  SERVICE_COORDINATION
+  OTHER
+}
+
+enum ProviderMarketplaceAccountType {
+  THERAPIST
+  AGENCY
+}
+
+enum ProviderMarketplaceVerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  SUSPENDED
 }
 
 enum ComplianceDocumentType {
@@ -252,6 +335,12 @@ model Tenant {
   complianceDocuments  ComplianceDocument[]
   complianceDocumentAcceptances ComplianceDocumentAcceptance[]
   claimEditHistories   ClaimEditHistory[]
+  marketplaceRequests  MarketplaceRequest[]
+  marketplaceInterests MarketplaceInterest[]
+  marketplaceConsents  MarketplaceConsentRecord[]
+  providerMarketplaceProfiles ProviderMarketplaceProfile[]
+  marketplaceSavedSearches MarketplaceSavedSearch[]
+  marketplaceReports   MarketplaceReport[]
 
   @@map("tenants")
 }
@@ -310,6 +399,11 @@ model User {
   claimsSubmitted       InsuranceClaim[]      @relation("ClaimSubmittedBy")
   claimEdits            ClaimEditHistory[]    @relation("ClaimEditor")
   therapistsApproved    Therapist[]           @relation("TherapistApprovedBy")
+  marketplaceRequestsCreated MarketplaceRequest[] @relation("MarketplaceRequestParentUser")
+  marketplaceConsentsGranted MarketplaceConsentRecord[] @relation("MarketplaceConsentParentUser")
+  providerMarketplaceProfile ProviderMarketplaceProfile?
+  marketplaceSavedSearches MarketplaceSavedSearch[]
+  marketplaceReportsFiled MarketplaceReport[] @relation("MarketplaceReportReporter")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -429,6 +523,12 @@ model Child {
   documents          Document[]
   insuranceClaims    InsuranceClaim[]
   serviceLogs        ServiceLog[]
+  marketplaceRequests MarketplaceRequest[]
+  marketplaceConsents MarketplaceConsentRecord[]
+
+  ageRange           MarketplaceAgeRange? @map("age_range")
+  city               String?
+  state              String?
 
   @@index([parentId])
   @@index([tenantId])
@@ -473,6 +573,9 @@ model ScreeningResponse {
   isDraft          Boolean   @default(false) @map("is_draft")
   consentGrantedAt       DateTime? @map("consent_granted_at")
   evaluationRequestedAt  DateTime? @map("evaluation_requested_at")
+  concernTags            Json      @default("[]") @map("concern_tags")
+  suggestedServiceCategories Json @default("[]") @map("suggested_service_categories")
+  disclaimerAccepted     Boolean   @default(false) @map("disclaimer_accepted")
   completedAt            DateTime  @default(now()) @map("completed_at")
   createdAt        DateTime  @default(now()) @map("created_at")
   updatedAt        DateTime  @updatedAt @map("updated_at")
@@ -481,6 +584,7 @@ model ScreeningResponse {
   child    Child             @relation(fields: [childId], references: [id], onDelete: Cascade)
   parent   Parent            @relation(fields: [parentId], references: [id], onDelete: Cascade)
   tenant   Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  marketplaceRequests MarketplaceRequest[]
 
   @@index([templateId])
   @@index([childId])
@@ -544,6 +648,7 @@ model Therapist {
   complaints        Complaint[]
   serviceLogs       ServiceLog[]
   insuranceClaims   InsuranceClaim[]
+  marketplaceProfile ProviderMarketplaceProfile?
 
   @@index([tenantId])
   @@index([onboardingStatus])
@@ -577,6 +682,7 @@ model Agency {
   therapists   AgencyTherapist[]
   appointments Appointment[]
   payouts      Payout[]
+  marketplaceProfile ProviderMarketplaceProfile?
 
   @@index([tenantId])
   @@map("agencies")
@@ -1417,4 +1523,182 @@ model RefreshToken {
   @@index([userId])
   @@index([tokenHash])
   @@map("refresh_tokens")
+}
+
+// ---------------------------------------------------------------------------
+// Anonymous provider marketplace (HIPAA-conscious service requests)
+// ---------------------------------------------------------------------------
+
+model MarketplaceRequest {
+  id                       String                       @id @default(uuid()) @db.Uuid
+  tenantId                 String                       @map("tenant_id") @db.Uuid
+  childId                  String                       @map("child_id") @db.Uuid
+  parentUserId             String                       @map("parent_user_id") @db.Uuid
+  screeningResponseId      String?                      @map("screening_response_id") @db.Uuid
+  anonymousPublicId        String                       @unique @map("anonymous_public_id")
+  status                   MarketplaceRequestStatus     @default(DRAFT)
+  serviceCategories        Json                         @default("[]") @map("service_categories")
+  concernTags              Json                         @default("[]") @map("concern_tags")
+  ageRange                 MarketplaceAgeRange          @map("age_range")
+  zipCode                  String                       @map("zip_code")
+  city                     String?
+  state                    String?
+  zipCentroidLat           Decimal                      @map("zip_centroid_lat") @db.Decimal(10, 7)
+  zipCentroidLng           Decimal                      @map("zip_centroid_lng") @db.Decimal(10, 7)
+  mapPinJitterLat          Decimal?                     @map("map_pin_jitter_lat") @db.Decimal(10, 7)
+  mapPinJitterLng          Decimal?                     @map("map_pin_jitter_lng") @db.Decimal(10, 7)
+  approximateLocationEnabled Boolean                    @default(true) @map("approximate_location_enabled")
+  exactAddressShared       Boolean                      @default(false) @map("exact_address_shared")
+  locationType             MarketplaceLocationType      @map("location_type")
+  preferredSchedule        Json                         @default("{}") @map("preferred_schedule")
+  languagePreference       String?                      @map("language_preference")
+  authorizationStatus      MarketplaceAuthorizationStatus @map("authorization_status")
+  urgency                  MarketplaceUrgency             @default(ROUTINE)
+  publicDescription        String?                      @map("public_description")
+  removedAt                DateTime?                    @map("removed_at")
+  removedReason            String?                      @map("removed_reason")
+  createdAt                DateTime                     @default(now()) @map("created_at")
+  updatedAt                DateTime                     @updatedAt @map("updated_at")
+
+  tenant            Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  child             Child                     @relation(fields: [childId], references: [id], onDelete: Cascade)
+  parentUser        User                      @relation("MarketplaceRequestParentUser", fields: [parentUserId], references: [id], onDelete: Cascade)
+  screeningResponse ScreeningResponse?        @relation(fields: [screeningResponseId], references: [id], onDelete: SetNull)
+  interests         MarketplaceInterest[]
+  consents          MarketplaceConsentRecord[]
+  reports           MarketplaceReport[]
+
+  @@index([tenantId])
+  @@index([childId])
+  @@index([parentUserId])
+  @@index([status])
+  @@index([zipCode])
+  @@index([ageRange])
+  @@index([authorizationStatus])
+  @@map("marketplace_requests")
+}
+
+model MarketplaceInterest {
+  id                   String                    @id @default(uuid()) @db.Uuid
+  tenantId             String                    @map("tenant_id") @db.Uuid
+  marketplaceRequestId String                    @map("marketplace_request_id") @db.Uuid
+  providerProfileId    String                    @map("provider_profile_id") @db.Uuid
+  message              String?
+  availability         Json                      @default("{}")
+  status               MarketplaceInterestStatus @default(PENDING_PARENT_REVIEW)
+  createdAt            DateTime                  @default(now()) @map("created_at")
+  updatedAt            DateTime                  @updatedAt @map("updated_at")
+
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  marketplaceRequest MarketplaceRequest  @relation(fields: [marketplaceRequestId], references: [id], onDelete: Cascade)
+  providerProfile    ProviderMarketplaceProfile @relation(fields: [providerProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([marketplaceRequestId, providerProfileId])
+  @@index([tenantId])
+  @@index([providerProfileId])
+  @@index([status])
+  @@map("marketplace_interests")
+}
+
+model MarketplaceConsentRecord {
+  id                   String                 @id @default(uuid()) @db.Uuid
+  tenantId             String                 @map("tenant_id") @db.Uuid
+  parentUserId         String                 @map("parent_user_id") @db.Uuid
+  childId              String                 @map("child_id") @db.Uuid
+  marketplaceRequestId String                 @map("marketplace_request_id") @db.Uuid
+  providerProfileId    String?                @map("provider_profile_id") @db.Uuid
+  consentType          MarketplaceConsentType @map("consent_type")
+  consentTextVersion   String                 @map("consent_text_version")
+  consentTextSnapshot  String                 @map("consent_text_snapshot") @db.Text
+  granted              Boolean                @default(true)
+  revokedAt            DateTime?              @map("revoked_at")
+  ipAddress            String?                @map("ip_address")
+  deviceInfo           String?                @map("device_info")
+  createdAt            DateTime               @default(now()) @map("created_at")
+
+  tenant             Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  parentUser         User                       @relation("MarketplaceConsentParentUser", fields: [parentUserId], references: [id], onDelete: Cascade)
+  child              Child                      @relation(fields: [childId], references: [id], onDelete: Cascade)
+  marketplaceRequest MarketplaceRequest         @relation(fields: [marketplaceRequestId], references: [id], onDelete: Cascade)
+  providerProfile    ProviderMarketplaceProfile? @relation(fields: [providerProfileId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([parentUserId])
+  @@index([childId])
+  @@index([marketplaceRequestId])
+  @@index([providerProfileId])
+  @@index([consentType])
+  @@map("marketplace_consent_records")
+}
+
+model ProviderMarketplaceProfile {
+  id                          String                              @id @default(uuid()) @db.Uuid
+  tenantId                    String                              @map("tenant_id") @db.Uuid
+  userId                      String                              @unique @map("user_id") @db.Uuid
+  accountType                 ProviderMarketplaceAccountType      @map("account_type")
+  therapistId                 String?                             @unique @map("therapist_id") @db.Uuid
+  agencyId                    String?                             @unique @map("agency_id") @db.Uuid
+  legalName                   String                              @map("legal_name")
+  displayName                 String                              @map("display_name")
+  licenseNumber               String?                             @map("license_number")
+  npi                         String?
+  serviceCategories           Json                                @default("[]") @map("service_categories")
+  coverageZipCodes            Json                                @default("[]") @map("coverage_zip_codes")
+  languages                   Json                                @default("[]")
+  availability                Json                                @default("{}")
+  verifiedStatus              ProviderMarketplaceVerificationStatus @default(PENDING) @map("verified_status")
+  confidentialityTermsAccepted Boolean                            @default(false) @map("confidentiality_terms_accepted")
+  confidentialityAcceptedAt   DateTime?                           @map("confidentiality_accepted_at")
+  suspendedAt                 DateTime?                           @map("suspended_at")
+  createdAt                   DateTime                            @default(now()) @map("created_at")
+  updatedAt                   DateTime                            @updatedAt @map("updated_at")
+
+  tenant     Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  therapist  Therapist?          @relation(fields: [therapistId], references: [id], onDelete: SetNull)
+  agency     Agency?             @relation(fields: [agencyId], references: [id], onDelete: SetNull)
+  interests  MarketplaceInterest[]
+  consents   MarketplaceConsentRecord[]
+
+  @@index([tenantId])
+  @@index([verifiedStatus])
+  @@map("provider_marketplace_profiles")
+}
+
+model MarketplaceSavedSearch {
+  id         String   @id @default(uuid()) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  name       String
+  filters    Json     @default("{}")
+  alertsEnabled Boolean @default(true) @map("alerts_enabled")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([userId])
+  @@map("marketplace_saved_searches")
+}
+
+model MarketplaceReport {
+  id                   String   @id @default(uuid()) @db.Uuid
+  tenantId             String   @map("tenant_id") @db.Uuid
+  reporterUserId       String   @map("reporter_user_id") @db.Uuid
+  marketplaceRequestId String?  @map("marketplace_request_id") @db.Uuid
+  reportedUserId       String?  @map("reported_user_id") @db.Uuid
+  reason               String
+  details              String?
+  status               String   @default("OPEN")
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  reporter           User                @relation("MarketplaceReportReporter", fields: [reporterUserId], references: [id], onDelete: Cascade)
+  marketplaceRequest MarketplaceRequest? @relation(fields: [marketplaceRequestId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([status])
+  @@map("marketplace_reports")
 }

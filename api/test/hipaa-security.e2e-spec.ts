@@ -16,7 +16,7 @@ describe('HIPAA security architecture (e2e)', () => {
         'x-device-model': 'CI',
         'x-device-platform': 'ci',
       })
-      .send({ email: 'parent@demo.local', password: 'Parent123!' })
+      .send({ email: 'parent1@demo.local', password: 'Parent1Demo!' })
       .expect(201);
     parentToken = parentLogin.body.accessToken as string;
 

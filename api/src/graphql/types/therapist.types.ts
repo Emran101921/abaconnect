@@ -97,6 +97,57 @@ export class TherapistProfileType {
 }
 
 @ObjectType()
+export class TherapistCaseloadChartType {
+  @Field(() => ID)
+  childId: string;
+
+  @Field()
+  chartNumber: string;
+
+  @Field()
+  firstName: string;
+
+  @Field()
+  lastName: string;
+
+  @Field()
+  dateOfBirth: Date;
+
+  @Field({ nullable: true })
+  gender?: string;
+
+  @Field({ nullable: true })
+  primaryLanguage?: string;
+
+  @Field({ nullable: true })
+  guardianName?: string;
+
+  @Field({ nullable: true })
+  pediatricianName?: string;
+
+  @Field({ nullable: true })
+  insuranceType?: string;
+
+  @Field()
+  parentName: string;
+
+  @Field(() => [TherapyType])
+  therapyTypes: TherapyType[];
+
+  @Field(() => Int)
+  upcomingAppointments: number;
+
+  @Field(() => Int)
+  completedSessions: number;
+
+  @Field(() => Int)
+  pendingDocumentation: number;
+
+  @Field({ nullable: true })
+  lastVisitAt?: Date;
+}
+
+@ObjectType()
 export class TherapistAppointmentType {
   @Field(() => ID)
   id: string;

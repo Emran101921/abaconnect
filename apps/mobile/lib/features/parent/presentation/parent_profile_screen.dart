@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../data/parent_booking_repository.dart';
+import 'parent_home_screen.dart';
 
 final parentProfileProvider = FutureProvider<ParentProfileModel>((ref) {
   return ref.watch(parentBookingRepositoryProvider).fetchParentProfile();
@@ -106,6 +107,9 @@ class _ParentProfileScreenState extends ConsumerState<ParentProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final profile = ref.watch(parentProfileProvider);
+    final showPayments = ref
+        .watch(parentShowsPaymentsProvider)
+        .maybeWhen(data: (v) => v, orElse: () => true);
 
     return AppScaffold(
       title: 'My Profile',
@@ -171,21 +175,26 @@ class _ParentProfileScreenState extends ConsumerState<ParentProfileScreen> {
                 decoration: const InputDecoration(labelText: 'Phone'),
                 keyboardType: TextInputType.phone,
               ),
-              const SizedBox(height: 16),
-              Text('Insurance', style: Theme.of(context).textTheme.titleSmall),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _insuranceProvider,
-                decoration: const InputDecoration(labelText: 'Provider'),
-              ),
-              TextField(
-                controller: _insuranceMemberId,
-                decoration: const InputDecoration(labelText: 'Member ID'),
-              ),
-              TextField(
-                controller: _insuranceGroup,
-                decoration: const InputDecoration(labelText: 'Group number'),
-              ),
+              if (!showPayments) ...[
+                const SizedBox(height: 16),
+                Text(
+                  'Insurance',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _insuranceProvider,
+                  decoration: const InputDecoration(labelText: 'Provider'),
+                ),
+                TextField(
+                  controller: _insuranceMemberId,
+                  decoration: const InputDecoration(labelText: 'Member ID'),
+                ),
+                TextField(
+                  controller: _insuranceGroup,
+                  decoration: const InputDecoration(labelText: 'Group number'),
+                ),
+              ],
               const SizedBox(height: 24),
               FilledButton(
                 onPressed: _saving ? null : _save,

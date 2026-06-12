@@ -43,6 +43,7 @@ import { ComplaintsModule } from './complaints/complaints.module';
 import { DisputesModule } from './disputes/disputes.module';
 import { PayoutsModule } from './payouts/payouts.module';
 import { SecurityModule } from './security/security.module';
+import { MarketplaceModule } from './marketplace/marketplace.module';
 
 @Module({
   imports: [
@@ -99,6 +100,7 @@ import { SecurityModule } from './security/security.module';
     DisputesModule,
     PayoutsModule,
     SecurityModule,
+    MarketplaceModule,
     GraphqlFeatureModule,
   ],
   controllers: [AppController],

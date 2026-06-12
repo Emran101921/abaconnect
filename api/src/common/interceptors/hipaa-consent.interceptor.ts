@@ -68,10 +68,7 @@ export class HipaaConsentInterceptor implements NestInterceptor {
       );
     }
 
-    await this.providerOnboarding.assertPhiAccess(
-      user.id,
-      user.roles ?? [],
-    );
+    await this.providerOnboarding.assertPhiAccess(user.id, user.roles ?? []);
 
     return next.handle();
   }

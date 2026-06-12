@@ -76,7 +76,7 @@ class TherapistHomeScreen extends ConsumerWidget {
 
     return AppScaffold(
       title: 'Therapist',
-      bottomNavigationBar: const TherapistBottomNav(
+      bottomNavigationBar: TherapistBottomNav(
         current: TherapistNavTab.home,
       ),
       actions: [
@@ -104,8 +104,6 @@ class TherapistHomeScreen extends ConsumerWidget {
             children: [
               AppWellnessHomeHeader(
                 greeting: 'Welcome back, $greetingName 👋',
-                notificationCount: unreadCount,
-                onNotificationsTap: () => context.push(AppRoutes.notifications),
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -396,6 +394,12 @@ class TherapistHomeScreen extends ConsumerWidget {
                 subtitle: 'Tap alerts to open messages or appointments',
                 icon: Icons.notifications,
                 onTap: () => context.push(AppRoutes.notifications),
+              ),
+              _OpsTile(
+                title: 'Service marketplace',
+                subtitle: 'Browse anonymous requests by ZIP area',
+                icon: Icons.storefront_outlined,
+                onTap: () => context.push(AppRoutes.therapistMarketplace),
               ),
               _OpsTile(
                 title: 'My profile',

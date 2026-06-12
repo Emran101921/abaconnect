@@ -11,10 +11,7 @@ describe('ClaimSecurityService', () => {
     claimEditHistory: { create: jest.fn() },
   };
 
-  const service = new ClaimSecurityService(
-    prisma as never,
-    audit as never,
-  );
+  const service = new ClaimSecurityService(prisma as never, audit as never);
 
   beforeEach(() => jest.clearAllMocks());
 

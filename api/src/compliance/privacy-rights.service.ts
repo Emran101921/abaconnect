@@ -88,10 +88,7 @@ export class PrivacyRightsService {
     });
   }
 
-  async listForTenant(
-    tenantId: string,
-    status?: PrivacyRightsRequestStatus,
-  ) {
+  async listForTenant(tenantId: string, status?: PrivacyRightsRequestStatus) {
     return this.prisma.privacyRightsRequest.findMany({
       where: {
         tenantId,

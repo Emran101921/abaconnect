@@ -43,6 +43,46 @@ class TherapistProfileModel {
   final List<String> therapyTypes;
 }
 
+class TherapistCaseloadChartModel {
+  const TherapistCaseloadChartModel({
+    required this.childId,
+    required this.chartNumber,
+    required this.firstName,
+    required this.lastName,
+    required this.dateOfBirth,
+    required this.parentName,
+    this.gender,
+    this.primaryLanguage,
+    this.guardianName,
+    this.pediatricianName,
+    this.insuranceType,
+    this.therapyTypes = const [],
+    this.upcomingAppointments = 0,
+    this.completedSessions = 0,
+    this.pendingDocumentation = 0,
+    this.lastVisitAt,
+  });
+
+  final String childId;
+  final String chartNumber;
+  final String firstName;
+  final String lastName;
+  final DateTime dateOfBirth;
+  final String parentName;
+  final String? gender;
+  final String? primaryLanguage;
+  final String? guardianName;
+  final String? pediatricianName;
+  final String? insuranceType;
+  final List<String> therapyTypes;
+  final int upcomingAppointments;
+  final int completedSessions;
+  final int pendingDocumentation;
+  final DateTime? lastVisitAt;
+
+  String get displayName => '$firstName $lastName';
+}
+
 class TherapistDashboardModel {
   const TherapistDashboardModel({
     required this.pendingRequests,
@@ -174,6 +214,61 @@ class TherapistRepository {
       actionItems: (d['actionItems'] as List<dynamic>? ?? [])
           .cast<Map<String, dynamic>>(),
     );
+  }
+
+  Future<List<TherapistCaseloadChartModel>> fetchCaseloadCharts() async {
+    const query = r'''
+      query {
+        myTherapistCaseloadCharts {
+          childId
+          chartNumber
+          firstName
+          lastName
+          dateOfBirth
+          gender
+          primaryLanguage
+          guardianName
+          pediatricianName
+          insuranceType
+          parentName
+          therapyTypes
+          upcomingAppointments
+          completedSessions
+          pendingDocumentation
+          lastVisitAt
+        }
+      }
+    ''';
+    final result = await _graphql.query(query);
+    final list =
+        result['data']?['myTherapistCaseloadCharts'] as List<dynamic>? ?? [];
+    return list.map((e) {
+      final row = e as Map<String, dynamic>;
+      return TherapistCaseloadChartModel(
+        childId: row['childId'] as String,
+        chartNumber: row['chartNumber'] as String,
+        firstName: row['firstName'] as String,
+        lastName: row['lastName'] as String,
+        dateOfBirth: DateTime.parse(row['dateOfBirth'] as String),
+        parentName: row['parentName'] as String,
+        gender: row['gender'] as String?,
+        primaryLanguage: row['primaryLanguage'] as String?,
+        guardianName: row['guardianName'] as String?,
+        pediatricianName: row['pediatricianName'] as String?,
+        insuranceType: row['insuranceType'] as String?,
+        therapyTypes:
+            (row['therapyTypes'] as List<dynamic>?)
+                ?.map((t) => t.toString())
+                .toList() ??
+            [],
+        upcomingAppointments: row['upcomingAppointments'] as int? ?? 0,
+        completedSessions: row['completedSessions'] as int? ?? 0,
+        pendingDocumentation: row['pendingDocumentation'] as int? ?? 0,
+        lastVisitAt: row['lastVisitAt'] != null
+            ? DateTime.parse(row['lastVisitAt'] as String)
+            : null,
+      );
+    }).toList();
   }
 
   Future<TherapistProfileModel> fetchProfile() async {

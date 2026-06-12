@@ -13,7 +13,7 @@ function loginDemoParent(app: INestApplication) {
   return request(app.getHttpServer())
     .post('/api/v1/auth/login')
     .set(DEMO_DEVICE_HEADERS)
-    .send({ email: 'parent@demo.local', password: 'Parent123!' });
+    .send({ email: 'parent1@demo.local', password: 'Parent1Demo!' });
 }
 
 describe('API (e2e)', () => {
@@ -322,5 +322,4 @@ describe('API (e2e)', () => {
 
     expect(submitted.body.requestType).toBe('RECORD_ACCESS');
   });
-
 });

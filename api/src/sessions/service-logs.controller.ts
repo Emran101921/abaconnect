@@ -27,8 +27,9 @@ export class ServiceLogsController {
           parentSignedAt: log.parentSignedAt?.toISOString() ?? null,
           parentName: data.parentName ?? null,
           sessionDate:
-            log.session.appointment?.scheduledStart.toISOString().slice(0, 10) ??
-            null,
+            log.session.appointment?.scheduledStart
+              .toISOString()
+              .slice(0, 10) ?? null,
         };
       }),
     );
@@ -41,8 +42,10 @@ export class ServiceLogsController {
     @Param('sessionId') sessionId: string,
     @Res() res: Response,
   ): Promise<void> {
-    const { buffer, filename } =
-      await this.serviceLogs.buildPdfForTherapist(user.id, sessionId);
+    const { buffer, filename } = await this.serviceLogs.buildPdfForTherapist(
+      user.id,
+      sessionId,
+    );
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader(
       'Content-Disposition',

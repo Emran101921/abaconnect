@@ -46,12 +46,30 @@ class ChildProfileFormData {
   String? insuranceType;
   bool? hadEarlyIntervention;
 
+  static String? normalizeGenderDisplay(String? raw) {
+    if (raw == null || raw.isEmpty) return null;
+    final lower = raw.toLowerCase().replaceAll(' ', '');
+    switch (lower) {
+      case 'female':
+        return 'Female';
+      case 'male':
+        return 'Male';
+      case 'non-binary':
+      case 'nonbinary':
+        return 'Non-binary';
+      case 'prefernottosay':
+        return 'Prefer not to say';
+      default:
+        return raw;
+    }
+  }
+
   factory ChildProfileFormData.fromChild(ChildModel child) {
     return ChildProfileFormData(
       firstName: child.firstName,
       lastName: child.lastName,
       dateOfBirth: child.dateOfBirth,
-      gender: child.gender,
+      gender: normalizeGenderDisplay(child.gender),
       primaryLanguage: child.primaryLanguage,
       guardianName: child.guardianName,
       guardianPhone: child.guardianPhone,
@@ -95,6 +113,14 @@ class ChildProfileForm extends StatefulWidget {
 
 class _ChildProfileFormState extends State<ChildProfileForm> {
   static const _genders = ['Female', 'Male', 'Non-binary', 'Prefer not to say'];
+
+  List<String> _genderOptions(ChildProfileFormData data) {
+    final g = data.gender;
+    if (g != null && !_genders.contains(g)) {
+      return [..._genders, g];
+    }
+    return _genders;
+  }
   static const _languages = [
     'English',
     'Spanish',
@@ -176,9 +202,11 @@ class _ChildProfileFormState extends State<ChildProfileForm> {
               ),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
-                initialValue: data.gender,
+                value: data.gender != null && _genderOptions(data).contains(data.gender)
+                    ? data.gender
+                    : null,
                 decoration: const InputDecoration(labelText: 'Gender'),
-                items: _genders
+                items: _genderOptions(data)
                     .map((g) => DropdownMenuItem(value: g, child: Text(g)))
                     .toList(),
                 onChanged: widget.readOnly

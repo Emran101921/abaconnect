@@ -20,6 +20,8 @@ const STRING_FIELDS_BY_MODEL: Record<string, string[]> = {
   SoapNote: ['subjective', 'objective', 'assessment', 'plan'],
   ProgressNote: ['summary', 'parentFeedback'],
   Child: [
+    'firstName',
+    'lastName',
     'guardianName',
     'guardianPhone',
     'guardianEmail',
@@ -27,7 +29,11 @@ const STRING_FIELDS_BY_MODEL: Record<string, string[]> = {
     'pediatricianName',
     'notes',
   ],
-  Parent: ['insuranceMemberId', 'insuranceGroupNumber', 'emergencyContactPhone'],
+  Parent: [
+    'insuranceMemberId',
+    'insuranceGroupNumber',
+    'emergencyContactPhone',
+  ],
   Therapist: ['taxId', 'bio'],
 };
 

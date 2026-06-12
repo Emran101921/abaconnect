@@ -19,6 +19,10 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { EarlyInterventionScoringService } from './early-intervention-scoring.service';
 import {
+  deriveConcernTagsFromScreening,
+  mapTherapyTypeToServiceCategory,
+} from '../marketplace/marketplace-privacy.util';
+import {
   buildEarlyInterventionQuestionsJson,
   buildSanitizedEiSectionAnswers,
   EARLY_INTERVENTION_TEMPLATE_NAME,
@@ -147,6 +151,7 @@ export class ScreeningsService {
       childId: string;
       responses: Record<string, unknown>;
       consentGranted?: boolean;
+      disclaimerAccepted?: boolean;
       draftId?: string;
     },
     actorId?: string,
@@ -160,6 +165,17 @@ export class ScreeningsService {
 
     const scored = this.scoreForTemplate(template, data.responses);
     const consentGrantedAt = data.consentGranted ? new Date() : null;
+    const concernTags = deriveConcernTagsFromScreening(
+      scored.recommendations,
+      scored.areaFlags,
+    );
+    const suggestedServiceCategories = [
+      ...new Set(
+        scored.recommendations.map((rec) =>
+          mapTherapyTypeToServiceCategory(rec.code),
+        ),
+      ),
+    ];
 
     let row;
     if (data.draftId) {
@@ -174,6 +190,10 @@ export class ScreeningsService {
           score: scored.score,
           riskLevel: scored.riskLevel,
           recommendations: scored.recommendations as Prisma.InputJsonValue,
+          concernTags: concernTags as Prisma.InputJsonValue,
+          suggestedServiceCategories:
+            suggestedServiceCategories as Prisma.InputJsonValue,
+          disclaimerAccepted: data.disclaimerAccepted ?? true,
           isDraft: false,
           consentGrantedAt,
           completedAt: new Date(),
@@ -191,6 +211,10 @@ export class ScreeningsService {
           score: scored.score,
           riskLevel: scored.riskLevel,
           recommendations: scored.recommendations as Prisma.InputJsonValue,
+          concernTags: concernTags as Prisma.InputJsonValue,
+          suggestedServiceCategories:
+            suggestedServiceCategories as Prisma.InputJsonValue,
+          disclaimerAccepted: data.disclaimerAccepted ?? true,
           isDraft: false,
           consentGrantedAt,
         },
@@ -561,6 +585,7 @@ export class ScreeningsService {
         score: result.score,
         riskLevel: result.riskLevel,
         recommendations: result.recommendations,
+        areaFlags: result.areaFlags,
       };
     }
 
@@ -569,6 +594,7 @@ export class ScreeningsService {
       score,
       riskLevel: this.riskLevelFromScore(score),
       recommendations: [],
+      areaFlags: undefined,
     };
   }
 

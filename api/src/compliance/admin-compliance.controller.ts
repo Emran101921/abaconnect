@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { Roles } from '../common/decorators/roles.decorator';
 import {
   AuthUser,
@@ -52,16 +60,15 @@ export class AdminComplianceController {
       title: dto.title,
       fullNoticeText: dto.fullNoticeText,
       privacyPolicyText: dto.privacyPolicyText,
-      effectiveDate: dto.effectiveDate ? new Date(dto.effectiveDate) : undefined,
+      effectiveDate: dto.effectiveDate
+        ? new Date(dto.effectiveDate)
+        : undefined,
       publish: dto.publish,
     });
   }
 
   @Patch('notice-versions/:id/publish')
-  publishNoticeVersion(
-    @CurrentUser() user: AuthUser,
-    @Param('id') id: string,
-  ) {
+  publishNoticeVersion(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.notices.publishNoticeVersion(user.id, id);
   }
 
@@ -110,16 +117,15 @@ export class AdminComplianceController {
       version: dto.version,
       title: dto.title,
       content: dto.content,
-      effectiveDate: dto.effectiveDate ? new Date(dto.effectiveDate) : undefined,
+      effectiveDate: dto.effectiveDate
+        ? new Date(dto.effectiveDate)
+        : undefined,
       publish: dto.publish,
     });
   }
 
   @Patch('legal-documents/:id/publish')
-  publishLegalDocument(
-    @CurrentUser() user: AuthUser,
-    @Param('id') id: string,
-  ) {
+  publishLegalDocument(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.legalDocuments.publishVersion(
       user.id,
       id,

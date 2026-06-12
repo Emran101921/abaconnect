@@ -371,8 +371,7 @@ export class ServiceLogService {
     const parentPhone = child.guardianPhone?.trim() || parentUser.phone || null;
 
     return {
-      childName:
-        pick('childName') ?? `${child.firstName} ${child.lastName}`,
+      childName: pick('childName') ?? `${child.firstName} ${child.lastName}`,
       childDob:
         pick('childDob') ?? child.dateOfBirth.toISOString().slice(0, 10),
       childSex: pick('childSex') ?? child.gender ?? null,
@@ -391,7 +390,9 @@ export class ServiceLogService {
       interventionistName: pick('interventionistName'),
       interventionistSignature: pick('interventionistSignature'),
       interventionistSignatureDate: pick('interventionistSignatureDate'),
-      interventionistSignatureLatitude: pick('interventionistSignatureLatitude'),
+      interventionistSignatureLatitude: pick(
+        'interventionistSignatureLatitude',
+      ),
       interventionistSignatureLongitude: pick(
         'interventionistSignatureLongitude',
       ),

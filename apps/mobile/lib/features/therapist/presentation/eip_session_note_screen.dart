@@ -11,6 +11,7 @@ import 'session_notes_screen.dart';
 import 'staff_session_notes_screen.dart';
 import 'therapist_weekly_progress_section.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/speech_dictation.dart';
 
 final sessionNoteFormContextProvider =
     FutureProvider.family<EipSessionNoteModel, SessionNoteScreenRequest>(
@@ -374,9 +375,14 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
                       );
                     },
                   ),
-                  _field('Other participants', form.participantOther ?? '', (v) {
-                    setState(() => _form = form.copyWith(participantOther: v));
-                  }),
+                  _field(
+                    'Other participants',
+                    form.participantOther ?? '',
+                    (v) {
+                      setState(() => _form = form.copyWith(participantOther: v));
+                    },
+                    enableDictation: true,
+                  ),
                 ],
               ),
               _section(
@@ -454,9 +460,14 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
                       );
                     },
                   ),
-                  _field('Other technique', form.q3Other ?? '', (v) {
-                    setState(() => _form = form.copyWith(q3Other: v));
-                  }),
+                  _field(
+                    'Other technique',
+                    form.q3Other ?? '',
+                    (v) {
+                      setState(() => _form = form.copyWith(q3Other: v));
+                    },
+                    enableDictation: true,
+                  ),
                 ],
               ),
               _section(
@@ -927,15 +938,18 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
     String value,
     ValueChanged<String> onChanged, {
     bool readOnly = false,
+    bool enableDictation = false,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: _BoundTextField(
         key: ValueKey('$label-$value'),
+        fieldKey: 'eip-$label',
         label: label,
         value: value,
         onChanged: onChanged,
         readOnly: readOnly,
+        enableDictation: enableDictation,
       ),
     );
   }
@@ -951,11 +965,13 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
       padding: const EdgeInsets.only(bottom: 12),
       child: _BoundTextField(
         key: ValueKey('$label-$value'),
+        fieldKey: 'eip-$label',
         label: required ? '$label *' : label,
         value: value,
         onChanged: onChanged,
         minLines: minLines,
         multiline: true,
+        enableDictation: true,
       ),
     );
   }
@@ -1213,20 +1229,24 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
 class _BoundTextField extends StatefulWidget {
   const _BoundTextField({
     super.key,
+    required this.fieldKey,
     required this.label,
     required this.value,
     required this.onChanged,
     this.minLines = 1,
     this.multiline = false,
     this.readOnly = false,
+    this.enableDictation = false,
   });
 
+  final String fieldKey;
   final String label;
   final String value;
   final ValueChanged<String> onChanged;
   final int minLines;
   final bool multiline;
   final bool readOnly;
+  final bool enableDictation;
 
   @override
   State<_BoundTextField> createState() => _BoundTextFieldState();
@@ -1263,6 +1283,14 @@ class _BoundTextFieldState extends State<_BoundTextField> {
       decoration: InputDecoration(
         labelText: widget.label,
         alignLabelWithHint: widget.multiline,
+        suffixIcon: widget.enableDictation && !widget.readOnly
+            ? SpeechMicButton(
+                fieldKey: widget.fieldKey,
+                controller: _controller,
+                onChanged: widget.onChanged,
+                compact: true,
+              )
+            : null,
       ),
       minLines: widget.multiline ? widget.minLines : 1,
       maxLines: widget.multiline ? null : 1,

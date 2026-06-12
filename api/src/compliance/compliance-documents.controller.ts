@@ -13,10 +13,7 @@ export class ComplianceDocumentsController {
 
   @Get('me/pending')
   listPending(@CurrentUser() user: AuthUser) {
-    return this.documents.listActiveForUser(
-      user.id,
-      user.tenantId ?? '',
-    );
+    return this.documents.listActiveForUser(user.id, user.tenantId ?? '');
   }
 
   @Get(':type')

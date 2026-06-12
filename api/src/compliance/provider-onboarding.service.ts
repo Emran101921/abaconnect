@@ -23,7 +23,9 @@ export interface ProviderOnboardingChecklist {
 export class ProviderOnboardingService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getChecklist(userId: string): Promise<ProviderOnboardingChecklist | null> {
+  async getChecklist(
+    userId: string,
+  ): Promise<ProviderOnboardingChecklist | null> {
     const therapist = await this.prisma.therapist.findUnique({
       where: { userId },
       include: { user: true },
@@ -47,7 +49,8 @@ export class ProviderOnboardingService {
         therapist.confidentialityAgreementSignedAt,
       ),
       agencyApprovalComplete: Boolean(therapist.agencyApprovedAt),
-      isActive: therapist.onboardingStatus !== ProviderOnboardingStatus.INACTIVE,
+      isActive:
+        therapist.onboardingStatus !== ProviderOnboardingStatus.INACTIVE,
       phiAccessApproved: therapist.phiAccessApproved,
       onboardingStatus: therapist.onboardingStatus,
     };
@@ -115,7 +118,10 @@ export class ProviderOnboardingService {
         'NPI and license information are required before submitting for review',
       );
     }
-    if (!checklist.hipaaTrainingComplete || !checklist.confidentialityAgreementComplete) {
+    if (
+      !checklist.hipaaTrainingComplete ||
+      !checklist.confidentialityAgreementComplete
+    ) {
       throw new ForbiddenException(
         'HIPAA training and confidentiality agreement attestations are required',
       );

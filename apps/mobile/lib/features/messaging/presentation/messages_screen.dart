@@ -32,9 +32,9 @@ class MessagesScreen extends ConsumerWidget {
     return AppScaffold(
       title: 'Messages',
       bottomNavigationBar: isParent
-          ? const ParentBottomNav(current: ParentNavTab.messages)
+          ? ParentBottomNav(current: ParentNavTab.messages)
           : isTherapist
-          ? const TherapistBottomNav(current: TherapistNavTab.messages)
+          ? TherapistBottomNav(current: TherapistNavTab.messages)
           : null,
       floatingActionButton: FloatingActionButton(
         onPressed: () => isTherapist

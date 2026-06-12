@@ -208,8 +208,10 @@ class _ScreeningResultsScreenState
                       context,
                     ).colorScheme.surfaceContainerHighest,
                     child: Text(
-                      'This screening tool is for informational purposes only and '
-                      'does not replace evaluation by a licensed professional.',
+                      'This screening is informational only. It is not a diagnosis, '
+                      'medical advice, or a replacement for evaluation by a licensed '
+                      'professional. Possible service categories to explore may be '
+                      'listed above. Recommended next step: professional evaluation/referral.',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         fontStyle: FontStyle.italic,
                       ),
@@ -228,6 +230,21 @@ class _ScreeningResultsScreenState
                     subtitle: 'Schedule a licensed professional evaluation',
                     icon: Icons.medical_services_outlined,
                     onTap: _requestingEvaluation ? null : _requestEvaluation,
+                  ),
+                  const SizedBox(height: 8),
+                  AppQuickActionCard(
+                    title: 'Create anonymous marketplace request',
+                    subtitle:
+                        'Let verified providers respond by ZIP area without sharing child identity',
+                    icon: Icons.privacy_tip_outlined,
+                    onTap: () {
+                      context.push(
+                        '${AppRoutes.parentMarketplaceOptIn}'
+                        '?childId=${child.id}'
+                        '&screeningResponseId=${result.id}'
+                        '${child.primaryLanguage != null ? '&languagePreference=${Uri.encodeComponent(child.primaryLanguage!)}' : ''}',
+                      );
+                    },
                   ),
                   const SizedBox(height: 8),
                   AppQuickActionCard(

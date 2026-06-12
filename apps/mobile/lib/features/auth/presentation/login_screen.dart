@@ -9,6 +9,7 @@ import '../../../core/providers/app_providers.dart';
 import '../../../core/providers/consent_gate_provider.dart';
 import '../../../core/router/onboarding_navigation.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_glossy_gradients.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/models/user_role.dart';
 import '../../../shared/widgets/app_brand_logo.dart';
@@ -22,14 +23,91 @@ class LoginScreen extends ConsumerStatefulWidget {
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
+class _LoginRoleOption {
+  const _LoginRoleOption({
+    required this.role,
+    required this.label,
+    required this.subtitle,
+    required this.icon,
+    required this.gradient,
+    this.demoEmail,
+    this.demoPassword,
+  });
+
+  final UserRole role;
+  final String label;
+  final String subtitle;
+  final IconData icon;
+  final LinearGradient gradient;
+  final String? demoEmail;
+  final String? demoPassword;
+}
+
+const _loginRoles = [
+  _LoginRoleOption(
+    role: UserRole.parent,
+    label: 'Parent',
+    subtitle: 'Family care dashboard',
+    icon: Icons.family_restroom_outlined,
+    gradient: AppGlossyGradients.primary,
+    demoEmail: 'parent1@demo.local',
+    demoPassword: 'Parent1Demo!',
+  ),
+  _LoginRoleOption(
+    role: UserRole.therapist,
+    label: 'Therapist',
+    subtitle: 'Clinical sessions & notes',
+    icon: Icons.medical_services_outlined,
+    gradient: AppGlossyGradients.secondary,
+    demoEmail: 'therapist@demo.local',
+    demoPassword: 'Therapist123!',
+  ),
+  _LoginRoleOption(
+    role: UserRole.agency,
+    label: 'Agency',
+    subtitle: 'Roster & operations',
+    icon: Icons.business_outlined,
+    gradient: AppGlossyGradients.tertiary,
+    demoEmail: 'agency@demo.local',
+    demoPassword: 'Agency123!',
+  ),
+  _LoginRoleOption(
+    role: UserRole.admin,
+    label: 'Admin',
+    subtitle: 'Platform administration',
+    icon: Icons.admin_panel_settings_outlined,
+    gradient: AppGlossyGradients.warning,
+    demoEmail: 'admin@abaconnect.local',
+    demoPassword: 'Admin123!',
+  ),
+];
+
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _emailController = TextEditingController(
-    text: kDebugMode ? 'parent@demo.local' : '',
-  );
-  final _passwordController = TextEditingController(
-    text: kDebugMode ? 'Parent123!' : '',
-  );
+  late UserRole _selectedRole;
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
   bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedRole = UserRole.parent;
+    _applyRoleDefaults(_loginRoles.first);
+  }
+
+  void _applyRoleDefaults(_LoginRoleOption option) {
+    if (kDebugMode && option.demoEmail != null && option.demoPassword != null) {
+      _emailController.text = option.demoEmail!;
+      _passwordController.text = option.demoPassword!;
+    }
+  }
+
+  void _selectRole(_LoginRoleOption option) {
+    setState(() {
+      _selectedRole = option.role;
+      _applyRoleDefaults(option);
+    });
+  }
 
   @override
   void dispose() {
@@ -38,7 +116,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
-  Future<void> _signIn({UserRole? demoRole}) async {
+  Future<void> _signIn() async {
     setState(() => _loading = true);
     try {
       final result = await ref
@@ -46,7 +124,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           .login(
             email: _emailController.text.trim(),
             password: _passwordController.text,
-            role: demoRole ?? UserRole.parent,
+            role: _selectedRole,
           );
       if (!mounted) return;
       if (result.requiresMfa) {
@@ -228,22 +306,33 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget _buildNarrowLayout(BuildContext context) {
     return SafeArea(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppSpacing.lg),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          AppSpacing.xs,
+          AppSpacing.lg,
+          AppSpacing.lg,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const SizedBox(height: AppSpacing.lg),
-            Row(children: const [Spacer(), AppThemeToggle(compact: true)]),
-            const SizedBox(height: AppSpacing.md),
-            const Center(child: AppBrandLogo(size: AppBrandLogoSize.large)),
-            const SizedBox(height: AppSpacing.md),
+            Stack(
+              alignment: Alignment.center,
+              children: const [
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: AppThemeToggle(compact: true),
+                ),
+                Center(child: AppBrandLogo(size: AppBrandLogoSize.large)),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.xs),
             const Center(
               child: AppHealthcareIllustration(
                 type: AppIllustrationType.family,
-                size: 100,
+                size: 64,
               ),
             ),
-            const SizedBox(height: AppSpacing.xl),
+            const SizedBox(height: AppSpacing.sm),
             _buildForm(context),
           ],
         ),
@@ -261,23 +350,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             context,
           ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
         ),
-        const SizedBox(height: AppSpacing.xs),
-        Text(
-          'Access your care dashboard',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
+        const SizedBox(height: AppSpacing.md),
+        _LoginRoleSelector(
+          roles: _loginRoles,
+          selectedRole: _selectedRole,
+          onSelected: _selectRole,
         ),
+        const SizedBox(height: AppSpacing.md),
         if (kDebugMode) ...[
-          const SizedBox(height: AppSpacing.sm),
           Text(
             'Dev: API at ${ApiConstants.apiHost}:3000',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
+          const SizedBox(height: AppSpacing.sm),
         ],
-        const SizedBox(height: AppSpacing.lg),
         TextField(
           controller: _emailController,
           decoration: const InputDecoration(
@@ -323,55 +411,299 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
           ],
         ),
-        const SizedBox(height: AppSpacing.lg),
-        Text(
-          'Quick demo access',
-          style: Theme.of(context).textTheme.labelLarge,
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        Wrap(
-          spacing: AppSpacing.sm,
-          runSpacing: AppSpacing.sm,
-          children: [
-            _DemoChip(
-              label: 'Parent',
-              loading: _loading,
-              onTap: () {
-                _emailController.text = 'parent@demo.local';
-                _passwordController.text = 'Parent123!';
-                _signIn(demoRole: UserRole.parent);
-              },
-            ),
-            _DemoChip(
-              label: 'Therapist',
-              loading: _loading,
-              onTap: () {
-                _emailController.text = 'therapist@demo.local';
-                _passwordController.text = 'Therapist123!';
-                _signIn(demoRole: UserRole.therapist);
-              },
-            ),
-            _DemoChip(
-              label: 'Admin',
-              loading: _loading,
-              onTap: () {
-                _emailController.text = 'admin@abaconnect.local';
-                _passwordController.text = 'Admin123!';
-                _signIn(demoRole: UserRole.admin);
-              },
-            ),
-            _DemoChip(
-              label: 'Agency',
-              loading: _loading,
-              onTap: () {
-                _emailController.text = 'agency@demo.local';
-                _passwordController.text = 'Agency123!';
-                _signIn(demoRole: UserRole.agency);
-              },
-            ),
-          ],
-        ),
       ],
+    );
+  }
+}
+
+class _LoginRoleSelector extends StatelessWidget {
+  const _LoginRoleSelector({
+    required this.roles,
+    required this.selectedRole,
+    required this.onSelected,
+  });
+
+  final List<_LoginRoleOption> roles;
+  final UserRole selectedRole;
+  final void Function(_LoginRoleOption option) onSelected;
+
+  _LoginRoleOption get _selected => roles.firstWhere(
+    (r) => r.role == selectedRole,
+    orElse: () => roles.first,
+  );
+
+  Future<void> _openPicker(BuildContext context) async {
+    final picked = await showModalBottomSheet<_LoginRoleOption>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (ctx) => _LoginRolePickerSheet(
+        roles: roles,
+        selectedRole: selectedRole,
+      ),
+    );
+    if (picked != null) onSelected(picked);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final selected = _selected;
+
+    return Semantics(
+      button: true,
+      label: 'Account type, ${selected.label}. Tap to change.',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _openPicker(context),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+          child: InputDecorator(
+            decoration: InputDecoration(
+              labelText: 'Account type',
+              prefixIcon: Icon(selected.icon, color: scheme.primary),
+              suffixIcon: const Icon(Icons.unfold_more_rounded),
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: 14,
+              ),
+            ),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                selected.label,
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LoginRolePickerSheet extends StatefulWidget {
+  const _LoginRolePickerSheet({
+    required this.roles,
+    required this.selectedRole,
+  });
+
+  final List<_LoginRoleOption> roles;
+  final UserRole selectedRole;
+
+  @override
+  State<_LoginRolePickerSheet> createState() => _LoginRolePickerSheetState();
+}
+
+class _LoginRolePickerSheetState extends State<_LoginRolePickerSheet> {
+  final _scrollController = ScrollController();
+  late UserRole _highlightedRole;
+  bool _canScrollDown = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _highlightedRole = widget.selectedRole;
+    _scrollController.addListener(_onScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onScroll());
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final max = _scrollController.position.maxScrollExtent;
+    final canScroll = max > 0;
+    final atBottom = _scrollController.offset >= max - 4;
+    final nextCanScrollDown = canScroll && !atBottom;
+    if (nextCanScrollDown != _canScrollDown) {
+      setState(() => _canScrollDown = nextCanScrollDown);
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+            child: Text(
+              'Tap a role to select',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          SizedBox(
+            height: 280,
+            child: Stack(
+              children: [
+                ListView.separated(
+                  controller: _scrollController,
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  itemCount: widget.roles.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 6),
+                  itemBuilder: (context, index) {
+                    final option = widget.roles[index];
+                    final selected = option.role == _highlightedRole;
+
+                    return _LoginRoleOptionTile(
+                      option: option,
+                      selected: selected,
+                      compact: true,
+                      onTap: () => Navigator.pop(context, option),
+                    );
+                  },
+                ),
+                if (_canScrollDown)
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: IgnorePointer(
+                      child: Container(
+                        height: 28,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              scheme.surface.withValues(alpha: 0),
+                              scheme.surface,
+                            ],
+                          ),
+                        ),
+                        alignment: Alignment.bottomCenter,
+                        child: Icon(
+                          Icons.expand_more_rounded,
+                          size: 18,
+                          color: scheme.primary.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LoginRoleOptionTile extends StatelessWidget {
+  const _LoginRoleOptionTile({
+    required this.option,
+    required this.selected,
+    required this.onTap,
+    this.compact = false,
+  });
+
+  final _LoginRoleOption option;
+  final bool selected;
+  final VoidCallback onTap;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final shadowColor = AppGlossyGradients.baseShadowColor(option.gradient);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: compact ? AppSpacing.sm : AppSpacing.md,
+          ),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+            gradient: selected ? option.gradient : null,
+            color: selected
+                ? null
+                : scheme.surfaceContainerHighest.withValues(alpha: 0.55),
+            border: Border.all(
+              color: selected
+                  ? Colors.white.withValues(alpha: 0.4)
+                  : scheme.outlineVariant.withValues(alpha: 0.5),
+            ),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: shadowColor.withValues(alpha: 0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 5),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: compact ? 36 : 44,
+                height: compact ? 36 : 44,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: selected
+                      ? Colors.white.withValues(alpha: 0.22)
+                      : scheme.surface,
+                ),
+                child: Icon(
+                  option.icon,
+                  size: compact ? 18 : 22,
+                  color: selected ? Colors.white : scheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      option.label,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: selected ? Colors.white : scheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      option.subtitle,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: selected
+                            ? Colors.white.withValues(alpha: 0.88)
+                            : scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                selected
+                    ? Icons.radio_button_checked_rounded
+                    : Icons.radio_button_off_rounded,
+                color: selected ? Colors.white : scheme.outlineVariant,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -404,19 +736,3 @@ class _FeatureChip extends StatelessWidget {
   }
 }
 
-class _DemoChip extends StatelessWidget {
-  const _DemoChip({
-    required this.label,
-    required this.loading,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool loading;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return ActionChip(label: Text(label), onPressed: loading ? null : onTap);
-  }
-}
