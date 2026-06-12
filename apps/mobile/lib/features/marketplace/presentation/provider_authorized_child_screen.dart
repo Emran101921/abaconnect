@@ -101,6 +101,18 @@ class _ProviderAuthorizedChildScreenState
                               'Phone: ${_details!.parentPhone}',
                           ],
                         ),
+                        if (_details!.sharedDocuments.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          _Section(
+                            title: 'Shared documents',
+                            lines: _details!.sharedDocuments
+                                .map(
+                                  (doc) =>
+                                      '${doc.title} (${doc.type}) · ${doc.fileName}',
+                                )
+                                .toList(),
+                          ),
+                        ],
                       ],
                     ),
     );
