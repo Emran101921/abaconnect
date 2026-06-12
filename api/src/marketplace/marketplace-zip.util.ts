@@ -1,5 +1,8 @@
 /** Approximate ZIP centroid — never expose exact home address on marketplace map. */
-export function zipToApproxCentroid(zipCode: string): { lat: number; lng: number } {
+export function zipToApproxCentroid(zipCode: string): {
+  lat: number;
+  lng: number;
+} {
   const zip = zipCode.replace(/\D/g, '').slice(0, 5);
   const z = parseInt(zip, 10);
   if (!Number.isFinite(z) || zip.length < 5) {
@@ -41,5 +44,7 @@ export function haversineMiles(
   const a =
     Math.sin(dLat / 2) ** 2 +
     Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
-  return Number((R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))).toFixed(1));
+  return Number(
+    (R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))).toFixed(1),
+  );
 }

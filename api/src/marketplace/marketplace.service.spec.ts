@@ -50,7 +50,10 @@ describe('MarketplaceService privacy gates', () => {
   });
 
   it('rejects marketplace posting without explicit anonymous consent', async () => {
-    prisma.parent.findUnique.mockResolvedValue({ id: 'parent-1', tenantId: 't1' });
+    prisma.parent.findUnique.mockResolvedValue({
+      id: 'parent-1',
+      tenantId: 't1',
+    });
     prisma.child.findFirst.mockResolvedValue({
       id: 'child-1',
       parentId: 'parent-1',
@@ -90,7 +93,11 @@ describe('MarketplaceService privacy gates', () => {
     prisma.marketplaceConsentRecord.findFirst.mockResolvedValue(null);
 
     await expect(
-      service.getAuthorizedChildDetailsForProvider('therapist-user', 'req-1', {}),
+      service.getAuthorizedChildDetailsForProvider(
+        'therapist-user',
+        'req-1',
+        {},
+      ),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 

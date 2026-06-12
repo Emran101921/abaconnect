@@ -9,7 +9,6 @@ import {
   MarketplaceAuthorizationStatus,
   MarketplaceConsentType,
   MarketplaceLocationType,
-  MarketplaceRequestStatus,
   MarketplaceUrgency,
   Prisma,
 } from '../../generated/prisma/client';
@@ -170,7 +169,7 @@ export class MarketplaceService {
   }
 
   async listParentRequests(userId: string) {
-    const parent = await this.requireParent(userId);
+    await this.requireParent(userId);
     const rows = await this.prisma.marketplaceRequest.findMany({
       where: { parentUserId: userId, removedAt: null },
       orderBy: { createdAt: 'desc' },
@@ -235,11 +234,14 @@ export class MarketplaceService {
         tenantId: profile.tenantId,
         status: 'ACTIVE',
         removedAt: null,
-        ...(filters.ageRange
-          ? { ageRange: filters.ageRange as never }
-          : {}),
+        ...(filters.ageRange ? { ageRange: filters.ageRange as never } : {}),
         ...(filters.language
-          ? { languagePreference: { contains: filters.language, mode: 'insensitive' } }
+          ? {
+              languagePreference: {
+                contains: filters.language,
+                mode: 'insensitive',
+              },
+            }
           : {}),
         ...(filters.locationType ? { locationType: filters.locationType } : {}),
         ...(filters.authorizationStatus
@@ -504,7 +506,8 @@ export class MarketplaceService {
       marketplaceRequestId: request.id,
       providerProfileId,
       consentType: 'REVOKE_CONSENT',
-      consentText: 'Parent revoked consent to share identifiable child information.',
+      consentText:
+        'Parent revoked consent to share identifiable child information.',
       ctx,
       granted: false,
     });
@@ -799,7 +802,11 @@ export class MarketplaceService {
     });
   }
 
-  async adminRemoveListing(adminUserId: string, requestId: string, reason: string) {
+  async adminRemoveListing(
+    adminUserId: string,
+    requestId: string,
+    reason: string,
+  ) {
     const row = await this.prisma.marketplaceRequest.findUnique({
       where: { id: requestId },
     });
@@ -919,7 +926,10 @@ export class MarketplaceService {
   }
 
   private extractServiceCategories(
-    screening: { recommendations: unknown; suggestedServiceCategories?: unknown } | null,
+    screening: {
+      recommendations: unknown;
+      suggestedServiceCategories?: unknown;
+    } | null,
   ): string[] {
     if (screening?.suggestedServiceCategories) {
       const arr = screening.suggestedServiceCategories;
@@ -927,7 +937,8 @@ export class MarketplaceService {
         return arr.map((v) => String(v));
       }
     }
-    if (!screening || !Array.isArray(screening.recommendations)) return ['EVALUATION'];
+    if (!screening || !Array.isArray(screening.recommendations))
+      return ['EVALUATION'];
     return [
       ...new Set(
         screening.recommendations.map((rec: { code?: string }) =>
@@ -951,11 +962,16 @@ export class MarketplaceService {
       return ['general developmental concerns'];
     }
     return deriveConcernTagsFromScreening(
-      screening.recommendations as Array<{ code?: string; explanation?: string }>,
+      screening.recommendations as Array<{
+        code?: string;
+        explanation?: string;
+      }>,
     );
   }
 
-  private coverageZipFilter(coverageZipCodes: unknown): { zipCode: { in: string[] } } | undefined {
+  private coverageZipFilter(
+    coverageZipCodes: unknown,
+  ): { zipCode: { in: string[] } } | undefined {
     if (!Array.isArray(coverageZipCodes) || coverageZipCodes.length === 0) {
       return undefined;
     }
@@ -974,7 +990,11 @@ export class MarketplaceService {
   }
 
   private rankRequest(
-    profile: { serviceCategories: unknown; languages: unknown; verifiedStatus: string },
+    profile: {
+      serviceCategories: unknown;
+      languages: unknown;
+      verifiedStatus: string;
+    },
     row: { serviceCategories: unknown; languagePreference?: string | null },
     distanceMiles?: number,
   ): number {

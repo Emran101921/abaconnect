@@ -157,7 +157,9 @@ describe('Marketplace privacy (e2e)', () => {
     providerProfileId = interests.body.providerProfileId as string;
     if (!providerProfileId) {
       const parentInterests = await request(app!.getHttpServer())
-        .get(`/api/v1/parent/marketplace-requests/${marketplaceRequestId}/interests`)
+        .get(
+          `/api/v1/parent/marketplace-requests/${marketplaceRequestId}/interests`,
+        )
         .set('Authorization', `Bearer ${parentToken}`)
         .expect(200);
       providerProfileId = parentInterests.body[0].provider.id as string;
@@ -180,7 +182,9 @@ describe('Marketplace privacy (e2e)', () => {
     expect(details.body.parentContact.email).toContain('@');
 
     await request(app!.getHttpServer())
-      .post(`/api/v1/marketplace-requests/${marketplaceRequestId}/revoke-consent`)
+      .post(
+        `/api/v1/marketplace-requests/${marketplaceRequestId}/revoke-consent`,
+      )
       .set('Authorization', `Bearer ${parentToken}`)
       .send({ providerProfileId })
       .expect(201);

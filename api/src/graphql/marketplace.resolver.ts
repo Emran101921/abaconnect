@@ -36,7 +36,9 @@ function ctx(req: Request) {
 export class MarketplaceResolver {
   constructor(private readonly marketplace: MarketplaceService) {}
 
-  @Mutation(() => PublicMarketplaceRequestType, { name: 'createMarketplaceRequest' })
+  @Mutation(() => PublicMarketplaceRequestType, {
+    name: 'createMarketplaceRequest',
+  })
   @Roles('PARENT')
   async createMarketplaceRequest(
     @CurrentUser() user: AuthUser,
@@ -52,17 +54,22 @@ export class MarketplaceResolver {
     return { ...toPublicMarketplaceRequest(row), interestCount: 0 };
   }
 
-  @Query(() => [PublicMarketplaceRequestType], { name: 'myMarketplaceRequests' })
+  @Query(() => [PublicMarketplaceRequestType], {
+    name: 'myMarketplaceRequests',
+  })
   @Roles('PARENT')
   myMarketplaceRequests(@CurrentUser() user: AuthUser) {
     return this.marketplace.listParentRequests(user.id);
   }
 
-  @Query(() => [MarketplaceInterestType], { name: 'marketplaceRequestInterests' })
+  @Query(() => [MarketplaceInterestType], {
+    name: 'marketplaceRequestInterests',
+  })
   @Roles('PARENT')
   marketplaceRequestInterests(
     @CurrentUser() user: AuthUser,
-    @Args('marketplaceRequestId', { type: () => ID }) marketplaceRequestId: string,
+    @Args('marketplaceRequestId', { type: () => ID })
+    marketplaceRequestId: string,
   ) {
     return this.marketplace.listRequestInterestsForParent(
       user.id,
@@ -87,24 +94,29 @@ export class MarketplaceResolver {
     @CurrentUser() user: AuthUser,
     @Args('input') input: CompleteProviderMarketplaceOnboardingInput,
   ) {
-    return this.marketplace.upsertProviderProfile(user.id, user.tenantId ?? '', {
-      accountType: input.accountType as 'THERAPIST' | 'AGENCY',
-      legalName: input.legalName,
-      displayName: input.displayName,
-      licenseNumber: input.licenseNumber,
-      npi: input.npi,
-      serviceCategories: input.serviceCategories,
-      coverageZipCodes: input.coverageZipCodes,
-      languages: input.languages,
-      confidentialityTermsAccepted: input.confidentialityTermsAccepted,
-    });
+    return this.marketplace.upsertProviderProfile(
+      user.id,
+      user.tenantId ?? '',
+      {
+        accountType: input.accountType as 'THERAPIST' | 'AGENCY',
+        legalName: input.legalName,
+        displayName: input.displayName,
+        licenseNumber: input.licenseNumber,
+        npi: input.npi,
+        serviceCategories: input.serviceCategories,
+        coverageZipCodes: input.coverageZipCodes,
+        languages: input.languages,
+        confidentialityTermsAccepted: input.confidentialityTermsAccepted,
+      },
+    );
   }
 
   @Mutation(() => Boolean, { name: 'pauseMarketplaceRequest' })
   @Roles('PARENT')
   async pauseMarketplaceRequest(
     @CurrentUser() user: AuthUser,
-    @Args('marketplaceRequestId', { type: () => ID }) marketplaceRequestId: string,
+    @Args('marketplaceRequestId', { type: () => ID })
+    marketplaceRequestId: string,
   ) {
     await this.marketplace.pauseRequest(user.id, marketplaceRequestId);
     return true;
@@ -114,13 +126,16 @@ export class MarketplaceResolver {
   @Roles('PARENT')
   async closeMarketplaceRequest(
     @CurrentUser() user: AuthUser,
-    @Args('marketplaceRequestId', { type: () => ID }) marketplaceRequestId: string,
+    @Args('marketplaceRequestId', { type: () => ID })
+    marketplaceRequestId: string,
   ) {
     await this.marketplace.closeRequest(user.id, marketplaceRequestId);
     return true;
   }
 
-  @Query(() => [PublicMarketplaceRequestType], { name: 'browseMarketplaceRequests' })
+  @Query(() => [PublicMarketplaceRequestType], {
+    name: 'browseMarketplaceRequests',
+  })
   @Roles('THERAPIST', 'AGENCY_ADMIN')
   async browseMarketplaceRequests(
     @CurrentUser() user: AuthUser,
@@ -189,7 +204,8 @@ export class MarketplaceResolver {
   @Roles('PARENT')
   marketplaceConsentHistory(
     @CurrentUser() user: AuthUser,
-    @Args('marketplaceRequestId', { type: () => ID }) marketplaceRequestId: string,
+    @Args('marketplaceRequestId', { type: () => ID })
+    marketplaceRequestId: string,
   ) {
     return this.marketplace.listConsentHistoryForParent(
       user.id,
@@ -204,7 +220,8 @@ export class MarketplaceResolver {
   @Roles('THERAPIST', 'AGENCY_ADMIN')
   async authorizedMarketplaceChildDetails(
     @CurrentUser() user: AuthUser,
-    @Args('marketplaceRequestId', { type: () => ID }) marketplaceRequestId: string,
+    @Args('marketplaceRequestId', { type: () => ID })
+    marketplaceRequestId: string,
     @Req() req: Request,
   ) {
     const details = await this.marketplace.getAuthorizedChildDetailsForProvider(

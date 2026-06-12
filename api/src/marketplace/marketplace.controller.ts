@@ -1,12 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Param,
-  Post,
-  Query,
-  Req,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req } from '@nestjs/common';
 import type { Request } from 'express';
 import {
   AuthUser,
@@ -62,19 +54,13 @@ export class MarketplaceController {
 
   @Get('parent/marketplace-requests/:id/interests')
   @Roles('PARENT')
-  listInterests(
-    @CurrentUser() user: AuthUser,
-    @Param('id') id: string,
-  ) {
+  listInterests(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.marketplace.listRequestInterestsForParent(user.id, id);
   }
 
   @Get('parent/marketplace-requests/:id/consents')
   @Roles('PARENT')
-  listConsents(
-    @CurrentUser() user: AuthUser,
-    @Param('id') id: string,
-  ) {
+  listConsents(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.marketplace.listConsentHistoryForParent(user.id, id);
   }
 
@@ -295,10 +281,7 @@ export class MarketplaceController {
 
   @Post('admin/provider-agency/:id/verify')
   @Roles('PLATFORM_ADMIN')
-  adminVerifyProvider(
-    @CurrentUser() user: AuthUser,
-    @Param('id') id: string,
-  ) {
+  adminVerifyProvider(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.marketplace.adminVerifyProvider(user.id, id);
   }
 }

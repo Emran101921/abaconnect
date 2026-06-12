@@ -111,7 +111,9 @@ export class TherapistResolver {
     };
   }
 
-  @Query(() => [TherapistCaseloadChartType], { name: 'myTherapistCaseloadCharts' })
+  @Query(() => [TherapistCaseloadChartType], {
+    name: 'myTherapistCaseloadCharts',
+  })
   async myTherapistCaseloadCharts(
     @CurrentUser() user: AuthUser,
   ): Promise<TherapistCaseloadChartType[]> {

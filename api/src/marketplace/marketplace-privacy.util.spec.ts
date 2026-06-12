@@ -64,6 +64,8 @@ describe('marketplace privacy util', () => {
     expect(publicCard.serviceAreaLabel).toContain('11230');
     expect((publicCard as Record<string, unknown>).firstName).toBeUndefined();
     expect((publicCard as Record<string, unknown>).dateOfBirth).toBeUndefined();
-    expect((publicCard as Record<string, unknown>).guardianPhone).toBeUndefined();
+    expect(
+      (publicCard as Record<string, unknown>).guardianPhone,
+    ).toBeUndefined();
   });
 });

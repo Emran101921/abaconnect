@@ -186,7 +186,7 @@ class MarketplaceRepository {
         }
       }
     ''';
-    await _graphql.mutate(mutation, variables: {
+    await _graphql.query(mutation, variables: {
       'input': {
         'accountType': accountType,
         'legalName': legalName,
@@ -207,7 +207,7 @@ class MarketplaceRepository {
         pauseMarketplaceRequest(marketplaceRequestId: $id)
       }
     ''';
-    await _graphql.mutate(mutation, variables: {'id': marketplaceRequestId});
+    await _graphql.query(mutation, variables: {'id': marketplaceRequestId});
   }
 
   Future<void> closeRequest(String marketplaceRequestId) async {
@@ -216,7 +216,7 @@ class MarketplaceRepository {
         closeMarketplaceRequest(marketplaceRequestId: $id)
       }
     ''';
-    await _graphql.mutate(mutation, variables: {'id': marketplaceRequestId});
+    await _graphql.query(mutation, variables: {'id': marketplaceRequestId});
   }
 
   Future<MarketplaceRequestModel> createRequest({
@@ -246,7 +246,7 @@ class MarketplaceRepository {
         }
       }
     ''';
-    final result = await _graphql.mutate(mutation, variables: {
+    final result = await _graphql.query(mutation, variables: {
       'input': {
         'childId': childId,
         if (screeningResponseId != null)
@@ -377,7 +377,7 @@ class MarketplaceRepository {
         submitMarketplaceInterest(input: $input)
       }
     ''';
-    await _graphql.mutate(mutation, variables: {
+    await _graphql.query(mutation, variables: {
       'input': {
         'marketplaceRequestId': marketplaceRequestId,
         if (message != null) 'message': message,
@@ -436,7 +436,7 @@ class MarketplaceRepository {
         revokeMarketplaceShareConsent(input: $input)
       }
     ''';
-    await _graphql.mutate(mutation, variables: {
+    await _graphql.query(mutation, variables: {
       'input': {
         'marketplaceRequestId': marketplaceRequestId,
         'providerProfileId': providerProfileId,
@@ -494,7 +494,7 @@ class MarketplaceRepository {
         grantMarketplaceShareConsent(input: $input)
       }
     ''';
-    await _graphql.mutate(mutation, variables: {
+    await _graphql.query(mutation, variables: {
       'input': {
         'marketplaceRequestId': marketplaceRequestId,
         'providerProfileId': providerProfileId,

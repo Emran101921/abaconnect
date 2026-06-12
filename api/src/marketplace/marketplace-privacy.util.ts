@@ -82,7 +82,9 @@ export function toPublicMarketplaceRequest(
   };
 }
 
-export function sanitizePublicDescription(text?: string | null): string | undefined {
+export function sanitizePublicDescription(
+  text?: string | null,
+): string | undefined {
   if (!text?.trim()) return undefined;
   const blocked = [
     /\bautism\b/i,
