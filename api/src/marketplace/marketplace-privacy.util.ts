@@ -23,6 +23,7 @@ export type PublicMarketplaceRequest = {
   publicDescription?: string;
   mapPinLat?: number;
   mapPinLng?: number;
+  exactAddressShared: boolean;
   status: string;
   createdAt: Date;
 };
@@ -77,6 +78,7 @@ export function toPublicMarketplaceRequest(
     publicDescription: sanitizePublicDescription(row.publicDescription),
     mapPinLat: mapLat ? Number(mapLat) : undefined,
     mapPinLng: mapLng ? Number(mapLng) : undefined,
+    exactAddressShared: row.exactAddressShared,
     status: row.status,
     createdAt: row.createdAt,
   };

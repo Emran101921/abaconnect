@@ -391,13 +391,14 @@ export class MarketplaceService {
       userAgent: ctx.userAgent,
     });
 
-    await this.notifications.create({
-      tenantId: profile.tenantId,
-      userId: request.parentUserId,
+    await this.notifications.createForUser(request.parentUserId, {
       title: 'A provider is available in your area',
       body: `${profile.displayName} responded to your anonymous service request.`,
-      actionType: 'MARKETPLACE_INTEREST',
-      metadata: { marketplaceRequestId: requestId, interestId: interest.id },
+      data: {
+        type: 'MARKETPLACE_INTEREST',
+        marketplaceRequestId: requestId,
+        interestId: interest.id,
+      },
     });
 
     return interest;
@@ -463,13 +464,13 @@ export class MarketplaceService {
       userAgent: ctx.userAgent,
     });
 
-    await this.notifications.create({
-      tenantId: request.tenantId,
-      userId: provider.userId,
+    await this.notifications.createForUser(provider.userId, {
       title: 'Parent approved sharing child details',
       body: 'You may now view authorized child details for care coordination.',
-      actionType: 'MARKETPLACE_CONSENT_GRANTED',
-      metadata: { marketplaceRequestId: requestId },
+      data: {
+        type: 'MARKETPLACE_CONSENT_GRANTED',
+        marketplaceRequestId: requestId,
+      },
     });
 
     return { granted: true };
@@ -521,13 +522,13 @@ export class MarketplaceService {
       where: { id: providerProfileId },
     });
     if (provider) {
-      await this.notifications.create({
-        tenantId: request.tenantId,
-        userId: provider.userId,
+      await this.notifications.createForUser(provider.userId, {
         title: 'Parent revoked consent',
         body: 'Access to identifiable child details has been removed.',
-        actionType: 'MARKETPLACE_CONSENT_REVOKED',
-        metadata: { marketplaceRequestId: requestId },
+        data: {
+          type: 'MARKETPLACE_CONSENT_REVOKED',
+          marketplaceRequestId: requestId,
+        },
       });
     }
 
