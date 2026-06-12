@@ -1,7 +1,8 @@
 import { Field, ID, InputType, Int } from '@nestjs/graphql';
+import { Type } from 'class-transformer';
 import {
   IsBoolean,
-  IsDateString,
+  IsDate,
   IsOptional,
   IsString,
   IsUUID,
@@ -102,7 +103,8 @@ export class AddChildInput {
   lastName: string;
 
   @Field()
-  @IsDateString()
+  @Type(() => Date)
+  @IsDate()
   dateOfBirth: Date;
 
   @Field({ nullable: true })
