@@ -21,7 +21,12 @@ import {
   ANONYMOUS_MARKETPLACE_CONSENT_TEXT,
   MARKETPLACE_CONSENT_VERSION,
   SHARE_IDENTIFIABLE_INFO_CONSENT_TEMPLATE,
+  SHARE_DOCUMENTS_CONSENT_TEMPLATE,
 } from './marketplace.constants';
+import {
+  encodeSharedDocumentIds,
+  parseSharedDocumentIds,
+} from './marketplace-consent.util';
 import {
   deriveConcernTagsFromScreening,
   mapTherapyTypeToServiceCategory,
@@ -416,12 +421,30 @@ export class MarketplaceService {
     requestId: string,
     providerProfileId: string,
     ctx: RequestContext,
+    documentIds: string[] = [],
   ) {
     const request = await this.requireParentRequest(userId, requestId);
     const provider = await this.prisma.providerMarketplaceProfile.findFirst({
       where: { id: providerProfileId, tenantId: request.tenantId },
     });
     if (!provider) throw new NotFoundException('Provider profile not found');
+
+    const uniqueDocumentIds = [...new Set(documentIds.filter(Boolean))];
+    if (uniqueDocumentIds.length > 0) {
+      const docs = await this.prisma.document.findMany({
+        where: {
+          id: { in: uniqueDocumentIds },
+          childId: request.childId,
+          tenantId: request.tenantId,
+        },
+        select: { id: true },
+      });
+      if (docs.length !== uniqueDocumentIds.length) {
+        throw new BadRequestException(
+          'One or more selected documents are invalid for this child.',
+        );
+      }
+    }
 
     const consentText = SHARE_IDENTIFIABLE_INFO_CONSENT_TEMPLATE.replace(
       '{providerName}',
@@ -438,6 +461,26 @@ export class MarketplaceService {
       consentText,
       ctx,
     });
+
+    if (uniqueDocumentIds.length > 0) {
+      const documentsConsentText = SHARE_DOCUMENTS_CONSENT_TEMPLATE.replace(
+        '{providerName}',
+        provider.displayName,
+      );
+      await this.recordConsent({
+        tenantId: request.tenantId,
+        parentUserId: userId,
+        childId: request.childId,
+        marketplaceRequestId: request.id,
+        providerProfileId: provider.id,
+        consentType: 'SHARE_DOCUMENTS',
+        consentText: documentsConsentText,
+        ctx: {
+          ...ctx,
+          deviceInfo: encodeSharedDocumentIds(uniqueDocumentIds),
+        },
+      });
+    }
 
     await this.prisma.marketplaceInterest.updateMany({
       where: {
@@ -490,22 +533,27 @@ export class MarketplaceService {
     ctx: RequestContext,
   ) {
     const request = await this.requireParentRequest(userId, requestId);
-    const active = await this.prisma.marketplaceConsentRecord.findFirst({
+    const activeConsents = await this.prisma.marketplaceConsentRecord.findMany({
       where: {
         marketplaceRequestId: requestId,
         providerProfileId,
-        consentType: 'SHARE_IDENTIFIABLE_INFO',
+        consentType: { in: ['SHARE_IDENTIFIABLE_INFO', 'SHARE_DOCUMENTS'] },
         granted: true,
         revokedAt: null,
       },
       orderBy: { createdAt: 'desc' },
     });
+    const active = activeConsents.find(
+      (row) => row.consentType === 'SHARE_IDENTIFIABLE_INFO',
+    );
     if (!active) throw new NotFoundException('Active consent not found');
 
-    await this.prisma.marketplaceConsentRecord.update({
-      where: { id: active.id },
-      data: { granted: false, revokedAt: new Date() },
-    });
+    for (const row of activeConsents) {
+      await this.prisma.marketplaceConsentRecord.update({
+        where: { id: row.id },
+        data: { granted: false, revokedAt: new Date() },
+      });
+    }
 
     await this.recordConsent({
       tenantId: request.tenantId,
@@ -574,6 +622,38 @@ export class MarketplaceService {
     });
     if (!child) throw new NotFoundException('Child not found');
 
+    const documentsConsent =
+      await this.prisma.marketplaceConsentRecord.findFirst({
+        where: {
+          marketplaceRequestId: requestId,
+          providerProfileId: profile.id,
+          consentType: 'SHARE_DOCUMENTS',
+          granted: true,
+          revokedAt: null,
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+    const sharedDocumentIds = parseSharedDocumentIds(
+      documentsConsent?.deviceInfo,
+    );
+    const sharedDocuments =
+      sharedDocumentIds.length > 0
+        ? await this.prisma.document.findMany({
+            where: {
+              id: { in: sharedDocumentIds },
+              childId: request.childId,
+              tenantId: profile.tenantId,
+            },
+            select: {
+              id: true,
+              title: true,
+              fileName: true,
+              type: true,
+              uploadedAt: true,
+            },
+          })
+        : [];
+
     await this.phiAudit.logPhiAccess({
       tenantId: profile.tenantId,
       actorId: userId,
@@ -607,6 +687,13 @@ export class MarketplaceService {
       },
       marketplaceRequestId: request.id,
       anonymousPublicId: request.anonymousPublicId,
+      sharedDocuments: sharedDocuments.map((doc) => ({
+        id: doc.id,
+        title: doc.title,
+        fileName: doc.fileName,
+        type: doc.type,
+        uploadedAt: doc.uploadedAt,
+      })),
     };
   }
 
@@ -687,6 +774,56 @@ export class MarketplaceService {
       take: 100,
     });
     return rows.map((row) => toPublicMarketplaceRequest(row));
+  }
+
+  async adminListReports(tenantId: string) {
+    const rows = await this.prisma.marketplaceReport.findMany({
+      where: { tenantId },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+      include: {
+        reporter: {
+          select: { id: true, email: true, firstName: true, lastName: true },
+        },
+        marketplaceRequest: {
+          select: { id: true, anonymousPublicId: true },
+        },
+      },
+    });
+    return rows.map((row) => ({
+      id: row.id,
+      reason: row.reason,
+      details: row.details,
+      status: row.status,
+      createdAt: row.createdAt,
+      marketplaceRequestId: row.marketplaceRequestId,
+      anonymousPublicId: row.marketplaceRequest?.anonymousPublicId,
+      reporterName: row.reporter
+        ? `${row.reporter.firstName} ${row.reporter.lastName}`.trim()
+        : undefined,
+      reporterEmail: row.reporter?.email,
+    }));
+  }
+
+  async adminListPendingProviders(tenantId: string) {
+    const rows = await this.prisma.providerMarketplaceProfile.findMany({
+      where: {
+        tenantId,
+        verifiedStatus: { in: ['PENDING', 'REJECTED'] },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+      select: {
+        id: true,
+        displayName: true,
+        legalName: true,
+        accountType: true,
+        verifiedStatus: true,
+        userId: true,
+        createdAt: true,
+      },
+    });
+    return rows;
   }
 
   async listConsentHistoryForParent(userId: string, requestId: string) {

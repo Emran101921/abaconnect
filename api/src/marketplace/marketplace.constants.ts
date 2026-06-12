@@ -6,6 +6,9 @@ export const ANONYMOUS_MARKETPLACE_CONSENT_TEXT =
 export const SHARE_IDENTIFIABLE_INFO_CONSENT_TEMPLATE =
   "I authorize this app to share my child's profile, contact information, service needs, and selected documents with {providerName} for evaluation, referral, care coordination, or service matching.";
 
+export const SHARE_DOCUMENTS_CONSENT_TEMPLATE =
+  'I authorize this app to share the selected documents listed below with {providerName} for evaluation, referral, care coordination, or service matching.';
+
 export const SCREENING_DISCLAIMER_TEXT =
   'This screening is informational only. It is not a diagnosis, medical advice, or a replacement for evaluation by a licensed professional.';
 

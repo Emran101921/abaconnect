@@ -148,6 +148,8 @@ class _ParentConsentHistoryScreenState
         return 'Anonymous marketplace posting';
       case 'SHARE_IDENTIFIABLE_INFO':
         return 'Share identifiable info';
+      case 'SHARE_DOCUMENTS':
+        return 'Share selected documents';
       case 'REVOKE_CONSENT':
         return 'Consent revoked';
       default:

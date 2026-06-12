@@ -1,5 +1,12 @@
 import { Field, ID, InputType } from '@nestjs/graphql';
-import { IsBoolean, IsOptional, IsString, MinLength } from 'class-validator';
+import {
+  IsArray,
+  IsBoolean,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MinLength,
+} from 'class-validator';
 import {
   MarketplaceAuthorizationStatus,
   MarketplaceLocationType,
@@ -81,10 +88,18 @@ export class SubmitMarketplaceInterestInput {
 @InputType()
 export class GrantMarketplaceShareConsentInput {
   @Field(() => ID)
+  @IsUUID()
   marketplaceRequestId!: string;
 
   @Field(() => ID)
+  @IsUUID()
   providerProfileId!: string;
+
+  @Field(() => [ID], { nullable: true })
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  documentIds?: string[];
 }
 
 @InputType()

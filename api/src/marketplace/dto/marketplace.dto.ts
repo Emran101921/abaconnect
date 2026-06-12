@@ -46,6 +46,11 @@ export class CreateMarketplaceRequestDto {
 export class GrantShareConsentDto {
   @IsUUID()
   providerProfileId!: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  documentIds?: string[];
 }
 
 export class RevokeConsentDto {

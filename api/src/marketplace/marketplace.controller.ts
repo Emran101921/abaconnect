@@ -77,6 +77,7 @@ export class MarketplaceController {
       id,
       body.providerProfileId,
       requestContext(req),
+      body.documentIds ?? [],
     );
   }
 
@@ -241,6 +242,18 @@ export class MarketplaceController {
       user.tenantId ?? '',
       body,
     );
+  }
+
+  @Get('admin/marketplace-reports')
+  @Roles('PLATFORM_ADMIN')
+  adminReports(@CurrentUser() user: AuthUser) {
+    return this.marketplace.adminListReports(user.tenantId ?? '');
+  }
+
+  @Get('admin/marketplace-providers')
+  @Roles('PLATFORM_ADMIN')
+  adminProviders(@CurrentUser() user: AuthUser) {
+    return this.marketplace.adminListPendingProviders(user.tenantId ?? '');
   }
 
   @Get('admin/marketplace-requests')

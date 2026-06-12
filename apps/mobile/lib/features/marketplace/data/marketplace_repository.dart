@@ -23,6 +23,7 @@ class MarketplaceRequestModel {
     this.mapPinLng,
     this.interestCount = 0,
     this.matchScore,
+    this.childId,
   });
 
   final String id;
@@ -42,6 +43,7 @@ class MarketplaceRequestModel {
   final double? mapPinLng;
   final int interestCount;
   final double? matchScore;
+  final String? childId;
 }
 
 class MarketplaceConsentModel {
@@ -87,6 +89,7 @@ class AuthorizedChildDetailsModel {
     this.primaryLanguage,
     this.parentEmail,
     this.parentPhone,
+    this.sharedDocuments = const [],
   });
 
   final String childId;
@@ -101,6 +104,23 @@ class AuthorizedChildDetailsModel {
   final String? parentPhone;
   final String marketplaceRequestId;
   final String anonymousPublicId;
+  final List<MarketplaceSharedDocumentModel> sharedDocuments;
+}
+
+class MarketplaceSharedDocumentModel {
+  const MarketplaceSharedDocumentModel({
+    required this.id,
+    required this.title,
+    required this.fileName,
+    required this.type,
+    required this.uploadedAt,
+  });
+
+  final String id;
+  final String title;
+  final String fileName;
+  final String type;
+  final DateTime uploadedAt;
 }
 
 class MarketplaceInterestModel {
@@ -313,6 +333,7 @@ class MarketplaceRepository {
           languagePreference
           publicDescription
           interestCount
+          childId
         }
       }
     ''';
@@ -653,6 +674,13 @@ class MarketplaceRepository {
           parentPhone
           marketplaceRequestId
           anonymousPublicId
+          sharedDocuments {
+            id
+            title
+            fileName
+            type
+            uploadedAt
+          }
         }
       }
     ''';
@@ -660,6 +688,20 @@ class MarketplaceRepository {
     final row =
         result['data']?['authorizedMarketplaceChildDetails'] as Map<String, dynamic>?;
     if (row == null) return null;
+    final docs =
+        (row['sharedDocuments'] as List<dynamic>?)
+            ?.map((e) {
+              final doc = e as Map<String, dynamic>;
+              return MarketplaceSharedDocumentModel(
+                id: doc['id'] as String,
+                title: doc['title'] as String,
+                fileName: doc['fileName'] as String,
+                type: doc['type'] as String? ?? 'OTHER',
+                uploadedAt: DateTime.parse(doc['uploadedAt'] as String),
+              );
+            })
+            .toList() ??
+        const [];
     return AuthorizedChildDetailsModel(
       childId: row['childId'] as String,
       firstName: row['firstName'] as String,
@@ -673,12 +715,14 @@ class MarketplaceRepository {
       parentPhone: row['parentPhone'] as String?,
       marketplaceRequestId: row['marketplaceRequestId'] as String,
       anonymousPublicId: row['anonymousPublicId'] as String,
+      sharedDocuments: docs,
     );
   }
 
   Future<void> grantShareConsent({
     required String marketplaceRequestId,
     required String providerProfileId,
+    List<String> documentIds = const [],
   }) async {
     const mutation = r'''
       mutation($input: GrantMarketplaceShareConsentInput!) {
@@ -689,6 +733,7 @@ class MarketplaceRepository {
       'input': {
         'marketplaceRequestId': marketplaceRequestId,
         'providerProfileId': providerProfileId,
+        if (documentIds.isNotEmpty) 'documentIds': documentIds,
       },
     });
   }
@@ -719,6 +764,7 @@ class MarketplaceRepository {
       mapPinLng: (row['mapPinLng'] as num?)?.toDouble(),
       interestCount: row['interestCount'] as int? ?? 0,
       matchScore: (row['matchScore'] as num?)?.toDouble(),
+      childId: row['childId'] as String?,
     );
   }
 }

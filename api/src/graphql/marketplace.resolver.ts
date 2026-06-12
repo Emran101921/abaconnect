@@ -182,6 +182,7 @@ export class MarketplaceResolver {
       input.marketplaceRequestId,
       input.providerProfileId,
       ctx(req),
+      input.documentIds ?? [],
     );
     return true;
   }
@@ -246,6 +247,7 @@ export class MarketplaceResolver {
       parentPhone: details.parentContact.phone ?? undefined,
       marketplaceRequestId: details.marketplaceRequestId,
       anonymousPublicId: details.anonymousPublicId,
+      sharedDocuments: details.sharedDocuments ?? [],
     };
   }
 

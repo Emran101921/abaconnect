@@ -73,6 +73,9 @@ export class PublicMarketplaceRequestType {
 
   @Field(() => Float, { nullable: true })
   matchScore?: number;
+
+  @Field(() => ID, { nullable: true })
+  childId?: string;
 }
 
 @ObjectType()
@@ -178,6 +181,24 @@ export class ProviderMarketplaceProfileType {
 }
 
 @ObjectType()
+export class MarketplaceSharedDocumentType {
+  @Field(() => ID)
+  id: string;
+
+  @Field()
+  title: string;
+
+  @Field()
+  fileName: string;
+
+  @Field()
+  type: string;
+
+  @Field()
+  uploadedAt: Date;
+}
+
+@ObjectType()
 export class AuthorizedChildDetailsType {
   @Field(() => ID)
   childId: string;
@@ -214,6 +235,9 @@ export class AuthorizedChildDetailsType {
 
   @Field()
   anonymousPublicId: string;
+
+  @Field(() => [MarketplaceSharedDocumentType])
+  sharedDocuments: MarketplaceSharedDocumentType[];
 }
 
 @ObjectType()
