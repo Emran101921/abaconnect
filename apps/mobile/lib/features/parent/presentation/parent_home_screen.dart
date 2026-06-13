@@ -21,9 +21,8 @@ import '../data/parent_booking_repository.dart';
 import 'parent_category_box.dart';
 import 'parent_operations_category_screen.dart';
 
-final parentDashboardProvider = FutureProvider<ParentDashboardModel>((
-  ref,
-) async {
+final parentDashboardProvider =
+    FutureProvider.autoDispose<ParentDashboardModel>((ref) async {
   return ref.watch(parentBookingRepositoryProvider).fetchDashboard();
 });
 
@@ -338,7 +337,13 @@ class ParentHomeScreen extends ConsumerWidget {
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            DashboardActionInbox(items: actions),
+                            DashboardActionInbox(
+                              items: actions,
+                              onRefresh: () {
+                                ref.invalidate(parentDashboardProvider);
+                                ref.invalidate(unreadNotificationsProvider);
+                              },
+                            ),
                             if (d.lastSessionSummary != null ||
                                 d.nextTelehealthAppointmentId != null) ...[
                               const SizedBox(height: 12),

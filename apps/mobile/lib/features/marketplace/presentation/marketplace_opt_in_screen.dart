@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/app_snackbar.dart';
 import '../data/marketplace_repository.dart';
 
 const anonymousMarketplaceConsentText =
@@ -35,11 +36,17 @@ class _MarketplaceOptInScreenState extends ConsumerState<MarketplaceOptInScreen>
   String _urgency = 'ROUTINE';
 
   Future<void> _submit() async {
+    if (widget.childId.isEmpty) {
+      AppSnackBar.showError(
+        context,
+        'Child profile is missing. Go back and select a child first.',
+      );
+      return;
+    }
     if (!_consent) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please accept the anonymous marketplace consent.'),
-        ),
+      AppSnackBar.showError(
+        context,
+        'Please accept the anonymous marketplace consent.',
       );
       return;
     }
@@ -54,16 +61,16 @@ class _MarketplaceOptInScreenState extends ConsumerState<MarketplaceOptInScreen>
             urgency: _urgency,
           );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Anonymous service request posted to the marketplace.'),
-        ),
+      AppSnackBar.showSuccess(
+        context,
+        'Anonymous service request posted to the marketplace.',
       );
       context.go(AppRoutes.parentMarketplace);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not create request: $e')),
+        AppSnackBar.showError(
+          context,
+          'Could not create request: ${AppSnackBar.messageFromError(e)}',
         );
       }
     } finally {

@@ -7,6 +7,8 @@ import 'package:go_router/go_router.dart';
 import '../../core/router/app_router.dart';
 import '../../core/theme/app_glossy_gradients.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../features/notifications/notification_providers.dart';
+import '../../features/parent/presentation/parent_home_screen.dart';
 import '../providers/bottom_nav_badge_providers.dart';
 
 enum ParentNavTab { home, children, screening, messages }
@@ -227,10 +229,14 @@ class ParentBottomNav extends ConsumerWidget {
       selectedIndex: current.index,
       onSelected: (index) {
         final tab = ParentNavTab.values[index];
-        if (tab == current) return;
+        if (tab == current && tab != ParentNavTab.home) return;
         switch (tab) {
           case ParentNavTab.home:
-            context.go(AppRoutes.parentHome);
+            ref.invalidate(parentDashboardProvider);
+            ref.invalidate(unreadNotificationsProvider);
+            if (tab != current) {
+              context.go(AppRoutes.parentHome);
+            }
           case ParentNavTab.children:
             context.go(AppRoutes.parentChildren);
           case ParentNavTab.screening:

@@ -312,7 +312,10 @@ class MarketplaceRepository {
       },
     });
     final row =
-        result['data']?['createMarketplaceRequest'] as Map<String, dynamic>;
+        result['data']?['createMarketplaceRequest'] as Map<String, dynamic>?;
+    if (row == null) {
+      throw Exception('Failed to create marketplace request');
+    }
     return _mapRequest(row);
   }
 

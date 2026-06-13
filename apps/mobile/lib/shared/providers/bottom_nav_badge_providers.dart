@@ -10,6 +10,10 @@ int? _positiveBadge(int count) => count > 0 ? count : null;
 final parentHomeNavBadgeProvider = Provider<int?>((ref) {
   return ref.watch(parentDashboardProvider).maybeWhen(
     data: (d) {
+      final marketplaceReviews = d.actionItems
+          .where((item) => item['actionType'] == 'MARKETPLACE_INTEREST')
+          .length;
+      if (marketplaceReviews > 0) return marketplaceReviews;
       if (d.appointmentsToday > 0) return d.appointmentsToday;
       if (d.upcomingAppointments > 0) return d.upcomingAppointments;
       return null;

@@ -39,11 +39,34 @@ class GraphqlClient {
     }
     final errors = body['errors'];
     if (errors is List && errors.isNotEmpty) {
-      final message = errors.first is Map
-          ? (errors.first as Map)['message']?.toString()
-          : errors.first.toString();
-      throw Exception(message ?? 'GraphQL error');
+      throw Exception(_formatGraphqlError(errors.first));
     }
     return body;
+  }
+
+  static String _formatGraphqlError(dynamic error) {
+    if (error is! Map) {
+      return error.toString();
+    }
+    final extensions = error['extensions'];
+    if (extensions is Map) {
+      final original = extensions['originalError'];
+      if (original is Map) {
+        final nested = original['message'];
+        if (nested is List && nested.isNotEmpty) {
+          return nested.map((e) => e.toString()).join('; ');
+        }
+        if (nested is String && nested.isNotEmpty) {
+          return nested;
+        }
+      }
+    }
+    final message = error['message']?.toString();
+    if (message != null &&
+        message.isNotEmpty &&
+        message != 'Bad Request Exception') {
+      return message;
+    }
+    return 'Request failed. Please check your entries and try again.';
   }
 }

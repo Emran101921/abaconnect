@@ -221,4 +221,7 @@ export class DashboardActionItemType {
 
   @Field({ nullable: true })
   therapistId?: string;
+
+  @Field({ nullable: true })
+  marketplaceRequestId?: string;
 }

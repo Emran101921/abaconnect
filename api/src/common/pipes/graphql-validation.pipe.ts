@@ -5,7 +5,21 @@ import {
   PipeTransform,
 } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
-import { validate } from 'class-validator';
+import { validate, ValidationError } from 'class-validator';
+
+function formatValidationErrors(errors: ValidationError[]): string {
+  const messages: string[] = [];
+  for (const error of errors) {
+    if (error.constraints) {
+      messages.push(...Object.values(error.constraints));
+      continue;
+    }
+    if (error.children?.length) {
+      messages.push(...formatValidationErrors(error.children).split('; '));
+    }
+  }
+  return messages.filter(Boolean).join('; ');
+}
 
 /** Validates GraphQL @InputType() / @ArgsType() classes with class-validator. */
 @Injectable()
@@ -28,7 +42,8 @@ export class GraphqlValidationPipe implements PipeTransform {
       forbidNonWhitelisted: true,
     });
     if (errors.length > 0) {
-      throw new BadRequestException(errors);
+      const message = formatValidationErrors(errors);
+      throw new BadRequestException(message || 'Invalid request input.');
     }
     return instance;
   }

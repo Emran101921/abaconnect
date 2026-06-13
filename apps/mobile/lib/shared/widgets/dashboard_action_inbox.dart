@@ -45,6 +45,7 @@ class DashboardActionInbox extends StatelessWidget {
       'REVIEW' => Icons.star_outline,
       'APPOINTMENT' => Icons.event_outlined,
       'TELEHEALTH' => Icons.videocam_outlined,
+      'MARKETPLACE_INTEREST' => Icons.storefront_outlined,
       'CLAIM' => Icons.receipt_long_outlined,
       'EVV' => Icons.location_on_outlined,
       'VERIFICATION' => Icons.verified_user_outlined,
@@ -82,6 +83,14 @@ class DashboardActionInbox extends StatelessWidget {
           );
         } else {
           context.push(AppRoutes.telehealth);
+        }
+      case 'MARKETPLACE_INTEREST':
+        if (item.marketplaceRequestId != null) {
+          context.push(
+            '${AppRoutes.parentMarketplace}/${item.marketplaceRequestId}/interests',
+          );
+        } else {
+          context.push(AppRoutes.parentMarketplace);
         }
       case 'CLAIM':
         if (item.claimId != null) {

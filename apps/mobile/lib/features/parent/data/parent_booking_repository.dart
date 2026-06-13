@@ -358,7 +358,7 @@ class ParentBookingRepository {
         hasChild hasScreening hasBookedTherapist
         actionItems {
           id title subtitle actionType priority
-          threadId appointmentId sessionId claimId therapistId
+          threadId appointmentId sessionId claimId therapistId marketplaceRequestId
         }
       }
     }
