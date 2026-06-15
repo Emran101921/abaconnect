@@ -15,8 +15,9 @@ import '../../../shared/widgets/app_glassy_tab_bar.dart';
 import '../../../shared/widgets/app_healthcare_illustration.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_section_header.dart';
+import '../../../shared/widgets/glossy_button.dart';
 import '../data/parent_booking_repository.dart';
-import 'parent_home_screen.dart';
+import 'parent_dashboard_providers.dart';
 
 class ParentAppointmentsScreen extends ConsumerStatefulWidget {
   const ParentAppointmentsScreen({super.key});
@@ -63,9 +64,12 @@ class _ParentAppointmentsScreenState extends ConsumerState<ParentAppointmentsScr
               onPressed: () => Navigator.pop(ctx),
               child: const Text('Keep'),
             ),
-            FilledButton(
+            GlossyButton(
+              title: 'Cancel visit',
+              size: GlossyButtonSize.small,
+              fullWidth: false,
+              variant: GlossyButtonVariant.redDarkRed,
               onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-              child: const Text('Cancel visit'),
             ),
           ],
         );
@@ -529,10 +533,11 @@ class _UpcomingCard extends StatelessWidget {
           if (a.isTelehealth && !['COMPLETED', 'CANCELLED'].contains(a.status))
             Padding(
               padding: const EdgeInsets.only(top: 8),
-              child: FilledButton.icon(
+              child: GlossyButton(
+                title: 'Join telehealth',
+                icon: Icons.video_call,
+                variant: GlossyButtonVariant.tealBlue,
                 onPressed: onJoinTelehealth,
-                icon: const Icon(Icons.video_call),
-                label: const Text('Join telehealth'),
               ),
             ),
           if (canChange)

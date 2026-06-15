@@ -7,6 +7,8 @@ import {
   CurrentUser,
 } from '../common/decorators/current-user.decorator';
 import { AppointmentsService } from '../appointments/appointments.service';
+import { isSelfPayInsuranceType } from '../payments/self-pay.util';
+import { PaymentsService } from '../payments/payments.service';
 import { isEipFormFullySigned } from '../sessions/eip-form.util';
 import { SessionsService } from '../sessions/sessions.service';
 import { ProviderOnboardingService } from '../compliance/provider-onboarding.service';
@@ -26,6 +28,7 @@ import {
   TherapistProfileType,
   TherapistSessionType,
 } from './types/therapist.types';
+import { PaymentIntentResultType } from './types/payments.types';
 
 @Resolver()
 @Roles('THERAPIST')
@@ -35,6 +38,7 @@ export class TherapistResolver {
     private readonly sessionsService: SessionsService,
     private readonly appointmentsService: AppointmentsService,
     private readonly providerOnboarding: ProviderOnboardingService,
+    private readonly paymentsService: PaymentsService,
   ) {}
 
   @Query(() => ProviderOnboardingChecklistType, {
@@ -269,6 +273,43 @@ export class TherapistResolver {
     };
   }
 
+  @Mutation(() => TherapistAppointmentType, { name: 'recordTherapistArrival' })
+  async recordTherapistArrival(
+    @CurrentUser() user: AuthUser,
+    @Args('appointmentId', { type: () => ID }) appointmentId: string,
+  ): Promise<TherapistAppointmentType> {
+    const row = await this.sessionsService.recordTherapistArrival(
+      user.id,
+      appointmentId,
+    );
+    return this.mapAppointment(row);
+  }
+
+  @Mutation(() => PaymentIntentResultType, { name: 'requestSessionPayment' })
+  async requestSessionPayment(
+    @CurrentUser() user: AuthUser,
+    @Args('appointmentId', { type: () => ID }) appointmentId: string,
+  ): Promise<PaymentIntentResultType> {
+    const result = await this.paymentsService.requestSessionChargeForTherapist(
+      user.id,
+      appointmentId,
+    );
+    return {
+      payment: {
+        id: result.payment.id,
+        amount: Number(result.payment.amount),
+        currency: result.payment.currency,
+        status: result.payment.status,
+        description: result.payment.description ?? undefined,
+        paidAt: result.payment.paidAt ?? undefined,
+        createdAt: result.payment.createdAt,
+      },
+      clientSecret: result.clientSecret ?? undefined,
+      checkoutUrl: result.checkoutUrl ?? undefined,
+      stripeConfigured: result.stripeConfigured,
+    };
+  }
+
   @Mutation(() => TherapistSessionType, { name: 'startSession' })
   async startSession(
     @CurrentUser() user: AuthUser,
@@ -362,8 +403,28 @@ export class TherapistResolver {
       firstName: string;
       lastName: string;
       dateOfBirth: Date;
+      insuranceType?: string | null;
     };
+    session?: {
+      payment?: {
+        id: string;
+        status: string;
+        amount: unknown;
+      } | null;
+    } | null;
   }): TherapistAppointmentType {
+    const requiresSelfPay = isSelfPayInsuranceType(row.child.insuranceType);
+    const payment = row.session?.payment;
+    const hasArrived = ['CHECKED_IN', 'IN_PROGRESS', 'COMPLETED'].includes(
+      row.status,
+    );
+    const paymentSucceeded = payment?.status === 'SUCCEEDED';
+    const canStartSession = requiresSelfPay
+      ? hasArrived && paymentSucceeded
+      : ['CONFIRMED', 'SCHEDULED', 'CHECKED_IN', 'IN_PROGRESS'].includes(
+          row.status,
+        );
+
     return {
       id: row.id,
       status: row.status,
@@ -378,7 +439,15 @@ export class TherapistResolver {
         firstName: row.child.firstName,
         lastName: row.child.lastName,
         dateOfBirth: row.child.dateOfBirth,
+        insuranceType: row.child.insuranceType ?? undefined,
       },
+      childInsuranceType: row.child.insuranceType ?? undefined,
+      requiresSelfPayCollection: requiresSelfPay,
+      hasArrived,
+      canStartSession,
+      sessionPaymentId: payment?.id,
+      sessionPaymentStatus: payment?.status,
+      sessionPaymentAmount: payment ? Number(payment.amount) : undefined,
     };
   }
 }

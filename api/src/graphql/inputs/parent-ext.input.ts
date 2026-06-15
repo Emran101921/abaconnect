@@ -45,48 +45,80 @@ export class UpdateParentProfileInput {
 @InputType()
 export class UpdateChildInput {
   @Field(() => ID)
-  childId: string;
+  @IsUUID()
+  childId!: string;
 
   @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
   firstName?: string;
 
   @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
   lastName?: string;
 
   @Field({ nullable: true })
+  @IsOptional()
+  @Type(() => Date)
+  @IsDate()
   dateOfBirth?: Date;
 
   @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
   gender?: string;
 
   @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
   primaryLanguage?: string;
 
   @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
   guardianName?: string;
 
   @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
   guardianPhone?: string;
 
   @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
   guardianEmail?: string;
 
   @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
   addressLine1?: string;
 
   @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
   zipCode?: string;
 
   @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
   pediatricianName?: string;
 
   @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
   insuranceType?: string;
 
   @Field({ nullable: true })
+  @IsOptional()
+  @IsBoolean()
   hadEarlyIntervention?: boolean;
 
   @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
   notes?: string;
 }
 

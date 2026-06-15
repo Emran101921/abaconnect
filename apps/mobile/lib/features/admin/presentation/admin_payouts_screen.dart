@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/glossy_button.dart';
 import 'admin_providers.dart';
 
 class AdminPayoutsScreen extends ConsumerWidget {
@@ -38,7 +39,11 @@ class AdminPayoutsScreen extends ConsumerWidget {
                     subtitle: Text(p.status),
                     trailing: paid
                         ? const Icon(Icons.check_circle, color: Colors.green)
-                        : FilledButton(
+                        : GlossyButton(
+                            title: 'Mark paid',
+                            size: GlossyButtonSize.small,
+                            fullWidth: false,
+                            variant: GlossyButtonVariant.orangeRed,
                             onPressed: () async {
                               try {
                                 await ref
@@ -60,7 +65,6 @@ class AdminPayoutsScreen extends ConsumerWidget {
                                 }
                               }
                             },
-                            child: const Text('Mark paid'),
                           ),
                   ),
                 );

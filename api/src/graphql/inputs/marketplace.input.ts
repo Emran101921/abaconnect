@@ -2,6 +2,8 @@ import { Field, ID, InputType } from '@nestjs/graphql';
 import {
   IsArray,
   IsBoolean,
+  IsIn,
+  IsNumber,
   IsOptional,
   IsString,
   IsUUID,
@@ -16,24 +18,35 @@ import {
 @InputType()
 export class CreateMarketplaceRequestInput {
   @Field(() => ID)
+  @IsUUID()
   childId!: string;
 
   @Field(() => ID, { nullable: true })
+  @IsOptional()
+  @IsUUID()
   screeningResponseId?: string;
 
   @Field()
+  @IsBoolean()
   anonymousConsentGranted!: boolean;
 
   @Field(() => MarketplaceLocationType)
+  @IsIn(Object.values(MarketplaceLocationType))
   locationType!: MarketplaceLocationType;
 
   @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
   languagePreference?: string;
 
   @Field(() => MarketplaceUrgency, { nullable: true })
+  @IsOptional()
+  @IsIn(Object.values(MarketplaceUrgency))
   urgency?: MarketplaceUrgency;
 
   @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
   publicDescription?: string;
 }
 
@@ -46,6 +59,7 @@ export class MarketplaceBrowseInput {
 
   @Field({ nullable: true })
   @IsOptional()
+  @IsNumber()
   radiusMiles?: number;
 
   @Field({ nullable: true })
@@ -65,23 +79,29 @@ export class MarketplaceBrowseInput {
 
   @Field(() => MarketplaceLocationType, { nullable: true })
   @IsOptional()
+  @IsIn(Object.values(MarketplaceLocationType))
   locationType?: MarketplaceLocationType;
 
   @Field(() => MarketplaceUrgency, { nullable: true })
   @IsOptional()
+  @IsIn(Object.values(MarketplaceUrgency))
   urgency?: MarketplaceUrgency;
 
   @Field(() => MarketplaceAuthorizationStatus, { nullable: true })
   @IsOptional()
+  @IsIn(Object.values(MarketplaceAuthorizationStatus))
   authorizationStatus?: MarketplaceAuthorizationStatus;
 }
 
 @InputType()
 export class SubmitMarketplaceInterestInput {
   @Field(() => ID)
+  @IsUUID()
   marketplaceRequestId!: string;
 
   @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
   message?: string;
 }
 
@@ -105,39 +125,58 @@ export class GrantMarketplaceShareConsentInput {
 @InputType()
 export class RevokeMarketplaceConsentInput {
   @Field(() => ID)
+  @IsUUID()
   marketplaceRequestId!: string;
 
   @Field(() => ID)
+  @IsUUID()
   providerProfileId!: string;
 }
 
 @InputType()
 export class CompleteProviderMarketplaceOnboardingInput {
   @Field()
+  @IsString()
+  @MinLength(1)
   accountType!: string;
 
   @Field()
+  @IsString()
+  @MinLength(1)
   legalName!: string;
 
   @Field()
+  @IsString()
+  @MinLength(1)
   displayName!: string;
 
   @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
   licenseNumber?: string;
 
   @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
   npi?: string;
 
   @Field(() => [String])
+  @IsArray()
+  @IsString({ each: true })
   serviceCategories!: string[];
 
   @Field(() => [String])
+  @IsArray()
+  @IsString({ each: true })
   coverageZipCodes!: string[];
 
   @Field(() => [String])
+  @IsArray()
+  @IsString({ each: true })
   languages!: string[];
 
   @Field()
+  @IsBoolean()
   confidentialityTermsAccepted!: boolean;
 }
 
@@ -160,6 +199,7 @@ export class SaveMarketplaceSearchInput {
 @InputType()
 export class SetMarketplaceSavedSearchAlertsInput {
   @Field(() => ID)
+  @IsUUID()
   savedSearchId!: string;
 
   @Field()

@@ -8,6 +8,7 @@ import '../../../shared/widgets/app_section_header.dart';
 import '../../messaging/messaging_providers.dart';
 import '../../notifications/notification_providers.dart';
 import '../data/parent_booking_repository.dart';
+import 'parent_dashboard_providers.dart';
 import 'parent_ops_tile.dart';
 
 class ParentOperationsCategory {
@@ -109,12 +110,25 @@ class ParentOperationsCategoryScreen extends ConsumerWidget {
       data: (c) => c,
       orElse: () => 0,
     );
+    final pendingSessionPayment = ref.watch(parentDashboardProvider).maybeWhen(
+      data: (d) {
+        for (final item in d.actionItems) {
+          if (item['actionType'] == 'SESSION_PAYMENT_DUE' &&
+              item['paymentId'] != null) {
+            return item;
+          }
+        }
+        return null;
+      },
+      orElse: () => null,
+    );
 
     final tiles = _tilesForCategory(
       context,
       category,
       unreadCount: unreadCount,
       unreadMessageCount: unreadMessageCount,
+      pendingSessionPayment: pendingSessionPayment,
     );
 
     return AppScaffold(
@@ -140,6 +154,7 @@ class ParentOperationsCategoryScreen extends ConsumerWidget {
     ParentOperationsCategory category, {
     required int unreadCount,
     required int unreadMessageCount,
+    Map<String, dynamic>? pendingSessionPayment,
   }) {
     switch (category.id) {
       case 'scheduling':
@@ -222,6 +237,22 @@ class ParentOperationsCategoryScreen extends ConsumerWidget {
         ];
       case 'payments':
         return [
+          if (pendingSessionPayment != null)
+            ParentOpsTile(
+              title: pendingSessionPayment['title'] as String? ??
+                  'Session payment due',
+              subtitle: pendingSessionPayment['subtitle'] as String? ??
+                  'Pay before therapy begins',
+              icon: Icons.payments,
+              onTap: () {
+                final paymentId = pendingSessionPayment['paymentId'] as String?;
+                if (paymentId != null) {
+                  context.push('${AppRoutes.payments}?paymentId=$paymentId');
+                } else {
+                  context.push(AppRoutes.payments);
+                }
+              },
+            ),
           ParentOpsTile(
             title: 'Pay for sessions',
             subtitle: 'View invoices and pay online',

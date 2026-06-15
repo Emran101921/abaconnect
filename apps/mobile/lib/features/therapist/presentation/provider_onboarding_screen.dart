@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/glossy_button.dart';
 import '../data/therapist_repository.dart';
 
 final providerOnboardingProvider =
@@ -34,9 +35,10 @@ class ProviderOnboardingScreen extends ConsumerWidget {
                   const SizedBox(height: 12),
                   const Text('Your provider access is approved.'),
                   const SizedBox(height: 16),
-                  FilledButton(
+                  GlossyButton(
+                    title: 'Go to dashboard',
+                    variant: GlossyButtonVariant.tealBlue,
                     onPressed: () => context.go(AppRoutes.therapistHome),
-                    child: const Text('Go to dashboard'),
                   ),
                 ],
               ),
@@ -118,12 +120,13 @@ class ProviderOnboardingScreen extends ConsumerWidget {
                   ),
                 )
               else if (canSubmit)
-                FilledButton(
+                GlossyButton(
+                  title: 'Submit for review',
+                  variant: GlossyButtonVariant.bluePurple,
                   onPressed: () => _submit(ref, context),
-                  child: const Text('Submit for review'),
                 )
               else
-                OutlinedButton(
+                GlossyOutlinedButton(
                   onPressed: () => context.push(
                     '${AppRoutes.therapistHome}/profile',
                   ),

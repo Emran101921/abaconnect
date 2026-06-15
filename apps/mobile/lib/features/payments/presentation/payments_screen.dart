@@ -8,30 +8,51 @@ import '../../../shared/widgets/app_dashboard_card.dart';
 import '../../../shared/widgets/app_healthcare_illustration.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_section_header.dart';
+import '../../../shared/widgets/glossy_button.dart';
 import '../data/payments_repository.dart';
 
 final parentPaymentsProvider = FutureProvider<List<PaymentModel>>((ref) {
   return ref.watch(paymentsRepositoryProvider).fetchPayments();
 });
 
-class PaymentsScreen extends ConsumerWidget {
-  const PaymentsScreen({super.key});
+class PaymentsScreen extends ConsumerStatefulWidget {
+  const PaymentsScreen({super.key, this.initialPaymentId});
+
+  final String? initialPaymentId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PaymentsScreen> createState() => _PaymentsScreenState();
+}
+
+class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
+  bool _handledDeepLink = false;
+
+  void _maybePromptDeepLinkPayment(List<PaymentModel> list) {
+    final paymentId = widget.initialPaymentId;
+    if (_handledDeepLink || paymentId == null || paymentId.isEmpty) return;
+    _handledDeepLink = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _showDeepLinkPaymentPrompt(context, list, paymentId);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final payments = ref.watch(parentPaymentsProvider);
     final formatter = NumberFormat.currency(symbol: '\$');
 
     return AppScaffold(
       title: 'Payments',
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: GlossyFab(
+        icon: Icons.add_card,
         onPressed: () => _paySession(context, ref),
-        child: const Icon(Icons.add_card),
+        tooltip: 'Pay session',
       ),
       body: payments.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (list) {
+          _maybePromptDeepLinkPayment(list);
           if (list.isEmpty) {
             return Center(
               child: Padding(
@@ -55,16 +76,18 @@ class PaymentsScreen extends ConsumerWidget {
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                     const SizedBox(height: 24),
-                    FilledButton.icon(
+                    GlossyButton(
+                      title: 'Pay for a session',
+                      icon: Icons.add_card,
+                      variant: GlossyButtonVariant.orangeRed,
                       onPressed: () => _paySession(context, ref),
-                      icon: const Icon(Icons.add_card),
-                      label: const Text('Pay for a session'),
                     ),
                   ],
                 ),
               ),
             );
           }
+          final deepLinkId = widget.initialPaymentId;
           return RefreshIndicator(
             onRefresh: () async {
               ref.invalidate(parentPaymentsProvider);
@@ -82,6 +105,8 @@ class PaymentsScreen extends ConsumerWidget {
                     );
                   }
                   final p = list[index - 1];
+                  final isDeepLinkTarget =
+                      deepLinkId != null && p.id == deepLinkId;
                   return AppDashboardCard(
                     child: ListTile(
                       title: Text(
@@ -93,8 +118,21 @@ class PaymentsScreen extends ConsumerWidget {
                       isThreeLine: true,
                       trailing: Text(
                         formatter.format(p.amount),
-                        style: Theme.of(context).textTheme.titleMedium,
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              color: isDeepLinkTarget
+                                  ? Theme.of(context).colorScheme.primary
+                                  : null,
+                              fontWeight: isDeepLinkTarget
+                                  ? FontWeight.w700
+                                  : null,
+                            ),
                       ),
+                      tileColor: isDeepLinkTarget
+                          ? Theme.of(context)
+                              .colorScheme
+                              .primaryContainer
+                              .withValues(alpha: 0.35)
+                          : null,
                       onTap: () => _paymentActions(context, ref, p),
                     ),
                   );
@@ -146,6 +184,98 @@ class PaymentsScreen extends ConsumerWidget {
     );
   }
 
+  Future<void> _showDeepLinkPaymentPrompt(
+    BuildContext context,
+    List<PaymentModel> list,
+    String paymentId,
+  ) async {
+    final formatter = NumberFormat.currency(symbol: '\$');
+    PaymentModel? payment;
+    for (final p in list) {
+      if (p.id == paymentId) {
+        payment = p;
+        break;
+      }
+    }
+
+    final proceed = await showModalBottomSheet<bool>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Session payment due',
+                style: Theme.of(ctx).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                payment == null
+                    ? 'Your therapist requested payment before the session can begin.'
+                    : payment.isPaid
+                        ? 'This session payment is already complete.'
+                        : '${payment.description ?? 'Therapy session'} · ${formatter.format(payment.amount)}',
+                style: Theme.of(ctx).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 20),
+              if (payment?.isPaid != true) ...[
+                GlossyButton(
+                  title: 'Pay now',
+                  icon: Icons.payments_outlined,
+                  variant: GlossyButtonVariant.orangeRed,
+                  onPressed: () => Navigator.pop(ctx, true),
+                ),
+                const SizedBox(height: 8),
+              ],
+              GlossyButton(
+                title: payment?.isPaid == true ? 'Done' : 'View all payments',
+                variant: GlossyButtonVariant.neutral,
+                onPressed: () => Navigator.pop(ctx, false),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (proceed == true && context.mounted) {
+      await _payPendingSession(context, paymentId);
+    }
+  }
+
+  Future<void> _payPendingSession(BuildContext context, String paymentId) async {
+    try {
+      final result = await ref
+          .read(paymentsRepositoryProvider)
+          .prepareSessionPayment(paymentId);
+      ref.invalidate(parentPaymentsProvider);
+      if (!context.mounted) return;
+
+      if (result.payment.isPaid) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Session payment already completed')),
+        );
+        return;
+      }
+
+      if (result.stripeConfigured && result.checkoutUrl != null) {
+        _showCheckoutLink(context, result.checkoutUrl!);
+      } else {
+        await _confirmDemo(context, ref, paymentId);
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open session payment: $e')),
+        );
+      }
+    }
+  }
+
   Future<void> _paySession(BuildContext context, WidgetRef ref) async {
     try {
       final result = await ref
@@ -192,9 +322,12 @@ class PaymentsScreen extends ConsumerWidget {
             },
             child: const Text('Copy link'),
           ),
-          FilledButton(
+          GlossyButton(
+            title: 'Close',
+            size: GlossyButtonSize.small,
+            fullWidth: false,
+            variant: GlossyButtonVariant.neutral,
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close'),
           ),
         ],
       ),
@@ -243,9 +376,12 @@ class PaymentsScreen extends ConsumerWidget {
             onPressed: () => Navigator.pop(ctx, false),
             child: const Text('Cancel'),
           ),
-          FilledButton(
+          GlossyButton(
+            title: 'Submit',
+            size: GlossyButtonSize.small,
+            fullWidth: false,
+            variant: GlossyButtonVariant.greenTeal,
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Submit'),
           ),
         ],
       ),

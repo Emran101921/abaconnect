@@ -26,17 +26,17 @@ export class AdminController {
     return this.adminService.findAll();
   }
 
-  @Get(':id')
+  @Get('scaffold/:id')
   findOne(@Param('id') id: string) {
     return this.adminService.findOne(id);
   }
 
-  @Patch(':id')
+  @Patch('scaffold/:id')
   update(@Param('id') id: string, @Body() data: Record<string, unknown>) {
     return this.adminService.update(id, data);
   }
 
-  @Delete(':id')
+  @Delete('scaffold/:id')
   remove(@Param('id') id: string) {
     return this.adminService.remove(id);
   }

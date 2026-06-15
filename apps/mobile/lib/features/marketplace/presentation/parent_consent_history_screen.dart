@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/glossy_button.dart';
+import '../../../shared/widgets/role_tab_scaffold.dart';
 import '../data/marketplace_repository.dart';
 
 class ParentConsentHistoryScreen extends ConsumerStatefulWidget {
@@ -63,9 +64,12 @@ class _ParentConsentHistoryScreenState
             onPressed: () => Navigator.pop(ctx, false),
             child: const Text('Cancel'),
           ),
-          FilledButton(
+          GlossyButton(
+            title: 'Revoke',
+            size: GlossyButtonSize.small,
+            fullWidth: false,
+            variant: GlossyButtonVariant.redDarkRed,
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Revoke'),
           ),
         ],
       ),
@@ -96,7 +100,7 @@ class _ParentConsentHistoryScreenState
 
   @override
   Widget build(BuildContext context) {
-    return AppScaffold(
+    return ParentTabScaffold(
       title: 'Consent history',
       subtitle: 'Review and revoke sharing permissions',
       body: _loading

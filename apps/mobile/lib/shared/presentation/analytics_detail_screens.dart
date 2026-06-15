@@ -14,6 +14,7 @@ import '../presentation/analytics_copy_link.dart';
 import '../presentation/analytics_date_range_filter.dart';
 import '../presentation/analytics_date_range_url.dart';
 import '../widgets/app_scaffold.dart';
+import '../widgets/glossy_button.dart';
 
 class AdminAnalyticsClaimDetailScreen extends ConsumerWidget {
   const AdminAnalyticsClaimDetailScreen({super.key, required this.claimId});
@@ -299,7 +300,11 @@ Widget? _adminClaimActions(
     runSpacing: 8,
     children: [
       if (claim.status == 'DENIED')
-        FilledButton(
+        GlossyButton(
+          title: 'File appeal',
+          size: GlossyButtonSize.small,
+          fullWidth: false,
+          variant: GlossyButtonVariant.orangeRed,
           onPressed: () async {
             await ref
                 .read(adminRepositoryProvider)
@@ -315,7 +320,6 @@ Widget? _adminClaimActions(
             }
             await refresh();
           },
-          child: const Text('File appeal'),
         ),
       if ([
         'SUBMITTED',
@@ -323,7 +327,11 @@ Widget? _adminClaimActions(
         'UNDER_REVIEW',
         'APPROVED',
       ].contains(claim.status))
-        FilledButton.tonal(
+        GlossyButton(
+          title: 'Post 835 remittance',
+          size: GlossyButtonSize.small,
+          fullWidth: false,
+          variant: GlossyButtonVariant.neutral,
           onPressed: () async {
             await ref
                 .read(adminRepositoryProvider)
@@ -335,10 +343,13 @@ Widget? _adminClaimActions(
             }
             await refresh();
           },
-          child: const Text('Post 835 remittance'),
         ),
       if (claim.status != 'PAID')
-        FilledButton(
+        GlossyButton(
+          title: 'Mark paid',
+          size: GlossyButtonSize.small,
+          fullWidth: false,
+          variant: GlossyButtonVariant.orangeRed,
           onPressed: () async {
             await ref
                 .read(adminRepositoryProvider)
@@ -354,10 +365,9 @@ Widget? _adminClaimActions(
             }
             await refresh();
           },
-          child: const Text('Mark paid'),
         ),
       if (claim.status != 'DENIED')
-        OutlinedButton(
+        GlossyOutlinedButton(
           onPressed: () async {
             await ref
                 .read(adminRepositoryProvider)
@@ -404,7 +414,11 @@ Widget? _agencyClaimActions(
     runSpacing: 8,
     children: [
       if (claim.status == 'DENIED')
-        FilledButton(
+        GlossyButton(
+          title: 'Appeal denial',
+          size: GlossyButtonSize.small,
+          fullWidth: false,
+          variant: GlossyButtonVariant.orangeRed,
           onPressed: () async {
             await ref
                 .read(agencyRepositoryProvider)
@@ -420,10 +434,13 @@ Widget? _agencyClaimActions(
             }
             await refresh();
           },
-          child: const Text('Appeal denial'),
         ),
       if (claim.status != 'DENIED')
-        FilledButton.tonal(
+        GlossyButton(
+          title: 'Post 835 remittance',
+          size: GlossyButtonSize.small,
+          fullWidth: false,
+          variant: GlossyButtonVariant.neutral,
           onPressed: () async {
             await ref
                 .read(agencyRepositoryProvider)
@@ -435,7 +452,6 @@ Widget? _agencyClaimActions(
             }
             await refresh();
           },
-          child: const Text('Post 835 remittance'),
         ),
     ],
   );

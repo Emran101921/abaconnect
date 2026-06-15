@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_spacing.dart';
-import 'app_glossy_button.dart';
+import '../../../shared/widgets/glossy_button.dart';
 
 class AppWellnessActionItem {
   const AppWellnessActionItem({
@@ -39,6 +39,8 @@ class AppWellnessActionMenu extends StatelessWidget {
             icon: items[i].icon,
             variant: items[i].variant,
             onPressed: items[i].onTap,
+            iconLeading: true,
+            showTrailingIcon: false,
           ),
           if (i < items.length - 1) SizedBox(height: spacing),
         ],

@@ -127,6 +127,81 @@ export class ParentsService {
         priority: 1,
       });
     }
+
+    const pendingSessionPayments = await this.prisma.payment.findMany({
+      where: {
+        parentId: parent.id,
+        status: 'PENDING',
+        sessionId: { not: null },
+      },
+      include: {
+        session: {
+          include: {
+            child: true,
+            appointment: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 3,
+    });
+    for (const payment of pendingSessionPayments) {
+      const child = payment.session?.child;
+      const childName = child
+        ? `${child.firstName} ${child.lastName}`
+        : 'your child';
+      actionItems.push({
+        id: `session-payment-${payment.id}`,
+        title: 'Session payment due',
+        subtitle: `Pay before ${childName}'s therapy session begins`,
+        actionType: 'SESSION_PAYMENT_DUE',
+        paymentId: payment.id,
+        appointmentId: payment.session?.appointmentId,
+        sessionId: payment.sessionId ?? undefined,
+        priority: 0,
+      });
+    }
+
+    const pendingMarketplaceInterest =
+      await this.prisma.marketplaceInterest.findFirst({
+        where: {
+          status: 'PENDING_PARENT_REVIEW',
+          marketplaceRequest: {
+            parentUserId: userId,
+            removedAt: null,
+            status: { in: ['ACTIVE', 'PAUSED'] },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        include: {
+          marketplaceRequest: { select: { id: true } },
+          providerProfile: { select: { displayName: true } },
+        },
+      });
+    if (pendingMarketplaceInterest) {
+      const pendingCount = await this.prisma.marketplaceInterest.count({
+        where: {
+          status: 'PENDING_PARENT_REVIEW',
+          marketplaceRequest: {
+            parentUserId: userId,
+            removedAt: null,
+            status: { in: ['ACTIVE', 'PAUSED'] },
+          },
+        },
+      });
+      actionItems.push({
+        id: 'marketplace-interests',
+        title: 'Providers awaiting your review',
+        subtitle:
+          pendingCount === 1
+            ? `${pendingMarketplaceInterest.providerProfile.displayName} requested permission to coordinate care`
+            : `${pendingCount} provider interest(s) need your approval`,
+        actionType: 'MARKETPLACE_INTEREST',
+        marketplaceRequestId: pendingMarketplaceInterest.marketplaceRequest.id,
+        priority: 0,
+      });
+    }
+
     const seenTherapists = new Set<string>();
     for (const session of completedSessions) {
       const t = session.therapist;

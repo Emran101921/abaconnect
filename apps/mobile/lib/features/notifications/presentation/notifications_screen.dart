@@ -37,6 +37,9 @@ class NotificationsScreen extends ConsumerWidget {
             n.actionType == 'MARKETPLACE_SAVED_SEARCH_MATCH')) {
       return true;
     }
+    if (n.actionType == 'SESSION_PAYMENT_DUE' && n.paymentId != null) {
+      return true;
+    }
     return false;
   }
 
@@ -88,6 +91,13 @@ class NotificationsScreen extends ConsumerWidget {
 
     if (n.actionType == 'SESSION_COMPLETED') {
       context.push('${AppRoutes.parentHome}/reviews');
+      return;
+    }
+
+    if (n.actionType == 'SESSION_PAYMENT_DUE' &&
+        n.paymentId != null &&
+        role == UserRole.parent) {
+      context.push('${AppRoutes.payments}?paymentId=${n.paymentId}');
       return;
     }
 

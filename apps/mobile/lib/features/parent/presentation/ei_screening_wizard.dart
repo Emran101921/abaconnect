@@ -8,6 +8,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/app_animated_progress.dart';
 import '../../../shared/widgets/app_choice_tile.dart';
 import '../../../shared/widgets/app_dashboard_card.dart';
+import '../../../shared/widgets/glossy_button.dart';
 import '../data/parent_booking_repository.dart';
 
 const eiScreeningDisclaimer =
@@ -357,9 +358,10 @@ class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
-              FilledButton(
+              GlossyButton(
+                title: 'Go back',
+                variant: GlossyButtonVariant.neutral,
                 onPressed: () => Navigator.of(context).maybePop(),
-                child: const Text('Go back'),
               ),
             ],
           ),
@@ -507,7 +509,7 @@ class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
             child: Row(
               children: [
                 if (_questionIndex > 0)
-                  OutlinedButton(
+                  GlossyOutlinedButton(
                     onPressed: _saving ? null : _goBack,
                     child: const Text('Back'),
                   ),
@@ -523,17 +525,19 @@ class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
                       : const Text('Save & continue later'),
                 ),
                 const Spacer(),
-                FilledButton(
-                  onPressed: _saving
-                      ? null
-                      : () async {
-                          if (_isLastQuestion) {
-                            await _submit();
-                          } else {
-                            _goNext();
-                          }
-                        },
-                  child: Text(_isLastQuestion ? 'Submit screening' : 'Next'),
+                GlossyButton(
+                  title: _isLastQuestion ? 'Submit screening' : 'Next',
+                  size: GlossyButtonSize.medium,
+                  fullWidth: false,
+                  variant: GlossyButtonVariant.bluePurple,
+                  loading: _saving,
+                  onPressed: () async {
+                    if (_isLastQuestion) {
+                      await _submit();
+                    } else {
+                      _goNext();
+                    }
+                  },
                 ),
               ],
             ),

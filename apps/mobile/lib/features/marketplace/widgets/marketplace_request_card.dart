@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../shared/widgets/glossy_button.dart';
 import '../data/marketplace_repository.dart';
 
 class MarketplaceRequestCard extends StatelessWidget {
@@ -62,11 +63,14 @@ class MarketplaceRequestCard extends StatelessWidget {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  FilledButton(
+                  GlossyButton(
+                    title: "I'm available",
+                    size: GlossyButtonSize.small,
+                    fullWidth: false,
+                    variant: GlossyButtonVariant.greenTeal,
                     onPressed: onAvailable,
-                    child: const Text("I'm available"),
                   ),
-                  OutlinedButton(
+                  GlossyOutlinedButton(
                     onPressed: onRequestPermission,
                     child: const Text('Request parent permission'),
                   ),

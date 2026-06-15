@@ -54,6 +54,8 @@
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>BloomOra uses your location for EVV check-in and to record GPS when signing session notes.</string>
+	<key>GoogleMapsApiKey</key>
+	<string></string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>BloomOra uses the microphone so you can dictate secure messages and session notes.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>

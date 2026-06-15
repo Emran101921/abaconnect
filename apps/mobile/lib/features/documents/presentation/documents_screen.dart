@@ -6,6 +6,7 @@ import '../../../core/providers/app_providers.dart';
 import '../../../core/utils/document_upload.dart';
 import '../../../shared/models/user_role.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/glossy_button.dart';
 import '../../parent/data/parent_booking_repository.dart';
 import '../../platform/data/platform_repository.dart';
 
@@ -30,9 +31,10 @@ class DocumentsScreen extends ConsumerWidget {
 
     return AppScaffold(
       title: 'Documents',
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: GlossyFab(
+        icon: Icons.upload_file,
         onPressed: () => _pickAndUpload(context, ref),
-        child: const Icon(Icons.upload_file),
+        tooltip: 'Upload document',
       ),
       body: docs.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -175,9 +177,12 @@ class DocumentsScreen extends ConsumerWidget {
               onPressed: () => Navigator.pop(ctx, false),
               child: const Text('Cancel'),
             ),
-            FilledButton(
+            GlossyButton(
+              title: 'Choose file',
+              size: GlossyButtonSize.small,
+              fullWidth: false,
+              variant: GlossyButtonVariant.bluePurple,
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Choose file'),
             ),
           ],
         ),
@@ -261,9 +266,12 @@ class DocumentsScreen extends ConsumerWidget {
             onPressed: () => Navigator.pop(ctx, false),
             child: const Text('Cancel'),
           ),
-          FilledButton(
+          GlossyButton(
+            title: 'Delete',
+            size: GlossyButtonSize.small,
+            fullWidth: false,
+            variant: GlossyButtonVariant.redDarkRed,
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete'),
           ),
         ],
       ),

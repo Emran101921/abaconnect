@@ -11,6 +11,7 @@ import '../../../shared/widgets/app_dashboard_card.dart';
 import '../../../shared/widgets/app_healthcare_illustration.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_section_header.dart';
+import '../../../shared/widgets/glossy_button.dart';
 import '../data/messaging_repository.dart';
 import '../messaging_providers.dart';
 import 'message_status_badge.dart';
@@ -36,11 +37,12 @@ class MessagesScreen extends ConsumerWidget {
           : isTherapist
           ? TherapistBottomNav(current: TherapistNavTab.messages)
           : null,
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: GlossyFab(
+        icon: Icons.add_comment,
         onPressed: () => isTherapist
             ? _startParentChat(context, ref)
             : _startTherapistChat(context, ref),
-        child: const Icon(Icons.add_comment),
+        tooltip: 'New message',
       ),
       body: threads.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -71,16 +73,15 @@ class MessagesScreen extends ConsumerWidget {
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                     const SizedBox(height: 24),
-                    FilledButton.icon(
+                    GlossyButton(
+                      title: isTherapist
+                          ? 'Message a parent'
+                          : 'Start a conversation',
+                      icon: Icons.add_comment,
+                      variant: GlossyButtonVariant.tealBlue,
                       onPressed: () => isTherapist
                           ? _startParentChat(context, ref)
                           : _startTherapistChat(context, ref),
-                      icon: const Icon(Icons.add_comment),
-                      label: Text(
-                        isTherapist
-                            ? 'Message a parent'
-                            : 'Start a conversation',
-                      ),
                     ),
                   ],
                 ),

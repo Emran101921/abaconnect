@@ -7,6 +7,8 @@ import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/app_bottom_nav.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/app_snackbar.dart';
+import '../../../shared/widgets/glossy_button.dart';
 import '../data/parent_booking_repository.dart';
 import 'child_profile_form.dart';
 
@@ -45,8 +47,9 @@ class _ChildProfileSheetState extends ConsumerState<_ChildProfileSheet> {
 
   Future<void> _save() async {
     if (!_data.isValid) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please complete required fields')),
+      AppSnackBar.showError(
+        context,
+        'Please complete all required fields before saving.',
       );
       return;
     }
@@ -107,9 +110,10 @@ class _ChildProfileSheetState extends ConsumerState<_ChildProfileSheet> {
       if (mounted) Navigator.pop(context, child);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
+        AppSnackBar.showError(
           context,
-        ).showSnackBar(SnackBar(content: Text('Save failed: $e')));
+          'Could not save child profile: ${AppSnackBar.messageFromError(e)}',
+        );
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -159,19 +163,13 @@ class _ChildProfileSheetState extends ConsumerState<_ChildProfileSheet> {
               SafeArea(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
-                  child: FilledButton(
-                    onPressed: _saving ? null : _save,
-                    child: _saving
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Text(
-                            widget.existing == null
-                                ? 'Save & continue'
-                                : 'Save',
-                          ),
+                  child: GlossyButton(
+                    title: widget.existing == null
+                        ? 'Save & continue'
+                        : 'Save',
+                    variant: GlossyButtonVariant.greenTeal,
+                    loading: _saving,
+                    onPressed: _save,
                   ),
                 ),
               ),
@@ -215,9 +213,10 @@ class _ChildrenListScreenState extends ConsumerState<ChildrenListScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _loading = false);
-        ScaffoldMessenger.of(
+        AppSnackBar.showError(
           context,
-        ).showSnackBar(SnackBar(content: Text('Failed to load children: $e')));
+          'Could not load children: ${AppSnackBar.messageFromError(e)}',
+        );
       }
     }
   }
@@ -227,10 +226,9 @@ class _ChildrenListScreenState extends ConsumerState<ChildrenListScreen> {
     if (child == null) return;
     await _load();
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Child saved — opening intake screening…'),
-        ),
+      AppSnackBar.showSuccess(
+        context,
+        'Child saved — opening intake screening…',
       );
       context.push(
         '${AppRoutes.parentScreening}?childId=${child.id}&autoStart=true',
@@ -243,9 +241,7 @@ class _ChildrenListScreenState extends ConsumerState<ChildrenListScreen> {
     if (updated == null) return;
     await _load();
     if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Child updated')));
+      AppSnackBar.showSuccess(context, 'Child profile updated.');
     }
   }
 
@@ -257,9 +253,10 @@ class _ChildrenListScreenState extends ConsumerState<ChildrenListScreen> {
       bottomNavigationBar: ParentBottomNav(
         current: ParentNavTab.children,
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: GlossyFab(
+        icon: Icons.add,
         onPressed: _addChild,
-        child: const Icon(Icons.add),
+        tooltip: 'Add child',
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -277,10 +274,11 @@ class _ChildrenListScreenState extends ConsumerState<ChildrenListScreen> {
                     const SizedBox(height: 16),
                     const Text('No children yet'),
                     const SizedBox(height: 8),
-                    FilledButton.icon(
+                    GlossyButton(
+                      title: 'Add child profile',
+                      icon: Icons.add,
+                      variant: GlossyButtonVariant.tealBlue,
                       onPressed: _addChild,
-                      icon: const Icon(Icons.add),
-                      label: const Text('Add child profile'),
                     ),
                   ],
                 ),

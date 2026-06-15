@@ -2,98 +2,241 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
-import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/app_snackbar.dart';
+import '../../../shared/widgets/glossy_button.dart';
+import '../../../shared/widgets/role_tab_scaffold.dart';
+import '../../parent/data/parent_booking_repository.dart';
 import '../data/marketplace_repository.dart';
 import '../widgets/marketplace_request_card.dart';
 
 final parentMarketplaceRequestsProvider =
-    FutureProvider<List<MarketplaceRequestModel>>((ref) {
+    FutureProvider.autoDispose<List<MarketplaceRequestModel>>((ref) {
   return ref.watch(marketplaceRepositoryProvider).fetchMyRequests();
 });
 
 class ParentMarketplaceDashboardScreen extends ConsumerWidget {
   const ParentMarketplaceDashboardScreen({super.key});
 
+  Future<void> _startNewRequest(BuildContext context, WidgetRef ref) async {
+    try {
+      final children =
+          await ref.read(parentBookingRepositoryProvider).fetchChildren();
+      if (!context.mounted) return;
+      if (children.isEmpty) {
+        AppSnackBar.showError(
+          context,
+          'Add a child profile first, then complete a screening to post anonymously.',
+        );
+        context.push(AppRoutes.parentChildren);
+        return;
+      }
+
+      final child = children.length == 1
+          ? children.first
+          : await showModalBottomSheet<ChildModel>(
+              context: context,
+              showDragHandle: true,
+              isScrollControlled: true,
+              builder: (ctx) => SafeArea(
+                child: ListView(
+                  shrinkWrap: true,
+                  padding: const EdgeInsets.only(bottom: 16),
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Text(
+                        'Which child is this request for?',
+                        style: Theme.of(ctx).textTheme.titleMedium,
+                      ),
+                    ),
+                    ...children.map(
+                      (item) => ListTile(
+                        title: Text(item.displayName),
+                        subtitle: Text(
+                          item.zipCode != null
+                              ? 'ZIP ${item.zipCode}'
+                              : 'ZIP required for marketplace posting',
+                        ),
+                        enabled: item.zipCode?.trim().isNotEmpty ?? false,
+                        onTap: () => Navigator.pop(ctx, item),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+
+      if (child == null || !context.mounted) return;
+      if (child.zipCode?.trim().isEmpty ?? true) {
+        AppSnackBar.showError(
+          context,
+          'ZIP code is required on the child profile before posting.',
+        );
+        return;
+      }
+
+      final language = child.primaryLanguage;
+      context.push(
+        '${AppRoutes.parentMarketplaceOptIn}'
+        '?childId=${child.id}'
+        '${language != null ? '&languagePreference=${Uri.encodeComponent(language)}' : ''}',
+      );
+    } catch (e) {
+      if (context.mounted) {
+        AppSnackBar.showError(
+          context,
+          'Could not start marketplace request: ${AppSnackBar.messageFromError(e)}',
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final requests = ref.watch(parentMarketplaceRequestsProvider);
 
-    return AppScaffold(
+    return ParentTabScaffold(
       title: 'Service requests',
       subtitle: 'Anonymous marketplace dashboard',
+      actions: [
+        Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: Center(
+            child: GlossyButton(
+              title: 'Post request',
+              icon: Icons.add_rounded,
+              iconOnly: true,
+              size: GlossyButtonSize.small,
+              fullWidth: false,
+              semanticLabel: 'Post request',
+              onPressed: () => _startNewRequest(context, ref),
+            ),
+          ),
+        ),
+      ],
       body: requests.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (e, _) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              'Could not load requests: ${AppSnackBar.messageFromError(e)}',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
         data: (list) {
-          if (list.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text(
-                  'No anonymous service requests yet. Complete a screening and opt in '
-                  'to post a request providers can respond to by ZIP area.',
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            );
-          }
+          final pendingTotal = list.fold<int>(
+            0,
+            (sum, request) => sum + request.interestCount,
+          );
           return RefreshIndicator(
             onRefresh: () async {
               ref.invalidate(parentMarketplaceRequestsProvider);
             },
-            child: ListView.separated(
+            child: ListView(
               padding: const EdgeInsets.all(16),
-              itemCount: list.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                final request = list[index];
-                return Column(
-                  children: [
-                    MarketplaceRequestCard(request: request),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                if (pendingTotal > 0)
+                  Card(
+                    color: Theme.of(context).colorScheme.secondaryContainer,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    child: ListTile(
+                      leading: const Icon(Icons.verified_user_outlined),
+                      title: Text(
+                        '$pendingTotal provider${pendingTotal == 1 ? '' : 's'} awaiting review',
+                      ),
+                      subtitle: const Text(
+                        'Tap a request below to compare providers and approve sharing.',
+                      ),
+                    ),
+                  ),
+                if (list.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 48),
+                    child: Column(
                       children: [
-                        if (request.status == 'ACTIVE')
-                          TextButton(
-                            onPressed: () async {
-                              await ref
-                                  .read(marketplaceRepositoryProvider)
-                                  .pauseRequest(request.id);
-                              ref.invalidate(parentMarketplaceRequestsProvider);
-                            },
-                            child: const Text('Pause'),
-                          ),
-                        if (request.status == 'PAUSED')
-                          TextButton(
-                            onPressed: () async {
-                              await ref
-                                  .read(marketplaceRepositoryProvider)
-                                  .closeRequest(request.id);
-                              ref.invalidate(parentMarketplaceRequestsProvider);
-                            },
-                            child: const Text('Close'),
-                          ),
-                        TextButton(
-                          onPressed: () => context.push(
-                            '${AppRoutes.parentMarketplace}/${request.id}/consents',
-                          ),
-                          child: const Text('Consent history'),
+                        Text(
+                          'No anonymous service requests yet. Tap Post request to '
+                          'share general service needs by ZIP area without revealing '
+                          'your child\'s identity.',
+                          textAlign: TextAlign.center,
                         ),
-                        if (request.interestCount > 0)
-                          TextButton(
-                            onPressed: () => context.push(
-                              '${AppRoutes.parentMarketplace}/${request.id}/interests',
-                            ),
-                            child: Text(
-                              'View ${request.interestCount} interested provider(s)',
-                            ),
-                          ),
+                        const SizedBox(height: 16),
+                        GlossyButton(
+                          title: 'Post anonymous request',
+                          icon: Icons.privacy_tip_outlined,
+                          variant: GlossyButtonVariant.tealBlue,
+                          onPressed: () => _startNewRequest(context, ref),
+                        ),
                       ],
                     ),
-                  ],
-                );
-              },
+                  )
+                else
+                  ...list.map((request) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Column(
+                        children: [
+                          MarketplaceRequestCard(request: request),
+                          Wrap(
+                            alignment: WrapAlignment.end,
+                            spacing: 4,
+                            runSpacing: 4,
+                            children: [
+                              if (request.interestCount > 0)
+                                GlossyButton(
+                                  title:
+                                      'Review ${request.interestCount} provider${request.interestCount == 1 ? '' : 's'}',
+                                  icon: Icons.verified_user_rounded,
+                                  variant: GlossyButtonVariant.success,
+                                  size: GlossyButtonSize.small,
+                                  fullWidth: false,
+                                  iconLeading: true,
+                                  showTrailingIcon: false,
+                                  onPressed: () => context.push(
+                                    '${AppRoutes.parentMarketplace}/${request.id}/interests',
+                                  ),
+                                ),
+                              if (request.status == 'ACTIVE')
+                                TextButton(
+                                  onPressed: () async {
+                                    await ref
+                                        .read(marketplaceRepositoryProvider)
+                                        .pauseRequest(request.id);
+                                    ref.invalidate(
+                                      parentMarketplaceRequestsProvider,
+                                    );
+                                  },
+                                  child: const Text('Pause'),
+                                ),
+                              if (request.status == 'PAUSED')
+                                TextButton(
+                                  onPressed: () async {
+                                    await ref
+                                        .read(marketplaceRepositoryProvider)
+                                        .closeRequest(request.id);
+                                    ref.invalidate(
+                                      parentMarketplaceRequestsProvider,
+                                    );
+                                  },
+                                  child: const Text('Close'),
+                                ),
+                              TextButton(
+                                onPressed: () => context.push(
+                                  '${AppRoutes.parentMarketplace}/${request.id}/consents',
+                                ),
+                                child: const Text('Consent history'),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+              ],
             ),
           );
         },

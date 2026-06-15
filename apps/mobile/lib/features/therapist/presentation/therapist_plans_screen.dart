@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/glossy_button.dart';
 import '../../clinical/data/clinical_repository.dart';
 
 final therapistPlansProvider = FutureProvider<List<TreatmentPlanModel>>((ref) {
@@ -78,9 +79,12 @@ class TherapistPlansScreen extends ConsumerWidget {
               onPressed: () => Navigator.pop(ctx, false),
               child: const Text('Cancel'),
             ),
-            FilledButton(
+            GlossyButton(
+              title: 'Create',
+              size: GlossyButtonSize.small,
+              fullWidth: false,
+              variant: GlossyButtonVariant.greenTeal,
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Create'),
             ),
           ],
         ),
@@ -181,9 +185,12 @@ class TherapistPlansScreen extends ConsumerWidget {
               onPressed: () => Navigator.pop(ctx, false),
               child: const Text('Cancel'),
             ),
-            FilledButton(
+            GlossyButton(
+              title: 'Save',
+              size: GlossyButtonSize.small,
+              fullWidth: false,
+              variant: GlossyButtonVariant.greenTeal,
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Save'),
             ),
           ],
         ),
@@ -260,9 +267,10 @@ class TherapistPlansScreen extends ConsumerWidget {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: GlossyFab(
+        icon: Icons.add,
         onPressed: () => _createPlan(context, ref),
-        child: const Icon(Icons.add),
+        tooltip: 'Create plan',
       ),
     );
   }

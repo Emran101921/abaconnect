@@ -22,6 +22,18 @@ class PaymentModel {
   bool get isPaid => status == 'SUCCEEDED';
 }
 
+class PaymentCheckoutResult {
+  const PaymentCheckoutResult({
+    required this.payment,
+    this.checkoutUrl,
+    required this.stripeConfigured,
+  });
+
+  final PaymentModel payment;
+  final String? checkoutUrl;
+  final bool stripeConfigured;
+}
+
 class PaymentsRepository {
   PaymentsRepository(this._graphql);
 
@@ -85,6 +97,31 @@ class PaymentsRepository {
     await _graphql.query(
       _confirmDemoMutation,
       variables: {'paymentId': paymentId},
+    );
+  }
+
+  Future<PaymentCheckoutResult> prepareSessionPayment(String paymentId) async {
+    const mutation = r'''
+      mutation Prepare($paymentId: ID!) {
+        prepareSessionPayment(paymentId: $paymentId) {
+          payment { id amount status description }
+          checkoutUrl
+          stripeConfigured
+        }
+      }
+    ''';
+    final result = await _graphql.query(
+      mutation,
+      variables: {'paymentId': paymentId},
+    );
+    final row =
+        result['data']?['prepareSessionPayment'] as Map<String, dynamic>?;
+    if (row == null) throw Exception('Could not prepare payment');
+    final payment = row['payment'] as Map<String, dynamic>;
+    return PaymentCheckoutResult(
+      payment: _mapPayment(payment),
+      checkoutUrl: row['checkoutUrl'] as String?,
+      stripeConfigured: row['stripeConfigured'] as bool? ?? false,
     );
   }
 

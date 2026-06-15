@@ -3,8 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/glossy_button.dart';
 import '../data/parent_booking_repository.dart';
-import 'parent_home_screen.dart';
+import 'parent_dashboard_providers.dart';
 
 final parentProfileProvider = FutureProvider<ParentProfileModel>((ref) {
   return ref.watch(parentBookingRepositoryProvider).fetchParentProfile();
@@ -196,15 +197,11 @@ class _ParentProfileScreenState extends ConsumerState<ParentProfileScreen> {
                 ),
               ],
               const SizedBox(height: 24),
-              FilledButton(
-                onPressed: _saving ? null : _save,
-                child: _saving
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Save profile'),
+              GlossyButton(
+                title: 'Save profile',
+                variant: GlossyButtonVariant.greenTeal,
+                loading: _saving,
+                onPressed: _save,
               ),
             ],
           );

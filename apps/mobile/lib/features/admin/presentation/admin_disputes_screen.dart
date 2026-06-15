@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/glossy_button.dart';
 import 'admin_providers.dart';
 
 class AdminDisputesScreen extends ConsumerWidget {
@@ -38,7 +39,11 @@ class AdminDisputesScreen extends ConsumerWidget {
                       '${d.status}\nPayment: ${d.paymentId ?? '—'}',
                     ),
                     isThreeLine: true,
-                    trailing: FilledButton(
+                    trailing: GlossyButton(
+                      title: 'Resolve',
+                      size: GlossyButtonSize.small,
+                      fullWidth: false,
+                      variant: GlossyButtonVariant.greenTeal,
                       onPressed: () async {
                         try {
                           await ref
@@ -58,7 +63,6 @@ class AdminDisputesScreen extends ConsumerWidget {
                           }
                         }
                       },
-                      child: const Text('Resolve'),
                     ),
                   ),
                 );

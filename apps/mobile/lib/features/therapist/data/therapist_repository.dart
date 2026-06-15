@@ -9,6 +9,32 @@ import '../../../core/network/graphql_client.dart';
 import '../../../core/utils/file_download.dart';
 import '../models/eip_session_note_model.dart';
 
+class PaymentResultModel {
+  const PaymentResultModel({
+    required this.id,
+    required this.status,
+    required this.amount,
+    this.description,
+  });
+
+  final String id;
+  final String status;
+  final double amount;
+  final String? description;
+
+  bool get isPaid => status == 'SUCCEEDED';
+}
+
+class SessionPaymentResult {
+  const SessionPaymentResult({
+    required this.payment,
+    required this.stripeConfigured,
+  });
+
+  final PaymentResultModel payment;
+  final bool stripeConfigured;
+}
+
 class TherapistProfileModel {
   const TherapistProfileModel({
     required this.id,
@@ -110,6 +136,13 @@ class TherapistAppointmentModel {
     required this.childName,
     required this.childId,
     this.locationType,
+    this.childInsuranceType,
+    this.requiresSelfPayCollection = false,
+    this.hasArrived = false,
+    this.canStartSession = false,
+    this.sessionPaymentId,
+    this.sessionPaymentStatus,
+    this.sessionPaymentAmount,
   });
 
   final String id;
@@ -119,8 +152,17 @@ class TherapistAppointmentModel {
   final String childName;
   final String childId;
   final String? locationType;
+  final String? childInsuranceType;
+  final bool requiresSelfPayCollection;
+  final bool hasArrived;
+  final bool canStartSession;
+  final String? sessionPaymentId;
+  final String? sessionPaymentStatus;
+  final double? sessionPaymentAmount;
 
   bool get isTelehealth => locationType == 'TELEHEALTH';
+
+  bool get isSelfPay => requiresSelfPayCollection;
 }
 
 class TherapistServiceLogModel {
@@ -321,6 +363,13 @@ class TherapistRepository {
           therapyType
           scheduledStart
           locationType
+          childInsuranceType
+          requiresSelfPayCollection
+          hasArrived
+          canStartSession
+          sessionPaymentId
+          sessionPaymentStatus
+          sessionPaymentAmount
           child { id firstName lastName }
         }
       }
@@ -338,6 +387,15 @@ class TherapistRepository {
         childName: '${child['firstName']} ${child['lastName']}',
         childId: child['id'] as String,
         locationType: e['locationType'] as String?,
+        childInsuranceType: e['childInsuranceType'] as String?,
+        requiresSelfPayCollection:
+            e['requiresSelfPayCollection'] as bool? ?? false,
+        hasArrived: e['hasArrived'] as bool? ?? false,
+        canStartSession: e['canStartSession'] as bool? ?? false,
+        sessionPaymentId: e['sessionPaymentId'] as String?,
+        sessionPaymentStatus: e['sessionPaymentStatus'] as String?,
+        sessionPaymentAmount:
+            (e['sessionPaymentAmount'] as num?)?.toDouble(),
       );
     }).toList();
   }
@@ -480,6 +538,43 @@ class TherapistRepository {
       }
     ''';
     await _graphql.query(mutation, variables: {'sessionId': sessionId});
+  }
+
+  Future<void> recordTherapistArrival(String appointmentId) async {
+    const mutation = r'''
+      mutation Arrival($appointmentId: ID!) {
+        recordTherapistArrival(appointmentId: $appointmentId) { id status hasArrived }
+      }
+    ''';
+    await _graphql.query(mutation, variables: {'appointmentId': appointmentId});
+  }
+
+  Future<SessionPaymentResult> requestSessionPayment(String appointmentId) async {
+    const mutation = r'''
+      mutation Charge($appointmentId: ID!) {
+        requestSessionPayment(appointmentId: $appointmentId) {
+          payment { id status amount description }
+          stripeConfigured
+        }
+      }
+    ''';
+    final result = await _graphql.query(
+      mutation,
+      variables: {'appointmentId': appointmentId},
+    );
+    final row =
+        result['data']?['requestSessionPayment'] as Map<String, dynamic>?;
+    if (row == null) throw Exception('Payment request failed');
+    final payment = row['payment'] as Map<String, dynamic>;
+    return SessionPaymentResult(
+      payment: PaymentResultModel(
+        id: payment['id'] as String,
+        status: payment['status'] as String? ?? 'PENDING',
+        amount: (payment['amount'] as num?)?.toDouble() ?? 0,
+        description: payment['description'] as String?,
+      ),
+      stripeConfigured: row['stripeConfigured'] as bool? ?? false,
+    );
   }
 
   Future<String> startSession(String appointmentId) async {

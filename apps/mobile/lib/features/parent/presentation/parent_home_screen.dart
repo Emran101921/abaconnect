@@ -11,44 +11,15 @@ import '../../../shared/widgets/app_stat_card.dart';
 import '../../../shared/widgets/app_wellness_action_menu.dart';
 import '../../../shared/widgets/app_wellness_home_header.dart';
 import '../../../shared/widgets/app_wellness_journey_card.dart';
-import '../../../shared/widgets/app_glossy_button.dart';
+import '../../../shared/widgets/glossy_button.dart';
 import '../../../shared/widgets/app_theme_toggle.dart';
 import '../../../shared/widgets/dashboard_action_inbox.dart';
 import '../../messaging/messaging_providers.dart';
 import '../../messaging/presentation/messages_screen.dart';
 import '../../notifications/notification_providers.dart';
-import '../data/parent_booking_repository.dart';
 import 'parent_category_box.dart';
+import 'parent_dashboard_providers.dart';
 import 'parent_operations_category_screen.dart';
-
-final parentDashboardProvider = FutureProvider<ParentDashboardModel>((
-  ref,
-) async {
-  return ref.watch(parentBookingRepositoryProvider).fetchDashboard();
-});
-
-final parentAppointmentsProvider = FutureProvider<List<AppointmentModel>>((
-  ref,
-) async {
-  return ref.watch(parentBookingRepositoryProvider).fetchAppointments();
-});
-
-final parentPendingReviewsProvider = FutureProvider<List<TherapistModel>>((
-  ref,
-) async {
-  return ref
-      .watch(parentBookingRepositoryProvider)
-      .fetchPendingReviewTherapists();
-});
-
-final parentChildrenProvider = FutureProvider<List<ChildModel>>((ref) async {
-  return ref.watch(parentBookingRepositoryProvider).fetchChildren();
-});
-
-final parentShowsPaymentsProvider = FutureProvider<bool>((ref) async {
-  final children = await ref.watch(parentChildrenProvider.future);
-  return ParentOperationsCategory.childrenShowPayments(children);
-});
 
 class ParentHomeScreen extends ConsumerWidget {
   const ParentHomeScreen({super.key});
@@ -67,6 +38,12 @@ class ParentHomeScreen extends ConsumerWidget {
     final showPayments = ref
         .watch(parentShowsPaymentsProvider)
         .maybeWhen(data: (v) => v, orElse: () => true);
+    final sessionPaymentsDue = dashboard.maybeWhen(
+      data: (d) => d.actionItems
+          .where((item) => item['actionType'] == 'SESSION_PAYMENT_DUE')
+          .length,
+      orElse: () => 0,
+    );
 
     final user = ref.watch(authStateProvider).valueOrNull?.user;
     final greetingName =
@@ -338,7 +315,13 @@ class ParentHomeScreen extends ConsumerWidget {
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            DashboardActionInbox(items: actions),
+                            DashboardActionInbox(
+                              items: actions,
+                              onRefresh: () {
+                                ref.invalidate(parentDashboardProvider);
+                                ref.invalidate(unreadNotificationsProvider);
+                              },
+                            ),
                             if (d.lastSessionSummary != null ||
                                 d.nextTelehealthAppointmentId != null) ...[
                               const SizedBox(height: 12),
@@ -442,6 +425,8 @@ class ParentHomeScreen extends ConsumerWidget {
                         _ => 0,
                       };
                       final badge = switch (category.id) {
+                        'payments' when sessionPaymentsDue > 0 =>
+                          '$sessionPaymentsDue due',
                         'care-team' when unreadMessageCount > 0 =>
                           '$unreadMessageCount unread',
                         'account' when unreadCount > 0 => '$unreadCount new',

@@ -159,6 +159,7 @@ export class TherapistsService {
       include: {
         child: true,
         parent: { include: { user: true } },
+        session: { include: { payment: true } },
       },
       orderBy: { scheduledStart: 'asc' },
     });

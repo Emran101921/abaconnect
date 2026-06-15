@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/glossy_button.dart';
 
 class ComplaintsScreen extends ConsumerStatefulWidget {
   const ComplaintsScreen({super.key});
@@ -88,9 +89,10 @@ class _ComplaintsScreenState extends ConsumerState<ComplaintsScreen> {
             maxLines: 5,
           ),
           const SizedBox(height: 24),
-          FilledButton(
+          GlossyButton(
+            title: 'Submit complaint',
+            variant: GlossyButtonVariant.orangeRed,
             onPressed: _submit,
-            child: const Text('Submit complaint'),
           ),
         ],
       ),

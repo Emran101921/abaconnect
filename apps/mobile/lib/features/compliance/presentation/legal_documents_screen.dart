@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/glossy_button.dart';
 import '../../../core/providers/app_providers.dart';
 
 final pendingLegalDocumentsProvider =
@@ -89,35 +90,29 @@ class _LegalDocumentDetailScreenState
                 ),
                 const SizedBox(height: 24),
                 if (doc['accepted'] != true)
-                  FilledButton(
-                    onPressed: _accepting
-                        ? null
-                        : () async {
-                            setState(() => _accepting = true);
-                            try {
-                              await ref
-                                  .read(privacyRepositoryProvider)
-                                  .acceptLegalDocument(widget.documentId);
-                              ref.invalidate(pendingLegalDocumentsProvider);
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Document accepted'),
-                                  ),
-                                );
-                                context.pop();
-                              }
-                            } finally {
-                              if (mounted) setState(() => _accepting = false);
-                            }
-                          },
-                    child: _accepting
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('I accept'),
+                  GlossyButton(
+                    title: 'I accept',
+                    variant: GlossyButtonVariant.greenTeal,
+                    loading: _accepting,
+                    onPressed: () async {
+                      setState(() => _accepting = true);
+                      try {
+                        await ref
+                            .read(privacyRepositoryProvider)
+                            .acceptLegalDocument(widget.documentId);
+                        ref.invalidate(pendingLegalDocumentsProvider);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Document accepted'),
+                            ),
+                          );
+                          context.pop();
+                        }
+                      } finally {
+                        if (mounted) setState(() => _accepting = false);
+                      }
+                    },
                   ),
               ],
             ),

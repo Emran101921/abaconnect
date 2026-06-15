@@ -7,8 +7,9 @@ import '../../../shared/widgets/app_dashboard_card.dart';
 import '../../../shared/widgets/app_healthcare_illustration.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_section_header.dart';
+import '../../../shared/widgets/glossy_button.dart';
 import '../data/parent_booking_repository.dart';
-import 'parent_home_screen.dart';
+import 'parent_dashboard_providers.dart';
 
 class BookingScreen extends ConsumerStatefulWidget {
   const BookingScreen({super.key});
@@ -286,16 +287,12 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              FilledButton.icon(
-                onPressed: _submitting ? null : _book,
-                icon: _submitting
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.event_available),
-                label: const Text('Confirm booking'),
+              GlossyButton(
+                title: 'Confirm booking',
+                icon: Icons.event_available,
+                variant: GlossyButtonVariant.greenTeal,
+                loading: _submitting,
+                onPressed: _book,
               ),
             ],
           ),

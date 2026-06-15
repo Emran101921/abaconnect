@@ -1,7 +1,7 @@
 import {
   IsArray,
   IsBoolean,
-  IsEnum,
+  IsIn,
   IsObject,
   IsOptional,
   IsString,
@@ -22,7 +22,7 @@ export class CreateMarketplaceRequestDto {
   @IsBoolean()
   anonymousConsentGranted!: boolean;
 
-  @IsEnum(MarketplaceLocationType)
+  @IsIn(Object.values(MarketplaceLocationType))
   locationType!: MarketplaceLocationType;
 
   @IsOptional()
@@ -34,7 +34,7 @@ export class CreateMarketplaceRequestDto {
   languagePreference?: string;
 
   @IsOptional()
-  @IsEnum(MarketplaceUrgency)
+  @IsIn(Object.values(MarketplaceUrgency))
   urgency?: MarketplaceUrgency;
 
   @IsOptional()
@@ -69,7 +69,7 @@ export class ProviderInterestDto {
 }
 
 export class ProviderOnboardingDto {
-  @IsEnum(ProviderMarketplaceAccountType)
+  @IsIn(Object.values(ProviderMarketplaceAccountType))
   accountType!: ProviderMarketplaceAccountType;
 
   @IsString()

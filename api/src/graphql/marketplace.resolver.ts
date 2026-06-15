@@ -28,11 +28,11 @@ import {
 } from './types/marketplace.types';
 import { parseSavedSearchFilters } from '../marketplace/marketplace-saved-search.util';
 
-function ctx(req: Request) {
+function ctx(req?: Request) {
   return {
-    ipAddress: req.ip,
-    userAgent: req.headers['user-agent'] as string | undefined,
-    deviceInfo: req.headers['x-device-id'] as string | undefined,
+    ipAddress: req?.ip,
+    userAgent: req?.headers?.['user-agent'] as string | undefined,
+    deviceInfo: req?.headers?.['x-device-id'] as string | undefined,
   };
 }
 

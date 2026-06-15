@@ -169,6 +169,27 @@ export class TherapistAppointmentType {
 
   @Field(() => ChildType)
   child: ChildType;
+
+  @Field({ nullable: true })
+  childInsuranceType?: string;
+
+  @Field()
+  requiresSelfPayCollection: boolean;
+
+  @Field()
+  hasArrived: boolean;
+
+  @Field()
+  canStartSession: boolean;
+
+  @Field({ nullable: true })
+  sessionPaymentId?: string;
+
+  @Field({ nullable: true })
+  sessionPaymentStatus?: string;
+
+  @Field(() => Float, { nullable: true })
+  sessionPaymentAmount?: number;
 }
 
 @ObjectType()
