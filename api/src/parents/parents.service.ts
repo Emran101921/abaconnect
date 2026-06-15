@@ -139,6 +139,11 @@ export class ParentsService {
           include: {
             child: true,
             appointment: true,
+            therapist: {
+              include: {
+                user: { select: { firstName: true, lastName: true } },
+              },
+            },
           },
         },
       },
@@ -150,10 +155,18 @@ export class ParentsService {
       const childName = child
         ? `${child.firstName} ${child.lastName}`
         : 'your child';
+      const therapistUser = payment.session?.therapist?.user;
+      const therapistName = therapistUser
+        ? `${therapistUser.firstName} ${therapistUser.lastName}`.trim()
+        : null;
+      const amount = Number(payment.amount).toFixed(2);
+      const subtitle = therapistName
+        ? `Pay $${amount} to ${therapistName} before ${childName}'s session begins`
+        : `Pay $${amount} before ${childName}'s therapy session begins`;
       actionItems.push({
         id: `session-payment-${payment.id}`,
-        title: 'Session payment due',
-        subtitle: `Pay before ${childName}'s therapy session begins`,
+        title: 'Therapist requested payment',
+        subtitle,
         actionType: 'SESSION_PAYMENT_DUE',
         paymentId: payment.id,
         appointmentId: payment.session?.appointmentId,
