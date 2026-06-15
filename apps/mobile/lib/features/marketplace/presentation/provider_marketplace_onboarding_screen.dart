@@ -108,6 +108,16 @@ class _ProviderMarketplaceOnboardingScreenState
           );
       ref.invalidate(providerMarketplaceProfileProvider);
       if (!mounted) return;
+      ref.read(providerMarketplaceAutoSearchProvider.notifier).state = true;
+      final languageList = _languages.text
+          .split(',')
+          .map((l) => l.trim())
+          .where((l) => l.isNotEmpty)
+          .toList();
+      ref.read(providerBrowseFiltersProvider.notifier).state = ProviderBrowseFilters(
+        zipCode: zipList.isNotEmpty ? zipList.first : '',
+        language: languageList.isNotEmpty ? languageList.first : '',
+      );
       context.go(
         widget.shell == MarketplaceProviderShell.agency
             ? AppRoutes.agencyMarketplace

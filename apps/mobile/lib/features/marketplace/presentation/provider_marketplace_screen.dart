@@ -40,6 +40,7 @@ class _ProviderMarketplaceScreenState
   String? _urgency;
   String? _authorizationStatus;
   List<MarketplaceRequestModel> _requests = [];
+  var _bootstrappedBrowse = false;
 
   String get _marketplaceBaseRoute => switch (widget.shell) {
         MarketplaceProviderShell.therapist => AppRoutes.therapistMarketplace,
@@ -66,6 +67,54 @@ class _ProviderMarketplaceScreenState
           body: body,
         ),
     };
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final filters = ref.read(providerBrowseFiltersProvider);
+    _zipController.text = filters.zipCode;
+    _languageController.text = filters.language;
+    _radius = filters.radiusMiles;
+    _locationType = filters.locationType;
+    _urgency = filters.urgency;
+    _authorizationStatus = filters.authorizationStatus;
+    _mapView = filters.mapView;
+  }
+
+  void _syncBrowseFilters() {
+    ref.read(providerBrowseFiltersProvider.notifier).state =
+        ProviderBrowseFilters(
+      zipCode: _zipController.text.trim(),
+      language: _languageController.text.trim(),
+      radiusMiles: _radius,
+      locationType: _locationType,
+      urgency: _urgency,
+      authorizationStatus: _authorizationStatus,
+      mapView: _mapView,
+    );
+  }
+
+  void _bootstrapBrowse(ProviderMarketplaceProfileModel profile) {
+    if (_bootstrappedBrowse) return;
+    _bootstrappedBrowse = true;
+
+    var shouldSearch = ref.read(providerMarketplaceAutoSearchProvider);
+    if (_zipController.text.trim().isEmpty &&
+        profile.coverageZipCodes.isNotEmpty) {
+      _zipController.text = profile.coverageZipCodes.first;
+      shouldSearch = true;
+    }
+    if (_languageController.text.trim().isEmpty &&
+        profile.languages.isNotEmpty) {
+      _languageController.text = profile.languages.first;
+    }
+
+    if (shouldSearch) {
+      ref.read(providerMarketplaceAutoSearchProvider.notifier).state = false;
+      _syncBrowseFilters();
+      _search();
+    }
   }
 
   @override
@@ -98,6 +147,7 @@ class _ProviderMarketplaceScreenState
           _requests = list;
           _hasSearched = true;
         });
+        _syncBrowseFilters();
       }
     } catch (e) {
       if (mounted) {
@@ -299,6 +349,7 @@ class _ProviderMarketplaceScreenState
       _urgency = search.urgency;
       _authorizationStatus = search.authorizationStatus;
     });
+    _syncBrowseFilters();
     _search();
   }
 
@@ -681,12 +732,19 @@ class _ProviderMarketplaceScreenState
         if (p == null || !p.isReady) {
           return ProviderMarketplaceOnboardingScreen(shell: widget.shell);
         }
-        return _buildBrowse(context);
+        return _buildBrowse(context, profile: p);
       },
     );
   }
 
-  Widget _buildBrowse(BuildContext context) {
+  Widget _buildBrowse(
+    BuildContext context, {
+    required ProviderMarketplaceProfileModel profile,
+  }) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _bootstrapBrowse(profile);
+    });
+
     return _wrapMarketplaceShell(
       title: 'Marketplace',
       subtitle: 'Anonymous requests by ZIP area',
@@ -703,7 +761,10 @@ class _ProviderMarketplaceScreenState
         ),
         IconButton(
           tooltip: _mapView ? 'List view' : 'Map view',
-          onPressed: () => setState(() => _mapView = !_mapView),
+          onPressed: () {
+            setState(() => _mapView = !_mapView);
+            _syncBrowseFilters();
+          },
           icon: Icon(_mapView ? Icons.list : Icons.map_outlined),
         ),
       ],
@@ -739,7 +800,10 @@ class _ProviderMarketplaceScreenState
                         max: 50,
                         divisions: 49,
                         label: _radius.round().toString(),
-                        onChanged: (v) => setState(() => _radius = v),
+                        onChanged: (v) {
+                          setState(() => _radius = v);
+                          _syncBrowseFilters();
+                        },
                       ),
                     ),
                   ],
@@ -760,7 +824,10 @@ class _ProviderMarketplaceScreenState
                           label: 'Telehealth',
                         ),
                       ],
-                      onSelected: (v) => setState(() => _locationType = v),
+                      onSelected: (v) {
+                        setState(() => _locationType = v);
+                        _syncBrowseFilters();
+                      },
                     ),
                     DropdownMenu<String?>(
                       label: const Text('Urgency'),
@@ -770,7 +837,10 @@ class _ProviderMarketplaceScreenState
                         DropdownMenuEntry(value: 'ROUTINE', label: 'Routine'),
                         DropdownMenuEntry(value: 'URGENT', label: 'Urgent'),
                       ],
-                      onSelected: (v) => setState(() => _urgency = v),
+                      onSelected: (v) {
+                        setState(() => _urgency = v);
+                        _syncBrowseFilters();
+                      },
                     ),
                     DropdownMenu<String?>(
                       label: const Text('Authorization'),
@@ -790,8 +860,10 @@ class _ProviderMarketplaceScreenState
                           label: 'Service authorized',
                         ),
                       ],
-                      onSelected: (v) =>
-                          setState(() => _authorizationStatus = v),
+                      onSelected: (v) {
+                        setState(() => _authorizationStatus = v);
+                        _syncBrowseFilters();
+                      },
                     ),
                   ],
                 ),

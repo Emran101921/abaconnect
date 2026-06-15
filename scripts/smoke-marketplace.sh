@@ -106,5 +106,63 @@ else
 fi
 
 echo
+echo "=== Parent marketplace lifecycle mutations ==="
+ACTIVE_ID=$(echo "$MY_REQS" | python3 -c "
+import sys, json
+rows = json.load(sys.stdin).get('data', {}).get('myMarketplaceRequests') or []
+active = next((r['id'] for r in rows if r.get('status') == 'ACTIVE'), '')
+print(active)
+")
+PAUSED_ID=$(echo "$MY_REQS" | python3 -c "
+import sys, json
+rows = json.load(sys.stdin).get('data', {}).get('myMarketplaceRequests') or []
+paused = next((r['id'] for r in rows if r.get('status') == 'PAUSED'), '')
+print(paused)
+")
+
+if [ -n "$ACTIVE_ID" ]; then
+  PAUSE=$(gql "$PARENT" "mutation { pauseMarketplaceRequest(marketplaceRequestId: \"$ACTIVE_ID\") }")
+  check "pauseMarketplaceRequest mutation" \
+    "d.get('data',{}).get('pauseMarketplaceRequest') is True" "$PAUSE"
+  RESUME=$(gql "$PARENT" "mutation { resumeMarketplaceRequest(marketplaceRequestId: \"$ACTIVE_ID\") }")
+  check "resumeMarketplaceRequest mutation" \
+    "d.get('data',{}).get('resumeMarketplaceRequest') is True" "$RESUME"
+elif [ -n "$PAUSED_ID" ]; then
+  RESUME=$(gql "$PARENT" "mutation { resumeMarketplaceRequest(marketplaceRequestId: \"$PAUSED_ID\") }")
+  check "resumeMarketplaceRequest mutation" \
+    "d.get('data',{}).get('resumeMarketplaceRequest') is True" "$RESUME"
+  echo "SKIP: pauseMarketplaceRequest (no ACTIVE request in seed)"
+else
+  echo "SKIP: pause/resume mutations (no marketplace requests in seed)"
+fi
+
+PENDING_INTEREST=$(echo "$MY_REQS" | python3 -c "
+import sys, json
+rows = json.load(sys.stdin).get('data', {}).get('myMarketplaceRequests') or []
+for row in rows:
+    if (row.get('interestCount') or 0) > 0:
+        print(row['id'])
+        break
+")
+if [ -n "$PENDING_INTEREST" ]; then
+  INTERESTS=$(gql "$PARENT" "query { marketplaceRequestInterests(marketplaceRequestId: \"$PENDING_INTEREST\") { status provider { id } } }")
+  PROVIDER_ID=$(echo "$INTERESTS" | python3 -c "
+import sys, json
+rows = json.load(sys.stdin).get('data', {}).get('marketplaceRequestInterests') or []
+pending = next((r['provider']['id'] for r in rows if r.get('status') == 'PENDING_PARENT_REVIEW'), '')
+print(pending)
+")
+  if [ -n "$PROVIDER_ID" ]; then
+    REJECT=$(gql "$PARENT" "mutation { rejectMarketplaceInterest(marketplaceRequestId: \"$PENDING_INTEREST\", providerProfileId: \"$PROVIDER_ID\") }")
+    check "rejectMarketplaceInterest mutation" \
+      "d.get('data',{}).get('rejectMarketplaceInterest') is True" "$REJECT"
+  else
+    echo "SKIP: rejectMarketplaceInterest (no pending interests in seed)"
+  fi
+else
+  echo "SKIP: rejectMarketplaceInterest (no requests with interests in seed)"
+fi
+
+echo
 echo "=== Summary: $pass passed, $fail failed ==="
 test "$fail" -eq 0

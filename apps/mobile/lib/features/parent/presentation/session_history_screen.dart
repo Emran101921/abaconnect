@@ -12,13 +12,46 @@ final sessionHistoryProvider = FutureProvider<List<SessionHistoryModel>>((ref) {
   return ref.watch(parentBookingRepositoryProvider).fetchSessionHistory();
 });
 
-class SessionHistoryScreen extends ConsumerWidget {
-  const SessionHistoryScreen({super.key});
+class SessionHistoryScreen extends ConsumerStatefulWidget {
+  const SessionHistoryScreen({super.key, this.sessionId});
+
+  final String? sessionId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SessionHistoryScreen> createState() =>
+      _SessionHistoryScreenState();
+}
+
+class _SessionHistoryScreenState extends ConsumerState<SessionHistoryScreen> {
+  final _expansionKeys = <String, GlobalKey>{};
+  var _handledDeepLink = false;
+
+  GlobalKey _keyFor(String sessionId) =>
+      _expansionKeys.putIfAbsent(sessionId, GlobalKey.new);
+
+  void _maybeScrollToSession(List<SessionHistoryModel> list) {
+    final sessionId = widget.sessionId;
+    if (_handledDeepLink || sessionId == null || sessionId.isEmpty) return;
+    final exists = list.any((s) => s.id == sessionId);
+    if (!exists) return;
+    _handledDeepLink = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final context = _keyFor(sessionId).currentContext;
+      if (context != null) {
+        Scrollable.ensureVisible(
+          context,
+          alignment: 0.1,
+          duration: const Duration(milliseconds: 300),
+        );
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final history = ref.watch(sessionHistoryProvider);
     final dateFmt = DateFormat.yMMMd().add_jm();
+    final highlightSessionId = widget.sessionId;
 
     return AppScaffold(
       title: 'Session History',
@@ -26,9 +59,7 @@ class SessionHistoryScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (list) {
-          if (list.isEmpty) {
-            return const Center(child: Text('No completed sessions yet'));
-          }
+          _maybeScrollToSession(list);
           return RefreshIndicator(
             onRefresh: () async {
               ref.invalidate(sessionHistoryProvider);
@@ -40,8 +71,16 @@ class SessionHistoryScreen extends ConsumerWidget {
               separatorBuilder: (_, _) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
                 final s = list[index];
+                final highlight = highlightSessionId != null &&
+                    highlightSessionId.isNotEmpty &&
+                    s.id == highlightSessionId;
                 return Card(
+                  key: _keyFor(s.id),
+                  color: highlight
+                      ? Theme.of(context).colorScheme.primaryContainer
+                      : null,
                   child: ExpansionTile(
+                    initiallyExpanded: highlight,
                     leading: Icon(
                       s.hasProgressNote
                           ? Icons.summarize_outlined
