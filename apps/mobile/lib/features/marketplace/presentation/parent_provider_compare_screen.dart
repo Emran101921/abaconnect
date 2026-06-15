@@ -13,6 +13,37 @@ final marketplaceInterestsProvider = FutureProvider.autoDispose
   return ref.watch(marketplaceRepositoryProvider).fetchInterests(requestId);
 });
 
+final marketplaceRequestByIdProvider = FutureProvider.autoDispose
+    .family<MarketplaceRequestModel?, String>((ref, requestId) async {
+  final requests =
+      await ref.watch(marketplaceRepositoryProvider).fetchMyRequests();
+  for (final request in requests) {
+    if (request.id == requestId) return request;
+  }
+  return null;
+});
+
+int _interestSortOrder(String status) {
+  return switch (status) {
+    'PENDING_PARENT_REVIEW' => 0,
+    'ACCEPTED' => 1,
+    'REJECTED' => 2,
+    'WITHDRAWN' => 3,
+    _ => 4,
+  };
+}
+
+List<MarketplaceInterestModel> _sortedInterests(
+  List<MarketplaceInterestModel> list,
+) {
+  return [...list]
+    ..sort(
+      (a, b) => _interestSortOrder(a.status).compareTo(
+        _interestSortOrder(b.status),
+      ),
+    );
+}
+
 class ParentProviderCompareScreen extends ConsumerWidget {
   const ParentProviderCompareScreen({
     super.key,
@@ -25,6 +56,9 @@ class ParentProviderCompareScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final interests = ref.watch(
       marketplaceInterestsProvider(marketplaceRequestId),
+    );
+    final request = ref.watch(
+      marketplaceRequestByIdProvider(marketplaceRequestId),
     );
 
     return ParentTabScaffold(
@@ -55,86 +89,275 @@ class ParentProviderCompareScreen extends ConsumerWidget {
                   title: 'Retry',
                   icon: Icons.refresh_rounded,
                   variant: GlossyButtonVariant.neutral,
-                  onPressed: () => ref.invalidate(
-                    marketplaceInterestsProvider(marketplaceRequestId),
-                  ),
+                  onPressed: () {
+                    ref.invalidate(
+                      marketplaceInterestsProvider(marketplaceRequestId),
+                    );
+                    ref.invalidate(
+                      marketplaceRequestByIdProvider(marketplaceRequestId),
+                    );
+                  },
+                ),
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: () => context.go(AppRoutes.parentMarketplace),
+                  child: const Text('Back to marketplace'),
                 ),
               ],
             ),
           ),
         ),
         data: (list) {
+          final sorted = _sortedInterests(list);
+          final pendingCount = sorted
+              .where((item) => item.status == 'PENDING_PARENT_REVIEW')
+              .length;
+          final requestStatus = request.maybeWhen(
+            data: (r) => r?.status,
+            orElse: () => null,
+          );
+          final requestMissing = request.maybeWhen(
+            data: (r) => r == null,
+            orElse: () => false,
+          );
+          final requestInactive =
+              requestStatus == 'CLOSED' || requestStatus == 'PAUSED';
+
+          Future<void> refresh() async {
+            ref.invalidate(marketplaceInterestsProvider(marketplaceRequestId));
+            ref.invalidate(marketplaceRequestByIdProvider(marketplaceRequestId));
+            await ref.read(
+              marketplaceInterestsProvider(marketplaceRequestId).future,
+            );
+          }
+
           if (list.isEmpty) {
             return RefreshIndicator(
-              onRefresh: () async {
-                ref.invalidate(
-                  marketplaceInterestsProvider(marketplaceRequestId),
-                );
-              },
+              onRefresh: refresh,
               child: ListView(
-                children: const [
-                  SizedBox(height: 120),
-                  Center(child: Text('No provider interest yet.')),
+                padding: const EdgeInsets.all(16),
+                children: [
+                  if (requestMissing)
+                    _RequestStatusBanner(
+                      icon: Icons.info_outline,
+                      message:
+                          'This request is no longer on your account. It may have been removed.',
+                    )
+                  else if (requestInactive)
+                    _RequestStatusBanner(
+                      icon: Icons.pause_circle_outline,
+                      message: requestStatus == 'CLOSED'
+                          ? 'This request is closed — new provider interest will not arrive.'
+                          : 'This request is paused — providers cannot respond until you reactivate it.',
+                    ),
+                  const SizedBox(height: 48),
+                  Center(
+                    child: Text(
+                      requestInactive
+                          ? 'No provider interest on this request.'
+                          : 'No provider interest yet.',
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Center(
+                    child: GlossyButton(
+                      title: 'Back to marketplace',
+                      icon: Icons.storefront_outlined,
+                      variant: GlossyButtonVariant.neutral,
+                      onPressed: () => context.go(AppRoutes.parentMarketplace),
+                    ),
+                  ),
                 ],
               ),
             );
           }
-          return RefreshIndicator(
-            onRefresh: () async {
-              ref.invalidate(
-                marketplaceInterestsProvider(marketplaceRequestId),
-              );
-            },
-            child: ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: list.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                final item = list[index];
-                final awaitingReview = item.status == 'PENDING_PARENT_REVIEW';
-                return Card(
-                  color: awaitingReview
-                      ? Theme.of(context).colorScheme.secondaryContainer
-                      : null,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          item.providerName,
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${item.accountType} · ${item.verifiedStatus}'
-                          '${awaitingReview ? '\nAwaiting your approval' : ''}'
-                          '${item.message != null ? '\n${item.message}' : ''}',
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                        if (awaitingReview) ...[
-                          const SizedBox(height: 12),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: GlossyButton(
-                              title: 'Review & share',
-                              size: GlossyButtonSize.small,
-                              fullWidth: false,
-                              variant: GlossyButtonVariant.tealBlue,
-                              onPressed: () => context.push(
-                                '${AppRoutes.parentMarketplace}/$marketplaceRequestId/consent/${item.providerId}?name=${Uri.encodeComponent(item.providerName)}',
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
+
+          if (pendingCount == 0) {
+            return RefreshIndicator(
+              onRefresh: refresh,
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  if (requestInactive)
+                    _RequestStatusBanner(
+                      icon: Icons.pause_circle_outline,
+                      message: requestStatus == 'CLOSED'
+                          ? 'This request is closed. Past provider responses are shown below.'
+                          : 'This request is paused. You can still review past responses.',
+                    )
+                  else
+                    _RequestStatusBanner(
+                      icon: Icons.check_circle_outline,
+                      message:
+                          'All provider responses reviewed. View sharing history anytime.',
+                    ),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () => context.push(
+                        '${AppRoutes.parentMarketplace}/$marketplaceRequestId/consents',
+                      ),
+                      child: const Text('Consent history'),
                     ),
                   ),
+                  ...sorted.map(
+                    (item) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _InterestCard(
+                        item: item,
+                        marketplaceRequestId: marketplaceRequestId,
+                        canReview: false,
+                      ),
+                    ),
+                  ),
+                  Center(
+                    child: TextButton(
+                      onPressed: () => context.go(AppRoutes.parentMarketplace),
+                      child: const Text('Back to marketplace'),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return RefreshIndicator(
+            onRefresh: refresh,
+            child: ListView.separated(
+              padding: const EdgeInsets.all(16),
+              itemCount: sorted.length + 1,
+              separatorBuilder: (_, _) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                if (index == 0) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (requestInactive)
+                        _RequestStatusBanner(
+                          icon: Icons.pause_circle_outline,
+                          message: requestStatus == 'CLOSED'
+                              ? 'This request is closed — finish reviewing pending responses below.'
+                              : 'This request is paused — you can still approve providers who already responded.',
+                        ),
+                      Card(
+                        color: Theme.of(context).colorScheme.primaryContainer,
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Text(
+                            '$pendingCount provider${pendingCount == 1 ? '' : 's'} '
+                            'awaiting your review · ${sorted.length} total',
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                }
+                final item = sorted[index - 1];
+                return _InterestCard(
+                  item: item,
+                  marketplaceRequestId: marketplaceRequestId,
+                  canReview:
+                      !requestInactive &&
+                      item.status == 'PENDING_PARENT_REVIEW',
                 );
               },
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _RequestStatusBanner extends StatelessWidget {
+  const _RequestStatusBanner({
+    required this.icon,
+    required this.message,
+  });
+
+  final IconData icon;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 20),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _InterestCard extends StatelessWidget {
+  const _InterestCard({
+    required this.item,
+    required this.marketplaceRequestId,
+    required this.canReview,
+  });
+
+  final MarketplaceInterestModel item;
+  final String marketplaceRequestId;
+  final bool canReview;
+
+  @override
+  Widget build(BuildContext context) {
+    final awaitingReview = item.status == 'PENDING_PARENT_REVIEW';
+    final statusLabel = switch (item.status) {
+      'ACCEPTED' => 'Approved · details shared',
+      'REJECTED' => 'Declined',
+      'WITHDRAWN' => 'Withdrawn by provider',
+      'PENDING_PARENT_REVIEW' => 'Awaiting your approval',
+      _ => item.status,
+    };
+
+    return Card(
+      color: awaitingReview && canReview
+          ? Theme.of(context).colorScheme.secondaryContainer
+          : null,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              item.providerName,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${item.accountType} · ${item.verifiedStatus}\n$statusLabel'
+              '${item.message != null ? '\n${item.message}' : ''}',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            if (canReview) ...[
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerRight,
+                child: GlossyButton(
+                  title: 'Review & share',
+                  size: GlossyButtonSize.small,
+                  fullWidth: false,
+                  variant: GlossyButtonVariant.tealBlue,
+                  onPressed: () => context.push(
+                    '${AppRoutes.parentMarketplace}/$marketplaceRequestId/consent/${item.providerId}?name=${Uri.encodeComponent(item.providerName)}',
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

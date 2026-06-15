@@ -323,6 +323,35 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
                       ),
                     ),
                   ),
+                  if (_history.isNotEmpty && selectedChild != null) ...[
+                    const SizedBox(height: 16),
+                    Card(
+                      color: Theme.of(context).colorScheme.tertiaryContainer,
+                      child: ListTile(
+                        leading: const Icon(Icons.storefront_outlined),
+                        title: const Text(
+                          'Post anonymous marketplace request',
+                        ),
+                        subtitle: const Text(
+                          'Share service needs from your screening with verified providers in your ZIP area',
+                        ),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () {
+                          final latest = [..._history]
+                            ..sort(
+                              (a, b) =>
+                                  b.completedAt.compareTo(a.completedAt),
+                            );
+                          context.push(
+                            '${AppRoutes.parentMarketplaceOptIn}'
+                            '?childId=${selectedChild.id}'
+                            '&screeningResponseId=${latest.first.id}'
+                            '${selectedChild.primaryLanguage != null ? '&languagePreference=${Uri.encodeComponent(selectedChild.primaryLanguage!)}' : ''}',
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                   if (_history.isNotEmpty) ...[
                     const SizedBox(height: 24),
                     Text(

@@ -28,19 +28,38 @@ class ProviderOnboardingScreen extends ConsumerWidget {
         data: (c) {
           if (c.phiAccessApproved) {
             return Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.verified_user, size: 48),
-                  const SizedBox(height: 12),
-                  const Text('Your provider access is approved.'),
-                  const SizedBox(height: 16),
-                  GlossyButton(
-                    title: 'Go to dashboard',
-                    variant: GlossyButtonVariant.tealBlue,
-                    onPressed: () => context.go(AppRoutes.therapistHome),
-                  ),
-                ],
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.verified_user, size: 48),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Your provider access is approved.',
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Browse anonymous service requests in your coverage area, '
+                      'or return to your caseload dashboard.',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 20),
+                    GlossyButton(
+                      title: 'Browse marketplace',
+                      icon: Icons.storefront_outlined,
+                      variant: GlossyButtonVariant.tealBlue,
+                      onPressed: () => context.go(AppRoutes.therapistMarketplace),
+                    ),
+                    const SizedBox(height: 8),
+                    GlossyOutlinedButton(
+                      onPressed: () => context.go(AppRoutes.therapistHome),
+                      child: const Text('Go to dashboard'),
+                    ),
+                  ],
+                ),
               ),
             );
           }
