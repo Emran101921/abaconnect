@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../core/router/app_router.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/app_snackbar.dart';
 import '../../../shared/widgets/glossy_button.dart';
 import 'agency_providers.dart';
 
@@ -15,9 +18,44 @@ class AgencyRosterScreen extends ConsumerWidget {
 
     return AppScaffold(
       title: 'Therapist roster',
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.storefront_outlined),
+          tooltip: 'Browse marketplace',
+          onPressed: () => context.push(AppRoutes.agencyMarketplace),
+        ),
+      ],
       body: therapists.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Roster error: $e')),
+        error: (e, _) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, size: 48),
+                const SizedBox(height: 16),
+                Text(
+                  'Could not load roster',
+                  style: Theme.of(context).textTheme.titleMedium,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  AppSnackBar.messageFromError(e),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                GlossyButton(
+                  title: 'Retry',
+                  icon: Icons.refresh_rounded,
+                  variant: GlossyButtonVariant.neutral,
+                  onPressed: () => ref.invalidate(agencyTherapistsProvider),
+                ),
+              ],
+            ),
+          ),
+        ),
         data: (list) {
           if (list.isEmpty) {
             return const Center(
@@ -31,10 +69,24 @@ class AgencyRosterScreen extends ConsumerWidget {
             },
             child: ListView.separated(
               padding: const EdgeInsets.all(16),
-              itemCount: list.length,
+              itemCount: list.length + 1,
               separatorBuilder: (_, _) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
-                final t = list[index];
+                if (index == 0) {
+                  return Card(
+                    color: Theme.of(context).colorScheme.secondaryContainer,
+                    child: ListTile(
+                      leading: const Icon(Icons.storefront_outlined),
+                      title: const Text('Agency marketplace'),
+                      subtitle: const Text(
+                        'Browse anonymous parent requests your roster can serve',
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => context.push(AppRoutes.agencyMarketplace),
+                    ),
+                  );
+                }
+                final t = list[index - 1];
                 return Card(
                   child: ListTile(
                     title: Text(t.displayName),

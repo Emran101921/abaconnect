@@ -22,6 +22,7 @@ class MarketplaceRequestModel {
     this.mapPinLat,
     this.mapPinLng,
     this.interestCount = 0,
+    this.pendingInterestCount = 0,
     this.matchScore,
     this.childId,
   });
@@ -42,8 +43,12 @@ class MarketplaceRequestModel {
   final double? mapPinLat;
   final double? mapPinLng;
   final int interestCount;
+  final int pendingInterestCount;
   final double? matchScore;
   final String? childId;
+
+  int get reviewableInterestCount =>
+      pendingInterestCount > 0 ? pendingInterestCount : interestCount;
 }
 
 class MarketplaceConsentModel {
@@ -336,6 +341,7 @@ class MarketplaceRepository {
           languagePreference
           publicDescription
           interestCount
+          pendingInterestCount
           childId
           mapPinLat
           mapPinLng
@@ -768,6 +774,7 @@ class MarketplaceRepository {
       mapPinLat: (row['mapPinLat'] as num?)?.toDouble(),
       mapPinLng: (row['mapPinLng'] as num?)?.toDouble(),
       interestCount: row['interestCount'] as int? ?? 0,
+      pendingInterestCount: row['pendingInterestCount'] as int? ?? 0,
       matchScore: (row['matchScore'] as num?)?.toDouble(),
       childId: row['childId'] as String?,
     );
@@ -779,6 +786,11 @@ final marketplaceRepositoryProvider = Provider<MarketplaceRepository>((ref) {
     ref.watch(graphqlClientProvider),
     ref.watch(apiClientProvider),
   );
+});
+
+final parentMarketplaceRequestsProvider =
+    FutureProvider.autoDispose<List<MarketplaceRequestModel>>((ref) {
+  return ref.watch(marketplaceRepositoryProvider).fetchMyRequests();
 });
 
 final providerMarketplaceProfileProvider =

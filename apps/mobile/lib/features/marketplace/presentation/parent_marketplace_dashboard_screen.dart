@@ -12,11 +12,6 @@ import '../data/marketplace_repository.dart';
 import '../widgets/marketplace_approx_map.dart';
 import '../widgets/marketplace_request_card.dart';
 
-final parentMarketplaceRequestsProvider =
-    FutureProvider.autoDispose<List<MarketplaceRequestModel>>((ref) {
-  return ref.watch(marketplaceRepositoryProvider).fetchMyRequests();
-});
-
 class ParentMarketplaceDashboardScreen extends ConsumerStatefulWidget {
   const ParentMarketplaceDashboardScreen({super.key});
 
@@ -114,19 +109,26 @@ class _ParentMarketplaceDashboardScreenState
       spacing: 4,
       runSpacing: 4,
       children: [
-        if (request.interestCount > 0)
+        if (request.pendingInterestCount > 0)
           GlossyButton(
             title:
-                'Review ${request.interestCount} provider${request.interestCount == 1 ? '' : 's'}',
+                'Review ${request.pendingInterestCount} provider${request.pendingInterestCount == 1 ? '' : 's'}',
             icon: Icons.verified_user_rounded,
             variant: GlossyButtonVariant.success,
             size: GlossyButtonSize.small,
             fullWidth: false,
             iconLeading: true,
             showTrailingIcon: false,
-            onPressed: () => context.push(
-              '${AppRoutes.parentMarketplace}/${request.id}/interests',
-            ),
+            semanticLabel:
+                'Review ${request.pendingInterestCount} providers awaiting approval',
+            onPressed: () async {
+              await context.push(
+                '${AppRoutes.parentMarketplace}/${request.id}/interests',
+              );
+              if (mounted) {
+                ref.invalidate(parentMarketplaceRequestsProvider);
+              }
+            },
           ),
         if (request.status == 'ACTIVE')
           TextButton(
@@ -251,8 +253,15 @@ class _ParentMarketplaceDashboardScreenState
         data: (list) {
           final pendingTotal = list.fold<int>(
             0,
-            (sum, request) => sum + request.interestCount,
+            (sum, request) => sum + request.pendingInterestCount,
           );
+          MarketplaceRequestModel? firstPendingRequest;
+          for (final request in list) {
+            if (request.pendingInterestCount > 0) {
+              firstPendingRequest = request;
+              break;
+            }
+          }
           return RefreshIndicator(
             onRefresh: _refreshRequests,
             child: list.isEmpty
@@ -291,16 +300,32 @@ class _ParentMarketplaceDashboardScreenState
                           color: Theme.of(context).colorScheme.secondaryContainer,
                           margin: const EdgeInsets.only(bottom: 16),
                           child: ListTile(
-                            leading: Badge(
-                              label: Text('$pendingTotal'),
-                              child: const Icon(Icons.verified_user_outlined),
+                            leading: Semantics(
+                              label: '$pendingTotal providers awaiting review',
+                              child: Badge(
+                                label: Text('$pendingTotal'),
+                                child: const Icon(Icons.verified_user_outlined),
+                              ),
                             ),
                             title: Text(
                               '$pendingTotal provider${pendingTotal == 1 ? '' : 's'} awaiting review',
                             ),
                             subtitle: const Text(
-                              'Tap a request below to compare providers and approve sharing.',
+                              'Tap to compare providers and approve sharing.',
                             ),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: firstPendingRequest == null
+                                ? null
+                                : () async {
+                                    await context.push(
+                                      '${AppRoutes.parentMarketplace}/${firstPendingRequest!.id}/interests',
+                                    );
+                                    if (mounted) {
+                                      ref.invalidate(
+                                        parentMarketplaceRequestsProvider,
+                                      );
+                                    }
+                                  },
                           ),
                         ),
                       if (_mapView) ..._mapTiles(list) else ..._requestTiles(list),
