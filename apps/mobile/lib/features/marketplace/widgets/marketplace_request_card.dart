@@ -40,12 +40,16 @@ class MarketplaceRequestCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (request.interestCount > 0)
-                  Badge(
-                    label: Text('${request.interestCount}'),
-                    backgroundColor: theme.colorScheme.primary,
-                    textColor: theme.colorScheme.onPrimary,
-                    child: const Icon(Icons.verified_user_outlined, size: 20),
+                if (request.pendingInterestCount > 0)
+                  Semantics(
+                    label:
+                        '${request.pendingInterestCount} providers interested, awaiting review',
+                    child: Badge(
+                      label: Text('${request.pendingInterestCount}'),
+                      backgroundColor: theme.colorScheme.primary,
+                      textColor: theme.colorScheme.onPrimary,
+                      child: const Icon(Icons.verified_user_outlined, size: 20),
+                    ),
                   ),
               ],
             ),

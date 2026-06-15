@@ -210,6 +210,7 @@ class _ParentProviderCompareScreenState
             ref.invalidate(
               marketplaceRequestByIdProvider(widget.marketplaceRequestId),
             );
+            ref.invalidate(parentMarketplaceRequestsProvider);
             await ref.read(
               marketplaceInterestsProvider(widget.marketplaceRequestId).future,
             );

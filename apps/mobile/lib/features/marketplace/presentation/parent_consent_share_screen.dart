@@ -101,11 +101,13 @@ class _ParentConsentShareScreenState
             documentIds: _selectedDocumentIds.toList(),
           );
       if (!mounted) return;
+      ref.invalidate(parentMarketplaceRequestsProvider);
       setState(() => _shareComplete = true);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Consent failed: $e')),
+        AppSnackBar.showError(
+          context,
+          'Consent failed: ${AppSnackBar.messageFromError(e)}',
         );
       }
     } finally {

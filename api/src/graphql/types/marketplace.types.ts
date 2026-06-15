@@ -71,6 +71,9 @@ export class PublicMarketplaceRequestType {
   @Field(() => Int, { nullable: true })
   interestCount?: number;
 
+  @Field(() => Int, { nullable: true })
+  pendingInterestCount?: number;
+
   @Field(() => Float, { nullable: true })
   matchScore?: number;
 

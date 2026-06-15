@@ -9,6 +9,7 @@ import '../../../shared/widgets/app_bottom_nav.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_snackbar.dart';
 import '../../../shared/widgets/glossy_button.dart';
+import '../../marketplace/data/marketplace_repository.dart';
 import '../data/parent_booking_repository.dart';
 import 'child_profile_form.dart';
 
@@ -245,8 +246,54 @@ class _ChildrenListScreenState extends ConsumerState<ChildrenListScreen> {
     }
   }
 
+  String _marketplaceSubtitle(MarketplaceRequestModel? request) {
+    if (request == null) return 'No marketplace request';
+    if (request.pendingInterestCount > 0) {
+      return 'Active request · ${request.pendingInterestCount} provider${request.pendingInterestCount == 1 ? '' : 's'} to review';
+    }
+    return switch (request.status) {
+      'ACTIVE' => 'Active marketplace request',
+      'PAUSED' => 'Marketplace request paused',
+      'CLOSED' => 'Marketplace request closed',
+      _ => 'Marketplace request · ${request.status.toLowerCase()}',
+    };
+  }
+
+  Future<void> _openMarketplaceForChild(
+    MarketplaceRequestModel request,
+  ) async {
+    if (request.pendingInterestCount > 0) {
+      await context.push(
+        '${AppRoutes.parentMarketplace}/${request.id}/interests',
+      );
+    } else {
+      await context.push(AppRoutes.parentMarketplace);
+    }
+    if (mounted) {
+      ref.invalidate(parentMarketplaceRequestsProvider);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final marketplaceRequests = ref.watch(parentMarketplaceRequestsProvider);
+    final requestsByChildId = marketplaceRequests.maybeWhen(
+      data: (list) {
+        final map = <String, MarketplaceRequestModel>{};
+        for (final request in list) {
+          final childId = request.childId;
+          if (childId == null) continue;
+          final existing = map[childId];
+          if (existing == null ||
+              request.pendingInterestCount > existing.pendingInterestCount) {
+            map[childId] = request;
+          }
+        }
+        return map;
+      },
+      orElse: () => <String, MarketplaceRequestModel>{},
+    );
+
     return AppScaffold(
       title: 'My Children',
       subtitle: 'Child profiles for screening & care',
@@ -292,19 +339,62 @@ class _ChildrenListScreenState extends ConsumerState<ChildrenListScreen> {
                   separatorBuilder: (context, _) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
                     final child = _children[index];
+                    final request = requestsByChildId[child.id];
+                    final hasPendingReview =
+                        (request?.pendingInterestCount ?? 0) > 0;
                     return Card(
                       child: ListTile(
                         leading: CircleAvatar(
                           child: Text(child.firstName.characters.first),
                         ),
                         title: Text(child.displayName),
-                        subtitle: Text(
-                          'DOB ${DateFormat.yMMMd().format(child.dateOfBirth)}'
-                          '${child.primaryLanguage != null ? ' · ${child.primaryLanguage}' : ''}',
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'DOB ${DateFormat.yMMMd().format(child.dateOfBirth)}'
+                              '${child.primaryLanguage != null ? ' · ${child.primaryLanguage}' : ''}',
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _marketplaceSubtitle(request),
+                              style: TextStyle(
+                                color: hasPendingReview
+                                    ? Theme.of(context).colorScheme.primary
+                                    : Theme.of(context).colorScheme.outline,
+                                fontWeight: hasPendingReview
+                                    ? FontWeight.w600
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                          ],
                         ),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.edit),
-                          onPressed: () => _editChild(child),
+                        isThreeLine: true,
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (request != null)
+                              IconButton(
+                                tooltip: hasPendingReview
+                                    ? 'Review providers'
+                                    : 'View marketplace request',
+                                icon: Icon(
+                                  hasPendingReview
+                                      ? Icons.verified_user_outlined
+                                      : Icons.storefront_outlined,
+                                  color: hasPendingReview
+                                      ? Theme.of(context).colorScheme.primary
+                                      : null,
+                                ),
+                                onPressed: () =>
+                                    _openMarketplaceForChild(request),
+                              ),
+                            IconButton(
+                              tooltip: 'Edit child profile',
+                              icon: const Icon(Icons.edit),
+                              onPressed: () => _editChild(child),
+                            ),
+                          ],
                         ),
                         onTap: () => _editChild(child),
                       ),

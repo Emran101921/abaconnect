@@ -102,6 +102,14 @@ class _IosTabItem extends StatefulWidget {
 class _IosTabItemState extends State<_IosTabItem> {
   bool _pressed = false;
 
+  String _accessibilityLabel(GlassyNavTab tab) {
+    final base = tab.semanticLabel ?? tab.label;
+    final count = tab.badgeCount;
+    if (count == null || count <= 0) return base;
+    final suffix = count == 1 ? '1 notification' : '$count notifications';
+    return '$base, $suffix';
+  }
+
   @override
   Widget build(BuildContext context) {
     final selected = widget.selected;
@@ -113,7 +121,7 @@ class _IosTabItemState extends State<_IosTabItem> {
     return Semantics(
       button: true,
       selected: selected,
-      label: widget.tab.semanticLabel ?? widget.tab.label,
+      label: _accessibilityLabel(widget.tab),
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTapDown: (_) => setState(() => _pressed = true),

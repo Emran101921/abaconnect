@@ -13,6 +13,7 @@ import '../therapist_providers.dart';
 import 'therapist_weekly_progress_section.dart';
 import '../../../shared/widgets/app_bottom_nav.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/app_snackbar.dart';
 import '../../../shared/widgets/glossy_button.dart';
 import '../../../shared/widgets/speech_dictation.dart';
 
@@ -399,6 +400,8 @@ class SessionNotesScreen extends ConsumerWidget {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              const TherapistWeeklyProgressSection(),
+              const SizedBox(height: 12),
               Card(
                 color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 child: const Padding(
@@ -526,7 +529,36 @@ class SessionNotesScreen extends ConsumerWidget {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (e, _) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, size: 48),
+                const SizedBox(height: 16),
+                Text(
+                  'Could not load sessions',
+                  style: Theme.of(context).textTheme.titleMedium,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  AppSnackBar.messageFromError(e),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                GlossyButton(
+                  title: 'Retry',
+                  icon: Icons.refresh_rounded,
+                  variant: GlossyButtonVariant.neutral,
+                  onPressed: () =>
+                      ref.invalidate(therapistSessionsProvider),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

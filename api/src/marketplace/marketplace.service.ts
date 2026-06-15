@@ -189,9 +189,24 @@ export class MarketplaceService {
         _count: { select: { interests: true } },
       },
     });
+    const pendingByRequest = await this.prisma.marketplaceInterest.groupBy({
+      by: ['marketplaceRequestId'],
+      where: {
+        status: 'PENDING_PARENT_REVIEW',
+        marketplaceRequest: {
+          parentUserId: userId,
+          removedAt: null,
+        },
+      },
+      _count: { id: true },
+    });
+    const pendingMap = new Map(
+      pendingByRequest.map((row) => [row.marketplaceRequestId, row._count.id]),
+    );
     return rows.map((row) => ({
       ...toPublicMarketplaceRequest(row),
       interestCount: row._count.interests,
+      pendingInterestCount: pendingMap.get(row.id) ?? 0,
       childId: row.childId,
     }));
   }
