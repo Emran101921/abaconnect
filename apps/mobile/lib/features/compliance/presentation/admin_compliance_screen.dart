@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/glossy_button.dart';
 import '../data/privacy_repository.dart';
 
 final adminAcknowledgmentsProvider =
@@ -121,7 +122,11 @@ class _AdminComplianceAcknowledgmentsScreenState
                   ),
                 ),
                 const SizedBox(width: 8),
-                FilledButton(
+                GlossyButton(
+                  title: 'Search',
+                  size: GlossyButtonSize.small,
+                  fullWidth: false,
+                  variant: GlossyButtonVariant.bluePurple,
                   onPressed: () async {
                     final results = await ref
                         .read(privacyRepositoryProvider)
@@ -158,7 +163,6 @@ class _AdminComplianceAcknowledgmentsScreenState
                       ),
                     );
                   },
-                  child: const Text('Search'),
                 ),
               ],
             ),
@@ -298,7 +302,11 @@ class AdminCompliancePrivacyRequestsScreen extends ConsumerWidget {
             onPressed: () => Navigator.pop(ctx),
             child: const Text('Cancel'),
           ),
-          FilledButton(
+          GlossyButton(
+            title: 'Save',
+            size: GlossyButtonSize.small,
+            fullWidth: false,
+            variant: GlossyButtonVariant.greenTeal,
             onPressed: () async {
               await ref.read(privacyRepositoryProvider).adminUpdatePrivacyRequest(
                     row['id'] as String,
@@ -308,7 +316,6 @@ class AdminCompliancePrivacyRequestsScreen extends ConsumerWidget {
               ref.invalidate(adminPrivacyRequestsProvider);
               if (ctx.mounted) Navigator.pop(ctx);
             },
-            child: const Text('Save'),
           ),
         ],
       ),

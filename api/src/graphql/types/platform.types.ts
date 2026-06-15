@@ -87,6 +87,9 @@ export class NotificationType {
 
   @Field({ nullable: true })
   marketplaceRequestId?: string;
+
+  @Field({ nullable: true })
+  paymentId?: string;
 }
 
 @ObjectType()

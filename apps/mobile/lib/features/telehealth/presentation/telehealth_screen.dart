@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/models/user_role.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/glossy_button.dart';
 import '../../parent/presentation/parent_home_screen.dart';
 import '../../platform/data/platform_repository.dart';
 import '../../therapist/presentation/therapist_home_screen.dart';
@@ -68,11 +69,14 @@ class TelehealthScreen extends ConsumerWidget {
                             ].join('\n'),
                           ),
                           isThreeLine: s.vendor != null,
-                          trailing: FilledButton(
+                          trailing: GlossyButton(
+                            title: 'Open',
+                            size: GlossyButtonSize.small,
+                            fullWidth: false,
+                            variant: GlossyButtonVariant.tealBlue,
                             onPressed: s.joinUrl != null
                                 ? () => _showRoomLink(context, s.joinUrl!)
                                 : null,
-                            child: const Text('Open'),
                           ),
                         ),
                       );
@@ -163,9 +167,12 @@ class TelehealthScreen extends ConsumerWidget {
               ],
             ),
             isThreeLine: a.scheduledStart != null,
-            trailing: FilledButton(
+            trailing: GlossyButton(
+              title: 'Join',
+              size: GlossyButtonSize.small,
+              fullWidth: false,
+              variant: GlossyButtonVariant.tealBlue,
               onPressed: () => _join(context, ref, a.id),
-              child: const Text('Join'),
             ),
           ),
         );
@@ -212,9 +219,12 @@ class TelehealthScreen extends ConsumerWidget {
             },
             child: const Text('Copy link'),
           ),
-          FilledButton(
+          GlossyButton(
+            title: 'Close',
+            size: GlossyButtonSize.small,
+            fullWidth: false,
+            variant: GlossyButtonVariant.neutral,
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close'),
           ),
         ],
       ),

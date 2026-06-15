@@ -6,7 +6,10 @@ import 'package:intl/intl.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../core/providers/consent_gate_provider.dart';
+import '../../../shared/models/user_role.dart';
+import '../../../shared/widgets/app_bottom_nav.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/glossy_button.dart';
 import '../data/auth_repository.dart';
 
 final mfaStatusProvider = FutureProvider<bool>((ref) async {
@@ -105,9 +108,12 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
             onPressed: () => Navigator.pop(ctx, false),
             child: const Text('Cancel'),
           ),
-          FilledButton(
+          GlossyButton(
+            title: 'Disable',
+            size: GlossyButtonSize.small,
+            fullWidth: false,
+            variant: GlossyButtonVariant.redDarkRed,
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Disable'),
           ),
         ],
       ),
@@ -141,6 +147,9 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
     final mfa = ref.watch(mfaStatusProvider);
     final devices = ref.watch(trustedDevicesProvider);
     final session = ref.watch(authStateProvider).valueOrNull;
+    final role = session?.user.role;
+    final isParent = role == UserRole.parent;
+    final isTherapist = role == UserRole.therapist;
     final onboardingRole =
         session != null && roleRequiresOnboarding(session.user.role);
     final mfaPending = !ref.watch(mfaEnabledProvider);
@@ -148,8 +157,14 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
 
     return AppScaffold(
       title: 'Security',
+      showBackButton: false,
+      bottomNavigationBar: isParent
+          ? const ParentBottomNav(current: ParentNavTab.security)
+          : isTherapist
+          ? const TherapistBottomNav(current: TherapistNavTab.security)
+          : null,
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 88),
         children: [
           if (onboardingRole && mfaPending) ...[
             Card(
@@ -200,7 +215,7 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
                       ),
                       const SizedBox(height: 16),
                       if (enabled && !onboardingRole)
-                        OutlinedButton(
+                        GlossyOutlinedButton(
                           onPressed: _disable,
                           child: const Text('Disable MFA'),
                         )
@@ -211,9 +226,10 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
                           style: Theme.of(context).textTheme.bodySmall,
                         )
                       else if (_setupSecret == null)
-                        FilledButton(
+                        GlossyButton(
+                          title: 'Set up MFA',
+                          variant: GlossyButtonVariant.bluePurple,
                           onPressed: _beginSetup,
-                          child: const Text('Set up MFA'),
                         )
                       else ...[
                         const Text('Scan this URL in your authenticator app:'),
@@ -337,9 +353,12 @@ class _EnableMfaFormState extends State<_EnableMfaForm> {
           ),
         ),
         const SizedBox(width: 8),
-        FilledButton(
+        GlossyButton(
+          title: 'Enable',
+          size: GlossyButtonSize.small,
+          fullWidth: false,
+          variant: GlossyButtonVariant.greenTeal,
           onPressed: () => widget.onEnable(_code.text.trim()),
-          child: const Text('Enable'),
         ),
       ],
         ),

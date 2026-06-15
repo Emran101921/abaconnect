@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/glossy_button.dart';
+import '../../../shared/widgets/role_tab_scaffold.dart';
 import '../data/marketplace_repository.dart';
 import '../widgets/marketplace_approx_map.dart';
 import '../widgets/marketplace_request_card.dart';
@@ -126,9 +128,12 @@ class _ProviderMarketplaceScreenState
             onPressed: () => Navigator.pop(ctx, false),
             child: const Text('Cancel'),
           ),
-          FilledButton(
+          GlossyButton(
+            title: 'Submit report',
+            size: GlossyButtonSize.small,
+            fullWidth: false,
+            variant: GlossyButtonVariant.orangeRed,
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Submit report'),
           ),
         ],
       ),
@@ -238,9 +243,12 @@ class _ProviderMarketplaceScreenState
             onPressed: () => Navigator.pop(ctx, false),
             child: const Text('Cancel'),
           ),
-          FilledButton(
+          GlossyButton(
+            title: 'Save',
+            size: GlossyButtonSize.small,
+            fullWidth: false,
+            variant: GlossyButtonVariant.greenTeal,
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Save'),
           ),
         ],
       ),
@@ -384,7 +392,7 @@ class _ProviderMarketplaceScreenState
   }
 
   Widget _buildBrowse(BuildContext context) {
-    return AppScaffold(
+    return TherapistTabScaffold(
       title: 'Marketplace',
       subtitle: 'Anonymous requests by ZIP area',
       actions: [
@@ -493,15 +501,11 @@ class _ProviderMarketplaceScreenState
                   ],
                 ),
                 const SizedBox(height: 8),
-                FilledButton(
-                  onPressed: _loading ? null : _search,
-                  child: _loading
-                      ? const SizedBox(
-                          height: 18,
-                          width: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Search requests'),
+                GlossyButton(
+                  title: 'Search requests',
+                  variant: GlossyButtonVariant.bluePurple,
+                  loading: _loading,
+                  onPressed: _search,
                 ),
               ],
             ),

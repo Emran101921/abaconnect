@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/glossy_button.dart';
 import '../../platform/data/platform_repository.dart';
 
 final insuranceClaimsProvider = FutureProvider<List<InsuranceClaimItemModel>>((
@@ -22,9 +23,10 @@ class InsuranceScreen extends ConsumerWidget {
 
     return AppScaffold(
       title: 'Insurance',
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: GlossyFab(
+        icon: Icons.add,
         onPressed: () => _submitClaim(context, ref),
-        child: const Icon(Icons.add),
+        tooltip: 'Submit claim',
       ),
       body: claims.when(
         loading: () => const Center(child: CircularProgressIndicator()),

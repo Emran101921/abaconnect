@@ -4,8 +4,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
-import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_snackbar.dart';
+import '../../../shared/widgets/glossy_button.dart';
+import '../../../shared/widgets/role_tab_scaffold.dart';
 import '../../parent/data/parent_booking_repository.dart';
 import '../data/marketplace_repository.dart';
 import '../widgets/marketplace_request_card.dart';
@@ -37,10 +38,11 @@ class ParentMarketplaceDashboardScreen extends ConsumerWidget {
           : await showModalBottomSheet<ChildModel>(
               context: context,
               showDragHandle: true,
+              isScrollControlled: true,
               builder: (ctx) => SafeArea(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                child: ListView(
+                  shrinkWrap: true,
+                  padding: const EdgeInsets.only(bottom: 16),
                   children: [
                     Padding(
                       padding: const EdgeInsets.all(16),
@@ -61,7 +63,6 @@ class ParentMarketplaceDashboardScreen extends ConsumerWidget {
                         onTap: () => Navigator.pop(ctx, item),
                       ),
                     ),
-                    const SizedBox(height: 8),
                   ],
                 ),
               ),
@@ -96,14 +97,25 @@ class ParentMarketplaceDashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final requests = ref.watch(parentMarketplaceRequestsProvider);
 
-    return AppScaffold(
+    return ParentTabScaffold(
       title: 'Service requests',
       subtitle: 'Anonymous marketplace dashboard',
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _startNewRequest(context, ref),
-        icon: const Icon(Icons.add),
-        label: const Text('Post request'),
-      ),
+      actions: [
+        Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: Center(
+            child: GlossyButton(
+              title: 'Post request',
+              icon: Icons.add_rounded,
+              iconOnly: true,
+              size: GlossyButtonSize.small,
+              fullWidth: false,
+              semanticLabel: 'Post request',
+              onPressed: () => _startNewRequest(context, ref),
+            ),
+          ),
+        ),
+      ],
       body: requests.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(
@@ -153,10 +165,11 @@ class ParentMarketplaceDashboardScreen extends ConsumerWidget {
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 16),
-                        FilledButton.icon(
+                        GlossyButton(
+                          title: 'Post anonymous request',
+                          icon: Icons.privacy_tip_outlined,
+                          variant: GlossyButtonVariant.tealBlue,
                           onPressed: () => _startNewRequest(context, ref),
-                          icon: const Icon(Icons.privacy_tip_outlined),
-                          label: const Text('Post anonymous request'),
                         ),
                       ],
                     ),
@@ -168,16 +181,23 @@ class ParentMarketplaceDashboardScreen extends ConsumerWidget {
                       child: Column(
                         children: [
                           MarketplaceRequestCard(request: request),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
+                          Wrap(
+                            alignment: WrapAlignment.end,
+                            spacing: 4,
+                            runSpacing: 4,
                             children: [
                               if (request.interestCount > 0)
-                                FilledButton(
+                                GlossyButton(
+                                  title:
+                                      'Review ${request.interestCount} provider${request.interestCount == 1 ? '' : 's'}',
+                                  icon: Icons.verified_user_rounded,
+                                  variant: GlossyButtonVariant.success,
+                                  size: GlossyButtonSize.small,
+                                  fullWidth: false,
+                                  iconLeading: true,
+                                  showTrailingIcon: false,
                                   onPressed: () => context.push(
                                     '${AppRoutes.parentMarketplace}/${request.id}/interests',
-                                  ),
-                                  child: Text(
-                                    'Review ${request.interestCount} provider${request.interestCount == 1 ? '' : 's'}',
                                   ),
                                 ),
                               if (request.status == 'ACTIVE')

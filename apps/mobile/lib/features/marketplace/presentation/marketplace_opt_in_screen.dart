@@ -3,8 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/router/app_router.dart';
-import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_snackbar.dart';
+import '../../../shared/widgets/glossy_button.dart';
+import '../../../shared/widgets/role_tab_scaffold.dart';
 import '../data/marketplace_repository.dart';
 
 const anonymousMarketplaceConsentText =
@@ -80,69 +81,84 @@ class _MarketplaceOptInScreenState extends ConsumerState<MarketplaceOptInScreen>
 
   @override
   Widget build(BuildContext context) {
-    return AppScaffold(
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
+
+    return ParentTabScaffold(
       title: 'Anonymous marketplace',
       subtitle: 'Share general service needs only',
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Card(
-            color: Theme.of(context).colorScheme.secondaryContainer,
-            child: const Padding(
-              padding: EdgeInsets.all(16),
-              child: Text(
-                'Possible service categories to explore may be suggested from your '
-                'screening answers. Recommended next step: professional evaluation/referral. '
-                'This is not a diagnosis.',
+      body: SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottomInset),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Card(
+              color: Theme.of(context).colorScheme.secondaryContainer,
+              child: const Padding(
+                padding: EdgeInsets.all(16),
+                child: Text(
+                  'Possible service categories to explore may be suggested from your '
+                  'screening answers. Recommended next step: professional evaluation/referral. '
+                  'This is not a diagnosis.',
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 16),
-          DropdownButtonFormField<String>(
-            initialValue: _locationType,
-            decoration: const InputDecoration(
-              labelText: 'Preferred service location',
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              initialValue: _locationType,
+              decoration: const InputDecoration(
+                labelText: 'Preferred service location',
+              ),
+              items: const [
+                DropdownMenuItem(value: 'HOME', child: Text('Home')),
+                DropdownMenuItem(value: 'DAYCARE', child: Text('Daycare')),
+                DropdownMenuItem(value: 'CLINIC', child: Text('Clinic')),
+                DropdownMenuItem(value: 'TELEHEALTH', child: Text('Telehealth')),
+                DropdownMenuItem(value: 'SCHOOL', child: Text('School')),
+                DropdownMenuItem(value: 'COMMUNITY', child: Text('Community')),
+              ],
+              onChanged: (v) => setState(() => _locationType = v ?? 'HOME'),
             ),
-            items: const [
-              DropdownMenuItem(value: 'HOME', child: Text('Home')),
-              DropdownMenuItem(value: 'DAYCARE', child: Text('Daycare')),
-              DropdownMenuItem(value: 'CLINIC', child: Text('Clinic')),
-              DropdownMenuItem(value: 'TELEHEALTH', child: Text('Telehealth')),
-              DropdownMenuItem(value: 'SCHOOL', child: Text('School')),
-              DropdownMenuItem(value: 'COMMUNITY', child: Text('Community')),
-            ],
-            onChanged: (v) => setState(() => _locationType = v ?? 'HOME'),
-          ),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
-            initialValue: _urgency,
-            decoration: const InputDecoration(labelText: 'Urgency'),
-            items: const [
-              DropdownMenuItem(value: 'ROUTINE', child: Text('Routine')),
-              DropdownMenuItem(value: 'SOON', child: Text('Soon')),
-              DropdownMenuItem(value: 'URGENT', child: Text('Urgent')),
-            ],
-            onChanged: (v) => setState(() => _urgency = v ?? 'ROUTINE'),
-          ),
-          const SizedBox(height: 16),
-          CheckboxListTile(
-            value: _consent,
-            onChanged: (v) => setState(() => _consent = v ?? false),
-            title: const Text(anonymousMarketplaceConsentText),
-            controlAffinity: ListTileControlAffinity.leading,
-          ),
-          const SizedBox(height: 16),
-          FilledButton(
-            onPressed: _submitting ? null : _submit,
-            child: _submitting
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Text('Post anonymous service request'),
-          ),
-        ],
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              initialValue: _urgency,
+              decoration: const InputDecoration(labelText: 'Urgency'),
+              items: const [
+                DropdownMenuItem(value: 'ROUTINE', child: Text('Routine')),
+                DropdownMenuItem(value: 'SOON', child: Text('Soon')),
+                DropdownMenuItem(value: 'URGENT', child: Text('Urgent')),
+              ],
+              onChanged: (v) => setState(() => _urgency = v ?? 'ROUTINE'),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Checkbox(
+                  value: _consent,
+                  onChanged: (v) => setState(() => _consent = v ?? false),
+                ),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _consent = !_consent),
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: Text(
+                        anonymousMarketplaceConsentText,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            GlossyButton(
+              title: 'Post anonymous service request',
+              loading: _submitting,
+              onPressed: _submit,
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -8,6 +8,7 @@ import { Prisma } from '../../generated/prisma/client';
 import { PhiAuditService } from '../audit/phi-audit.service';
 import { InsuranceService } from '../insurance/insurance.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { isSelfPayInsuranceType } from '../payments/self-pay.util';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   hasInterventionistSignature,
@@ -92,6 +93,37 @@ export class SessionsService {
     return sessions;
   }
 
+  async recordTherapistArrival(userId: string, appointmentId: string) {
+    const therapist = await this.prisma.therapist.findUnique({
+      where: { userId },
+    });
+    if (!therapist) {
+      throw new NotFoundException('Therapist profile not found');
+    }
+
+    const appointment = await this.prisma.appointment.findFirst({
+      where: { id: appointmentId, therapistId: therapist.id },
+      include: { child: true },
+    });
+    if (!appointment) {
+      throw new NotFoundException('Appointment not found');
+    }
+    if (!['CONFIRMED', 'SCHEDULED'].includes(appointment.status)) {
+      throw new BadRequestException(
+        'Arrival can only be recorded for confirmed appointments',
+      );
+    }
+
+    return this.prisma.appointment.update({
+      where: { id: appointmentId },
+      data: { status: 'CHECKED_IN' },
+      include: {
+        child: true,
+        session: { include: { payment: true } },
+      },
+    });
+  }
+
   async ensureSessionForAppointment(userId: string, appointmentId: string) {
     const therapist = await this.prisma.therapist.findUnique({
       where: { userId },
@@ -102,9 +134,53 @@ export class SessionsService {
 
     const appointment = await this.prisma.appointment.findFirst({
       where: { id: appointmentId, therapistId: therapist.id },
+      include: {
+        child: true,
+        session: { include: { payment: true } },
+      },
     });
     if (!appointment) {
       throw new NotFoundException('Appointment not found');
+    }
+
+    const requiresSelfPay = isSelfPayInsuranceType(
+      appointment.child.insuranceType,
+    );
+
+    if (requiresSelfPay) {
+      if (!['CHECKED_IN', 'IN_PROGRESS'].includes(appointment.status)) {
+        throw new BadRequestException(
+          'Record arrival and collect self-pay before starting the session',
+        );
+      }
+      const payment = appointment.session?.payment;
+      if (!payment || payment.status !== 'SUCCEEDED') {
+        throw new BadRequestException(
+          'Parent must complete self-pay before the session can start',
+        );
+      }
+
+      if (appointment.session) {
+        if (appointment.session.status === 'IN_PROGRESS') {
+          return this.prisma.session.findUniqueOrThrow({
+            where: { id: appointment.session.id },
+            include: { child: true, soapNote: true },
+          });
+        }
+        const started = await this.prisma.session.update({
+          where: { id: appointment.session.id },
+          data: {
+            status: 'IN_PROGRESS',
+            checkInAt: new Date(),
+          },
+          include: { child: true, soapNote: true },
+        });
+        await this.prisma.appointment.update({
+          where: { id: appointmentId },
+          data: { status: 'IN_PROGRESS' },
+        });
+        return started;
+      }
     }
 
     const existing = await this.prisma.session.findUnique({
@@ -115,7 +191,7 @@ export class SessionsService {
       return existing;
     }
 
-    return this.prisma.session.create({
+    const started = await this.prisma.session.create({
       data: {
         appointmentId: appointment.id,
         tenantId: appointment.tenantId,
@@ -126,6 +202,11 @@ export class SessionsService {
       },
       include: { child: true, soapNote: true },
     });
+    await this.prisma.appointment.update({
+      where: { id: appointmentId },
+      data: { status: 'IN_PROGRESS' },
+    });
+    return started;
   }
 
   async completeSessionForTherapist(userId: string, sessionId: string) {
@@ -195,7 +276,9 @@ export class SessionsService {
       });
     }
 
-    await this.insurance.draftClaimFromSession(updated.id);
+    if (!isSelfPayInsuranceType(updated.child.insuranceType)) {
+      await this.insurance.draftClaimFromSession(updated.id);
+    }
 
     return updated;
   }

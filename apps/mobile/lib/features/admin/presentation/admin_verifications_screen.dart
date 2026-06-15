@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/glossy_button.dart';
 import 'admin_providers.dart';
 
 class AdminVerificationsScreen extends ConsumerWidget {
@@ -43,7 +44,11 @@ class AdminVerificationsScreen extends ConsumerWidget {
                     ),
                     isThreeLine: true,
                     trailing: t.onboardingStatus == 'IN_REVIEW'
-                        ? FilledButton(
+                        ? GlossyButton(
+                            title: 'Approve PHI',
+                            size: GlossyButtonSize.small,
+                            fullWidth: false,
+                            variant: GlossyButtonVariant.greenTeal,
                             onPressed: () async {
                               try {
                                 await ref
@@ -68,7 +73,6 @@ class AdminVerificationsScreen extends ConsumerWidget {
                                 }
                               }
                             },
-                            child: const Text('Approve PHI'),
                           )
                         : null,
                   ),

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/glossy_button.dart';
 import '../data/admin_repository.dart';
 import 'admin_providers.dart';
 
@@ -65,11 +66,11 @@ class AdminInsuranceScreen extends ConsumerWidget {
                             c.status == 'DENIED' &&
                             c.resubmissionOfId == null) ...[
                           const SizedBox(height: 12),
-                          OutlinedButton.icon(
+                          GlossyOutlinedButton.icon(
                             onPressed: () =>
                                 _resubmit(context, ref, c),
-                            icon: const Icon(Icons.replay),
-                            label: const Text('Create resubmission'),
+                            icon: Icons.replay,
+                            child: const Text('Create resubmission'),
                           ),
                         ],
                         if (actionable) ...[
@@ -78,12 +79,19 @@ class AdminInsuranceScreen extends ConsumerWidget {
                             spacing: 8,
                             children: [
                               if (c.status == 'DRAFT' || c.status == 'PENDING')
-                                FilledButton.tonal(
+                                GlossyButton(
+                                  title: 'Submit 837',
+                                  size: GlossyButtonSize.small,
+                                  fullWidth: false,
+                                  variant: GlossyButtonVariant.neutral,
                                   onPressed: () =>
                                       _submitClearinghouse(context, ref, c),
-                                  child: const Text('Submit 837'),
                                 ),
-                              FilledButton(
+                              GlossyButton(
+                                title: 'Approve',
+                                size: GlossyButtonSize.small,
+                                fullWidth: false,
+                                variant: GlossyButtonVariant.greenTeal,
                                 onPressed: () => _update(
                                   context,
                                   ref,
@@ -91,9 +99,8 @@ class AdminInsuranceScreen extends ConsumerWidget {
                                   'APPROVED',
                                   c.billedAmount,
                                 ),
-                                child: const Text('Approve'),
                               ),
-                              OutlinedButton(
+                              GlossyOutlinedButton(
                                 onPressed: () => _update(
                                   context,
                                   ref,

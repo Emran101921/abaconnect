@@ -1,14 +1,14 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../data/therapist_repository.dart';
 import '../therapist_providers.dart';
-import 'session_notes_screen.dart';
+import 'therapist_appointment_session_actions.dart';
 import 'therapist_home_screen.dart';
+import '../../../shared/widgets/glossy_button.dart';
 import '../../../shared/widgets/app_bottom_nav.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 
@@ -90,35 +90,6 @@ class TherapistAppointmentsScreen extends ConsumerWidget {
     }
   }
 
-  Future<void> _startSession(
-    BuildContext context,
-    WidgetRef ref,
-    TherapistAppointmentModel appointment,
-  ) async {
-    try {
-      await ref.read(therapistRepositoryProvider).startSession(appointment.id);
-      ref.invalidate(therapistSessionsProvider);
-      ref.invalidate(therapistAppointmentsProvider);
-      ref.invalidate(therapistDashboardProvider);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Session started for ${appointment.childName}'),
-          action: SnackBarAction(
-            label: 'SOAP',
-            onPressed: () => context.push('/therapist/session-notes'),
-          ),
-        ),
-      );
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Could not start session: $e')));
-      }
-    }
-  }
-
   Future<void> _exportCalendar(BuildContext context, WidgetRef ref) async {
     try {
       final path = await ref
@@ -168,8 +139,6 @@ class TherapistAppointmentsScreen extends ConsumerWidget {
             itemBuilder: (context, index) {
               final a = list[index];
               final isRequested = a.status == 'REQUESTED';
-              final canStart =
-                  a.status == 'CONFIRMED' || a.status == 'SCHEDULED';
               final canCancel = ![
                 'COMPLETED',
                 'CANCELLED',
@@ -188,7 +157,8 @@ class TherapistAppointmentsScreen extends ConsumerWidget {
                       ),
                       Text(
                         '${a.therapyType} · ${a.status}'
-                        '${a.locationType != null ? ' · ${a.locationType}' : ''}',
+                        '${a.locationType != null ? ' · ${a.locationType}' : ''}'
+                        '${a.requiresSelfPayCollection ? ' · Self-pay' : ''}',
                       ),
                       Text(
                         DateFormat.yMMMd().add_jm().format(a.scheduledStart),
@@ -198,14 +168,17 @@ class TherapistAppointmentsScreen extends ConsumerWidget {
                         Row(
                           children: [
                             Expanded(
-                              child: FilledButton(
+                              child: GlossyButton(
+                                title: 'Confirm',
+                                icon: Icons.check_rounded,
+                                variant: GlossyButtonVariant.greenTeal,
+                                size: GlossyButtonSize.small,
                                 onPressed: () => _confirm(context, ref, a),
-                                child: const Text('Confirm'),
                               ),
                             ),
                             const SizedBox(width: 8),
                             Expanded(
-                              child: OutlinedButton(
+                              child: GlossyOutlinedButton(
                                 onPressed: () => _decline(context, ref, a),
                                 child: const Text('Decline'),
                               ),
@@ -213,13 +186,13 @@ class TherapistAppointmentsScreen extends ConsumerWidget {
                           ],
                         ),
                       ],
-                      if (canStart) ...[
+                      if (!isRequested &&
+                          (a.requiresSelfPayCollection ||
+                              a.status == 'CONFIRMED' ||
+                              a.status == 'SCHEDULED' ||
+                              a.canStartSession)) ...[
                         const SizedBox(height: 12),
-                        FilledButton.tonalIcon(
-                          onPressed: () => _startSession(context, ref, a),
-                          icon: const Icon(Icons.play_circle_outline),
-                          label: const Text('Start session & document'),
-                        ),
+                        TherapistAppointmentSessionActions(appointment: a),
                       ],
                       if (canCancel) ...[
                         const SizedBox(height: 8),

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/glossy_button.dart';
 import '../../parent/data/parent_booking_repository.dart';
 
 class MatchResultsScreen extends ConsumerStatefulWidget {
@@ -134,10 +135,11 @@ class _MatchResultsScreenState extends ConsumerState<MatchResultsScreen> {
                                   ],
                                 ),
                                 const SizedBox(height: 12),
-                                FilledButton(
+                                GlossyButton(
+                                  title: 'Book session',
+                                  variant: GlossyButtonVariant.greenTeal,
                                   onPressed: () =>
                                       context.push(AppRoutes.parentBooking),
-                                  child: const Text('Book session'),
                                 ),
                               ],
                             ),

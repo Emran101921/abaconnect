@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/glossy_button.dart';
 
 class AdminMarketplaceListing {
   const AdminMarketplaceListing({
@@ -209,9 +210,12 @@ class _AdminMarketplaceScreenState extends ConsumerState<AdminMarketplaceScreen>
               onPressed: () => Navigator.pop(ctx),
               child: const Text('Cancel'),
             ),
-            FilledButton(
+            GlossyButton(
+              title: 'Remove',
+              size: GlossyButtonSize.small,
+              fullWidth: false,
+              variant: GlossyButtonVariant.redDarkRed,
               onPressed: () => Navigator.pop(ctx, controller.text),
-              child: const Text('Remove'),
             ),
           ],
         );
@@ -250,9 +254,12 @@ class _AdminMarketplaceScreenState extends ConsumerState<AdminMarketplaceScreen>
             onPressed: () => Navigator.pop(ctx, false),
             child: const Text('Cancel'),
           ),
-          FilledButton(
+          GlossyButton(
+            title: 'Verify',
+            size: GlossyButtonSize.small,
+            fullWidth: false,
+            variant: GlossyButtonVariant.greenTeal,
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Verify'),
           ),
         ],
       ),
@@ -292,9 +299,12 @@ class _AdminMarketplaceScreenState extends ConsumerState<AdminMarketplaceScreen>
               onPressed: () => Navigator.pop(ctx),
               child: const Text('Cancel'),
             ),
-            FilledButton(
+            GlossyButton(
+              title: 'Suspend',
+              size: GlossyButtonSize.small,
+              fullWidth: false,
+              variant: GlossyButtonVariant.redDarkRed,
               onPressed: () => Navigator.pop(ctx, controller.text),
-              child: const Text('Suspend'),
             ),
           ],
         );

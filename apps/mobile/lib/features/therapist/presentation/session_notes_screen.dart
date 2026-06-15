@@ -13,6 +13,7 @@ import '../therapist_providers.dart';
 import 'therapist_weekly_progress_section.dart';
 import '../../../shared/widgets/app_bottom_nav.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/glossy_button.dart';
 import '../../../shared/widgets/speech_dictation.dart';
 
 final therapistSessionsProvider = FutureProvider<List<TherapistSessionModel>>((
@@ -352,11 +353,12 @@ class SessionNotesScreen extends ConsumerWidget {
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 24),
-                    FilledButton.icon(
+                    GlossyButton(
+                      title: 'Go to appointments',
+                      icon: Icons.event,
+                      variant: GlossyButtonVariant.tealBlue,
                       onPressed: () =>
                           context.push('${AppRoutes.therapistHome}/appointments'),
-                      icon: const Icon(Icons.event),
-                      label: const Text('Go to appointments'),
                     ),
                   ],
                 ),
@@ -414,52 +416,55 @@ class SessionNotesScreen extends ConsumerWidget {
                             spacing: 8,
                             runSpacing: 8,
                             children: [
-                              FilledButton.icon(
+                              GlossyButton(
+                                title: s.eipFormFullySigned
+                                    ? 'View session note (locked)'
+                                    : s.hasSoap
+                                        ? 'Edit session note (EIP)'
+                                        : 'Session note (EIP)',
+                                icon: s.eipFormFullySigned
+                                    ? Icons.visibility_outlined
+                                    : Icons.assignment,
+                                size: GlossyButtonSize.small,
+                                fullWidth: false,
+                                variant: GlossyButtonVariant.bluePurple,
                                 onPressed: () => context.push(
                                   '${AppRoutes.therapistHome}/session-notes/${s.id}/form',
                                 ),
-                                icon: Icon(
-                                  s.eipFormFullySigned
-                                      ? Icons.visibility_outlined
-                                      : Icons.assignment,
-                                ),
-                                label: Text(
-                                  s.eipFormFullySigned
-                                      ? 'View session note (locked)'
-                                      : s.hasSoap
-                                          ? 'Edit session note (EIP)'
-                                          : 'Session note (EIP)',
-                                ),
                               ),
-                              FilledButton.tonalIcon(
+                              GlossyButton(
+                                title: 'Quick SOAP',
+                                icon: Icons.edit_note,
+                                size: GlossyButtonSize.small,
+                                fullWidth: false,
+                                variant: GlossyButtonVariant.neutral,
                                 onPressed: s.eipFormFullySigned
                                     ? null
                                     : () => _openSoapEditor(context, ref, s),
-                                icon: const Icon(Icons.edit_note),
-                                label: Text(
-                                  s.hasSoap ? 'Quick SOAP' : 'Quick SOAP',
-                                ),
                               ),
-                              OutlinedButton.icon(
+                              GlossyOutlinedButton.icon(
                                 onPressed: () =>
                                     _attachPdf(context, ref, s),
-                                icon: const Icon(Icons.attach_file),
-                                label: const Text('Attach PDF'),
+                                icon: Icons.attach_file,
+                                child: const Text('Attach PDF'),
                               ),
                               if (s.hasServiceLog)
-                                OutlinedButton.icon(
+                                GlossyOutlinedButton.icon(
                                   onPressed: () =>
                                       _downloadServiceLog(context, ref, s),
-                                  icon: const Icon(Icons.picture_as_pdf_outlined),
-                                  label: Text(
+                                  icon: Icons.picture_as_pdf_outlined,
+                                  child: Text(
                                     'Service log · ${s.serviceLog!.childName}',
                                   ),
                                 ),
                               if (s.status == 'IN_PROGRESS')
-                                FilledButton(
+                                GlossyButton(
+                                  title: 'End visit',
+                                  size: GlossyButtonSize.small,
+                                  fullWidth: false,
+                                  variant: GlossyButtonVariant.redDarkRed,
                                   onPressed: () =>
                                       _completeSession(context, ref, s.id),
-                                  child: const Text('End visit'),
                                 ),
                             ],
                           ),
@@ -640,7 +645,7 @@ class _SoapEditorSheetState extends State<_SoapEditorSheet> {
               minLines: 2,
             ),
             const SizedBox(height: 16),
-            OutlinedButton(
+            GlossyOutlinedButton(
               onPressed: () async {
                 try {
                   final s = await widget.onSuggest();
@@ -660,11 +665,10 @@ class _SoapEditorSheetState extends State<_SoapEditorSheet> {
               child: const Text('AI suggest'),
             ),
             const SizedBox(height: 8),
-            FilledButton(
+            GlossyButton(
+              title: widget.session.hasSoap ? 'Update SOAP Note' : 'Save SOAP Note',
+              variant: GlossyButtonVariant.greenTeal,
               onPressed: _save,
-              child: Text(
-                widget.session.hasSoap ? 'Update SOAP Note' : 'Save SOAP Note',
-              ),
             ),
           ],
         ),

@@ -1,11 +1,14 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
+import '../../../core/constants/maps_constants.dart';
 import '../data/marketplace_repository.dart';
 
-/// Approximate ZIP-area map — pins are jittered around centroids, never exact addresses.
-class MarketplaceApproxMap extends StatelessWidget {
+/// Approximate ZIP-area map — pins use jittered centroids, never exact addresses.
+class MarketplaceApproxMap extends StatefulWidget {
   const MarketplaceApproxMap({
     super.key,
     required this.requests,
@@ -16,11 +19,21 @@ class MarketplaceApproxMap extends StatelessWidget {
   final ValueChanged<MarketplaceRequestModel>? onPinTap;
 
   @override
+  State<MarketplaceApproxMap> createState() => _MarketplaceApproxMapState();
+}
+
+class _MarketplaceApproxMapState extends State<MarketplaceApproxMap> {
+  GoogleMapController? _mapController;
+
+  List<MarketplaceRequestModel> get _pins => widget.requests
+      .where((r) => r.mapPinLat != null && r.mapPinLng != null)
+      .toList();
+
+  bool get _useGoogleMaps => !kIsWeb || MapsConstants.isConfigured;
+
+  @override
   Widget build(BuildContext context) {
-    final pins = requests
-        .where((r) => r.mapPinLat != null && r.mapPinLng != null)
-        .toList();
-    if (pins.isEmpty) {
+    if (_pins.isEmpty) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(24),
@@ -37,9 +50,197 @@ class MarketplaceApproxMap extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: AspectRatio(
         aspectRatio: 1.1,
-        child: CustomPaint(
+        child: _useGoogleMaps
+            ? _GoogleMarketplaceMap(
+                pins: _pins,
+                onPinTap: widget.onPinTap,
+                onMapCreated: (controller) => _mapController = controller,
+              )
+            : _FallbackApproxMap(
+                pins: _pins,
+                onPinTap: widget.onPinTap,
+              ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _mapController?.dispose();
+    super.dispose();
+  }
+}
+
+class _GoogleMarketplaceMap extends StatelessWidget {
+  const _GoogleMarketplaceMap({
+    required this.pins,
+    required this.onPinTap,
+    required this.onMapCreated,
+  });
+
+  final List<MarketplaceRequestModel> pins;
+  final ValueChanged<MarketplaceRequestModel>? onPinTap;
+  final ValueChanged<GoogleMapController> onMapCreated;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final bounds = _boundsForPins(pins);
+    final markers = pins.map((pin) {
+      return Marker(
+        markerId: MarkerId(pin.id),
+        position: LatLng(pin.mapPinLat!, pin.mapPinLng!),
+        infoWindow: InfoWindow(
+          title: pin.anonymousPublicId,
+          snippet: pin.serviceAreaLabel,
+        ),
+        onTap: () => onPinTap?.call(pin),
+      );
+    }).toSet();
+
+    final circles = pins.map((pin) {
+      return Circle(
+        circleId: CircleId('area-${pin.id}'),
+        center: LatLng(pin.mapPinLat!, pin.mapPinLng!),
+        radius: 1609,
+        fillColor: colorScheme.primary.withValues(alpha: 0.12),
+        strokeColor: colorScheme.primary.withValues(alpha: 0.45),
+        strokeWidth: 1,
+      );
+    }).toSet();
+
+    return Stack(
+      children: [
+        GoogleMap(
+          initialCameraPosition: CameraPosition(
+            target: bounds.center,
+            zoom: _zoomForBounds(bounds),
+          ),
+          markers: markers,
+          circles: circles,
+          myLocationButtonEnabled: false,
+          zoomControlsEnabled: !kIsWeb,
+          mapToolbarEnabled: false,
+          onMapCreated: (controller) async {
+            onMapCreated(controller);
+            if (pins.length > 1) {
+              await controller.animateCamera(
+                CameraUpdate.newLatLngBounds(bounds.latLngBounds, 48),
+              );
+            }
+          },
+        ),
+        Positioned(
+          left: 12,
+          top: 12,
+          right: 12,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: colorScheme.surface.withValues(alpha: 0.92),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              child: Text(
+                'Approximate ZIP areas only — not exact addresses',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
+        ),
+        if (kIsWeb && !MapsConstants.isConfigured)
+          Positioned(
+            left: 12,
+            right: 12,
+            bottom: 12,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: colorScheme.errorContainer.withValues(alpha: 0.95),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(10),
+                child: Text(
+                  'Add your Google Maps API key to web/index.html to load map tiles.',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: colorScheme.onErrorContainer,
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _MapBounds {
+  const _MapBounds({
+    required this.center,
+    required this.latLngBounds,
+  });
+
+  final LatLng center;
+  final LatLngBounds latLngBounds;
+}
+
+_MapBounds _boundsForPins(List<MarketplaceRequestModel> pins) {
+  final lats = pins.map((p) => p.mapPinLat!).toList();
+  final lngs = pins.map((p) => p.mapPinLng!).toList();
+  final minLat = lats.reduce(math.min);
+  final maxLat = lats.reduce(math.max);
+  final minLng = lngs.reduce(math.min);
+  final maxLng = lngs.reduce(math.max);
+
+  final center = LatLng(
+    (minLat + maxLat) / 2,
+    (minLng + maxLng) / 2,
+  );
+
+  return _MapBounds(
+    center: center,
+    latLngBounds: LatLngBounds(
+      southwest: LatLng(minLat, minLng),
+      northeast: LatLng(maxLat, maxLng),
+    ),
+  );
+}
+
+double _zoomForBounds(_MapBounds bounds) {
+  final latSpan =
+      (bounds.latLngBounds.northeast.latitude -
+              bounds.latLngBounds.southwest.latitude)
+          .abs();
+  final lngSpan =
+      (bounds.latLngBounds.northeast.longitude -
+              bounds.latLngBounds.southwest.longitude)
+          .abs();
+  final span = math.max(latSpan, lngSpan);
+  if (span < 0.02) return 13;
+  if (span < 0.08) return 11;
+  if (span < 0.3) return 9;
+  return 7;
+}
+
+/// Grid fallback when Google Maps is unavailable (e.g. web without API key).
+class _FallbackApproxMap extends StatelessWidget {
+  const _FallbackApproxMap({
+    required this.pins,
+    required this.onPinTap,
+  });
+
+  final List<MarketplaceRequestModel> pins;
+  final ValueChanged<MarketplaceRequestModel>? onPinTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final mapSize = Size(constraints.maxWidth, constraints.maxHeight);
+        return CustomPaint(
+          size: mapSize,
           painter: _ApproxMapPainter(
-            pins: pins,
             colorScheme: Theme.of(context).colorScheme,
           ),
           child: Stack(
@@ -47,6 +248,7 @@ class MarketplaceApproxMap extends StatelessWidget {
               Positioned(
                 left: 12,
                 top: 12,
+                right: 12,
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     color: Theme.of(context)
@@ -64,12 +266,11 @@ class MarketplaceApproxMap extends StatelessWidget {
                   ),
                 ),
               ),
-              ...pins.asMap().entries.map((entry) {
-                final pin = entry.value;
-                final offset = _pinOffset(pin, pins);
+              ...pins.map((pin) {
+                final offset = _pinOffset(pin, pins, mapSize);
                 return Positioned(
-                  left: offset.dx,
-                  top: offset.dy,
+                  left: offset.dx - 14,
+                  top: offset.dy - 14,
                   child: GestureDetector(
                     onTap: () => onPinTap?.call(pin),
                     child: Tooltip(
@@ -100,17 +301,17 @@ class MarketplaceApproxMap extends StatelessWidget {
               }),
             ],
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
   Offset _pinOffset(
     MarketplaceRequestModel pin,
     List<MarketplaceRequestModel> all,
+    Size size,
   ) {
-    const padding = 48.0;
-    const size = 280.0;
+    const padding = 40.0;
     final lats = all.map((p) => p.mapPinLat!).toList();
     final lngs = all.map((p) => p.mapPinLng!).toList();
     final minLat = lats.reduce(math.min);
@@ -119,18 +320,20 @@ class MarketplaceApproxMap extends StatelessWidget {
     final maxLng = lngs.reduce(math.max);
     final latSpan = (maxLat - minLat).abs() < 0.001 ? 0.01 : maxLat - minLat;
     final lngSpan = (maxLng - minLng).abs() < 0.001 ? 0.01 : maxLng - minLng;
-    final x =
-        padding + ((pin.mapPinLng! - minLng) / lngSpan) * (size - padding * 2);
-    final y =
-        padding + ((maxLat - pin.mapPinLat!) / latSpan) * (size - padding * 2);
-    return Offset(x.clamp(padding, size), y.clamp(padding, size));
+    final x = padding +
+        ((pin.mapPinLng! - minLng) / lngSpan) * (size.width - padding * 2);
+    final y = padding +
+        ((maxLat - pin.mapPinLat!) / latSpan) * (size.height - padding * 2);
+    return Offset(
+      x.clamp(padding, size.width - padding),
+      y.clamp(padding, size.height - padding),
+    );
   }
 }
 
 class _ApproxMapPainter extends CustomPainter {
-  _ApproxMapPainter({required this.pins, required this.colorScheme});
+  _ApproxMapPainter({required this.colorScheme});
 
-  final List<MarketplaceRequestModel> pins;
   final ColorScheme colorScheme;
 
   @override
@@ -147,6 +350,5 @@ class _ApproxMapPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _ApproxMapPainter oldDelegate) =>
-      oldDelegate.pins != pins;
+  bool shouldRepaint(covariant _ApproxMapPainter oldDelegate) => false;
 }

@@ -169,6 +169,7 @@ export class PlatformResolver {
     const appointmentId = data.appointmentId;
     const sessionId = data.sessionId;
     const marketplaceRequestId = data.marketplaceRequestId;
+    const paymentId = data.paymentId;
     return {
       id: n.id,
       title: n.title,
@@ -184,6 +185,7 @@ export class PlatformResolver {
         typeof marketplaceRequestId === 'string'
           ? marketplaceRequestId
           : undefined,
+      paymentId: typeof paymentId === 'string' ? paymentId : undefined,
     };
   }
 

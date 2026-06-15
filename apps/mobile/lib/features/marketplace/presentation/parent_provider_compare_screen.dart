@@ -3,7 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/router/app_router.dart';
-import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/glossy_button.dart';
+import '../../../shared/widgets/role_tab_scaffold.dart';
 import '../data/marketplace_repository.dart';
 
 final marketplaceInterestsProvider = FutureProvider.autoDispose
@@ -25,7 +26,7 @@ class ParentProviderCompareScreen extends ConsumerWidget {
       marketplaceInterestsProvider(marketplaceRequestId),
     );
 
-    return AppScaffold(
+    return ParentTabScaffold(
       title: 'Interested providers',
       subtitle: 'Compare before sharing details',
       body: interests.when(
@@ -73,11 +74,14 @@ class ParentProviderCompareScreen extends ConsumerWidget {
                     ),
                     isThreeLine: true,
                     trailing: awaitingReview
-                        ? FilledButton(
+                        ? GlossyButton(
+                            title: 'Review & share',
+                            size: GlossyButtonSize.small,
+                            fullWidth: false,
+                            variant: GlossyButtonVariant.tealBlue,
                             onPressed: () => context.push(
                               '${AppRoutes.parentMarketplace}/$marketplaceRequestId/consent/${item.providerId}?name=${Uri.encodeComponent(item.providerName)}',
                             ),
-                            child: const Text('Review & share'),
                           )
                         : null,
                   ),

@@ -3,7 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/app_providers.dart';
-import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/glossy_button.dart';
+import '../../../shared/widgets/role_tab_scaffold.dart';
 import '../../platform/data/platform_repository.dart';
 import '../data/marketplace_repository.dart';
 
@@ -114,7 +115,7 @@ class _ParentConsentShareScreenState
 
   @override
   Widget build(BuildContext context) {
-    return AppScaffold(
+    return ParentTabScaffold(
       title: 'Share details',
       subtitle: 'Explicit consent required',
       body: ListView(
@@ -172,15 +173,12 @@ class _ParentConsentShareScreenState
             title: const Text('I authorize sharing as described above'),
           ),
           const SizedBox(height: 16),
-          FilledButton(
-            onPressed: _submitting || !_consent ? null : _grant,
-            child: _submitting
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Text('Grant consent & share'),
+          GlossyButton(
+            title: 'Grant consent & share',
+            variant: GlossyButtonVariant.greenTeal,
+            loading: _submitting,
+            disabled: !_consent,
+            onPressed: _grant,
           ),
         ],
       ),

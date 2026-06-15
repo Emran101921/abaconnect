@@ -640,7 +640,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.payments,
         name: 'payments',
-        builder: (context, state) => const PaymentsScreen(),
+        builder: (context, state) => PaymentsScreen(
+          initialPaymentId: state.uri.queryParameters['paymentId'],
+        ),
       ),
       GoRoute(
         path: AppRoutes.matching,

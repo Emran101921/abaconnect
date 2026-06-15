@@ -10,7 +10,7 @@ import '../../../shared/widgets/app_bottom_nav.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_section_header.dart';
 import '../../../shared/widgets/app_stat_card.dart';
-import '../../../shared/widgets/app_glossy_button.dart';
+import '../../../shared/widgets/glossy_button.dart';
 import '../../../shared/widgets/app_wellness_action_menu.dart';
 import '../../../shared/widgets/app_wellness_home_header.dart';
 import '../../../shared/widgets/app_wellness_journey_card.dart';
@@ -20,7 +20,7 @@ import '../../messaging/presentation/messages_screen.dart';
 import '../../notifications/notification_providers.dart';
 import '../data/therapist_repository.dart';
 import '../therapist_providers.dart';
-import 'session_notes_screen.dart';
+import 'therapist_appointment_session_actions.dart';
 import 'therapist_weekly_progress_section.dart';
 
 final therapistAppointmentsProvider =
@@ -30,34 +30,6 @@ final therapistAppointmentsProvider =
 
 class TherapistHomeScreen extends ConsumerWidget {
   const TherapistHomeScreen({super.key});
-
-  Future<void> _startSession(
-    BuildContext context,
-    WidgetRef ref,
-    TherapistAppointmentModel appointment,
-  ) async {
-    try {
-      await ref.read(therapistRepositoryProvider).startSession(appointment.id);
-      ref.invalidate(therapistSessionsProvider);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Session started for ${appointment.childName}'),
-          action: SnackBarAction(
-            label: 'SOAP',
-            onPressed: () =>
-                context.push('${AppRoutes.therapistHome}/session-notes'),
-          ),
-        ),
-      );
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Could not start: $e')));
-      }
-    }
-  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -284,29 +256,39 @@ class TherapistHomeScreen extends ConsumerWidget {
                   return Column(
                     children: [
                       ...list.take(3).map((a) {
-                        final canStart =
-                            a.status == 'CONFIRMED' || a.status == 'SCHEDULED';
                         final isRequested = a.status == 'REQUESTED';
                         return Card(
                           margin: const EdgeInsets.only(bottom: 8),
-                          child: ListTile(
-                            title: Text('${a.childName} · ${a.therapyType}'),
-                            subtitle: Text(
-                              '${DateFormat.yMMMd().add_jm().format(a.scheduledStart)} · ${a.status}'
-                              '${a.isTelehealth ? ' · Telehealth' : ''}',
-                            ),
-                            trailing: canStart
-                                ? IconButton(
-                                    icon: const Icon(Icons.play_arrow),
-                                    tooltip: 'Start session',
-                                    onPressed: () =>
-                                        _startSession(context, ref, a),
-                                  )
-                                : isRequested
-                                ? const Icon(Icons.help_outline)
-                                : Chip(label: Text(a.status)),
-                            onTap: () => context.push(
-                              '${AppRoutes.therapistHome}/appointments',
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                ListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  title: Text(
+                                    '${a.childName} · ${a.therapyType}',
+                                  ),
+                                  subtitle: Text(
+                                    '${DateFormat.yMMMd().add_jm().format(a.scheduledStart)} · ${a.status}'
+                                    '${a.isTelehealth ? ' · Telehealth' : ''}'
+                                    '${a.requiresSelfPayCollection ? ' · Self-pay' : ''}',
+                                  ),
+                                  trailing: isRequested
+                                      ? const Icon(Icons.help_outline)
+                                      : Chip(label: Text(a.status)),
+                                  onTap: () => context.push(
+                                    '${AppRoutes.therapistHome}/appointments',
+                                  ),
+                                ),
+                                if (!isRequested &&
+                                    (a.requiresSelfPayCollection ||
+                                        a.canStartSession))
+                                  TherapistAppointmentSessionActions(
+                                    appointment: a,
+                                    compact: true,
+                                  ),
+                              ],
                             ),
                           ),
                         );

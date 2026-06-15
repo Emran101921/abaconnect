@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/glossy_button.dart';
 import '../data/parent_booking_repository.dart';
 import 'parent_home_screen.dart';
 
@@ -127,9 +128,12 @@ class _ReviewsScreenState extends ConsumerState<ReviewsScreen> {
               onPressed: () => Navigator.pop(ctx, false),
               child: const Text('Cancel'),
             ),
-            FilledButton(
+            GlossyButton(
+              title: 'Submit',
+              size: GlossyButtonSize.small,
+              fullWidth: false,
+              variant: GlossyButtonVariant.greenTeal,
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Submit'),
             ),
           ],
         ),
@@ -166,9 +170,10 @@ class _ReviewsScreenState extends ConsumerState<ReviewsScreen> {
       title: 'Reviews',
       floatingActionButton: _pendingTherapists.isEmpty
           ? null
-          : FloatingActionButton(
+          : GlossyFab(
+              icon: Icons.rate_review,
               onPressed: _submitReview,
-              child: const Icon(Icons.rate_review),
+              tooltip: 'Submit review',
             ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -200,9 +205,10 @@ class _ReviewsScreenState extends ConsumerState<ReviewsScreen> {
                               ),
                               if (_pendingTherapists.isNotEmpty) ...[
                                 const SizedBox(height: 12),
-                                FilledButton(
+                                GlossyButton(
+                                  title: 'Write first review',
+                                  variant: GlossyButtonVariant.bluePurple,
                                   onPressed: _submitReview,
-                                  child: const Text('Write first review'),
                                 ),
                               ],
                             ],

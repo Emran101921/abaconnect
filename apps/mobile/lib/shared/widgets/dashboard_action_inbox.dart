@@ -46,6 +46,7 @@ class DashboardActionInbox extends StatelessWidget {
       'APPOINTMENT' => Icons.event_outlined,
       'TELEHEALTH' => Icons.videocam_outlined,
       'MARKETPLACE_INTEREST' => Icons.storefront_outlined,
+      'SESSION_PAYMENT_DUE' => Icons.payments_outlined,
       'CLAIM' => Icons.receipt_long_outlined,
       'EVV' => Icons.location_on_outlined,
       'VERIFICATION' => Icons.verified_user_outlined,
@@ -91,6 +92,12 @@ class DashboardActionInbox extends StatelessWidget {
           );
         } else {
           context.push(AppRoutes.parentMarketplace);
+        }
+      case 'SESSION_PAYMENT_DUE':
+        if (item.paymentId != null) {
+          context.push('${AppRoutes.payments}?paymentId=${item.paymentId}');
+        } else {
+          context.push(AppRoutes.payments);
         }
       case 'CLAIM':
         if (item.claimId != null) {

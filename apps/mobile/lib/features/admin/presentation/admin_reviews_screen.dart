@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/glossy_button.dart';
 import 'admin_providers.dart';
 
 class AdminReviewsScreen extends ConsumerWidget {
@@ -42,15 +43,18 @@ class AdminReviewsScreen extends ConsumerWidget {
                     ),
                     isThreeLine: true,
                     trailing: r.isPublished
-                        ? OutlinedButton(
+                        ? GlossyOutlinedButton(
                             onPressed: () =>
                                 _moderate(context, ref, r.id, false),
                             child: const Text('Hide'),
                           )
-                        : FilledButton(
+                        : GlossyButton(
+                            title: 'Publish',
+                            size: GlossyButtonSize.small,
+                            fullWidth: false,
+                            variant: GlossyButtonVariant.greenTeal,
                             onPressed: () =>
                                 _moderate(context, ref, r.id, true),
-                            child: const Text('Publish'),
                           ),
                   ),
                 );

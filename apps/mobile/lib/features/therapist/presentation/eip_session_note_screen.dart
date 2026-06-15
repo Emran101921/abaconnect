@@ -11,6 +11,7 @@ import 'session_notes_screen.dart';
 import 'staff_session_notes_screen.dart';
 import 'therapist_weekly_progress_section.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/glossy_button.dart';
 import '../../../shared/widgets/speech_dictation.dart';
 
 final sessionNoteFormContextProvider =
@@ -538,16 +539,12 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
               ),
               if (!readOnly) ...[
                 const SizedBox(height: 16),
-                FilledButton.icon(
-                  onPressed: _saving ? null : () => _save(context),
-                  icon: _saving
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.save),
-                  label: Text(_saving ? 'Saving…' : 'Save session note'),
+                GlossyButton(
+                  title: 'Save session note',
+                  icon: Icons.save,
+                  variant: GlossyButtonVariant.greenTeal,
+                  loading: _saving,
+                  onPressed: () => _save(context),
                 ),
               ],
               const SizedBox(height: 32),
@@ -785,20 +782,16 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
           ],
           if (!readOnly) ...[
             const SizedBox(height: 8),
-            FilledButton.tonalIcon(
+            GlossyButton(
+              title: signed ? 'Re-sign with GPS' : 'Sign with GPS',
+              icon: Icons.draw_outlined,
+              variant: GlossyButtonVariant.neutral,
+              loading: _capturingGps,
               onPressed: _capturingGps
                   ? null
                   : canSign
                       ? () => _signParent(context, form)
                       : () => _showParentSignRequirements(context, form),
-              icon: _capturingGps
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.draw_outlined),
-              label: Text(signed ? 'Re-sign with GPS' : 'Sign with GPS'),
             ),
           ],
         ],
@@ -888,18 +881,14 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
           ],
           if (!readOnly) ...[
             const SizedBox(height: 8),
-            FilledButton.tonalIcon(
+            GlossyButton(
+              title: signed ? 'Re-sign with GPS' : 'Sign with GPS',
+              icon: Icons.draw_outlined,
+              variant: GlossyButtonVariant.neutral,
+              loading: _capturingGps,
               onPressed: _capturingGps
                   ? null
                   : () => _signInterventionist(context, form),
-              icon: _capturingGps
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.draw_outlined),
-              label: Text(signed ? 'Re-sign with GPS' : 'Sign with GPS'),
             ),
           ],
         ],
@@ -1352,9 +1341,12 @@ class _ParentSignatureDialogState extends State<_ParentSignatureDialog> {
           onPressed: () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
-        FilledButton(
+        GlossyButton(
+          title: 'Sign',
+          size: GlossyButtonSize.small,
+          fullWidth: false,
+          variant: GlossyButtonVariant.greenTeal,
           onPressed: _submit,
-          child: const Text('Sign'),
         ),
       ],
     );

@@ -15,6 +15,7 @@ import '../../../shared/models/user_role.dart';
 import '../../../shared/widgets/app_brand_logo.dart';
 import '../../../shared/widgets/app_healthcare_illustration.dart';
 import '../../../shared/widgets/app_theme_toggle.dart';
+import '../../../shared/widgets/glossy_button.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -213,9 +214,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             onPressed: () => Navigator.pop(ctx),
             child: const Text('Cancel'),
           ),
-          FilledButton(
+          GlossyButton(
+            title: 'Verify',
+            size: GlossyButtonSize.small,
+            fullWidth: false,
             onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-            child: const Text('Verify'),
           ),
         ],
       ),
@@ -386,15 +389,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           autofillHints: const [AutofillHints.password],
         ),
         const SizedBox(height: AppSpacing.lg),
-        FilledButton(
-          onPressed: _loading ? null : () => _signIn(),
-          child: _loading
-              ? const SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Text('Sign in'),
+        GlossyButton(
+          title: 'Sign in',
+          variant: GlossyButtonVariant.tealBlue,
+          loading: _loading,
+          onPressed: _signIn,
         ),
         const SizedBox(height: AppSpacing.sm),
         Row(

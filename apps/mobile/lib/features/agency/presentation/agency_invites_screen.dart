@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/glossy_button.dart';
 import 'agency_providers.dart';
 
 class AgencyInvitesScreen extends ConsumerWidget {
@@ -14,10 +15,11 @@ class AgencyInvitesScreen extends ConsumerWidget {
 
     return AppScaffold(
       title: 'Invite therapists',
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: GlossyFab.extended(
+        icon: Icons.person_add,
+        label: 'Invite',
         onPressed: () => showInviteTherapist(context, ref),
-        icon: const Icon(Icons.person_add),
-        label: const Text('Invite'),
+        tooltip: 'Invite therapist',
       ),
       body: candidates.when(
         loading: () => const Center(child: CircularProgressIndicator()),

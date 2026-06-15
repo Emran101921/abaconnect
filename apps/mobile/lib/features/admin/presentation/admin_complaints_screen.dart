@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/glossy_button.dart';
 import 'admin_providers.dart';
 
 class AdminComplaintsScreen extends ConsumerWidget {
@@ -40,7 +41,11 @@ class AdminComplaintsScreen extends ConsumerWidget {
                       '${c.reporterName ?? 'Unknown'}\n${c.description}',
                     ),
                     isThreeLine: true,
-                    trailing: FilledButton(
+                    trailing: GlossyButton(
+                      title: 'Resolve',
+                      size: GlossyButtonSize.small,
+                      fullWidth: false,
+                      variant: GlossyButtonVariant.greenTeal,
                       onPressed: () async {
                         final resolution = await showDialog<String>(
                           context: context,
@@ -62,10 +67,13 @@ class AdminComplaintsScreen extends ConsumerWidget {
                                   onPressed: () => Navigator.pop(ctx),
                                   child: const Text('Cancel'),
                                 ),
-                                FilledButton(
+                                GlossyButton(
+                                  title: 'Resolve',
+                                  size: GlossyButtonSize.small,
+                                  fullWidth: false,
+                                  variant: GlossyButtonVariant.greenTeal,
                                   onPressed: () =>
                                       Navigator.pop(ctx, ctrl.text.trim()),
-                                  child: const Text('Resolve'),
                                 ),
                               ],
                             );
@@ -93,7 +101,6 @@ class AdminComplaintsScreen extends ConsumerWidget {
                           }
                         }
                       },
-                      child: const Text('Resolve'),
                     ),
                   ),
                 );

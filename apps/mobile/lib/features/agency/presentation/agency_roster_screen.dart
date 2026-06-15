@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/glossy_button.dart';
 import 'agency_providers.dart';
 
 class AgencyRosterScreen extends ConsumerWidget {
@@ -57,9 +58,12 @@ class AgencyRosterScreen extends ConsumerWidget {
                                 onPressed: () => Navigator.pop(ctx, false),
                                 child: const Text('Cancel'),
                               ),
-                              FilledButton(
+                              GlossyButton(
+                                title: 'Remove',
+                                size: GlossyButtonSize.small,
+                                fullWidth: false,
+                                variant: GlossyButtonVariant.redDarkRed,
                                 onPressed: () => Navigator.pop(ctx, true),
-                                child: const Text('Remove'),
                               ),
                             ],
                           ),

@@ -6,6 +6,7 @@ import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/providers/consent_gate_provider.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/glossy_button.dart';
 import '../../platform/data/platform_repository.dart';
 
 final consentsProvider = FutureProvider<List<ConsentItemModel>>((ref) {
@@ -81,7 +82,9 @@ class ConsentScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 16),
-            FilledButton(
+            GlossyButton(
+              title: 'Grant HIPAA privacy policy v1.0',
+              variant: GlossyButtonVariant.greenTeal,
               onPressed: () async {
                 try {
                   await ref
@@ -112,10 +115,9 @@ class ConsentScreen extends ConsumerWidget {
                   }
                 }
               },
-              child: const Text('Grant HIPAA privacy policy v1.0'),
             ),
             const SizedBox(height: 12),
-            OutlinedButton(
+            GlossyOutlinedButton(
               onPressed: () => context.push(AppRoutes.phiAccessReport),
               child: const Text('View PHI access report'),
             ),

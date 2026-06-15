@@ -7,6 +7,7 @@ import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/app_bottom_nav.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/glossy_button.dart';
 import '../data/parent_booking_repository.dart';
 import 'ei_screening_wizard.dart';
 import 'screening_results_screen.dart';
@@ -295,27 +296,27 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
                           ),
                           const SizedBox(height: 16),
                           if (selectedChild == null)
-                            FilledButton.icon(
+                            GlossyButton(
+                              title: 'Add child profile',
+                              icon: Icons.child_care,
+                              variant: GlossyButtonVariant.tealBlue,
                               onPressed: () =>
                                   context.push(AppRoutes.parentChildren),
-                              icon: const Icon(Icons.child_care),
-                              label: const Text('Add child profile'),
                             )
                           else if (eiTemplate == null)
                             const Text(
                               'Early Intervention template is not available. Pull to refresh.',
                             )
                           else
-                            FilledButton.icon(
+                            GlossyButton(
+                              title: _hasDraft
+                                  ? 'Resume screening'
+                                  : 'Start screening (sections A–G)',
+                              icon: Icons.play_arrow,
+                              variant: GlossyButtonVariant.bluePurple,
                               onPressed: () => _startTemplate(
                                 eiTemplate,
                                 child: selectedChild,
-                              ),
-                              icon: const Icon(Icons.play_arrow),
-                              label: Text(
-                                _hasDraft
-                                    ? 'Resume screening'
-                                    : 'Start screening (sections A–G)',
                               ),
                             ),
                         ],
@@ -356,15 +357,32 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
                     ..._legacyTemplates.map(
                       (t) => Card(
                         margin: const EdgeInsets.only(bottom: 12),
-                        child: ListTile(
-                          title: Text(t.name),
-                          subtitle: Text('${t.therapyType} intake'),
-                          trailing: FilledButton.tonal(
-                            onPressed: selectedChild == null
-                                ? null
-                                : () => _startTemplate(t, child: selectedChild),
-                            child: const Text('Start'),
-                          ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            ListTile(
+                              title: Text(t.name),
+                              subtitle: Text('${t.therapyType} intake'),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                              child: Align(
+                                alignment: Alignment.centerRight,
+                                child: GlossyButton(
+                                  title: 'Start',
+                                  size: GlossyButtonSize.small,
+                                  fullWidth: false,
+                                  variant: GlossyButtonVariant.neutral,
+                                  onPressed: selectedChild == null
+                                      ? null
+                                      : () => _startTemplate(
+                                            t,
+                                            child: selectedChild,
+                                          ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),

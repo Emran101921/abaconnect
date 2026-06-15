@@ -11,7 +11,7 @@ import '../../../shared/widgets/app_stat_card.dart';
 import '../../../shared/widgets/app_wellness_action_menu.dart';
 import '../../../shared/widgets/app_wellness_home_header.dart';
 import '../../../shared/widgets/app_wellness_journey_card.dart';
-import '../../../shared/widgets/app_glossy_button.dart';
+import '../../../shared/widgets/glossy_button.dart';
 import '../../../shared/widgets/app_theme_toggle.dart';
 import '../../../shared/widgets/dashboard_action_inbox.dart';
 import '../../messaging/messaging_providers.dart';

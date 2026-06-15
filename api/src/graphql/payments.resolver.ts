@@ -37,6 +37,23 @@ export class PaymentsResolver {
     };
   }
 
+  @Mutation(() => PaymentIntentResultType, { name: 'prepareSessionPayment' })
+  async prepareSessionPayment(
+    @CurrentUser() user: AuthUser,
+    @Args('paymentId', { type: () => ID }) paymentId: string,
+  ): Promise<PaymentIntentResultType> {
+    const result = await this.paymentsService.prepareCheckoutForParentPayment(
+      user.id,
+      paymentId,
+    );
+    return {
+      payment: this.mapPayment(result.payment),
+      clientSecret: result.clientSecret ?? undefined,
+      checkoutUrl: result.checkoutUrl ?? undefined,
+      stripeConfigured: result.stripeConfigured,
+    };
+  }
+
   @Mutation(() => PaymentType, { name: 'confirmPaymentDemo' })
   async confirmPaymentDemo(
     @CurrentUser() user: AuthUser,

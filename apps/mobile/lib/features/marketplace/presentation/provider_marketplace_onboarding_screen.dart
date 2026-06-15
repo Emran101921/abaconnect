@@ -3,7 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/router/app_router.dart';
-import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/glossy_button.dart';
+import '../../../shared/widgets/role_tab_scaffold.dart';
 import '../data/marketplace_repository.dart';
 
 const providerConfidentialityTerms =
@@ -98,7 +99,7 @@ class _ProviderMarketplaceOnboardingScreenState
 
   @override
   Widget build(BuildContext context) {
-    return AppScaffold(
+    return TherapistTabScaffold(
       title: 'Marketplace access',
       subtitle: 'Required before viewing anonymous requests',
       body: ListView(
@@ -185,15 +186,11 @@ class _ProviderMarketplaceOnboardingScreenState
             controlAffinity: ListTileControlAffinity.leading,
           ),
           const SizedBox(height: 16),
-          FilledButton(
-            onPressed: _saving ? null : _submit,
-            child: _saving
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Text('Enable marketplace access'),
+          GlossyButton(
+            title: 'Enable marketplace access',
+            variant: GlossyButtonVariant.bluePurple,
+            loading: _saving,
+            onPressed: _submit,
           ),
         ],
       ),

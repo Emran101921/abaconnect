@@ -224,4 +224,7 @@ export class DashboardActionItemType {
 
   @Field({ nullable: true })
   marketplaceRequestId?: string;
+
+  @Field({ nullable: true })
+  paymentId?: string;
 }

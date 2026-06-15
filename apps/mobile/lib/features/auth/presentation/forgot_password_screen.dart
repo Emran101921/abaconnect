@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/glossy_button.dart';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -72,15 +73,11 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
               keyboardType: TextInputType.emailAddress,
             ),
             const SizedBox(height: 16),
-            FilledButton(
-              onPressed: _loading ? null : _submit,
-              child: _loading
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Send reset link'),
+            GlossyButton(
+              title: 'Send reset link',
+              variant: GlossyButtonVariant.bluePurple,
+              loading: _loading,
+              onPressed: _submit,
             ),
             if (kDebugMode && _devResetToken != null) ...[
               const SizedBox(height: 24),
@@ -91,11 +88,12 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
               const SizedBox(height: 8),
               SelectableText(_devResetToken!),
               const SizedBox(height: 12),
-              FilledButton.tonal(
+              GlossyButton(
+                title: 'Continue to reset password',
+                variant: GlossyButtonVariant.neutral,
                 onPressed: () => context.push(
                   '/reset-password?token=${Uri.encodeComponent(_devResetToken!)}',
                 ),
-                child: const Text('Continue to reset password'),
               ),
             ],
             TextButton(

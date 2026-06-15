@@ -7,6 +7,7 @@ import '../../../core/providers/app_providers.dart';
 import '../../clinical/data/clinical_repository.dart';
 import '../data/therapist_repository.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/glossy_button.dart';
 
 final therapistBadgesProvider = FutureProvider<List<TherapistBadgeModel>>((
   ref,
@@ -265,15 +266,11 @@ class _TherapistProfileScreenState
                 maxLines: 3,
               ),
               const SizedBox(height: 24),
-              FilledButton(
-                onPressed: _saving ? null : _save,
-                child: _saving
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Save Profile'),
+              GlossyButton(
+                title: 'Save Profile',
+                variant: GlossyButtonVariant.greenTeal,
+                loading: _saving,
+                onPressed: _save,
               ),
             ],
           ),

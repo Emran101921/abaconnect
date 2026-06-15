@@ -11,6 +11,7 @@ import '../../../shared/models/user_role.dart';
 import '../../../shared/widgets/app_brand_logo.dart';
 import '../../../shared/widgets/app_healthcare_illustration.dart';
 import '../../../shared/widgets/app_theme_toggle.dart';
+import '../../../shared/widgets/glossy_button.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -249,15 +250,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           onSubmitted: (_) => _loading ? null : _register(),
         ),
         const SizedBox(height: AppSpacing.lg),
-        FilledButton(
-          onPressed: _loading ? null : _register,
-          child: _loading
-              ? const SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Text('Create account'),
+        GlossyButton(
+          title: 'Create account',
+          variant: GlossyButtonVariant.tealBlue,
+          loading: _loading,
+          onPressed: _register,
         ),
         const SizedBox(height: AppSpacing.sm),
         TextButton(

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/glossy_button.dart';
 
 class ResetPasswordScreen extends ConsumerStatefulWidget {
   const ResetPasswordScreen({super.key, required this.token});
@@ -74,15 +75,11 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
               obscureText: true,
             ),
             const SizedBox(height: 16),
-            FilledButton(
-              onPressed: _loading ? null : _submit,
-              child: _loading
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Update password'),
+            GlossyButton(
+              title: 'Update password',
+              variant: GlossyButtonVariant.greenTeal,
+              loading: _loading,
+              onPressed: _submit,
             ),
           ],
         ),

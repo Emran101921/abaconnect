@@ -4,6 +4,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import {
+  computeSessionFeeCents,
+  isSelfPayInsuranceType,
+} from './self-pay.util';
 import { StripeService } from './stripe.service';
 
 @Injectable()
@@ -11,7 +16,165 @@ export class PaymentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly stripe: StripeService,
+    private readonly notifications: NotificationsService,
   ) {}
+
+  async prepareCheckoutForParentPayment(userId: string, paymentId: string) {
+    const parent = await this.prisma.parent.findUnique({ where: { userId } });
+    if (!parent) {
+      throw new BadRequestException('Parent profile not found');
+    }
+    const payment = await this.prisma.payment.findFirst({
+      where: { id: paymentId, parentId: parent.id },
+    });
+    if (!payment) {
+      throw new NotFoundException('Payment not found');
+    }
+    if (payment.status === 'SUCCEEDED') {
+      return {
+        payment,
+        clientSecret: null,
+        checkoutUrl: null,
+        stripeConfigured: this.stripe.isConfigured(),
+      };
+    }
+
+    const amountCents = Math.round(Number(payment.amount) * 100);
+    let checkoutUrl: string | null = null;
+    if (this.stripe.isConfigured()) {
+      const appUrl = process.env.APP_URL ?? 'http://localhost:3000';
+      const session = await this.stripe.createCheckoutSession(
+        amountCents,
+        {
+          paymentId: payment.id,
+          parentId: parent.id,
+          description: payment.description ?? 'BloomOra payment',
+        },
+        `${appUrl}/api/v1/payments/success?paymentId=${payment.id}`,
+        `${appUrl}/api/v1/payments/cancel`,
+      );
+      checkoutUrl = session.url;
+    }
+
+    let clientSecret: string | null = null;
+    if (payment.stripePaymentIntentId) {
+      const intent = await this.stripe.retrievePaymentIntent(
+        payment.stripePaymentIntentId,
+      );
+      if ('client_secret' in intent) {
+        clientSecret = intent.client_secret ?? null;
+      }
+    }
+
+    return {
+      payment,
+      clientSecret,
+      checkoutUrl,
+      stripeConfigured: this.stripe.isConfigured(),
+    };
+  }
+
+  async requestSessionChargeForTherapist(
+    therapistUserId: string,
+    appointmentId: string,
+  ) {
+    const therapist = await this.prisma.therapist.findUnique({
+      where: { userId: therapistUserId },
+    });
+    if (!therapist) {
+      throw new NotFoundException('Therapist profile not found');
+    }
+
+    const appointment = await this.prisma.appointment.findFirst({
+      where: { id: appointmentId, therapistId: therapist.id },
+      include: {
+        child: true,
+        parent: { include: { user: true } },
+        session: { include: { payment: true } },
+      },
+    });
+    if (!appointment) {
+      throw new NotFoundException('Appointment not found');
+    }
+    if (!isSelfPayInsuranceType(appointment.child.insuranceType)) {
+      throw new BadRequestException(
+        'Session charges only apply to self-pay families',
+      );
+    }
+    if (!['CHECKED_IN', 'IN_PROGRESS'].includes(appointment.status)) {
+      throw new BadRequestException(
+        'Record arrival before requesting session payment',
+      );
+    }
+
+    const hourlyRate = therapist.hourlyRate
+      ? Number(therapist.hourlyRate)
+      : 120;
+    const amountCents = computeSessionFeeCents(
+      appointment.scheduledStart,
+      appointment.scheduledEnd,
+      hourlyRate,
+    );
+    const childName = `${appointment.child.firstName} ${appointment.child.lastName}`;
+    const description = `${appointment.therapyType} session — ${childName}`;
+
+    let session = appointment.session;
+    if (!session) {
+      session = await this.prisma.session.create({
+        data: {
+          appointmentId: appointment.id,
+          tenantId: appointment.tenantId,
+          childId: appointment.childId,
+          therapistId: therapist.id,
+          status: 'SCHEDULED',
+        },
+        include: { payment: true },
+      });
+    }
+
+    if (session.payment?.status === 'SUCCEEDED') {
+      return {
+        payment: session.payment,
+        clientSecret: null,
+        checkoutUrl: null,
+        stripeConfigured: this.stripe.isConfigured(),
+        alreadyPaid: true,
+      };
+    }
+
+    if (session.payment?.status === 'PENDING') {
+      const checkout = await this.prepareCheckoutForParentPayment(
+        appointment.parent.userId,
+        session.payment.id,
+      );
+      return { ...checkout, alreadyPaid: false };
+    }
+
+    const payment = await this.create({
+      parentId: appointment.parentId,
+      tenantId: appointment.tenantId,
+      sessionId: session.id,
+      amountCents,
+      description,
+    });
+
+    await this.notifications.createForUser(appointment.parent.userId, {
+      title: 'Session payment due',
+      body: `Your therapist has arrived. Complete payment to begin ${childName}'s session.`,
+      data: {
+        type: 'SESSION_PAYMENT_DUE',
+        paymentId: payment.id,
+        appointmentId: appointment.id,
+        sessionId: session.id,
+      },
+    });
+
+    const checkout = await this.prepareCheckoutForParentPayment(
+      appointment.parent.userId,
+      payment.id,
+    );
+    return { ...checkout, alreadyPaid: false };
+  }
 
   async findByParentUserId(userId: string) {
     const parent = await this.prisma.parent.findUnique({ where: { userId } });

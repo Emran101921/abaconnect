@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/glossy_button.dart';
 
 enum PrivacyRightsFormType {
   recordAccess('RECORD_ACCESS', 'Request My Records'),
@@ -214,15 +215,11 @@ class _PrivacyRightsRequestScreenState
             const SizedBox(height: 16),
             ..._fields(),
             const SizedBox(height: 8),
-            FilledButton(
-              onPressed: _submitting ? null : _submit,
-              child: _submitting
-                  ? const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Submit'),
+            GlossyButton(
+              title: 'Submit',
+              variant: GlossyButtonVariant.bluePurple,
+              loading: _submitting,
+              onPressed: _submit,
             ),
           ],
         ),

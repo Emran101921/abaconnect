@@ -128,6 +128,40 @@ export class ParentsService {
       });
     }
 
+    const pendingSessionPayments = await this.prisma.payment.findMany({
+      where: {
+        parentId: parent.id,
+        status: 'PENDING',
+        sessionId: { not: null },
+      },
+      include: {
+        session: {
+          include: {
+            child: true,
+            appointment: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 3,
+    });
+    for (const payment of pendingSessionPayments) {
+      const child = payment.session?.child;
+      const childName = child
+        ? `${child.firstName} ${child.lastName}`
+        : 'your child';
+      actionItems.push({
+        id: `session-payment-${payment.id}`,
+        title: 'Session payment due',
+        subtitle: `Pay before ${childName}'s therapy session begins`,
+        actionType: 'SESSION_PAYMENT_DUE',
+        paymentId: payment.id,
+        appointmentId: payment.session?.appointmentId,
+        sessionId: payment.sessionId ?? undefined,
+        priority: 0,
+      });
+    }
+
     const pendingMarketplaceInterest =
       await this.prisma.marketplaceInterest.findFirst({
         where: {

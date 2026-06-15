@@ -6,6 +6,7 @@ import '../../../core/providers/app_providers.dart';
 import '../../../core/providers/consent_gate_provider.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/glossy_button.dart';
 import '../data/privacy_repository.dart';
 
 final privacyNoticeSummaryProvider =
@@ -104,21 +105,21 @@ class _HipaaPrivacyNoticeScreenState
             Semantics(
               button: true,
               label: 'View Notice of Privacy Practices',
-              child: OutlinedButton.icon(
+              child: GlossyOutlinedButton.icon(
                 onPressed: () =>
                     context.push(AppRoutes.privacyNoticeOfPractices),
-                icon: const Icon(Icons.article_outlined),
-                label: const Text('View Notice of Privacy Practices'),
+                icon: Icons.article_outlined,
+                child: const Text('View Notice of Privacy Practices'),
               ),
             ),
             const SizedBox(height: 12),
             Semantics(
               button: true,
               label: 'View Privacy Policy',
-              child: OutlinedButton.icon(
+              child: GlossyOutlinedButton.icon(
                 onPressed: () => context.push(AppRoutes.privacyPolicy),
-                icon: const Icon(Icons.policy_outlined),
-                label: const Text('View Privacy Policy'),
+                icon: Icons.policy_outlined,
+                child: const Text('View Privacy Policy'),
               ),
             ),
             const SizedBox(height: 24),
@@ -137,15 +138,12 @@ class _HipaaPrivacyNoticeScreenState
               button: true,
               enabled: _checked && !_submitting,
               label: 'Continue after acknowledging privacy notice',
-              child: FilledButton(
-                onPressed: _checked && !_submitting ? _continue : null,
-                child: _submitting
-                    ? const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Continue'),
+              child: GlossyButton(
+                title: 'Continue',
+                variant: GlossyButtonVariant.greenTeal,
+                loading: _submitting,
+                disabled: !_checked,
+                onPressed: _continue,
               ),
             ),
           ],
