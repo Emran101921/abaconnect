@@ -211,7 +211,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'appointments',
             name: 'parentAppointments',
-            builder: (context, state) => const ParentAppointmentsScreen(),
+            builder: (context, state) => ParentAppointmentsScreen(
+              highlightAppointmentId: state.uri.queryParameters['id'],
+            ),
           ),
           GoRoute(
             path: 'booking',
@@ -330,7 +332,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'appointments',
             name: 'therapistAppointments',
-            builder: (context, state) => const TherapistAppointmentsScreen(),
+            builder: (context, state) => TherapistAppointmentsScreen(
+              highlightAppointmentId: state.uri.queryParameters['id'],
+            ),
           ),
           GoRoute(
             path: 'profile',

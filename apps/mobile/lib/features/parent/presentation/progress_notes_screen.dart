@@ -234,49 +234,85 @@ class _ProgressNoteCard extends StatelessWidget {
   final DateFormat dateFmt;
   final VoidCallback onFeedback;
 
+  String get _summaryPreview {
+    final text = note.summary.trim();
+    if (text.length <= 140) return text;
+    return '${text.substring(0, 140).trimRight()}…';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final longSummary = note.summary.trim().length > 140;
+
     return Card(
       color: highlight
           ? Theme.of(context).colorScheme.primaryContainer
           : null,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
+      child: ExpansionTile(
+        initiallyExpanded: highlight,
+        tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        title: Text(
+          note.childName,
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              note.childName,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
             Text('With ${note.therapistName}'),
             if (note.signedAt != null)
               Text(
                 dateFmt.format(note.signedAt!),
                 style: Theme.of(context).textTheme.bodySmall,
               ),
-            const SizedBox(height: 8),
-            Text(note.summary),
-            if (note.parentFeedback != null) ...[
-              const SizedBox(height: 8),
+            if (!longSummary) ...[
+              const SizedBox(height: 6),
               Text(
-                'Your feedback',
-                style: Theme.of(context).textTheme.labelLarge,
+                _summaryPreview,
+                style: Theme.of(context).textTheme.bodyMedium,
               ),
-              Text(note.parentFeedback!),
             ],
-            const SizedBox(height: 8),
-            TextButton.icon(
-              onPressed: onFeedback,
-              icon: const Icon(Icons.feedback_outlined),
-              label: Text(
-                note.parentFeedback == null
-                    ? 'Leave feedback'
-                    : 'Edit feedback',
-              ),
-            ),
           ],
         ),
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (longSummary) ...[
+                  Text(
+                    'Session summary',
+                    style: Theme.of(context).textTheme.labelLarge,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(note.summary),
+                  const SizedBox(height: 12),
+                ],
+                if (note.parentFeedback != null) ...[
+                  Text(
+                    'Your feedback',
+                    style: Theme.of(context).textTheme.labelLarge,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(note.parentFeedback!),
+                  const SizedBox(height: 8),
+                ],
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: onFeedback,
+                    icon: const Icon(Icons.feedback_outlined),
+                    label: Text(
+                      note.parentFeedback == null
+                          ? 'Leave feedback'
+                          : 'Edit feedback',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

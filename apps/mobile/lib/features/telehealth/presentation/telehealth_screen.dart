@@ -203,33 +203,37 @@ class TelehealthScreen extends ConsumerWidget {
   }
 
   void _showRoomLink(BuildContext context, String url) {
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Session link'),
-        content: SelectableText(url),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Clipboard.setData(ClipboardData(text: url));
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(const SnackBar(content: Text('Link copied')));
-            },
-            child: const Text('Copy link'),
-          ),
-          GlossyButton(
-            title: 'Close',
-            size: GlossyButtonSize.small,
-            fullWidth: false,
-            variant: GlossyButtonVariant.neutral,
-            onPressed: () => Navigator.pop(ctx),
-          ),
-        ],
-      ),
-    );
+    showTelehealthRoomLinkDialog(context, url);
   }
+}
+
+void showTelehealthRoomLinkDialog(BuildContext context, String url) {
+  showDialog<void>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Session link'),
+      content: SelectableText(url),
+      actions: [
+        TextButton(
+          onPressed: () {
+            Clipboard.setData(ClipboardData(text: url));
+            Navigator.pop(ctx);
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text('Link copied')));
+          },
+          child: const Text('Copy link'),
+        ),
+        GlossyButton(
+          title: 'Close',
+          size: GlossyButtonSize.small,
+          fullWidth: false,
+          variant: GlossyButtonVariant.neutral,
+          onPressed: () => Navigator.pop(ctx),
+        ),
+      ],
+    ),
+  );
 }
 
 class _TelehealthAppointmentRow {

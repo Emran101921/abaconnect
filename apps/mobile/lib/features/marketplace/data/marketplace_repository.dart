@@ -276,6 +276,36 @@ class MarketplaceRepository {
     await _graphql.query(mutation, variables: {'id': marketplaceRequestId});
   }
 
+  Future<void> resumeRequest(String marketplaceRequestId) async {
+    const mutation = r'''
+      mutation($id: ID!) {
+        resumeMarketplaceRequest(marketplaceRequestId: $id)
+      }
+    ''';
+    await _graphql.query(mutation, variables: {'id': marketplaceRequestId});
+  }
+
+  Future<void> rejectInterest({
+    required String marketplaceRequestId,
+    required String providerProfileId,
+  }) async {
+    const mutation = r'''
+      mutation($requestId: ID!, $providerId: ID!) {
+        rejectMarketplaceInterest(
+          marketplaceRequestId: $requestId
+          providerProfileId: $providerId
+        )
+      }
+    ''';
+    await _graphql.query(
+      mutation,
+      variables: {
+        'requestId': marketplaceRequestId,
+        'providerId': providerProfileId,
+      },
+    );
+  }
+
   Future<MarketplaceRequestModel> createRequest({
     required String childId,
     String? screeningResponseId,

@@ -137,6 +137,35 @@ export class MarketplaceResolver {
     return true;
   }
 
+  @Mutation(() => Boolean, { name: 'resumeMarketplaceRequest' })
+  @Roles('PARENT')
+  async resumeMarketplaceRequest(
+    @CurrentUser() user: AuthUser,
+    @Args('marketplaceRequestId', { type: () => ID })
+    marketplaceRequestId: string,
+  ) {
+    await this.marketplace.resumeRequest(user.id, marketplaceRequestId);
+    return true;
+  }
+
+  @Mutation(() => Boolean, { name: 'rejectMarketplaceInterest' })
+  @Roles('PARENT')
+  async rejectMarketplaceInterest(
+    @CurrentUser() user: AuthUser,
+    @Args('marketplaceRequestId', { type: () => ID })
+    marketplaceRequestId: string,
+    @Args('providerProfileId', { type: () => ID }) providerProfileId: string,
+    @Req() req: Request,
+  ) {
+    await this.marketplace.rejectProviderInterest(
+      user.id,
+      marketplaceRequestId,
+      providerProfileId,
+      ctx(req),
+    );
+    return true;
+  }
+
   @Query(() => [PublicMarketplaceRequestType], {
     name: 'browseMarketplaceRequests',
   })
