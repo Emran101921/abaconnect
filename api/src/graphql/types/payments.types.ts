@@ -34,6 +34,12 @@ export class PaymentType {
 }
 
 @ObjectType()
+export class PaymentsConfigType {
+  @Field()
+  stripeConfigured: boolean;
+}
+
+@ObjectType()
 export class PaymentIntentResultType {
   @Field(() => PaymentType)
   payment: PaymentType;

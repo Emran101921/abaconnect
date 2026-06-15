@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../shared/widgets/app_snackbar.dart';
 import '../../../shared/widgets/glossy_button.dart';
 import '../../../shared/widgets/role_tab_scaffold.dart';
 import '../data/marketplace_repository.dart';
@@ -106,17 +107,61 @@ class _ParentConsentHistoryScreenState
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(child: Text('Error: $_error'))
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.error_outline, size: 48),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Could not load consent history',
+                          style: Theme.of(context).textTheme.titleMedium,
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          AppSnackBar.messageFromError(_error!),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        GlossyButton(
+                          title: 'Retry',
+                          icon: Icons.refresh_rounded,
+                          variant: GlossyButtonVariant.neutral,
+                          onPressed: _load,
+                        ),
+                      ],
+                    ),
+                  ),
+                )
               : RefreshIndicator(
                   onRefresh: _load,
                   child: _records.isEmpty
                       ? ListView(
-                          children: const [
-                            SizedBox(height: 120),
-                            Center(child: Text('No consent records yet.')),
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          children: [
+                            SizedBox(
+                              height: MediaQuery.sizeOf(context).height * 0.2,
+                            ),
+                            Icon(
+                              Icons.verified_user_outlined,
+                              size: 48,
+                              color: Theme.of(context).colorScheme.outline,
+                            ),
+                            const SizedBox(height: 16),
+                            const Center(
+                              child: Text(
+                                'No consent records yet.\n'
+                                'Sharing permissions you grant to providers appear here.',
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
                           ],
                         )
                       : ListView.separated(
+                          physics: const AlwaysScrollableScrollPhysics(),
                           padding: const EdgeInsets.all(16),
                           itemCount: _records.length,
                           separatorBuilder: (_, _) => const SizedBox(height: 12),

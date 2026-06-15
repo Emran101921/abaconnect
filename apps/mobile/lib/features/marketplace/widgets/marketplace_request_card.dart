@@ -30,11 +30,24 @@ class MarketplaceRequestCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Request ${request.anonymousPublicId}',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Request ${request.anonymousPublicId}',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                if (request.interestCount > 0)
+                  Badge(
+                    label: Text('${request.interestCount}'),
+                    backgroundColor: theme.colorScheme.primary,
+                    textColor: theme.colorScheme.onPrimary,
+                    child: const Icon(Icons.verified_user_outlined, size: 20),
+                  ),
+              ],
             ),
             const SizedBox(height: 8),
             _row('Service area', request.serviceAreaLabel),

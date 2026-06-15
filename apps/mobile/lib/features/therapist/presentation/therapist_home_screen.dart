@@ -21,6 +21,7 @@ import '../../notifications/notification_providers.dart';
 import '../data/therapist_repository.dart';
 import '../therapist_providers.dart';
 import 'therapist_appointment_session_actions.dart';
+import 'self_pay_payment_status_chip.dart';
 import 'therapist_weekly_progress_section.dart';
 
 final therapistAppointmentsProvider =
@@ -281,6 +282,7 @@ class TherapistHomeScreen extends ConsumerWidget {
                                     '${AppRoutes.therapistHome}/appointments',
                                   ),
                                 ),
+                                SelfPayPaymentStatusChip(appointment: a),
                                 if (!isRequested &&
                                     (a.requiresSelfPayCollection ||
                                         a.canStartSession))

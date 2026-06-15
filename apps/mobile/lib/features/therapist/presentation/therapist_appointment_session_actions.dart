@@ -110,15 +110,29 @@ class TherapistAppointmentSessionActions extends ConsumerWidget {
       );
     }
 
-    final awaitingPayment = appointment.hasArrived &&
-        appointment.sessionPaymentStatus != 'SUCCEEDED';
-    final canCharge = appointment.hasArrived && awaitingPayment;
-    final canArrive =
-        appointment.status == 'CONFIRMED' || appointment.status == 'SCHEDULED';
+    final isPaid = appointment.sessionPaymentStatus == 'SUCCEEDED';
+    final paymentPending = appointment.sessionPaymentStatus == 'PENDING' &&
+        appointment.sessionPaymentId != null;
+    final awaitingPayment = appointment.hasArrived && !isPaid;
+    final canCharge =
+        appointment.hasArrived && !isPaid && !paymentPending;
+    final canArrive = !appointment.hasArrived &&
+        (appointment.status == 'CONFIRMED' ||
+            appointment.status == 'SCHEDULED');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (appointment.hasArrived && !canArrive)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(
+              'Arrival recorded',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+            ),
+          ),
         if (canArrive)
           GlossyButton(
             title: "I've arrived",
@@ -127,6 +141,15 @@ class TherapistAppointmentSessionActions extends ConsumerWidget {
             size: compact ? GlossyButtonSize.small : GlossyButtonSize.medium,
             onPressed: () => _recordArrival(context, ref),
           ),
+        if (isPaid && appointment.hasArrived) ...[
+          if (canArrive) const SizedBox(height: 8),
+          Text(
+            'Session payment received — you can start when ready.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+          ),
+        ],
         if (canCharge) ...[
           if (canArrive) const SizedBox(height: 8),
           GlossyButton(
@@ -142,6 +165,15 @@ class TherapistAppointmentSessionActions extends ConsumerWidget {
           Text(
             'Parent must pay before you can start the session.',
             style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
+        if (paymentPending) ...[
+          if (canArrive || canCharge) const SizedBox(height: 8),
+          Text(
+            'Awaiting parent payment — invoice sent.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.tertiary,
+                ),
           ),
         ],
         if (awaitingPayment && appointment.sessionPaymentId != null) ...[

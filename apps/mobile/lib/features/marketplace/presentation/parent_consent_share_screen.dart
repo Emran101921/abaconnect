@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/app_providers.dart';
+import '../../../shared/widgets/app_snackbar.dart';
 import '../../../shared/widgets/glossy_button.dart';
 import '../../../shared/widgets/role_tab_scaffold.dart';
 import '../../platform/data/platform_repository.dart';
@@ -135,10 +136,51 @@ class _ParentConsentShareScreenState
           Text(_consentText),
           const SizedBox(height: 16),
           if (_loadingDocs)
-            const Center(child: CircularProgressIndicator())
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 32),
+              child: Center(child: CircularProgressIndicator()),
+            )
           else if (_loadError != null)
-            Text('Could not load documents: $_loadError')
-          else if (_childId != null) ...[
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Column(
+                  children: [
+                    const Icon(Icons.error_outline, size: 48),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Could not load sharing context',
+                      style: Theme.of(context).textTheme.titleMedium,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      AppSnackBar.messageFromError(_loadError!),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    GlossyButton(
+                      title: 'Retry',
+                      icon: Icons.refresh_rounded,
+                      variant: GlossyButtonVariant.neutral,
+                      onPressed: _loadContext,
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else if (_childId == null)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  'This marketplace request could not be found or is no longer active. '
+                  'Return to your dashboard and try again.',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            )
+          else ...[
             Text(
               'Optional documents to share',
               style: Theme.of(context).textTheme.titleMedium,
@@ -148,7 +190,32 @@ class _ParentConsentShareScreenState
               const Text(
                 'No documents on file for this child. You can still share profile and contact details.',
               )
-            else
+            else ...[
+              Row(
+                children: [
+                  Text(
+                    '${_selectedDocumentIds.length} of ${_childDocuments.length} selected',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const Spacer(),
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _selectedDocumentIds
+                          ..clear()
+                          ..addAll(_childDocuments.map((doc) => doc.id));
+                      });
+                    },
+                    child: const Text('Select all'),
+                  ),
+                  TextButton(
+                    onPressed: _selectedDocumentIds.isEmpty
+                        ? null
+                        : () => setState(_selectedDocumentIds.clear),
+                    child: const Text('Clear'),
+                  ),
+                ],
+              ),
               ..._childDocuments.map(
                 (doc) => CheckboxListTile(
                   value: _selectedDocumentIds.contains(doc.id),
@@ -165,21 +232,24 @@ class _ParentConsentShareScreenState
                   subtitle: Text('${doc.type} · ${doc.fileName}'),
                 ),
               ),
+            ],
             const SizedBox(height: 8),
           ],
-          CheckboxListTile(
-            value: _consent,
-            onChanged: (v) => setState(() => _consent = v ?? false),
-            title: const Text('I authorize sharing as described above'),
-          ),
-          const SizedBox(height: 16),
-          GlossyButton(
-            title: 'Grant consent & share',
-            variant: GlossyButtonVariant.greenTeal,
-            loading: _submitting,
-            disabled: !_consent,
-            onPressed: _grant,
-          ),
+          if (!_loadingDocs && _loadError == null && _childId != null) ...[
+            CheckboxListTile(
+              value: _consent,
+              onChanged: (v) => setState(() => _consent = v ?? false),
+              title: const Text('I authorize sharing as described above'),
+            ),
+            const SizedBox(height: 16),
+            GlossyButton(
+              title: 'Grant consent & share',
+              variant: GlossyButtonVariant.greenTeal,
+              loading: _submitting,
+              disabled: !_consent,
+              onPressed: _grant,
+            ),
+          ],
         ],
       ),
     );

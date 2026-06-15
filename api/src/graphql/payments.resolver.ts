@@ -7,12 +7,21 @@ import {
 } from '../common/decorators/current-user.decorator';
 import { PaymentsService } from '../payments/payments.service';
 import { CreatePaymentInput } from './inputs/messaging-payments.input';
-import { PaymentIntentResultType, PaymentType } from './types/payments.types';
+import {
+  PaymentIntentResultType,
+  PaymentsConfigType,
+  PaymentType,
+} from './types/payments.types';
 
 @Resolver()
 @Roles('PARENT')
 export class PaymentsResolver {
   constructor(private readonly paymentsService: PaymentsService) {}
+
+  @Query(() => PaymentsConfigType, { name: 'paymentsConfig' })
+  paymentsConfig(): PaymentsConfigType {
+    return this.paymentsService.getConfig();
+  }
 
   @Query(() => [PaymentType], { name: 'myPayments' })
   async myPayments(@CurrentUser() user: AuthUser): Promise<PaymentType[]> {

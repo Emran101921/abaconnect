@@ -136,6 +136,13 @@ class AgencyHomeScreen extends ConsumerWidget {
                       onTap: () =>
                           context.push('${AppRoutes.agencyHome}/analytics'),
                     ),
+                    AppWellnessActionItem(
+                      label: 'Marketplace',
+                      icon: Icons.storefront_outlined,
+                      variant: AppGlossyButtonVariant.primary,
+                      onTap: () =>
+                          context.push(AppRoutes.agencyMarketplace),
+                    ),
                   ],
                 ),
               ),
@@ -305,6 +312,12 @@ class AgencyHomeScreen extends ConsumerWidget {
                 subtitle: 'Sessions, revenue, and activity metrics',
                 icon: Icons.insights,
                 onTap: () => context.push('${AppRoutes.agencyHome}/analytics'),
+              ),
+              _OpsTile(
+                title: 'Marketplace browse',
+                subtitle: 'View anonymous parent service requests by ZIP area',
+                icon: Icons.storefront_outlined,
+                onTap: () => context.push(AppRoutes.agencyMarketplace),
               ),
               _OpsTile(
                 title: 'Appointments overview',

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/app_snackbar.dart';
 import '../../../shared/widgets/glossy_button.dart';
 
 class AdminMarketplaceListing {
@@ -283,6 +284,50 @@ class _AdminMarketplaceScreenState extends ConsumerState<AdminMarketplaceScreen>
     }
   }
 
+  Widget _emptyTabList(String message, {IconData icon = Icons.inbox_outlined}) {
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: [
+        SizedBox(height: MediaQuery.sizeOf(context).height * 0.2),
+        Icon(icon, size: 48, color: Theme.of(context).colorScheme.outline),
+        const SizedBox(height: 16),
+        Center(child: Text(message, textAlign: TextAlign.center)),
+      ],
+    );
+  }
+
+  Widget _buildLoadError() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 48),
+            const SizedBox(height: 16),
+            Text(
+              'Could not load moderation data',
+              style: Theme.of(context).textTheme.titleMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              AppSnackBar.messageFromError(_error ?? 'Unknown error'),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            GlossyButton(
+              title: 'Retry',
+              icon: Icons.refresh_rounded,
+              variant: GlossyButtonVariant.neutral,
+              onPressed: _load,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _suspendProvider(AdminPendingProvider provider) async {
     final reason = await showDialog<String>(
       context: context,
@@ -351,20 +396,19 @@ class _AdminMarketplaceScreenState extends ConsumerState<AdminMarketplaceScreen>
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
                 : _error != null
-                    ? Center(child: Text('Error: $_error'))
+                    ? _buildLoadError()
                     : TabBarView(
                         controller: _tabs,
                         children: [
                           RefreshIndicator(
                             onRefresh: _load,
                             child: _listings.isEmpty
-                                ? ListView(
-                                    children: const [
-                                      SizedBox(height: 120),
-                                      Center(child: Text('No marketplace listings')),
-                                    ],
+                                ? _emptyTabList(
+                                    'No active marketplace listings to review.',
+                                    icon: Icons.storefront_outlined,
                                   )
                                 : ListView.separated(
+                                    physics: const AlwaysScrollableScrollPhysics(),
                                     padding: const EdgeInsets.all(16),
                                     itemCount: _listings.length,
                                     separatorBuilder: (_, _) =>
@@ -392,13 +436,12 @@ class _AdminMarketplaceScreenState extends ConsumerState<AdminMarketplaceScreen>
                           RefreshIndicator(
                             onRefresh: _load,
                             child: _reports.isEmpty
-                                ? ListView(
-                                    children: const [
-                                      SizedBox(height: 120),
-                                      Center(child: Text('No marketplace reports')),
-                                    ],
+                                ? _emptyTabList(
+                                    'No marketplace reports filed yet.',
+                                    icon: Icons.flag_outlined,
                                   )
                                 : ListView.separated(
+                                    physics: const AlwaysScrollableScrollPhysics(),
                                     padding: const EdgeInsets.all(16),
                                     itemCount: _reports.length,
                                     separatorBuilder: (_, _) =>
@@ -424,15 +467,12 @@ class _AdminMarketplaceScreenState extends ConsumerState<AdminMarketplaceScreen>
                           RefreshIndicator(
                             onRefresh: _load,
                             child: _providers.isEmpty
-                                ? ListView(
-                                    children: const [
-                                      SizedBox(height: 120),
-                                      Center(
-                                        child: Text('No pending providers'),
-                                      ),
-                                    ],
+                                ? _emptyTabList(
+                                    'No providers awaiting marketplace verification.',
+                                    icon: Icons.verified_user_outlined,
                                   )
                                 : ListView.separated(
+                                    physics: const AlwaysScrollableScrollPhysics(),
                                     padding: const EdgeInsets.all(16),
                                     itemCount: _providers.length,
                                     separatorBuilder: (_, _) =>
@@ -477,13 +517,12 @@ class _AdminMarketplaceScreenState extends ConsumerState<AdminMarketplaceScreen>
                           RefreshIndicator(
                             onRefresh: _load,
                             child: _audit.isEmpty
-                                ? ListView(
-                                    children: const [
-                                      SizedBox(height: 120),
-                                      Center(child: Text('No marketplace audit events')),
-                                    ],
+                                ? _emptyTabList(
+                                    'No marketplace audit events recorded yet.',
+                                    icon: Icons.history,
                                   )
                                 : ListView.separated(
+                                    physics: const AlwaysScrollableScrollPhysics(),
                                     padding: const EdgeInsets.all(16),
                                     itemCount: _audit.length,
                                     separatorBuilder: (_, _) =>

@@ -4,6 +4,8 @@ set -euo pipefail
 
 API="${API_URL:-http://localhost:3000}"
 GQL="$API/graphql"
+# shellcheck source=smoke-login.sh
+source "$(dirname "$0")/smoke-login.sh"
 
 pass=0
 fail=0
@@ -23,16 +25,7 @@ check() {
 }
 
 login() {
-  local email="$1" password="$2"
-  curl -sf -X POST "$API/api/v1/auth/login" \
-    -H 'Content-Type: application/json' \
-    -H 'x-device-id: smoke-ci-device' \
-    -H 'x-device-model: CI smoke runner' \
-    -H 'x-device-platform: ci' \
-    -d "{\"email\":\"$email\",\"password\":\"$password\"}" \
-    | python3 -c "import sys,json; d=json.load(sys.stdin); \
-assert not d.get('requiresMfa'), 'MFA challenge — seed smoke-ci-device as trusted'; \
-print(d['accessToken'])"
+  smoke_login "$1" "$2"
 }
 
 gql() {
@@ -55,6 +48,9 @@ PD=$(gql "$PARENT" 'query { parentDashboard { childrenCount upcomingAppointments
 check "parentDashboard query" "d.get('data',{}).get('parentDashboard') is not None" "$PD"
 check "parentDashboard childrenCount >= 0" "d['data']['parentDashboard']['childrenCount'] >= 0" "$PD"
 check "parentDashboard onboarding fields" "'onboardingStepsCompleted' in d['data']['parentDashboard']" "$PD"
+
+PAY_CFG=$(gql "$PARENT" 'query { paymentsConfig { stripeConfigured } }')
+check "paymentsConfig query" "'stripeConfigured' in d.get('data',{}).get('paymentsConfig',{})" "$PAY_CFG"
 
 THREADS=$(gql "$PARENT" 'query { myMessageThreads { id hasUnread otherParticipantName } unreadMessageThreadCount }')
 check "myMessageThreads query" "isinstance(d.get('data',{}).get('myMessageThreads'), list)" "$THREADS"
@@ -106,6 +102,37 @@ check "tenantAnalytics claims_paid_total" \
   "any(m.get('metricKey')=='claims_paid_total' for m in d.get('data',{}).get('tenantAnalytics',[]))" "$ANALYTICS"
 check "claims pipeline paidAmountTotal" \
   "'paidAmountTotal' in d.get('data',{}).get('adminClaimsPipeline',{}).get('summary',{})" "$ANALYTICS"
+
+echo
+echo "=== Marketplace (HIPAA module) ==="
+if bash "$(dirname "$0")/smoke-marketplace.sh"; then
+  echo "PASS: smoke-marketplace.sh"
+  pass=$((pass + 1))
+else
+  echo "FAIL: smoke-marketplace.sh"
+  fail=$((fail + 1))
+fi
+
+echo
+echo "=== Self-pay session flow ==="
+# Brief pause + retry — marketplace logins can trip auth rate limits.
+sleep 3
+self_pay_ok=0
+for attempt in 1 2 3; do
+  if bash "$(dirname "$0")/smoke-self-pay.sh"; then
+    self_pay_ok=1
+    break
+  fi
+  echo "WARN: smoke-self-pay attempt $attempt failed; retrying in ${attempt}0s..."
+  sleep $((attempt * 10))
+done
+if [[ "$self_pay_ok" -eq 1 ]]; then
+  echo "PASS: smoke-self-pay.sh"
+  pass=$((pass + 1))
+else
+  echo "FAIL: smoke-self-pay.sh"
+  fail=$((fail + 1))
+fi
 
 echo
 echo "=== Summary: $pass passed, $fail failed ==="

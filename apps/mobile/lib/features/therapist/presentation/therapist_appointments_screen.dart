@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../core/providers/app_providers.dart';
 import '../data/therapist_repository.dart';
 import '../therapist_providers.dart';
+import 'self_pay_payment_status_chip.dart';
 import 'therapist_appointment_session_actions.dart';
 import 'therapist_home_screen.dart';
 import '../../../shared/widgets/glossy_button.dart';
@@ -163,6 +164,7 @@ class TherapistAppointmentsScreen extends ConsumerWidget {
                       Text(
                         DateFormat.yMMMd().add_jm().format(a.scheduledStart),
                       ),
+                      SelfPayPaymentStatusChip(appointment: a),
                       if (isRequested) ...[
                         const SizedBox(height: 12),
                         Row(

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/router/app_router.dart';
+import '../../../shared/widgets/app_healthcare_illustration.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/glossy_button.dart';
 import '../../../shared/widgets/role_tab_scaffold.dart';
@@ -11,8 +12,15 @@ import '../widgets/marketplace_approx_map.dart';
 import '../widgets/marketplace_request_card.dart';
 import 'provider_marketplace_onboarding_screen.dart';
 
+enum MarketplaceProviderShell { therapist, agency }
+
 class ProviderMarketplaceScreen extends ConsumerStatefulWidget {
-  const ProviderMarketplaceScreen({super.key});
+  const ProviderMarketplaceScreen({
+    super.key,
+    this.shell = MarketplaceProviderShell.therapist,
+  });
+
+  final MarketplaceProviderShell shell;
 
   @override
   ConsumerState<ProviderMarketplaceScreen> createState() =>
@@ -26,10 +34,39 @@ class _ProviderMarketplaceScreenState
   double _radius = 25;
   bool _mapView = false;
   bool _loading = false;
+  bool _hasSearched = false;
+  String? _searchError;
   String? _locationType;
   String? _urgency;
   String? _authorizationStatus;
   List<MarketplaceRequestModel> _requests = [];
+
+  String get _marketplaceBaseRoute => switch (widget.shell) {
+        MarketplaceProviderShell.therapist => AppRoutes.therapistMarketplace,
+        MarketplaceProviderShell.agency => AppRoutes.agencyMarketplace,
+      };
+
+  Widget _wrapMarketplaceShell({
+    required String title,
+    required Widget body,
+    String? subtitle,
+    List<Widget>? actions,
+  }) {
+    return switch (widget.shell) {
+      MarketplaceProviderShell.therapist => TherapistTabScaffold(
+          title: title,
+          subtitle: subtitle,
+          actions: actions,
+          body: body,
+        ),
+      MarketplaceProviderShell.agency => AppScaffold(
+          title: title,
+          subtitle: subtitle,
+          actions: actions,
+          body: body,
+        ),
+    };
+  }
 
   @override
   void dispose() {
@@ -39,7 +76,10 @@ class _ProviderMarketplaceScreenState
   }
 
   Future<void> _search() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _searchError = null;
+    });
     try {
       final list = await ref.read(marketplaceRepositoryProvider).browseRequests(
             zipCode: _zipController.text.trim().isEmpty
@@ -53,9 +93,18 @@ class _ProviderMarketplaceScreenState
             urgency: _urgency,
             authorizationStatus: _authorizationStatus,
           );
-      if (mounted) setState(() => _requests = list);
+      if (mounted) {
+        setState(() {
+          _requests = list;
+          _hasSearched = true;
+        });
+      }
     } catch (e) {
       if (mounted) {
+        setState(() {
+          _searchError = e.toString();
+          _hasSearched = true;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Search failed: $e')),
         );
@@ -186,7 +235,7 @@ class _ProviderMarketplaceScreenState
           onViewAuthorizedDetails: () {
             Navigator.pop(ctx);
             context.push(
-              '${AppRoutes.therapistMarketplace}/${request.id}/authorized-child',
+              '$_marketplaceBaseRoute/${request.id}/authorized-child',
             );
           },
           onReport: () {
@@ -206,7 +255,7 @@ class _ProviderMarketplaceScreenState
       onRequestPermission: () =>
           _expressInterest(request, requestPermission: true),
       onViewAuthorizedDetails: () => context.push(
-        '${AppRoutes.therapistMarketplace}/${request.id}/authorized-child',
+        '$_marketplaceBaseRoute/${request.id}/authorized-child',
       ),
       onReport: () => _reportListing(request),
     );
@@ -380,11 +429,40 @@ class _ProviderMarketplaceScreenState
       ),
       error: (e, _) => AppScaffold(
         title: 'Marketplace',
-        body: Center(child: Text('Error: $e')),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, size: 48),
+                const SizedBox(height: 16),
+                Text(
+                  'Could not load marketplace profile',
+                  style: Theme.of(context).textTheme.titleMedium,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '$e',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 16),
+                GlossyButton(
+                  title: 'Retry',
+                  icon: Icons.refresh_rounded,
+                  variant: GlossyButtonVariant.neutral,
+                  onPressed: () => ref.invalidate(providerMarketplaceProfileProvider),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
       data: (p) {
         if (p == null || !p.isReady) {
-          return const ProviderMarketplaceOnboardingScreen();
+          return ProviderMarketplaceOnboardingScreen(shell: widget.shell);
         }
         return _buildBrowse(context);
       },
@@ -392,7 +470,7 @@ class _ProviderMarketplaceScreenState
   }
 
   Widget _buildBrowse(BuildContext context) {
-    return TherapistTabScaffold(
+    return _wrapMarketplaceShell(
       title: 'Marketplace',
       subtitle: 'Anonymous requests by ZIP area',
       actions: [
@@ -511,35 +589,142 @@ class _ProviderMarketplaceScreenState
             ),
           ),
           Expanded(
-            child: _mapView
-                ? ListView(
-                    children: [
-                      MarketplaceApproxMap(
-                        requests: _requests,
-                        onPinTap: _showRequestDetail,
-                      ),
-                      ..._requests.map(
-                        (request) => Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 6,
-                          ),
-                          child: _requestCard(request),
-                        ),
-                      ),
-                    ],
-                  )
-                : ListView.separated(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _requests.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 12),
-                    itemBuilder: (context, index) {
-                      return _requestCard(_requests[index]);
-                    },
-                  ),
+            child: _buildResults(context),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildResults(BuildContext context) {
+    if (_loading && !_hasSearched) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_searchError != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.cloud_off_outlined, size: 48),
+              const SizedBox(height: 16),
+              Text(
+                'Could not load marketplace requests',
+                style: Theme.of(context).textTheme.titleMedium,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _searchError!,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 16),
+              GlossyButton(
+                title: 'Try again',
+                icon: Icons.refresh_rounded,
+                variant: GlossyButtonVariant.bluePurple,
+                onPressed: _search,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (!_hasSearched) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const AppHealthcareIllustration(
+                type: AppIllustrationType.scheduling,
+                size: 100,
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Browse anonymous parent requests',
+                style: Theme.of(context).textTheme.titleMedium,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Set your ZIP radius and filters, then tap Search requests. '
+                'Save frequent filters to get alerts when new matches appear.',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_requests.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.search_off_outlined,
+                size: 48,
+                color: Theme.of(context).colorScheme.outline,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'No matching requests',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Try widening your radius, clearing filters, or saving this search for alerts.',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              GlossyButton(
+                title: 'Save search for alerts',
+                icon: Icons.bookmark_add_outlined,
+                variant: GlossyButtonVariant.tealBlue,
+                size: GlossyButtonSize.small,
+                onPressed: _saveCurrentSearch,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_mapView) {
+      return ListView(
+        children: [
+          MarketplaceApproxMap(
+            requests: _requests,
+            onPinTap: _showRequestDetail,
+          ),
+          ..._requests.map(
+            (request) => Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 6,
+              ),
+              child: _requestCard(request),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: _requests.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 12),
+      itemBuilder: (context, index) => _requestCard(_requests[index]),
     );
   }
 }
