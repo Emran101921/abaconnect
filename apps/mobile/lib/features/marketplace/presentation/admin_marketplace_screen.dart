@@ -143,18 +143,134 @@ class _AdminMarketplaceScreenState extends ConsumerState<AdminMarketplaceScreen>
   List<AdminPendingProvider> _providers = [];
   List<AdminAuditEntry> _audit = [];
   String? _error;
+  final _searchController = TextEditingController();
+  String _searchQuery = '';
+  String? _listingStatusFilter;
+  String? _reportStatusFilter;
 
   @override
   void initState() {
     super.initState();
     _tabs = TabController(length: 4, vsync: this);
+    _tabs.addListener(() {
+      if (!_tabs.indexIsChanging) setState(() {});
+    });
     _load();
   }
 
   @override
   void dispose() {
+    _searchController.dispose();
     _tabs.dispose();
     super.dispose();
+  }
+
+  bool _matchesSearch(String value) {
+    if (_searchQuery.isEmpty) return true;
+    return value.toLowerCase().contains(_searchQuery);
+  }
+
+  List<AdminMarketplaceListing> get _filteredListings {
+    return _listings.where((item) {
+      if (_listingStatusFilter != null && item.status != _listingStatusFilter) {
+        return false;
+      }
+      if (_searchQuery.isEmpty) return true;
+      return _matchesSearch(item.anonymousPublicId) ||
+          _matchesSearch(item.serviceAreaLabel) ||
+          _matchesSearch(item.ageRangeLabel) ||
+          _matchesSearch(item.status);
+    }).toList();
+  }
+
+  List<AdminMarketplaceReport> get _filteredReports {
+    return _reports.where((report) {
+      if (_reportStatusFilter != null && report.status != _reportStatusFilter) {
+        return false;
+      }
+      if (_searchQuery.isEmpty) return true;
+      return _matchesSearch(report.reason) ||
+          _matchesSearch(report.status) ||
+          _matchesSearch(report.marketplaceRequestId) ||
+          _matchesSearch(report.anonymousPublicId ?? '') ||
+          _matchesSearch(report.reporterName ?? '') ||
+          _matchesSearch(report.reporterEmail ?? '') ||
+          _matchesSearch(report.details ?? '');
+    }).toList();
+  }
+
+  List<AdminPendingProvider> get _filteredProviders {
+    return _providers.where((provider) {
+      if (_searchQuery.isEmpty) return true;
+      return _matchesSearch(provider.displayName) ||
+          _matchesSearch(provider.legalName) ||
+          _matchesSearch(provider.accountType) ||
+          _matchesSearch(provider.verifiedStatus);
+    }).toList();
+  }
+
+  List<AdminAuditEntry> get _filteredAudit {
+    return _audit.where((entry) {
+      if (_searchQuery.isEmpty) return true;
+      return _matchesSearch(entry.action) || _matchesSearch(entry.entityType);
+    }).toList();
+  }
+
+  Widget _statusFilterChips({
+    required List<String> statuses,
+    required String? selected,
+    required ValueChanged<String?> onSelected,
+  }) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Row(
+        children: [
+          FilterChip(
+            label: const Text('All'),
+            selected: selected == null,
+            onSelected: (_) => onSelected(null),
+          ),
+          const SizedBox(width: 8),
+          ...statuses.map(
+            (status) => Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: FilterChip(
+                label: Text(status),
+                selected: selected == status,
+                onSelected: (_) => onSelected(status),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _searchBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      child: TextField(
+        controller: _searchController,
+        decoration: InputDecoration(
+          hintText: 'Search listings, reports, providers…',
+          prefixIcon: const Icon(Icons.search),
+          suffixIcon: _searchQuery.isEmpty
+              ? null
+              : IconButton(
+                  tooltip: 'Clear search',
+                  icon: const Icon(Icons.clear),
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() => _searchQuery = '');
+                  },
+                ),
+          border: const OutlineInputBorder(),
+          isDense: true,
+        ),
+        onChanged: (value) => setState(() => _searchQuery = value.trim().toLowerCase()),
+      ),
+    );
   }
 
   Future<void> _load() async {
@@ -392,6 +508,23 @@ class _AdminMarketplaceScreenState extends ConsumerState<AdminMarketplaceScreen>
               Tab(text: 'Audit log'),
             ],
           ),
+          if (!_loading && _error == null) ...[
+            _searchBar(),
+            if (_tabs.index == 0)
+              _statusFilterChips(
+                statuses: const ['ACTIVE', 'PAUSED', 'CLOSED'],
+                selected: _listingStatusFilter,
+                onSelected: (value) =>
+                    setState(() => _listingStatusFilter = value),
+              )
+            else if (_tabs.index == 1)
+              _statusFilterChips(
+                statuses: const ['OPEN', 'RESOLVED', 'DISMISSED'],
+                selected: _reportStatusFilter,
+                onSelected: (value) =>
+                    setState(() => _reportStatusFilter = value),
+              ),
+          ],
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
@@ -402,19 +535,21 @@ class _AdminMarketplaceScreenState extends ConsumerState<AdminMarketplaceScreen>
                         children: [
                           RefreshIndicator(
                             onRefresh: _load,
-                            child: _listings.isEmpty
+                            child: _filteredListings.isEmpty
                                 ? _emptyTabList(
-                                    'No active marketplace listings to review.',
+                                    _listings.isEmpty
+                                        ? 'No active marketplace listings to review.'
+                                        : 'No listings match your search or filter.',
                                     icon: Icons.storefront_outlined,
                                   )
                                 : ListView.separated(
                                     physics: const AlwaysScrollableScrollPhysics(),
                                     padding: const EdgeInsets.all(16),
-                                    itemCount: _listings.length,
+                                    itemCount: _filteredListings.length,
                                     separatorBuilder: (_, _) =>
                                         const SizedBox(height: 8),
                                     itemBuilder: (context, index) {
-                                      final item = _listings[index];
+                                      final item = _filteredListings[index];
                                       return Card(
                                         child: ListTile(
                                           title: Text(item.anonymousPublicId),
@@ -435,19 +570,21 @@ class _AdminMarketplaceScreenState extends ConsumerState<AdminMarketplaceScreen>
                           ),
                           RefreshIndicator(
                             onRefresh: _load,
-                            child: _reports.isEmpty
+                            child: _filteredReports.isEmpty
                                 ? _emptyTabList(
-                                    'No marketplace reports filed yet.',
+                                    _reports.isEmpty
+                                        ? 'No marketplace reports filed yet.'
+                                        : 'No reports match your search or filter.',
                                     icon: Icons.flag_outlined,
                                   )
                                 : ListView.separated(
                                     physics: const AlwaysScrollableScrollPhysics(),
                                     padding: const EdgeInsets.all(16),
-                                    itemCount: _reports.length,
+                                    itemCount: _filteredReports.length,
                                     separatorBuilder: (_, _) =>
                                         const SizedBox(height: 8),
                                     itemBuilder: (context, index) {
-                                      final report = _reports[index];
+                                      final report = _filteredReports[index];
                                       return Card(
                                         child: ListTile(
                                           title: Text(report.reason),
@@ -466,19 +603,21 @@ class _AdminMarketplaceScreenState extends ConsumerState<AdminMarketplaceScreen>
                           ),
                           RefreshIndicator(
                             onRefresh: _load,
-                            child: _providers.isEmpty
+                            child: _filteredProviders.isEmpty
                                 ? _emptyTabList(
-                                    'No providers awaiting marketplace verification.',
+                                    _providers.isEmpty
+                                        ? 'No providers awaiting marketplace verification.'
+                                        : 'No providers match your search.',
                                     icon: Icons.verified_user_outlined,
                                   )
                                 : ListView.separated(
                                     physics: const AlwaysScrollableScrollPhysics(),
                                     padding: const EdgeInsets.all(16),
-                                    itemCount: _providers.length,
+                                    itemCount: _filteredProviders.length,
                                     separatorBuilder: (_, _) =>
                                         const SizedBox(height: 8),
                                     itemBuilder: (context, index) {
-                                      final provider = _providers[index];
+                                      final provider = _filteredProviders[index];
                                       return Card(
                                         child: ListTile(
                                           title: Text(provider.displayName),
@@ -516,19 +655,21 @@ class _AdminMarketplaceScreenState extends ConsumerState<AdminMarketplaceScreen>
                           ),
                           RefreshIndicator(
                             onRefresh: _load,
-                            child: _audit.isEmpty
+                            child: _filteredAudit.isEmpty
                                 ? _emptyTabList(
-                                    'No marketplace audit events recorded yet.',
+                                    _audit.isEmpty
+                                        ? 'No marketplace audit events recorded yet.'
+                                        : 'No audit events match your search.',
                                     icon: Icons.history,
                                   )
                                 : ListView.separated(
                                     physics: const AlwaysScrollableScrollPhysics(),
                                     padding: const EdgeInsets.all(16),
-                                    itemCount: _audit.length,
+                                    itemCount: _filteredAudit.length,
                                     separatorBuilder: (_, _) =>
                                         const SizedBox(height: 8),
                                     itemBuilder: (context, index) {
-                                      final entry = _audit[index];
+                                      final entry = _filteredAudit[index];
                                       return Card(
                                         child: ListTile(
                                           title: Text('${entry.action} · ${entry.entityType}'),

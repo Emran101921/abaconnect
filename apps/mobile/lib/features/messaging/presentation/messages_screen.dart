@@ -12,6 +12,7 @@ import '../../../shared/widgets/app_healthcare_illustration.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_section_header.dart';
 import '../../../shared/widgets/glossy_button.dart';
+import '../../../shared/widgets/app_snackbar.dart';
 import '../data/messaging_repository.dart';
 import '../messaging_providers.dart';
 import 'message_status_badge.dart';
@@ -46,7 +47,38 @@ class MessagesScreen extends ConsumerWidget {
       ),
       body: threads.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (e, _) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, size: 48),
+                const SizedBox(height: 16),
+                Text(
+                  'Could not load messages',
+                  style: Theme.of(context).textTheme.titleMedium,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  AppSnackBar.messageFromError(e),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                GlossyButton(
+                  title: 'Retry',
+                  icon: Icons.refresh_rounded,
+                  variant: GlossyButtonVariant.neutral,
+                  onPressed: () {
+                    ref.invalidate(messageThreadsProvider);
+                    ref.invalidate(unreadMessageThreadsProvider);
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
         data: (list) {
           if (list.isEmpty) {
             return Center(

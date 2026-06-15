@@ -8,6 +8,7 @@ import '../../../shared/widgets/app_healthcare_illustration.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_section_header.dart';
 import '../../../shared/widgets/glossy_button.dart';
+import '../../../shared/widgets/app_snackbar.dart';
 import '../data/parent_booking_repository.dart';
 import 'parent_dashboard_providers.dart';
 
@@ -30,6 +31,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
   int _recurringWeeks = 4;
   bool _loading = true;
   bool _submitting = false;
+  String? _loadError;
 
   @override
   void initState() {
@@ -38,6 +40,10 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
   }
 
   Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _loadError = null;
+    });
     final repo = ref.read(parentBookingRepositoryProvider);
     try {
       final children = await repo.fetchChildren();
@@ -50,12 +56,10 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
         _loading = false;
       });
     } catch (e) {
-      setState(() => _loading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Load failed: $e')));
-      }
+      setState(() {
+        _loading = false;
+        _loadError = AppSnackBar.messageFromError(e);
+      });
     }
   }
 
@@ -158,6 +162,41 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
       return const AppScaffold(
         title: 'Book Session',
         body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_loadError != null) {
+      return AppScaffold(
+        title: 'Book Session',
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, size: 48),
+                const SizedBox(height: 16),
+                Text(
+                  'Could not load booking options',
+                  style: Theme.of(context).textTheme.titleMedium,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _loadError!,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                GlossyButton(
+                  title: 'Retry',
+                  icon: Icons.refresh_rounded,
+                  variant: GlossyButtonVariant.neutral,
+                  onPressed: _load,
+                ),
+              ],
+            ),
+          ),
+        ),
       );
     }
 
