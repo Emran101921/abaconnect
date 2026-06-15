@@ -154,15 +154,65 @@ class ProviderMarketplaceProfileModel {
     required this.displayName,
     required this.verifiedStatus,
     required this.confidentialityTermsAccepted,
+    this.coverageZipCodes = const [],
+    this.languages = const [],
   });
 
   final String id;
   final String displayName;
   final String verifiedStatus;
   final bool confidentialityTermsAccepted;
+  final List<String> coverageZipCodes;
+  final List<String> languages;
 
   bool get isReady =>
       confidentialityTermsAccepted && verifiedStatus != 'SUSPENDED';
+}
+
+class ProviderBrowseFilters {
+  const ProviderBrowseFilters({
+    this.zipCode = '',
+    this.language = '',
+    this.radiusMiles = 25,
+    this.locationType,
+    this.urgency,
+    this.authorizationStatus,
+    this.mapView = false,
+  });
+
+  final String zipCode;
+  final String language;
+  final double radiusMiles;
+  final String? locationType;
+  final String? urgency;
+  final String? authorizationStatus;
+  final bool mapView;
+
+  ProviderBrowseFilters copyWith({
+    String? zipCode,
+    String? language,
+    double? radiusMiles,
+    String? locationType,
+    String? urgency,
+    String? authorizationStatus,
+    bool? mapView,
+    bool clearLocationType = false,
+    bool clearUrgency = false,
+    bool clearAuthorizationStatus = false,
+  }) {
+    return ProviderBrowseFilters(
+      zipCode: zipCode ?? this.zipCode,
+      language: language ?? this.language,
+      radiusMiles: radiusMiles ?? this.radiusMiles,
+      locationType:
+          clearLocationType ? null : (locationType ?? this.locationType),
+      urgency: clearUrgency ? null : (urgency ?? this.urgency),
+      authorizationStatus: clearAuthorizationStatus
+          ? null
+          : (authorizationStatus ?? this.authorizationStatus),
+      mapView: mapView ?? this.mapView,
+    );
+  }
 }
 
 class MarketplaceSavedSearchModel {
@@ -209,6 +259,8 @@ class MarketplaceRepository {
           displayName
           verifiedStatus
           confidentialityTermsAccepted
+          coverageZipCodes
+          languages
         }
       }
     ''';
@@ -222,6 +274,12 @@ class MarketplaceRepository {
       verifiedStatus: row['verifiedStatus'] as String,
       confidentialityTermsAccepted:
           row['confidentialityTermsAccepted'] as bool? ?? false,
+      coverageZipCodes: (row['coverageZipCodes'] as List<dynamic>? ?? [])
+          .map((e) => e.toString())
+          .toList(),
+      languages: (row['languages'] as List<dynamic>? ?? [])
+          .map((e) => e.toString())
+          .toList(),
     );
   }
 
@@ -827,3 +885,9 @@ final providerMarketplaceProfileProvider =
     FutureProvider<ProviderMarketplaceProfileModel?>((ref) {
   return ref.watch(marketplaceRepositoryProvider).fetchProviderProfile();
 });
+
+final providerBrowseFiltersProvider =
+    StateProvider<ProviderBrowseFilters>((ref) => const ProviderBrowseFilters());
+
+/// Set true after onboarding so browse runs an initial ZIP search once.
+final providerMarketplaceAutoSearchProvider = StateProvider<bool>((ref) => false);

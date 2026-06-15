@@ -35,7 +35,29 @@ class _MarketplaceOptInScreenState extends ConsumerState<MarketplaceOptInScreen>
   var _submitting = false;
   String _locationType = 'HOME';
   String _urgency = 'ROUTINE';
+  String? _languagePreference;
   MarketplaceRequestModel? _postedRequest;
+
+  static const _languagePresets = [
+    'English',
+    'Spanish',
+    'Mandarin',
+    'Vietnamese',
+    'Arabic',
+    'ASL',
+  ];
+
+  static const _urgencyPresets = [
+    ('ROUTINE', 'Routine', 'Flexible start'),
+    ('SOON', 'Soon', 'Within a few weeks'),
+    ('URGENT', 'Urgent', 'Needs attention now'),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _languagePreference = widget.languagePreference;
+  }
 
   Future<void> _submit() async {
     if (widget.childId.isEmpty) {
@@ -59,7 +81,7 @@ class _MarketplaceOptInScreenState extends ConsumerState<MarketplaceOptInScreen>
             screeningResponseId: widget.screeningResponseId,
             anonymousConsentGranted: true,
             locationType: _locationType,
-            languagePreference: widget.languagePreference,
+            languagePreference: _languagePreference,
             urgency: _urgency,
           );
       if (!mounted) return;
@@ -181,6 +203,58 @@ class _MarketplaceOptInScreenState extends ConsumerState<MarketplaceOptInScreen>
               ),
             ),
             const SizedBox(height: 16),
+            DropdownButtonFormField<String?>(
+              initialValue: _languagePreference,
+              decoration: InputDecoration(
+                labelText: 'Preferred language',
+                helperText: widget.languagePreference != null
+                    ? 'Pre-filled from your child profile — change if needed'
+                    : 'Helps match providers who speak your language',
+              ),
+              items: [
+                const DropdownMenuItem<String?>(
+                  value: null,
+                  child: Text('No preference'),
+                ),
+                ..._languagePresets.map(
+                  (lang) => DropdownMenuItem<String?>(
+                    value: lang,
+                    child: Text(lang),
+                  ),
+                ),
+              ],
+              onChanged: (v) => setState(() => _languagePreference = v),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'How soon do you need services?',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _urgencyPresets.map((preset) {
+                final (value, label, subtitle) = preset;
+                final selected = _urgency == value;
+                return FilterChip(
+                  label: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(label),
+                      Text(
+                        subtitle,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                  selected: selected,
+                  onSelected: (_) => setState(() => _urgency = value),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               initialValue: _locationType,
               decoration: const InputDecoration(
@@ -195,17 +269,6 @@ class _MarketplaceOptInScreenState extends ConsumerState<MarketplaceOptInScreen>
                 DropdownMenuItem(value: 'COMMUNITY', child: Text('Community')),
               ],
               onChanged: (v) => setState(() => _locationType = v ?? 'HOME'),
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              initialValue: _urgency,
-              decoration: const InputDecoration(labelText: 'Urgency'),
-              items: const [
-                DropdownMenuItem(value: 'ROUTINE', child: Text('Routine')),
-                DropdownMenuItem(value: 'SOON', child: Text('Soon')),
-                DropdownMenuItem(value: 'URGENT', child: Text('Urgent')),
-              ],
-              onChanged: (v) => setState(() => _urgency = v ?? 'ROUTINE'),
             ),
             const SizedBox(height: 16),
             Row(

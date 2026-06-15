@@ -256,7 +256,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'session-history',
             name: 'sessionHistory',
-            builder: (context, state) => const SessionHistoryScreen(),
+            builder: (context, state) => SessionHistoryScreen(
+              sessionId: state.uri.queryParameters['sessionId'],
+            ),
           ),
           GoRoute(
             path: 'progress-notes',

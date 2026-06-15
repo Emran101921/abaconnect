@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/providers/app_providers.dart';
+import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/glossy_button.dart';
 import '../../../shared/widgets/weekly_progress_chart.dart';
@@ -299,14 +301,27 @@ class _ProgressNoteCard extends StatelessWidget {
                 ],
                 Align(
                   alignment: Alignment.centerLeft,
-                  child: TextButton.icon(
-                    onPressed: onFeedback,
-                    icon: const Icon(Icons.feedback_outlined),
-                    label: Text(
-                      note.parentFeedback == null
-                          ? 'Leave feedback'
-                          : 'Edit feedback',
-                    ),
+                  child: Wrap(
+                    spacing: 8,
+                    children: [
+                      TextButton.icon(
+                        onPressed: onFeedback,
+                        icon: const Icon(Icons.feedback_outlined),
+                        label: Text(
+                          note.parentFeedback == null
+                              ? 'Leave feedback'
+                              : 'Edit feedback',
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: () => context.push(
+                          '${AppRoutes.parentHome}/session-history'
+                          '?sessionId=${note.sessionId}',
+                        ),
+                        icon: const Icon(Icons.history_outlined),
+                        label: const Text('View session history'),
+                      ),
+                    ],
                   ),
                 ),
               ],

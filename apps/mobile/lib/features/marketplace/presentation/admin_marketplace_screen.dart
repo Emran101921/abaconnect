@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -147,6 +148,7 @@ class _AdminMarketplaceScreenState extends ConsumerState<AdminMarketplaceScreen>
   String _searchQuery = '';
   String? _listingStatusFilter;
   String? _reportStatusFilter;
+  _ListingSort _listingSort = _ListingSort.status;
 
   @override
   void initState() {
@@ -207,6 +209,96 @@ class _AdminMarketplaceScreenState extends ConsumerState<AdminMarketplaceScreen>
           _matchesSearch(provider.accountType) ||
           _matchesSearch(provider.verifiedStatus);
     }).toList();
+  }
+
+  List<AdminMarketplaceListing> get _sortedFilteredListings {
+    final list = List<AdminMarketplaceListing>.from(_filteredListings);
+    switch (_listingSort) {
+      case _ListingSort.status:
+        const order = {
+          'ACTIVE': 0,
+          'PAUSED': 1,
+          'MATCHED': 2,
+          'CLOSED': 3,
+          'DRAFT': 4,
+        };
+        list.sort(
+          (a, b) => (order[a.status] ?? 99).compareTo(order[b.status] ?? 99),
+        );
+      case _ListingSort.refId:
+        list.sort(
+          (a, b) => a.anonymousPublicId.compareTo(b.anonymousPublicId),
+        );
+    }
+    return list;
+  }
+
+  List<AdminMarketplaceReport> get _sortedFilteredReports {
+    final list = List<AdminMarketplaceReport>.from(_filteredReports);
+    list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return list;
+  }
+
+  Future<void> _copyListingsCsv() async {
+    final rows = _sortedFilteredListings;
+    if (rows.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nothing to export — adjust filters first.')),
+      );
+      return;
+    }
+    final buffer = StringBuffer('ref,service_area,age_range,status\n');
+    for (final item in rows) {
+      buffer.writeln(
+        '"${item.anonymousPublicId}","${item.serviceAreaLabel}",'
+        '"${item.ageRangeLabel}","${item.status}"',
+      );
+    }
+    await Clipboard.setData(ClipboardData(text: buffer.toString()));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Copied ${rows.length} listings as CSV.')),
+    );
+  }
+
+  Widget _listingsToolbar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: DropdownButtonFormField<_ListingSort>(
+              initialValue: _listingSort,
+              decoration: const InputDecoration(
+                labelText: 'Sort listings',
+                isDense: true,
+              ),
+              items: const [
+                DropdownMenuItem(
+                  value: _ListingSort.status,
+                  child: Text('Status (active first)'),
+                ),
+                DropdownMenuItem(
+                  value: _ListingSort.refId,
+                  child: Text('Reference ID'),
+                ),
+              ],
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() => _listingSort = value);
+              },
+            ),
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            tooltip: 'Copy filtered listings as CSV',
+            onPressed: _copyListingsCsv,
+            icon: const Icon(Icons.download_outlined),
+          ),
+        ],
+      ),
+    );
   }
 
   List<AdminAuditEntry> get _filteredAudit {
@@ -510,14 +602,15 @@ class _AdminMarketplaceScreenState extends ConsumerState<AdminMarketplaceScreen>
           ),
           if (!_loading && _error == null) ...[
             _searchBar(),
-            if (_tabs.index == 0)
+            if (_tabs.index == 0) ...[
               _statusFilterChips(
                 statuses: const ['ACTIVE', 'PAUSED', 'CLOSED'],
                 selected: _listingStatusFilter,
                 onSelected: (value) =>
                     setState(() => _listingStatusFilter = value),
-              )
-            else if (_tabs.index == 1)
+              ),
+              _listingsToolbar(),
+            ] else if (_tabs.index == 1)
               _statusFilterChips(
                 statuses: const ['OPEN', 'RESOLVED', 'DISMISSED'],
                 selected: _reportStatusFilter,
@@ -535,7 +628,7 @@ class _AdminMarketplaceScreenState extends ConsumerState<AdminMarketplaceScreen>
                         children: [
                           RefreshIndicator(
                             onRefresh: _load,
-                            child: _filteredListings.isEmpty
+                            child: _sortedFilteredListings.isEmpty
                                 ? _emptyTabList(
                                     _listings.isEmpty
                                         ? 'No active marketplace listings to review.'
@@ -545,11 +638,11 @@ class _AdminMarketplaceScreenState extends ConsumerState<AdminMarketplaceScreen>
                                 : ListView.separated(
                                     physics: const AlwaysScrollableScrollPhysics(),
                                     padding: const EdgeInsets.all(16),
-                                    itemCount: _filteredListings.length,
+                                    itemCount: _sortedFilteredListings.length,
                                     separatorBuilder: (_, _) =>
                                         const SizedBox(height: 8),
                                     itemBuilder: (context, index) {
-                                      final item = _filteredListings[index];
+                                      final item = _sortedFilteredListings[index];
                                       return Card(
                                         child: ListTile(
                                           title: Text(item.anonymousPublicId),
@@ -570,7 +663,7 @@ class _AdminMarketplaceScreenState extends ConsumerState<AdminMarketplaceScreen>
                           ),
                           RefreshIndicator(
                             onRefresh: _load,
-                            child: _filteredReports.isEmpty
+                            child: _sortedFilteredReports.isEmpty
                                 ? _emptyTabList(
                                     _reports.isEmpty
                                         ? 'No marketplace reports filed yet.'
@@ -580,11 +673,11 @@ class _AdminMarketplaceScreenState extends ConsumerState<AdminMarketplaceScreen>
                                 : ListView.separated(
                                     physics: const AlwaysScrollableScrollPhysics(),
                                     padding: const EdgeInsets.all(16),
-                                    itemCount: _filteredReports.length,
+                                    itemCount: _sortedFilteredReports.length,
                                     separatorBuilder: (_, _) =>
                                         const SizedBox(height: 8),
                                     itemBuilder: (context, index) {
-                                      final report = _filteredReports[index];
+                                      final report = _sortedFilteredReports[index];
                                       return Card(
                                         child: ListTile(
                                           title: Text(report.reason),
@@ -691,3 +784,5 @@ class _AdminMarketplaceScreenState extends ConsumerState<AdminMarketplaceScreen>
     );
   }
 }
+
+enum _ListingSort { status, refId }

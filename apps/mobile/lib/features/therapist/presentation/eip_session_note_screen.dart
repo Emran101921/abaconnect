@@ -540,6 +540,14 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
               if (!readOnly) ...[
                 const SizedBox(height: 16),
                 GlossyButton(
+                  title: 'Save draft',
+                  icon: Icons.save_outlined,
+                  variant: GlossyButtonVariant.neutral,
+                  loading: _saving,
+                  onPressed: () => _saveDraft(context),
+                ),
+                const SizedBox(height: 8),
+                GlossyButton(
                   title: 'Save session note',
                   icon: Icons.save,
                   variant: GlossyButtonVariant.greenTeal,
@@ -1083,11 +1091,18 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
     await _persistForm(context, form);
   }
 
+  Future<void> _saveDraft(BuildContext context) async {
+    final form = _form;
+    if (form == null) return;
+    await _persistForm(context, form, draft: true);
+  }
+
   Future<void> _persistForm(
     BuildContext context,
     EipSessionNoteModel form, {
     bool autoSaveAfterTherapistSign = false,
     bool autoSaveAfterParentSign = false,
+    bool draft = false,
   }) async {
     if (_isReadOnly(form)) {
       if (!context.mounted) return;
@@ -1103,7 +1118,7 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
 
     final autoSave = autoSaveAfterTherapistSign || autoSaveAfterParentSign;
 
-    if (!autoSave) {
+    if (!autoSave && !draft) {
       if (!form.hasRequiredClinicalFields) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -1158,7 +1173,7 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
           final serviceLogCreated = await ref
               .read(therapistRepositoryProvider)
               .saveEipSessionNote(form);
-          if (!autoSave) {
+          if (!autoSave && !draft) {
             await ref.read(clinicalRepositoryProvider).saveProgressNote(
                   sessionId: form.sessionId,
                   summary: form.toProgressSummary(),
@@ -1177,7 +1192,12 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
       if (form.isFullySigned) {
         setState(() => _form = form.copyWith(serverLocked: true));
       }
-      final savedMessage = autoSaveAfterParentSign
+      final savedMessage = draft
+          ? (form.hasRequiredClinicalFields
+              ? 'Draft saved — review signatures before final save.'
+              : 'Draft saved — still needed: IFSP outcomes (#1), session description (#2), '
+                  'and home strategies (#4).')
+          : autoSaveAfterParentSign
           ? 'Session note auto-saved — parent signature recorded.'
           : autoSaveAfterTherapistSign
               ? 'Session note auto-saved — therapist signature recorded.'
@@ -1200,7 +1220,7 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
           ),
         );
       }
-      if (!autoSave) {
+      if (!autoSave && !draft) {
         context.pop();
       }
     } catch (e) {
