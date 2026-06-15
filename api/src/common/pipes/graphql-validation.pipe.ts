@@ -36,6 +36,10 @@ export class GraphqlValidationPipe implements PipeTransform {
       return value;
     }
 
+    if (value == null) {
+      return value;
+    }
+
     const instance = plainToInstance(metadata.metatype, value);
     const errors = await validate(instance as object, {
       whitelist: true,

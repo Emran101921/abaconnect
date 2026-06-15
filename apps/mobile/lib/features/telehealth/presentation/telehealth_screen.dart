@@ -9,7 +9,7 @@ import '../../../core/providers/app_providers.dart';
 import '../../../shared/models/user_role.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/glossy_button.dart';
-import '../../parent/presentation/parent_home_screen.dart';
+import '../../parent/presentation/parent_dashboard_providers.dart';
 import '../../platform/data/platform_repository.dart';
 import '../../therapist/presentation/therapist_home_screen.dart';
 

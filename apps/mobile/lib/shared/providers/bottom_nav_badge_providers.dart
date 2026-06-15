@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/messaging/messaging_providers.dart';
-import '../../features/parent/presentation/parent_home_screen.dart';
+import '../../features/parent/presentation/parent_dashboard_providers.dart';
 import '../../features/therapist/therapist_providers.dart';
 
 int? _positiveBadge(int count) => count > 0 ? count : null;
@@ -10,6 +10,10 @@ int? _positiveBadge(int count) => count > 0 ? count : null;
 final parentHomeNavBadgeProvider = Provider<int?>((ref) {
   return ref.watch(parentDashboardProvider).maybeWhen(
     data: (d) {
+      final sessionPaymentsDue = d.actionItems
+          .where((item) => item['actionType'] == 'SESSION_PAYMENT_DUE')
+          .length;
+      if (sessionPaymentsDue > 0) return sessionPaymentsDue;
       final marketplaceReviews = d.actionItems
           .where((item) => item['actionType'] == 'MARKETPLACE_INTEREST')
           .length;

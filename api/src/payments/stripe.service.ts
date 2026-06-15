@@ -9,9 +9,20 @@ export class StripeService {
 
   constructor(private config: ConfigService) {
     const key = this.config.get<string>('STRIPE_SECRET_KEY');
-    if (key?.startsWith('sk_')) {
+    if (key && this.isLiveStripeKey(key)) {
       this.stripe = new Stripe(key);
     }
+  }
+
+  private isLiveStripeKey(key?: string): boolean {
+    if (!key?.startsWith('sk_')) {
+      return false;
+    }
+    // Ignore .env.example placeholders so local/demo flows use stub intents.
+    if (key.includes('xxx') || key.includes('your_')) {
+      return false;
+    }
+    return true;
   }
 
   isConfigured(): boolean {

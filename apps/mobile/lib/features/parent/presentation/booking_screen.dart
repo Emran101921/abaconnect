@@ -9,7 +9,7 @@ import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_section_header.dart';
 import '../../../shared/widgets/glossy_button.dart';
 import '../data/parent_booking_repository.dart';
-import 'parent_home_screen.dart';
+import 'parent_dashboard_providers.dart';
 
 class BookingScreen extends ConsumerStatefulWidget {
   const BookingScreen({super.key});

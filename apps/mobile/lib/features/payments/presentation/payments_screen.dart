@@ -25,15 +25,15 @@ class PaymentsScreen extends ConsumerStatefulWidget {
 }
 
 class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
-  @override
-  void initState() {
-    super.initState();
+  bool _handledDeepLink = false;
+
+  void _maybePromptDeepLinkPayment(List<PaymentModel> list) {
     final paymentId = widget.initialPaymentId;
-    if (paymentId != null && paymentId.isNotEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _payPendingSession(context, paymentId);
-      });
-    }
+    if (_handledDeepLink || paymentId == null || paymentId.isEmpty) return;
+    _handledDeepLink = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _showDeepLinkPaymentPrompt(context, list, paymentId);
+    });
   }
 
   @override
@@ -52,6 +52,7 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (list) {
+          _maybePromptDeepLinkPayment(list);
           if (list.isEmpty) {
             return Center(
               child: Padding(
@@ -86,6 +87,7 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
               ),
             );
           }
+          final deepLinkId = widget.initialPaymentId;
           return RefreshIndicator(
             onRefresh: () async {
               ref.invalidate(parentPaymentsProvider);
@@ -103,6 +105,8 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
                     );
                   }
                   final p = list[index - 1];
+                  final isDeepLinkTarget =
+                      deepLinkId != null && p.id == deepLinkId;
                   return AppDashboardCard(
                     child: ListTile(
                       title: Text(
@@ -114,8 +118,21 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
                       isThreeLine: true,
                       trailing: Text(
                         formatter.format(p.amount),
-                        style: Theme.of(context).textTheme.titleMedium,
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              color: isDeepLinkTarget
+                                  ? Theme.of(context).colorScheme.primary
+                                  : null,
+                              fontWeight: isDeepLinkTarget
+                                  ? FontWeight.w700
+                                  : null,
+                            ),
                       ),
+                      tileColor: isDeepLinkTarget
+                          ? Theme.of(context)
+                              .colorScheme
+                              .primaryContainer
+                              .withValues(alpha: 0.35)
+                          : null,
                       onTap: () => _paymentActions(context, ref, p),
                     ),
                   );
@@ -165,6 +182,69 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _showDeepLinkPaymentPrompt(
+    BuildContext context,
+    List<PaymentModel> list,
+    String paymentId,
+  ) async {
+    final formatter = NumberFormat.currency(symbol: '\$');
+    PaymentModel? payment;
+    for (final p in list) {
+      if (p.id == paymentId) {
+        payment = p;
+        break;
+      }
+    }
+
+    final proceed = await showModalBottomSheet<bool>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Session payment due',
+                style: Theme.of(ctx).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                payment == null
+                    ? 'Your therapist requested payment before the session can begin.'
+                    : payment.isPaid
+                        ? 'This session payment is already complete.'
+                        : '${payment.description ?? 'Therapy session'} · ${formatter.format(payment.amount)}',
+                style: Theme.of(ctx).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 20),
+              if (payment?.isPaid != true) ...[
+                GlossyButton(
+                  title: 'Pay now',
+                  icon: Icons.payments_outlined,
+                  variant: GlossyButtonVariant.orangeRed,
+                  onPressed: () => Navigator.pop(ctx, true),
+                ),
+                const SizedBox(height: 8),
+              ],
+              GlossyButton(
+                title: payment?.isPaid == true ? 'Done' : 'View all payments',
+                variant: GlossyButtonVariant.neutral,
+                onPressed: () => Navigator.pop(ctx, false),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (proceed == true && context.mounted) {
+      await _payPendingSession(context, paymentId);
+    }
   }
 
   Future<void> _payPendingSession(BuildContext context, String paymentId) async {

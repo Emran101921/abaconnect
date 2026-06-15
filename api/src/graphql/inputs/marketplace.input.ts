@@ -2,7 +2,7 @@ import { Field, ID, InputType } from '@nestjs/graphql';
 import {
   IsArray,
   IsBoolean,
-  IsEnum,
+  IsIn,
   IsNumber,
   IsOptional,
   IsString,
@@ -31,7 +31,7 @@ export class CreateMarketplaceRequestInput {
   anonymousConsentGranted!: boolean;
 
   @Field(() => MarketplaceLocationType)
-  @IsEnum(MarketplaceLocationType)
+  @IsIn(Object.values(MarketplaceLocationType))
   locationType!: MarketplaceLocationType;
 
   @Field({ nullable: true })
@@ -41,7 +41,7 @@ export class CreateMarketplaceRequestInput {
 
   @Field(() => MarketplaceUrgency, { nullable: true })
   @IsOptional()
-  @IsEnum(MarketplaceUrgency)
+  @IsIn(Object.values(MarketplaceUrgency))
   urgency?: MarketplaceUrgency;
 
   @Field({ nullable: true })
@@ -79,17 +79,17 @@ export class MarketplaceBrowseInput {
 
   @Field(() => MarketplaceLocationType, { nullable: true })
   @IsOptional()
-  @IsEnum(MarketplaceLocationType)
+  @IsIn(Object.values(MarketplaceLocationType))
   locationType?: MarketplaceLocationType;
 
   @Field(() => MarketplaceUrgency, { nullable: true })
   @IsOptional()
-  @IsEnum(MarketplaceUrgency)
+  @IsIn(Object.values(MarketplaceUrgency))
   urgency?: MarketplaceUrgency;
 
   @Field(() => MarketplaceAuthorizationStatus, { nullable: true })
   @IsOptional()
-  @IsEnum(MarketplaceAuthorizationStatus)
+  @IsIn(Object.values(MarketplaceAuthorizationStatus))
   authorizationStatus?: MarketplaceAuthorizationStatus;
 }
 

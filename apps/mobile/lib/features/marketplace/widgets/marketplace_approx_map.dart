@@ -31,6 +31,8 @@ class _MarketplaceApproxMapState extends State<MarketplaceApproxMap> {
 
   bool get _useGoogleMaps => !kIsWeb || MapsConstants.isConfigured;
 
+  bool get _showMapsSetupHint => kIsWeb && !MapsConstants.isConfigured;
+
   @override
   Widget build(BuildContext context) {
     if (_pins.isEmpty) {
@@ -59,6 +61,7 @@ class _MarketplaceApproxMapState extends State<MarketplaceApproxMap> {
             : _FallbackApproxMap(
                 pins: _pins,
                 onPinTap: widget.onPinTap,
+                showSetupHint: _showMapsSetupHint,
               ),
       ),
     );
@@ -153,22 +156,7 @@ class _GoogleMarketplaceMap extends StatelessWidget {
             left: 12,
             right: 12,
             bottom: 12,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: colorScheme.errorContainer.withValues(alpha: 0.95),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(10),
-                child: Text(
-                  'Add your Google Maps API key to web/index.html to load map tiles.',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: colorScheme.onErrorContainer,
-                  ),
-                ),
-              ),
-            ),
+            child: _MapsSetupBanner(compact: true),
           ),
       ],
     );
@@ -228,10 +216,12 @@ class _FallbackApproxMap extends StatelessWidget {
   const _FallbackApproxMap({
     required this.pins,
     required this.onPinTap,
+    this.showSetupHint = false,
   });
 
   final List<MarketplaceRequestModel> pins;
   final ValueChanged<MarketplaceRequestModel>? onPinTap;
+  final bool showSetupHint;
 
   @override
   Widget build(BuildContext context) {
@@ -299,6 +289,13 @@ class _FallbackApproxMap extends StatelessWidget {
                   ),
                 );
               }),
+              if (showSetupHint)
+                const Positioned(
+                  left: 12,
+                  right: 12,
+                  bottom: 12,
+                  child: _MapsSetupBanner(),
+                ),
             ],
           ),
         );
@@ -351,4 +348,62 @@ class _ApproxMapPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _ApproxMapPainter oldDelegate) => false;
+}
+
+class _MapsSetupBanner extends StatelessWidget {
+  const _MapsSetupBanner({this.compact = false});
+
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colorScheme.secondaryContainer.withValues(alpha: 0.96),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.6),
+        ),
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(compact ? 10 : 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              Icons.map_outlined,
+              size: compact ? 18 : 20,
+              color: colorScheme.onSecondaryContainer,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Enable Google Maps tiles',
+                    style: TextStyle(
+                      fontSize: compact ? 12 : 13,
+                      fontWeight: FontWeight.w700,
+                      color: colorScheme.onSecondaryContainer,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Run scripts/setup-google-maps.sh from the repo root, '
+                    'or pass --dart-define=GOOGLE_MAPS_API_KEY=your_key on web.',
+                    style: TextStyle(
+                      fontSize: compact ? 11 : 12,
+                      color: colorScheme.onSecondaryContainer,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

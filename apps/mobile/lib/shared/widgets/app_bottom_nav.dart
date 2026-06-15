@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/router/app_router.dart';
 import '../../features/notifications/notification_providers.dart';
-import '../../features/parent/presentation/parent_home_screen.dart';
+import '../../features/parent/presentation/parent_dashboard_providers.dart';
 import '../providers/bottom_nav_badge_providers.dart';
 import 'glassy_bottom_nav.dart';
 
