@@ -13,10 +13,12 @@ import '../../../shared/widgets/app_wellness_home_header.dart';
 import '../../../shared/widgets/app_wellness_journey_card.dart';
 import '../../../shared/widgets/glossy_button.dart';
 import '../../../shared/widgets/app_theme_toggle.dart';
+import '../../../shared/widgets/app_snackbar.dart';
 import '../../../shared/widgets/dashboard_action_inbox.dart';
 import '../../messaging/messaging_providers.dart';
 import '../../messaging/presentation/messages_screen.dart';
 import '../../notifications/notification_providers.dart';
+import '../../marketplace/data/marketplace_repository.dart';
 import 'parent_category_box.dart';
 import 'parent_dashboard_providers.dart';
 import 'parent_operations_category_screen.dart';
@@ -43,6 +45,11 @@ class ParentHomeScreen extends ConsumerWidget {
           .where((item) => item['actionType'] == 'SESSION_PAYMENT_DUE')
           .length,
       orElse: () => 0,
+    );
+    final marketplaceRequests = ref.watch(parentMarketplaceRequestsProvider);
+    final pausedRequests = marketplaceRequests.maybeWhen(
+      data: (list) => list.where((r) => r.status == 'PAUSED').toList(),
+      orElse: () => const <MarketplaceRequestModel>[],
     );
 
     final user = ref.watch(authStateProvider).valueOrNull?.user;
@@ -408,6 +415,102 @@ class ParentHomeScreen extends ConsumerWidget {
                         onTap: () => context.push(AppRoutes.parentMarketplace),
                       ),
                     ),
+                    if (pausedRequests.isNotEmpty)
+                      Card(
+                        color: Theme.of(context).colorScheme.tertiaryContainer,
+                        margin: const EdgeInsets.only(bottom: 12),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.pause_circle_outline,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onTertiaryContainer,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      pausedRequests.length == 1
+                                          ? 'Marketplace request paused'
+                                          : '${pausedRequests.length} marketplace requests paused',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleSmall,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Providers cannot respond while paused. Resume when you are ready for new interest.',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                              const SizedBox(height: 12),
+                              ...pausedRequests.map(
+                                (request) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          request.anonymousPublicId,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyMedium,
+                                        ),
+                                      ),
+                                      GlossyButton(
+                                        title: 'Resume',
+                                        size: GlossyButtonSize.small,
+                                        fullWidth: false,
+                                        variant: GlossyButtonVariant.tealBlue,
+                                        onPressed: () async {
+                                          try {
+                                            await ref
+                                                .read(
+                                                  marketplaceRepositoryProvider,
+                                                )
+                                                .resumeRequest(request.id);
+                                            ref.invalidate(
+                                              parentMarketplaceRequestsProvider,
+                                            );
+                                            if (context.mounted) {
+                                              AppSnackBar.showSuccess(
+                                                context,
+                                                'Request active again — providers can respond.',
+                                              );
+                                            }
+                                          } catch (e) {
+                                            if (context.mounted) {
+                                              AppSnackBar.showError(
+                                                context,
+                                                'Resume failed: ${AppSnackBar.messageFromError(e)}',
+                                              );
+                                            }
+                                          }
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: TextButton(
+                                  onPressed: () =>
+                                      context.push(AppRoutes.parentMarketplace),
+                                  child: const Text('Manage all requests'),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     const SizedBox(height: 24),
                     const AppSectionHeader(
                       title: 'Operations',

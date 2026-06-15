@@ -132,6 +132,56 @@ class _ParentProviderCompareScreenState
     }
   }
 
+  Future<void> _declineProvider(MarketplaceInterestModel item) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Decline provider?'),
+        content: Text(
+          '${item.providerName} will not receive your child\'s contact details. '
+          'You can still report a concern if needed.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          GlossyButton(
+            title: 'Decline',
+            size: GlossyButtonSize.small,
+            fullWidth: false,
+            variant: GlossyButtonVariant.redDarkRed,
+            onPressed: () => Navigator.pop(ctx, true),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await ref.read(marketplaceRepositoryProvider).rejectInterest(
+            marketplaceRequestId: widget.marketplaceRequestId,
+            providerProfileId: item.providerId,
+          );
+      ref.invalidate(
+        marketplaceInterestsProvider(widget.marketplaceRequestId),
+      );
+      ref.invalidate(parentMarketplaceRequestsProvider);
+      if (mounted) {
+        AppSnackBar.showSuccess(
+          context,
+          '${item.providerName} declined — no details were shared.',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        AppSnackBar.showError(
+          context,
+          'Decline failed: ${AppSnackBar.messageFromError(e)}',
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final interests = ref.watch(
@@ -295,6 +345,7 @@ class _ParentProviderCompareScreenState
                         marketplaceRequestId: widget.marketplaceRequestId,
                         canReview: false,
                         onReportConcern: () => _reportProviderConcern(item),
+                        onDecline: null,
                       ),
                     ),
                   ),
@@ -348,6 +399,10 @@ class _ParentProviderCompareScreenState
                       !requestInactive &&
                       item.status == 'PENDING_PARENT_REVIEW',
                   onReportConcern: () => _reportProviderConcern(item),
+                  onDecline: !requestInactive &&
+                          item.status == 'PENDING_PARENT_REVIEW'
+                      ? () => _declineProvider(item)
+                      : null,
                 );
               },
             ),
@@ -393,12 +448,14 @@ class _InterestCard extends StatelessWidget {
     required this.marketplaceRequestId,
     required this.canReview,
     required this.onReportConcern,
+    this.onDecline,
   });
 
   final MarketplaceInterestModel item;
   final String marketplaceRequestId;
   final bool canReview;
   final VoidCallback onReportConcern;
+  final VoidCallback? onDecline;
 
   @override
   Widget build(BuildContext context) {
@@ -432,17 +489,24 @@ class _InterestCard extends StatelessWidget {
             ),
             if (canReview) ...[
               const SizedBox(height: 12),
-              Align(
-                alignment: Alignment.centerRight,
-                child: GlossyButton(
-                  title: 'Review & share',
-                  size: GlossyButtonSize.small,
-                  fullWidth: false,
-                  variant: GlossyButtonVariant.tealBlue,
-                  onPressed: () => context.push(
-                    '${AppRoutes.parentMarketplace}/$marketplaceRequestId/consent/${item.providerId}?name=${Uri.encodeComponent(item.providerName)}',
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  if (onDecline != null)
+                    TextButton(
+                      onPressed: onDecline,
+                      child: const Text('Decline'),
+                    ),
+                  GlossyButton(
+                    title: 'Review & share',
+                    size: GlossyButtonSize.small,
+                    fullWidth: false,
+                    variant: GlossyButtonVariant.tealBlue,
+                    onPressed: () => context.push(
+                      '${AppRoutes.parentMarketplace}/$marketplaceRequestId/consent/${item.providerId}?name=${Uri.encodeComponent(item.providerName)}',
+                    ),
                   ),
-                ),
+                ],
               ),
             ],
             const SizedBox(height: 4),

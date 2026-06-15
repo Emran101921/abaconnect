@@ -16,11 +16,14 @@ import '../../../shared/widgets/app_healthcare_illustration.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_section_header.dart';
 import '../../../shared/widgets/glossy_button.dart';
+import '../../telehealth/presentation/telehealth_screen.dart';
 import '../data/parent_booking_repository.dart';
 import 'parent_dashboard_providers.dart';
 
 class ParentAppointmentsScreen extends ConsumerStatefulWidget {
-  const ParentAppointmentsScreen({super.key});
+  const ParentAppointmentsScreen({super.key, this.highlightAppointmentId});
+
+  final String? highlightAppointmentId;
 
   @override
   ConsumerState<ParentAppointmentsScreen> createState() =>
@@ -30,6 +33,7 @@ class ParentAppointmentsScreen extends ConsumerStatefulWidget {
 class _ParentAppointmentsScreenState extends ConsumerState<ParentAppointmentsScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
+  var _handledHighlight = false;
 
   @override
   void initState() {
@@ -111,14 +115,13 @@ class _ParentAppointmentsScreenState extends ConsumerState<ParentAppointmentsScr
           .joinTelehealth(appointment.id);
       if (!context.mounted) return;
       if (session.joinUrl != null) {
+        showTelehealthRoomLinkDialog(context, session.joinUrl!);
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Room ready: ${session.joinUrl}'),
-            duration: const Duration(seconds: 8),
-          ),
+          const SnackBar(content: Text('Room ready — open Telehealth to join')),
         );
+        context.push(AppRoutes.telehealth);
       }
-      context.push('/telehealth');
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(
@@ -126,6 +129,16 @@ class _ParentAppointmentsScreenState extends ConsumerState<ParentAppointmentsScr
         ).showSnackBar(SnackBar(content: Text('Telehealth failed: $e')));
       }
     }
+  }
+
+  void _maybeFocusHighlight(List<AppointmentModel> list) {
+    final id = widget.highlightAppointmentId;
+    if (_handledHighlight || id == null || id.isEmpty) return;
+    final inCompleted = list.any((a) => a.id == id && a.isCompleted);
+    if (inCompleted && _tabController.index != 1) {
+      _tabController.animateTo(1);
+    }
+    _handledHighlight = true;
   }
 
   Future<void> _exportCalendar(BuildContext context, WidgetRef ref) async {
@@ -209,6 +222,8 @@ class _ParentAppointmentsScreenState extends ConsumerState<ParentAppointmentsScr
       ],
       body: appointments.when(
         data: (list) {
+          _maybeFocusHighlight(list);
+          final highlightId = widget.highlightAppointmentId;
           final active =
               list.where((a) => !a.isCompleted).toList()
                 ..sort((a, b) => a.scheduledStart.compareTo(b.scheduledStart));
@@ -262,6 +277,7 @@ class _ParentAppointmentsScreenState extends ConsumerState<ParentAppointmentsScr
                       itemBuilder: (a) => _UpcomingCard(
                         appointment: a,
                         highlightToday: a.isToday,
+                        highlighted: highlightId == a.id,
                         onReschedule: () => _reschedule(context, ref, a),
                         onCancel: () => _cancel(context, ref, a),
                         onJoinTelehealth: () => _joinTelehealth(context, ref, a),
@@ -281,6 +297,7 @@ class _ParentAppointmentsScreenState extends ConsumerState<ParentAppointmentsScr
                       },
                       itemBuilder: (a) => _CompletedGlassCard(
                         appointment: a,
+                        highlighted: highlightId == a.id,
                         onTap: () => context.push(
                           '${AppRoutes.parentHome}/session-history',
                         ),
@@ -474,6 +491,7 @@ class _UpcomingCard extends StatelessWidget {
     required this.onCancel,
     required this.onJoinTelehealth,
     this.highlightToday = false,
+    this.highlighted = false,
   });
 
   final AppointmentModel appointment;
@@ -481,6 +499,7 @@ class _UpcomingCard extends StatelessWidget {
   final VoidCallback onCancel;
   final VoidCallback onJoinTelehealth;
   final bool highlightToday;
+  final bool highlighted;
 
   @override
   Widget build(BuildContext context) {
@@ -489,10 +508,37 @@ class _UpcomingCard extends StatelessWidget {
     final loc = a.locationType ?? 'IN_HOME';
 
     return AppDashboardCard(
-      elevated: highlightToday,
+      elevated: highlightToday || highlighted,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (highlighted)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .primaryContainer
+                          .withValues(alpha: 0.9),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      'From notification',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           if (highlightToday)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
@@ -567,10 +613,12 @@ class _CompletedGlassCard extends StatelessWidget {
   const _CompletedGlassCard({
     required this.appointment,
     required this.onTap,
+    this.highlighted = false,
   });
 
   final AppointmentModel appointment;
   final VoidCallback onTap;
+  final bool highlighted;
 
   @override
   Widget build(BuildContext context) {
@@ -603,9 +651,14 @@ class _CompletedGlassCard extends StatelessWidget {
                   ],
                 ),
                 border: Border.all(
-                  color: AppGlossyGradients.success.colors.last.withValues(
-                    alpha: 0.35,
-                  ),
+                  color: highlighted
+                      ? Theme.of(context).colorScheme.primary.withValues(
+                            alpha: 0.75,
+                          )
+                      : AppGlossyGradients.success.colors.last.withValues(
+                          alpha: 0.35,
+                        ),
+                  width: highlighted ? 2 : 1,
                 ),
                 boxShadow: [
                   BoxShadow(

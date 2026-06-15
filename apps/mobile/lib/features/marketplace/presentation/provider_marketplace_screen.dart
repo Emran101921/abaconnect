@@ -121,6 +121,35 @@ class _ProviderMarketplaceScreenState
     final message = requestPermission
         ? 'I would like parent permission to review authorized child details for care coordination.'
         : "I'm available to support this anonymous service request in my coverage area.";
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(
+          requestPermission ? 'Request parent permission?' : 'Express availability?',
+        ),
+        content: Text(
+          requestPermission
+              ? 'Send a permission request for ${request.anonymousPublicId}. '
+                  'The parent will review before any identifiable details are shared.'
+              : 'Tell the parent you are available for ${request.anonymousPublicId}. '
+                  'They will review your interest before sharing contact details.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          GlossyButton(
+            title: requestPermission ? 'Send request' : 'Submit availability',
+            size: GlossyButtonSize.small,
+            fullWidth: false,
+            variant: GlossyButtonVariant.tealBlue,
+            onPressed: () => Navigator.pop(ctx, true),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
     try {
       await ref.read(marketplaceRepositoryProvider).submitInterest(
             marketplaceRequestId: request.id,

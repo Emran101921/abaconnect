@@ -1070,18 +1070,70 @@ export class MarketplaceService {
 
   async pauseRequest(userId: string, requestId: string) {
     const request = await this.requireParentRequest(userId, requestId);
+    if (request.status !== 'ACTIVE') {
+      throw new BadRequestException('Only active requests can be paused.');
+    }
     return this.prisma.marketplaceRequest.update({
       where: { id: request.id },
       data: { status: 'PAUSED' },
     });
   }
 
+  async resumeRequest(userId: string, requestId: string) {
+    const request = await this.requireParentRequest(userId, requestId);
+    if (request.status !== 'PAUSED') {
+      throw new BadRequestException('Only paused requests can be resumed.');
+    }
+    return this.prisma.marketplaceRequest.update({
+      where: { id: request.id },
+      data: { status: 'ACTIVE' },
+    });
+  }
+
   async closeRequest(userId: string, requestId: string) {
     const request = await this.requireParentRequest(userId, requestId);
+    if (request.status === 'CLOSED') {
+      throw new BadRequestException('This request is already closed.');
+    }
     return this.prisma.marketplaceRequest.update({
       where: { id: request.id },
       data: { status: 'CLOSED' },
     });
+  }
+
+  async rejectProviderInterest(
+    userId: string,
+    requestId: string,
+    providerProfileId: string,
+    ctx: RequestContext,
+  ) {
+    const request = await this.requireParentRequest(userId, requestId);
+    const updated = await this.prisma.marketplaceInterest.updateMany({
+      where: {
+        marketplaceRequestId: requestId,
+        providerProfileId,
+        status: 'PENDING_PARENT_REVIEW',
+      },
+      data: { status: 'REJECTED' },
+    });
+    if (updated.count === 0) {
+      throw new NotFoundException('Pending provider interest not found');
+    }
+
+    await this.audit.log({
+      tenantId: request.tenantId,
+      actorId: userId,
+      actorRole: 'PARENT',
+      action: 'MARKETPLACE_INTEREST_REJECTED',
+      resourceType: 'MarketplaceInterest',
+      resourceId: providerProfileId,
+      patientId: request.childId,
+      ipAddress: ctx.ipAddress,
+      userAgent: ctx.userAgent,
+      metadata: { marketplaceRequestId: requestId, providerProfileId },
+    });
+
+    return { rejected: true };
   }
 
   private async recordConsent(data: {

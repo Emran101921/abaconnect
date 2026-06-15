@@ -29,6 +29,102 @@ class _ParentMarketplaceDashboardScreenState
     await ref.read(parentMarketplaceRequestsProvider.future);
   }
 
+  Future<bool> _confirmAction({
+    required String title,
+    required String message,
+    required String confirmLabel,
+    GlossyButtonVariant confirmVariant = GlossyButtonVariant.orangeRed,
+  }) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          GlossyButton(
+            title: confirmLabel,
+            size: GlossyButtonSize.small,
+            fullWidth: false,
+            variant: confirmVariant,
+            onPressed: () => Navigator.pop(ctx, true),
+          ),
+        ],
+      ),
+    );
+    return confirmed == true;
+  }
+
+  Future<void> _pauseRequest(MarketplaceRequestModel request) async {
+    final confirmed = await _confirmAction(
+      title: 'Pause this request?',
+      message:
+          'Providers will not see your anonymous listing while paused. '
+          'You can resume anytime and pending provider responses stay saved.',
+      confirmLabel: 'Pause request',
+    );
+    if (!confirmed) return;
+    try {
+      await ref.read(marketplaceRepositoryProvider).pauseRequest(request.id);
+      await _refreshRequests();
+      if (mounted) {
+        AppSnackBar.showSuccess(context, 'Request paused — no new provider responses.');
+      }
+    } catch (e) {
+      if (mounted) {
+        AppSnackBar.showError(
+          context,
+          'Pause failed: ${AppSnackBar.messageFromError(e)}',
+        );
+      }
+    }
+  }
+
+  Future<void> _resumeRequest(MarketplaceRequestModel request) async {
+    try {
+      await ref.read(marketplaceRepositoryProvider).resumeRequest(request.id);
+      await _refreshRequests();
+      if (mounted) {
+        AppSnackBar.showSuccess(context, 'Request active again — providers can respond.');
+      }
+    } catch (e) {
+      if (mounted) {
+        AppSnackBar.showError(
+          context,
+          'Resume failed: ${AppSnackBar.messageFromError(e)}',
+        );
+      }
+    }
+  }
+
+  Future<void> _closeRequest(MarketplaceRequestModel request) async {
+    final confirmed = await _confirmAction(
+      title: 'Close this request?',
+      message:
+          'This permanently stops new provider interest. '
+          'You can still review past responses and consent history.',
+      confirmLabel: 'Close request',
+    );
+    if (!confirmed) return;
+    try {
+      await ref.read(marketplaceRepositoryProvider).closeRequest(request.id);
+      await _refreshRequests();
+      if (mounted) {
+        AppSnackBar.showSuccess(context, 'Request closed.');
+      }
+    } catch (e) {
+      if (mounted) {
+        AppSnackBar.showError(
+          context,
+          'Close failed: ${AppSnackBar.messageFromError(e)}',
+        );
+      }
+    }
+  }
+
   Future<void> _startNewRequest(BuildContext context) async {
     try {
       final children =
@@ -132,20 +228,19 @@ class _ParentMarketplaceDashboardScreenState
           ),
         if (request.status == 'ACTIVE')
           TextButton(
-            onPressed: () async {
-              await ref.read(marketplaceRepositoryProvider).pauseRequest(request.id);
-              await _refreshRequests();
-            },
+            onPressed: () => _pauseRequest(request),
             child: const Text('Pause'),
           ),
-        if (request.status == 'PAUSED')
+        if (request.status == 'PAUSED') ...[
           TextButton(
-            onPressed: () async {
-              await ref.read(marketplaceRepositoryProvider).closeRequest(request.id);
-              await _refreshRequests();
-            },
+            onPressed: () => _resumeRequest(request),
+            child: const Text('Resume'),
+          ),
+          TextButton(
+            onPressed: () => _closeRequest(request),
             child: const Text('Close'),
           ),
+        ],
         TextButton(
           onPressed: () => context.push(
             '${AppRoutes.parentMarketplace}/${request.id}/consents',

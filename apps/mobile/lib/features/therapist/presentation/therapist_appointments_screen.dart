@@ -15,7 +15,9 @@ import '../../../shared/widgets/app_bottom_nav.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 
 class TherapistAppointmentsScreen extends ConsumerWidget {
-  const TherapistAppointmentsScreen({super.key});
+  const TherapistAppointmentsScreen({super.key, this.highlightAppointmentId});
+
+  final String? highlightAppointmentId;
 
   Future<void> _confirm(
     BuildContext context,
@@ -141,6 +143,7 @@ class TherapistAppointmentsScreen extends ConsumerWidget {
             itemBuilder: (context, index) {
               final a = list[index];
               final isRequested = a.status == 'REQUESTED';
+              final highlighted = highlightAppointmentId == a.id;
               final canCancel = ![
                 'COMPLETED',
                 'CANCELLED',
@@ -148,11 +151,23 @@ class TherapistAppointmentsScreen extends ConsumerWidget {
                 'REQUESTED',
               ].contains(a.status);
               return Card(
+                color: highlighted
+                    ? Theme.of(context).colorScheme.primaryContainer
+                    : null,
                 child: Padding(
                   padding: const EdgeInsets.all(12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (highlighted)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Text(
+                            'From notification',
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                        ),
                       Text(
                         a.childName,
                         style: Theme.of(context).textTheme.titleMedium,
