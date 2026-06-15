@@ -114,14 +114,32 @@ class NotificationsScreen extends ConsumerWidget {
         );
         return;
       }
+      if (n.actionType == 'MARKETPLACE_CONSENT_GRANTED' &&
+          role == UserRole.agency) {
+        context.push(
+          '${AppRoutes.agencyMarketplace}/$marketplaceId/authorized-child',
+        );
+        return;
+      }
       if (n.actionType == 'MARKETPLACE_CONSENT_REVOKED' &&
           role == UserRole.therapist) {
         context.push(AppRoutes.therapistMarketplace);
         return;
       }
+      if (n.actionType == 'MARKETPLACE_CONSENT_REVOKED' &&
+          role == UserRole.agency) {
+        context.push(AppRoutes.agencyMarketplace);
+        return;
+      }
       if (n.actionType == 'MARKETPLACE_SAVED_SEARCH_MATCH' &&
           role == UserRole.therapist) {
         context.push(AppRoutes.therapistMarketplace);
+        return;
+      }
+      if (n.actionType == 'MARKETPLACE_SAVED_SEARCH_MATCH' &&
+          role == UserRole.agency) {
+        context.push(AppRoutes.agencyMarketplace);
+        return;
       }
     }
   }

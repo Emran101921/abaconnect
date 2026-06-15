@@ -337,78 +337,266 @@ class _ProviderMarketplaceScreenState
     }
   }
 
+  String _savedSearchSummary(MarketplaceSavedSearchModel search) {
+    String label(String? value, Map<String, String> labels) {
+      if (value == null) return '';
+      return labels[value] ?? value;
+    }
+
+    final parts = <String>[
+      if (search.zipCode != null) 'ZIP ${search.zipCode}',
+      if (search.radiusMiles != null) '${search.radiusMiles!.round()} mi',
+      if (search.language != null && search.language!.isNotEmpty)
+        search.language!,
+      label(search.locationType, const {
+        'HOME': 'Home',
+        'CLINIC': 'Clinic',
+        'TELEHEALTH': 'Telehealth',
+      }),
+      label(search.urgency, const {
+        'ROUTINE': 'Routine',
+        'URGENT': 'Urgent',
+      }),
+      label(search.authorizationStatus, const {
+        'PARENT_SCREENING_ONLY': 'Screening only',
+        'EVALUATION_NEEDED': 'Evaluation needed',
+        'SERVICE_AUTHORIZED': 'Service authorized',
+      }),
+    ]..removeWhere((part) => part.isEmpty);
+    return parts.isEmpty ? 'All marketplace requests' : parts.join(' · ');
+  }
+
+  Future<bool> _confirmDeleteSavedSearch(
+    BuildContext ctx,
+    MarketplaceSavedSearchModel search,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: ctx,
+      builder: (dialogCtx) => AlertDialog(
+        title: const Text('Delete saved search?'),
+        content: Text(
+          '"${search.name}" will be removed and alerts will stop.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return false;
+    await ref.read(marketplaceRepositoryProvider).deleteSavedSearch(search.id);
+    if (ctx.mounted) {
+      ScaffoldMessenger.of(ctx).showSnackBar(
+        SnackBar(content: Text('Deleted "${search.name}"')),
+      );
+    }
+    return true;
+  }
+
   Future<void> _showSavedSearches() async {
     try {
-      final searches =
-          await ref.read(marketplaceRepositoryProvider).fetchSavedSearches();
-      if (!mounted) return;
       await showModalBottomSheet<void>(
         context: context,
         isScrollControlled: true,
-        builder: (ctx) => SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'Saved searches',
-                  style: Theme.of(ctx).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 12),
-                if (searches.isEmpty)
-                  const Text(
-                    'No saved searches yet. Save your current filters to get alerts when new anonymous requests match.',
-                  )
-                else
-                  ...searches.map(
-                    (search) => Card(
-                      child: ListTile(
-                        title: Text(search.name),
-                        subtitle: Text(
-                          [
-                            if (search.zipCode != null) 'ZIP ${search.zipCode}',
-                            if (search.language != null)
-                              search.language!,
-                            if (search.radiusMiles != null)
-                              '${search.radiusMiles!.round()} mi',
-                          ].join(' · '),
-                        ),
-                        trailing: Switch(
-                          value: search.alertsEnabled,
-                          onChanged: (enabled) async {
-                            await ref
-                                .read(marketplaceRepositoryProvider)
-                                .setSavedSearchAlerts(
-                                  savedSearchId: search.id,
-                                  alertsEnabled: enabled,
+        builder: (sheetCtx) {
+          return StatefulBuilder(
+            builder: (context, setSheetState) {
+              Future<List<MarketplaceSavedSearchModel>> loadSearches() {
+                return ref
+                    .read(marketplaceRepositoryProvider)
+                    .fetchSavedSearches();
+              }
+
+              return SafeArea(
+                child: DraggableScrollableSheet(
+                  expand: false,
+                  initialChildSize: 0.55,
+                  minChildSize: 0.35,
+                  maxChildSize: 0.9,
+                  builder: (context, scrollController) {
+                    return Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Center(
+                            child: Container(
+                              width: 40,
+                              height: 4,
+                              margin: const EdgeInsets.only(bottom: 12),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .outlineVariant,
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                          ),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'Saved searches & alerts',
+                                  style:
+                                      Theme.of(context).textTheme.titleMedium,
+                                ),
+                              ),
+                              IconButton(
+                                tooltip: 'Refresh',
+                                icon: const Icon(Icons.refresh),
+                                onPressed: () => setSheetState(() {}),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Get notified when new anonymous requests match your filters.',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                          const SizedBox(height: 12),
+                          Expanded(
+                            child: FutureBuilder<
+                                List<MarketplaceSavedSearchModel>>(
+                              future: loadSearches(),
+                              builder: (context, snapshot) {
+                                if (snapshot.connectionState ==
+                                    ConnectionState.waiting) {
+                                  return const Center(
+                                    child: CircularProgressIndicator(),
+                                  );
+                                }
+                                if (snapshot.hasError) {
+                                  return Center(
+                                    child: Text(
+                                      'Could not load saved searches: ${snapshot.error}',
+                                    ),
+                                  );
+                                }
+                                final searches = snapshot.data ?? [];
+                                if (searches.isEmpty) {
+                                  return Center(
+                                    child: Text(
+                                      'No saved searches yet. Save your current filters '
+                                      'to turn on alerts.',
+                                      textAlign: TextAlign.center,
+                                      style:
+                                          Theme.of(context).textTheme.bodyMedium,
+                                    ),
+                                  );
+                                }
+                                return ListView.separated(
+                                  controller: scrollController,
+                                  itemCount: searches.length,
+                                  separatorBuilder: (_, _) =>
+                                      const SizedBox(height: 8),
+                                  itemBuilder: (context, index) {
+                                    final search = searches[index];
+                                    return Dismissible(
+                                      key: ValueKey(search.id),
+                                      direction: DismissDirection.endToStart,
+                                      confirmDismiss: (_) =>
+                                          _confirmDeleteSavedSearch(
+                                        sheetCtx,
+                                        search,
+                                      ),
+                                      onDismissed: (_) => setSheetState(() {}),
+                                      background: Container(
+                                        alignment: Alignment.centerRight,
+                                        padding:
+                                            const EdgeInsets.only(right: 20),
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .errorContainer,
+                                        child: Icon(
+                                          Icons.delete_outline,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onErrorContainer,
+                                        ),
+                                      ),
+                                      child: Card(
+                                        child: ListTile(
+                                          leading: CircleAvatar(
+                                            backgroundColor: search.alertsEnabled
+                                                ? Theme.of(context)
+                                                    .colorScheme
+                                                    .primaryContainer
+                                                : Theme.of(context)
+                                                    .colorScheme
+                                                    .surfaceContainerHighest,
+                                            child: Icon(
+                                              search.alertsEnabled
+                                                  ? Icons.notifications_active
+                                                  : Icons
+                                                      .notifications_off_outlined,
+                                              size: 20,
+                                            ),
+                                          ),
+                                          title: Text(search.name),
+                                          subtitle: Text(
+                                            _savedSearchSummary(search),
+                                          ),
+                                          trailing: Switch.adaptive(
+                                            value: search.alertsEnabled,
+                                            onChanged: (enabled) async {
+                                              await ref
+                                                  .read(
+                                                    marketplaceRepositoryProvider,
+                                                  )
+                                                  .setSavedSearchAlerts(
+                                                    savedSearchId: search.id,
+                                                    alertsEnabled: enabled,
+                                                  );
+                                              if (context.mounted) {
+                                                setSheetState(() {});
+                                                ScaffoldMessenger.of(context)
+                                                    .showSnackBar(
+                                                  SnackBar(
+                                                    content: Text(
+                                                      enabled
+                                                          ? 'Alerts on for "${search.name}"'
+                                                          : 'Alerts off for "${search.name}"',
+                                                    ),
+                                                    duration: const Duration(
+                                                      seconds: 2,
+                                                    ),
+                                                  ),
+                                                );
+                                              }
+                                            },
+                                          ),
+                                          onTap: () {
+                                            Navigator.pop(sheetCtx);
+                                            _applySavedSearch(search);
+                                          },
+                                        ),
+                                      ),
+                                    );
+                                  },
                                 );
-                          },
-                        ),
-                        onTap: () {
-                          Navigator.pop(ctx);
-                          _applySavedSearch(search);
-                        },
-                        onLongPress: () async {
-                          await ref
-                              .read(marketplaceRepositoryProvider)
-                              .deleteSavedSearch(search.id);
-                          if (ctx.mounted) Navigator.pop(ctx);
-                          _showSavedSearches();
-                        },
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Tap to apply filters · toggle alerts · swipe left to delete',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
                       ),
-                    ),
-                  ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Tap to apply · toggle alerts · long-press to delete',
-                  style: TextStyle(fontSize: 12),
+                    );
+                  },
                 ),
-              ],
-            ),
-          ),
-        ),
+              );
+            },
+          );
+        },
       );
     } catch (e) {
       if (mounted) {

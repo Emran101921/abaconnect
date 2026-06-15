@@ -115,6 +115,19 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
     }
   }
 
+  ChildModel? get _selectedChild {
+    if (_childId == null) return null;
+    for (final child in _children) {
+      if (child.id == _childId) return child;
+    }
+    return null;
+  }
+
+  bool _isSelfPayChild(ChildModel? child) {
+    final type = child?.insuranceType;
+    return type == null || type == 'Self-pay';
+  }
+
   Future<void> _pickDateTime() async {
     final date = await showDatePicker(
       context: context,
@@ -180,12 +193,49 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                           .map(
                             (c) => DropdownMenuEntry(
                               value: c.id,
-                              label: c.displayName,
+                              label:
+                                  '${c.displayName} · ${c.insuranceType ?? 'Self-pay'}',
                             ),
                           )
                           .toList(),
                       onSelected: (v) => setState(() => _childId = v),
                     ),
+                    if (_selectedChild != null) ...[
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Chip(
+                            avatar: Icon(
+                              _isSelfPayChild(_selectedChild)
+                                  ? Icons.payments_outlined
+                                  : Icons.health_and_safety_outlined,
+                              size: 18,
+                            ),
+                            label: Text(
+                              _selectedChild!.insuranceType ?? 'Self-pay',
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (_isSelfPayChild(_selectedChild)) ...[
+                        const SizedBox(height: 8),
+                        Card(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .primaryContainer
+                              .withValues(alpha: 0.35),
+                          child: const ListTile(
+                            leading: Icon(Icons.info_outline),
+                            title: Text('Self-pay payment'),
+                            subtitle: Text(
+                              'After each completed session, you will receive a '
+                              'payment request in Payments. Pay securely via Stripe '
+                              'before the next visit when possible.',
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                     const SizedBox(height: 16),
                     DropdownMenu<String>(
                       label: const Text('Therapy type'),
