@@ -95,6 +95,7 @@ abstract final class AppRoutes {
   static const therapistAppointments = '/therapist/appointments';
   static const therapistSessionNotes = '/therapist/session-notes';
   static const agencyHome = '/agency';
+  static const agencyMarketplace = '/agency/marketplace';
   static const adminHome = '/admin';
   static const telehealth = '/telehealth';
   static const messages = '/messages';
@@ -440,6 +441,22 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: 'appointments',
             name: 'agencyAppointments',
             builder: (context, state) => const AgencyAppointmentsScreen(),
+          ),
+          GoRoute(
+            path: 'marketplace',
+            name: 'agencyMarketplace',
+            builder: (context, state) => const ProviderMarketplaceScreen(
+              shell: MarketplaceProviderShell.agency,
+            ),
+            routes: [
+              GoRoute(
+                path: ':requestId/authorized-child',
+                name: 'agencyMarketplaceAuthorizedChild',
+                builder: (context, state) => ProviderAuthorizedChildScreen(
+                  marketplaceRequestId: state.pathParameters['requestId']!,
+                ),
+              ),
+            ],
           ),
           GoRoute(
             path: 'session-notes',

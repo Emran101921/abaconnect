@@ -13,10 +13,12 @@ class MarketplaceApproxMap extends StatefulWidget {
     super.key,
     required this.requests,
     this.onPinTap,
+    this.emptyMessage,
   });
 
   final List<MarketplaceRequestModel> requests;
   final ValueChanged<MarketplaceRequestModel>? onPinTap;
+  final String? emptyMessage;
 
   @override
   State<MarketplaceApproxMap> createState() => _MarketplaceApproxMapState();
@@ -36,11 +38,12 @@ class _MarketplaceApproxMapState extends State<MarketplaceApproxMap> {
   @override
   Widget build(BuildContext context) {
     if (_pins.isEmpty) {
-      return const Center(
+      return Center(
         child: Padding(
-          padding: EdgeInsets.all(24),
+          padding: const EdgeInsets.all(24),
           child: Text(
-            'No map pins in this area yet. Search by ZIP to find anonymous requests.',
+            widget.emptyMessage ??
+                'No map pins in this area yet. Search by ZIP to find anonymous requests.',
             textAlign: TextAlign.center,
           ),
         ),

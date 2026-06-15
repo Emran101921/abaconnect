@@ -53,6 +53,14 @@ class PaymentsRepository {
     }
   ''';
 
+  static const _paymentsConfigQuery = r'''
+    query PaymentsConfig {
+      paymentsConfig {
+        stripeConfigured
+      }
+    }
+  ''';
+
   static const _createPaymentMutation = r'''
     mutation CreatePayment($input: CreatePaymentInput!) {
       createPayment(input: $input) {
@@ -75,6 +83,13 @@ class PaymentsRepository {
     final result = await _graphql.query(_paymentsQuery);
     final list = result['data']?['myPayments'] as List<dynamic>? ?? [];
     return list.map(_mapPayment).toList();
+  }
+
+  Future<bool> fetchStripeConfigured() async {
+    final result = await _graphql.query(_paymentsConfigQuery);
+    final row =
+        result['data']?['paymentsConfig'] as Map<String, dynamic>?;
+    return row?['stripeConfigured'] as bool? ?? false;
   }
 
   Future<PaymentModel> createPayment({

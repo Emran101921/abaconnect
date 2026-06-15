@@ -19,6 +19,10 @@ export class PaymentsService {
     private readonly notifications: NotificationsService,
   ) {}
 
+  getConfig() {
+    return { stripeConfigured: this.stripe.isConfigured() };
+  }
+
   async prepareCheckoutForParentPayment(userId: string, paymentId: string) {
     const parent = await this.prisma.parent.findUnique({ where: { userId } });
     if (!parent) {

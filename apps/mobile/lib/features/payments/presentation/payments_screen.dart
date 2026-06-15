@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/providers/app_providers.dart';
+import '../../../shared/utils/checkout_launcher.dart';
 import '../../../shared/widgets/app_dashboard_card.dart';
 import '../../../shared/widgets/app_healthcare_illustration.dart';
 import '../../../shared/widgets/app_scaffold.dart';
@@ -13,6 +14,10 @@ import '../data/payments_repository.dart';
 
 final parentPaymentsProvider = FutureProvider<List<PaymentModel>>((ref) {
   return ref.watch(paymentsRepositoryProvider).fetchPayments();
+});
+
+final paymentsConfigProvider = FutureProvider<bool>((ref) {
+  return ref.watch(paymentsRepositoryProvider).fetchStripeConfigured();
 });
 
 class PaymentsScreen extends ConsumerStatefulWidget {
@@ -39,6 +44,7 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
   @override
   Widget build(BuildContext context) {
     final payments = ref.watch(parentPaymentsProvider);
+    final stripeConfigured = ref.watch(paymentsConfigProvider);
     final formatter = NumberFormat.currency(symbol: '\$');
 
     return AppScaffold(
@@ -50,40 +56,36 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
       ),
       body: payments.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (e, _) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text('Error: $e', textAlign: TextAlign.center),
+                const SizedBox(height: 16),
+                GlossyButton(
+                  title: 'Retry',
+                  icon: Icons.refresh_rounded,
+                  variant: GlossyButtonVariant.neutral,
+                  onPressed: () => ref.invalidate(parentPaymentsProvider),
+                ),
+              ],
+            ),
+          ),
+        ),
         data: (list) {
           _maybePromptDeepLinkPayment(list);
           if (list.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const AppHealthcareIllustration(
-                      type: AppIllustrationType.progress,
-                      size: 120,
-                    ),
-                    const SizedBox(height: 24),
-                    Text(
-                      'No payments yet',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Session payments and receipts will appear here.',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: 24),
-                    GlossyButton(
-                      title: 'Pay for a session',
-                      icon: Icons.add_card,
-                      variant: GlossyButtonVariant.orangeRed,
-                      onPressed: () => _paySession(context, ref),
-                    ),
-                  ],
-                ),
+            return stripeConfigured.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (_, _) => _buildEmptyPayments(
+                context,
+                stripeConfigured: false,
+              ),
+              data: (configured) => _buildEmptyPayments(
+                context,
+                stripeConfigured: configured,
               ),
             );
           }
@@ -184,6 +186,59 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
     );
   }
 
+  Widget _buildEmptyPayments(
+    BuildContext context, {
+    required bool stripeConfigured,
+  }) {
+    final demoHint = stripeConfigured
+        ? 'Stripe checkout is enabled — tap Pay for a session or open a payment '
+            'notification to complete checkout.'
+        : 'Stripe checkout is not configured in demo — use Mark paid (demo) '
+            'when prompted, or tap Pay for a session to create a test invoice.';
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const AppHealthcareIllustration(
+              type: AppIllustrationType.progress,
+              size: 120,
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'No payments yet',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'When your therapist requests session payment, it appears here '
+              'and you can pay from a notification or this screen.',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              demoHint,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+            const SizedBox(height: 24),
+            GlossyButton(
+              title: 'Pay for a session',
+              icon: Icons.add_card,
+              variant: GlossyButtonVariant.orangeRed,
+              onPressed: () => _paySession(context, ref),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _showDeepLinkPaymentPrompt(
     BuildContext context,
     List<PaymentModel> list,
@@ -263,7 +318,7 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
       }
 
       if (result.stripeConfigured && result.checkoutUrl != null) {
-        _showCheckoutLink(context, result.checkoutUrl!);
+        _openCheckout(context, result.checkoutUrl!);
       } else {
         await _confirmDemo(context, ref, paymentId);
       }
@@ -288,7 +343,7 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
       if (!context.mounted) return;
 
       if (result.stripeConfigured && result.checkoutUrl != null) {
-        _showCheckoutLink(context, result.checkoutUrl!);
+        _openCheckout(context, result.checkoutUrl!);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -305,7 +360,19 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
     }
   }
 
-  void _showCheckoutLink(BuildContext context, String url) {
+  Future<void> _openCheckout(BuildContext context, String url) async {
+    final opened = await launchCheckoutUrl(url);
+    if (!context.mounted) return;
+    if (opened) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Opening Stripe Checkout…')),
+      );
+      return;
+    }
+    _showCheckoutLinkFallback(context, url);
+  }
+
+  void _showCheckoutLinkFallback(BuildContext context, String url) {
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(

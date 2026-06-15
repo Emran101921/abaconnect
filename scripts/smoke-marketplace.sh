@@ -4,11 +4,10 @@ set -euo pipefail
 
 API="${API_URL:-http://localhost:3000}"
 GQL="$API/graphql"
-DEVICE_HEADERS=(
-  -H 'x-device-id: smoke-marketplace-device'
-  -H 'x-device-model: Smoke marketplace runner'
-  -H 'x-device-platform: ci'
-)
+SMOKE_DEVICE_ID='smoke-marketplace-device'
+SMOKE_DEVICE_MODEL='Smoke marketplace runner'
+# shellcheck source=smoke-login.sh
+source "$(dirname "$0")/smoke-login.sh"
 
 pass=0
 fail=0
@@ -28,21 +27,7 @@ check() {
 }
 
 login() {
-  local email="$1" password="$2"
-  local resp
-  resp=$(curl -sf -X POST "$API/api/v1/auth/login" \
-    -H 'Content-Type: application/json' \
-    "${DEVICE_HEADERS[@]}" \
-    -d "{\"email\":\"$email\",\"password\":\"$password\"}")
-  if echo "$resp" | python3 -c "import sys,json; d=json.load(sys.stdin); sys.exit(0 if d.get('requiresMfa') else 1)" 2>/dev/null; then
-    local token
-    token=$(echo "$resp" | python3 -c "import sys,json; print(json.load(sys.stdin)['mfaChallengeToken'])")
-    resp=$(curl -sf -X POST "$API/api/v1/auth/login/mfa" \
-      -H 'Content-Type: application/json' \
-      "${DEVICE_HEADERS[@]}" \
-      -d "{\"mfaChallengeToken\":\"$token\",\"code\":\"000000\"}")
-  fi
-  echo "$resp" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['accessToken'])"
+  smoke_login "$1" "$2"
 }
 
 gql() {
@@ -101,6 +86,24 @@ CONSENT_TYPES=$(gql "$PARENT" 'query { marketplaceConsentHistory(marketplaceRequ
 # Invalid id should error gracefully, not crash server
 check "marketplaceConsentHistory handles missing request" \
   "d.get('errors') is not None or d.get('data',{}).get('marketplaceConsentHistory') is not None" "$CONSENT_TYPES"
+
+echo
+echo "=== Agency marketplace profile ==="
+AGENCY=$(login agency@demo.local 'Agency123!')
+AGENCY_PROFILE=$(gql "$AGENCY" 'query { myProviderMarketplaceProfile { id verifiedStatus displayName } }')
+check "myProviderMarketplaceProfile for agency" \
+  "'myProviderMarketplaceProfile' in d.get('data', {})" "$AGENCY_PROFILE"
+
+echo
+echo "=== Parent consent history (when requests exist) ==="
+REQ_ID=$(echo "$MY_REQS" | python3 -c "import sys,json; r=json.load(sys.stdin).get('data',{}).get('myMarketplaceRequests') or []; print(r[0]['id'] if r else '')")
+if [ -n "$REQ_ID" ]; then
+  CONSENT_HIST=$(gql "$PARENT" "query { marketplaceConsentHistory(marketplaceRequestId: \"$REQ_ID\") { id consentType granted } }")
+  check "marketplaceConsentHistory for parent request" \
+    "isinstance(d.get('data',{}).get('marketplaceConsentHistory'), list)" "$CONSENT_HIST"
+else
+  echo "SKIP: parent consent history (no marketplace requests in seed)"
+fi
 
 echo
 echo "=== Summary: $pass passed, $fail failed ==="

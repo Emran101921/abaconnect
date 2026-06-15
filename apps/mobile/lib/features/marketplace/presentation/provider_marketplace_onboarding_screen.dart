@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/router/app_router.dart';
+import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/glossy_button.dart';
 import '../../../shared/widgets/role_tab_scaffold.dart';
 import '../data/marketplace_repository.dart';
+import 'provider_marketplace_screen.dart';
 
 const providerConfidentialityTerms =
     'I agree to maintain confidentiality of all marketplace service request '
@@ -13,7 +15,12 @@ const providerConfidentialityTerms =
     'disclose identifiable child or family information without documented parent consent.';
 
 class ProviderMarketplaceOnboardingScreen extends ConsumerStatefulWidget {
-  const ProviderMarketplaceOnboardingScreen({super.key});
+  const ProviderMarketplaceOnboardingScreen({
+    super.key,
+    this.shell = MarketplaceProviderShell.therapist,
+  });
+
+  final MarketplaceProviderShell shell;
 
   @override
   ConsumerState<ProviderMarketplaceOnboardingScreen> createState() =>
@@ -61,6 +68,23 @@ class _ProviderMarketplaceOnboardingScreenState
       );
       return;
     }
+    final zipList = _zipCodes.text
+        .split(',')
+        .map((z) => z.trim())
+        .where((z) => z.isNotEmpty)
+        .toList();
+    if (zipList.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Add at least one coverage ZIP code.')),
+      );
+      return;
+    }
+    if (_categories.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Select at least one service category.')),
+      );
+      return;
+    }
     setState(() => _saving = true);
     try {
       await ref.read(marketplaceRepositoryProvider).completeProviderOnboarding(
@@ -71,21 +95,24 @@ class _ProviderMarketplaceOnboardingScreenState
                 : _license.text.trim(),
             npi: _npi.text.trim().isEmpty ? null : _npi.text.trim(),
             serviceCategories: _categories.toList(),
-            coverageZipCodes: _zipCodes.text
-                .split(',')
-                .map((z) => z.trim())
-                .where((z) => z.isNotEmpty)
-                .toList(),
+            coverageZipCodes: zipList,
             languages: _languages.text
                 .split(',')
                 .map((l) => l.trim())
                 .where((l) => l.isNotEmpty)
                 .toList(),
             confidentialityTermsAccepted: true,
+            accountType: widget.shell == MarketplaceProviderShell.agency
+                ? 'AGENCY'
+                : 'THERAPIST',
           );
       ref.invalidate(providerMarketplaceProfileProvider);
       if (!mounted) return;
-      context.go(AppRoutes.therapistMarketplace);
+      context.go(
+        widget.shell == MarketplaceProviderShell.agency
+            ? AppRoutes.agencyMarketplace
+            : AppRoutes.therapistMarketplace,
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -99,12 +126,9 @@ class _ProviderMarketplaceOnboardingScreenState
 
   @override
   Widget build(BuildContext context) {
-    return TherapistTabScaffold(
-      title: 'Marketplace access',
-      subtitle: 'Required before viewing anonymous requests',
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
+    final body = ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
           const Text(
             'Complete your provider marketplace profile. You will only see '
             'anonymous service requests in your coverage ZIP codes until a parent '
@@ -193,7 +217,19 @@ class _ProviderMarketplaceOnboardingScreenState
             onPressed: _submit,
           ),
         ],
-      ),
     );
+
+    return switch (widget.shell) {
+      MarketplaceProviderShell.therapist => TherapistTabScaffold(
+          title: 'Marketplace access',
+          subtitle: 'Required before viewing anonymous requests',
+          body: body,
+        ),
+      MarketplaceProviderShell.agency => AppScaffold(
+          title: 'Marketplace access',
+          subtitle: 'Required before viewing anonymous requests',
+          body: body,
+        ),
+    };
   }
 }

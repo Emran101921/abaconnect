@@ -18,8 +18,13 @@ const prisma = new PrismaClient({ adapter });
 
 /** Fixed TOTP secret for demo users (plaintext; MFA service falls back if not encrypted). */
 const DEMO_MFA_SECRET = 'JBSWY3DPEHPK3PXP';
-/** Device id used by scripts/smoke-features.sh so CI logins skip step-up MFA. */
-const SMOKE_DEVICE_ID = 'smoke-ci-device';
+/** Device ids used by scripts/smoke-*.sh so CI logins skip step-up MFA. */
+const SMOKE_DEVICE_IDS = [
+  'smoke-ci-device',
+  'smoke-marketplace-device',
+  'smoke-self-pay-device',
+] as const;
+const SMOKE_DEVICE_ID = SMOKE_DEVICE_IDS[0];
 
 async function seedActivePrivacyNotice(tenantId: string) {
   return prisma.privacyNoticeVersion.upsert({
@@ -66,28 +71,35 @@ async function seedNoticeAcknowledgment(
   });
 }
 
+async function seedSmokeTrustedDevices(userId: string): Promise<void> {
+  const now = new Date();
+  for (const deviceId of SMOKE_DEVICE_IDS) {
+    await prisma.authDevice.upsert({
+      where: { userId_deviceId: { userId, deviceId } },
+      create: {
+        userId,
+        deviceId,
+        deviceModel: 'CI smoke runner',
+        platform: 'ci',
+        trusted: true,
+        mfaVerifiedAt: now,
+        lastSeenAt: now,
+      },
+      update: {
+        trusted: true,
+        mfaVerifiedAt: now,
+        lastSeenAt: now,
+      },
+    });
+  }
+}
+
 async function seedDemoOnboarding(userId: string): Promise<void> {
   await prisma.user.update({
     where: { id: userId },
     data: { mfaEnabled: true, mfaSecret: DEMO_MFA_SECRET },
   });
-  await prisma.authDevice.upsert({
-    where: { userId_deviceId: { userId, deviceId: SMOKE_DEVICE_ID } },
-    create: {
-      userId,
-      deviceId: SMOKE_DEVICE_ID,
-      deviceModel: 'CI smoke runner',
-      platform: 'ci',
-      trusted: true,
-      mfaVerifiedAt: new Date(),
-      lastSeenAt: new Date(),
-    },
-    update: {
-      trusted: true,
-      mfaVerifiedAt: new Date(),
-      lastSeenAt: new Date(),
-    },
-  });
+  await seedSmokeTrustedDevices(userId);
 }
 
 const LEGACY_DEMO_CHILD_IDS = [

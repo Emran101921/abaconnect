@@ -337,6 +337,8 @@ class MarketplaceRepository {
           publicDescription
           interestCount
           childId
+          mapPinLat
+          mapPinLng
         }
       }
     ''';

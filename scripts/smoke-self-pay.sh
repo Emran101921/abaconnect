@@ -9,11 +9,10 @@ set -euo pipefail
 
 API="${API_URL:-http://localhost:3000}"
 GQL="$API/graphql"
-DEVICE_HEADERS=(
-  -H 'x-device-id: smoke-self-pay-device'
-  -H 'x-device-model: Smoke self-pay runner'
-  -H 'x-device-platform: ci'
-)
+SMOKE_DEVICE_ID='smoke-self-pay-device'
+SMOKE_DEVICE_MODEL='Smoke self-pay runner'
+# shellcheck source=smoke-login.sh
+source "$(dirname "$0")/smoke-login.sh"
 
 pass=0
 fail=0
@@ -33,21 +32,7 @@ check() {
 }
 
 login() {
-  local email="$1" password="$2"
-  local resp
-  resp=$(curl -sf -X POST "$API/api/v1/auth/login" \
-    -H 'Content-Type: application/json' \
-    "${DEVICE_HEADERS[@]}" \
-    -d "{\"email\":\"$email\",\"password\":\"$password\"}")
-  if echo "$resp" | python3 -c "import sys,json; d=json.load(sys.stdin); sys.exit(0 if d.get('requiresMfa') else 1)" 2>/dev/null; then
-    local token
-    token=$(echo "$resp" | python3 -c "import sys,json; print(json.load(sys.stdin)['mfaChallengeToken'])")
-    resp=$(curl -sf -X POST "$API/api/v1/auth/login/mfa" \
-      -H 'Content-Type: application/json' \
-      "${DEVICE_HEADERS[@]}" \
-      -d "{\"mfaChallengeToken\":\"$token\",\"code\":\"000000\"}")
-  fi
-  echo "$resp" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['accessToken'])"
+  smoke_login "$1" "$2"
 }
 
 gql() {
