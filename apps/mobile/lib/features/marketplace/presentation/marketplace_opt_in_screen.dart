@@ -35,6 +35,7 @@ class _MarketplaceOptInScreenState extends ConsumerState<MarketplaceOptInScreen>
   var _submitting = false;
   String _locationType = 'HOME';
   String _urgency = 'ROUTINE';
+  MarketplaceRequestModel? _postedRequest;
 
   Future<void> _submit() async {
     if (widget.childId.isEmpty) {
@@ -53,7 +54,7 @@ class _MarketplaceOptInScreenState extends ConsumerState<MarketplaceOptInScreen>
     }
     setState(() => _submitting = true);
     try {
-      await ref.read(marketplaceRepositoryProvider).createRequest(
+      final request = await ref.read(marketplaceRepositoryProvider).createRequest(
             childId: widget.childId,
             screeningResponseId: widget.screeningResponseId,
             anonymousConsentGranted: true,
@@ -62,11 +63,7 @@ class _MarketplaceOptInScreenState extends ConsumerState<MarketplaceOptInScreen>
             urgency: _urgency,
           );
       if (!mounted) return;
-      AppSnackBar.showSuccess(
-        context,
-        'Anonymous service request posted to the marketplace.',
-      );
-      context.go(AppRoutes.parentMarketplace);
+      setState(() => _postedRequest = request);
     } catch (e) {
       if (mounted) {
         AppSnackBar.showError(
@@ -79,14 +76,95 @@ class _MarketplaceOptInScreenState extends ConsumerState<MarketplaceOptInScreen>
     }
   }
 
+  Widget _buildSuccessBody(BuildContext context) {
+    final request = _postedRequest!;
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
+
+    return SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottomInset),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Card(
+            color: Theme.of(context).colorScheme.primaryContainer,
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.check_circle_outline,
+                    size: 56,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Request posted anonymously',
+                    style: Theme.of(context).textTheme.titleLarge,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Ref ${request.anonymousPublicId} · ${request.serviceAreaLabel}',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'What happens next',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Verified providers and agencies in your service area can respond '
+                    'without seeing your child\'s identity. When someone is interested, '
+                    'you\'ll get a notification and can review them before sharing any '
+                    'contact details or documents.',
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          GlossyButton(
+            title: 'Go to marketplace dashboard',
+            icon: Icons.dashboard_outlined,
+            variant: GlossyButtonVariant.tealBlue,
+            onPressed: () => context.go(AppRoutes.parentMarketplace),
+          ),
+          const SizedBox(height: 8),
+          Center(
+            child: TextButton(
+              onPressed: () => context.go(AppRoutes.parentHome),
+              child: const Text('Back to home'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.paddingOf(context).bottom;
 
     return ParentTabScaffold(
       title: 'Anonymous marketplace',
-      subtitle: 'Share general service needs only',
-      body: SingleChildScrollView(
+      subtitle: _postedRequest == null
+          ? 'Share general service needs only'
+          : 'Request posted',
+      body: _postedRequest != null
+          ? _buildSuccessBody(context)
+          : SingleChildScrollView(
         padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottomInset),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

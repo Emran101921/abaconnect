@@ -140,21 +140,52 @@ class SessionNotesScreen extends ConsumerWidget {
   Future<void> _completeSession(
     BuildContext context,
     WidgetRef ref,
-    String sessionId,
+    TherapistSessionModel session,
   ) async {
     try {
-      await ref.read(therapistRepositoryProvider).completeSession(sessionId);
+      await ref.read(therapistRepositoryProvider).completeSession(session.id);
       ref.invalidate(therapistSessionsProvider);
       ref.invalidate(therapistDashboardProvider);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+      if (!context.mounted) return;
+
+      if (!session.hasSoap) {
+        final writeNow = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Documentation due'),
             content: Text(
-              'Visit ended — complete SOAP notes, parent notified to review',
+              'Visit with ${session.childName} ended. Complete SOAP notes now '
+              'while details are fresh — parents are notified to review progress.',
             ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Later'),
+              ),
+              GlossyButton(
+                title: 'Write SOAP now',
+                size: GlossyButtonSize.small,
+                fullWidth: false,
+                variant: GlossyButtonVariant.tealBlue,
+                onPressed: () => Navigator.pop(ctx, true),
+              ),
+            ],
           ),
         );
+        if (writeNow == true && context.mounted) {
+          await _openSoapEditor(context, ref, session);
+          return;
+        }
       }
+
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Visit ended — complete SOAP notes, parent notified to review',
+          ),
+        ),
+      );
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(
@@ -464,7 +495,7 @@ class SessionNotesScreen extends ConsumerWidget {
                                   fullWidth: false,
                                   variant: GlossyButtonVariant.redDarkRed,
                                   onPressed: () =>
-                                      _completeSession(context, ref, s.id),
+                                      _completeSession(context, ref, s),
                                 ),
                             ],
                           ),

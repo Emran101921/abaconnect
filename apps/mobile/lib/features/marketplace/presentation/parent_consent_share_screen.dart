@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/app_providers.dart';
+import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/app_snackbar.dart';
 import '../../../shared/widgets/glossy_button.dart';
 import '../../../shared/widgets/role_tab_scaffold.dart';
@@ -31,6 +32,7 @@ class _ParentConsentShareScreenState
   var _consent = false;
   var _submitting = false;
   var _loadingDocs = true;
+  var _shareComplete = false;
   String? _childId;
   List<DocumentItemModel> _childDocuments = [];
   final Set<String> _selectedDocumentIds = {};
@@ -99,10 +101,7 @@ class _ParentConsentShareScreenState
             documentIds: _selectedDocumentIds.toList(),
           );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Consent recorded. Details shared.')),
-      );
-      context.pop();
+      setState(() => _shareComplete = true);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -114,12 +113,69 @@ class _ParentConsentShareScreenState
     }
   }
 
+  Widget _buildSuccessBody(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Card(
+          color: Theme.of(context).colorScheme.primaryContainer,
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                Icon(
+                  Icons.verified_user,
+                  size: 56,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Details shared with ${widget.providerName}',
+                  style: Theme.of(context).textTheme.titleLarge,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _selectedDocumentIds.isEmpty
+                      ? 'Profile and contact information were shared. '
+                          'You can revoke consent anytime from consent history.'
+                      : '${_selectedDocumentIds.length} document(s) plus profile '
+                          'and contact information were shared. '
+                          'You can revoke consent anytime from consent history.',
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        GlossyButton(
+          title: 'View consent history',
+          icon: Icons.history,
+          variant: GlossyButtonVariant.tealBlue,
+          onPressed: () => context.go(
+            '${AppRoutes.parentMarketplace}/${widget.marketplaceRequestId}/consents',
+          ),
+        ),
+        const SizedBox(height: 8),
+        Center(
+          child: TextButton(
+            onPressed: () => context.pop(),
+            child: const Text('Back to provider list'),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ParentTabScaffold(
       title: 'Share details',
-      subtitle: 'Explicit consent required',
-      body: ListView(
+      subtitle: _shareComplete ? 'Consent recorded' : 'Explicit consent required',
+      body: _shareComplete
+          ? _buildSuccessBody(context)
+          : ListView(
         padding: const EdgeInsets.all(16),
         children: [
           Card(

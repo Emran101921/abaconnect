@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/app_snackbar.dart';
 import '../../../shared/widgets/glossy_button.dart';
@@ -44,7 +45,7 @@ List<MarketplaceInterestModel> _sortedInterests(
     );
 }
 
-class ParentProviderCompareScreen extends ConsumerWidget {
+class ParentProviderCompareScreen extends ConsumerStatefulWidget {
   const ParentProviderCompareScreen({
     super.key,
     required this.marketplaceRequestId,
@@ -53,12 +54,91 @@ class ParentProviderCompareScreen extends ConsumerWidget {
   final String marketplaceRequestId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ParentProviderCompareScreen> createState() =>
+      _ParentProviderCompareScreenState();
+}
+
+class _ParentProviderCompareScreenState
+    extends ConsumerState<ParentProviderCompareScreen> {
+  Future<void> _reportProviderConcern(MarketplaceInterestModel item) async {
+    final detailsController = TextEditingController();
+    final submitted = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Report concern'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Flag ${item.providerName} for compliance review. '
+              'This does not share your child\'s identity.',
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: detailsController,
+              decoration: const InputDecoration(
+                labelText: 'What happened?',
+                hintText: 'Describe the concern',
+              ),
+              maxLines: 4,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          GlossyButton(
+            title: 'Submit report',
+            size: GlossyButtonSize.small,
+            fullWidth: false,
+            variant: GlossyButtonVariant.orangeRed,
+            onPressed: () => Navigator.pop(ctx, true),
+          ),
+        ],
+      ),
+    );
+    if (submitted != true || detailsController.text.trim().isEmpty) {
+      detailsController.dispose();
+      return;
+    }
+    try {
+      await ref.read(platformRepositoryProvider).fileComplaint(
+            category: 'SAFETY',
+            subject:
+                'Marketplace provider concern: ${item.providerName} (${item.accountType})',
+            description:
+                'Request ${widget.marketplaceRequestId}\n'
+                'Provider ${item.providerId}\n\n'
+                '${detailsController.text.trim()}',
+          );
+      if (mounted) {
+        AppSnackBar.showSuccess(
+          context,
+          'Report submitted. Our compliance team will review.',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        AppSnackBar.showError(
+          context,
+          'Report failed: ${AppSnackBar.messageFromError(e)}',
+        );
+      }
+    } finally {
+      detailsController.dispose();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final interests = ref.watch(
-      marketplaceInterestsProvider(marketplaceRequestId),
+      marketplaceInterestsProvider(widget.marketplaceRequestId),
     );
     final request = ref.watch(
-      marketplaceRequestByIdProvider(marketplaceRequestId),
+      marketplaceRequestByIdProvider(widget.marketplaceRequestId),
     );
 
     return ParentTabScaffold(
@@ -91,10 +171,10 @@ class ParentProviderCompareScreen extends ConsumerWidget {
                   variant: GlossyButtonVariant.neutral,
                   onPressed: () {
                     ref.invalidate(
-                      marketplaceInterestsProvider(marketplaceRequestId),
+                      marketplaceInterestsProvider(widget.marketplaceRequestId),
                     );
                     ref.invalidate(
-                      marketplaceRequestByIdProvider(marketplaceRequestId),
+                      marketplaceRequestByIdProvider(widget.marketplaceRequestId),
                     );
                   },
                 ),
@@ -124,10 +204,14 @@ class ParentProviderCompareScreen extends ConsumerWidget {
               requestStatus == 'CLOSED' || requestStatus == 'PAUSED';
 
           Future<void> refresh() async {
-            ref.invalidate(marketplaceInterestsProvider(marketplaceRequestId));
-            ref.invalidate(marketplaceRequestByIdProvider(marketplaceRequestId));
+            ref.invalidate(
+              marketplaceInterestsProvider(widget.marketplaceRequestId),
+            );
+            ref.invalidate(
+              marketplaceRequestByIdProvider(widget.marketplaceRequestId),
+            );
             await ref.read(
-              marketplaceInterestsProvider(marketplaceRequestId).future,
+              marketplaceInterestsProvider(widget.marketplaceRequestId).future,
             );
           }
 
@@ -197,7 +281,7 @@ class ParentProviderCompareScreen extends ConsumerWidget {
                     alignment: Alignment.centerRight,
                     child: TextButton(
                       onPressed: () => context.push(
-                        '${AppRoutes.parentMarketplace}/$marketplaceRequestId/consents',
+                        '${AppRoutes.parentMarketplace}/${widget.marketplaceRequestId}/consents',
                       ),
                       child: const Text('Consent history'),
                     ),
@@ -207,8 +291,9 @@ class ParentProviderCompareScreen extends ConsumerWidget {
                       padding: const EdgeInsets.only(bottom: 12),
                       child: _InterestCard(
                         item: item,
-                        marketplaceRequestId: marketplaceRequestId,
+                        marketplaceRequestId: widget.marketplaceRequestId,
                         canReview: false,
+                        onReportConcern: () => _reportProviderConcern(item),
                       ),
                     ),
                   ),
@@ -257,10 +342,11 @@ class ParentProviderCompareScreen extends ConsumerWidget {
                 final item = sorted[index - 1];
                 return _InterestCard(
                   item: item,
-                  marketplaceRequestId: marketplaceRequestId,
+                  marketplaceRequestId: widget.marketplaceRequestId,
                   canReview:
                       !requestInactive &&
                       item.status == 'PENDING_PARENT_REVIEW',
+                  onReportConcern: () => _reportProviderConcern(item),
                 );
               },
             ),
@@ -305,11 +391,13 @@ class _InterestCard extends StatelessWidget {
     required this.item,
     required this.marketplaceRequestId,
     required this.canReview,
+    required this.onReportConcern,
   });
 
   final MarketplaceInterestModel item;
   final String marketplaceRequestId;
   final bool canReview;
+  final VoidCallback onReportConcern;
 
   @override
   Widget build(BuildContext context) {
@@ -356,6 +444,15 @@ class _InterestCard extends StatelessWidget {
                 ),
               ),
             ],
+            const SizedBox(height: 4),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: onReportConcern,
+                icon: const Icon(Icons.flag_outlined, size: 18),
+                label: const Text('Report concern'),
+              ),
+            ),
           ],
         ),
       ),
