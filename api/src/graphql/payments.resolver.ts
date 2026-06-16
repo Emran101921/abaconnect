@@ -63,6 +63,25 @@ export class PaymentsResolver {
     };
   }
 
+  @Mutation(() => PaymentIntentResultType, {
+    name: 'prepareAppointmentBookingPayment',
+  })
+  async prepareAppointmentBookingPayment(
+    @CurrentUser() user: AuthUser,
+    @Args('appointmentId', { type: () => ID }) appointmentId: string,
+  ): Promise<PaymentIntentResultType> {
+    const result = await this.paymentsService.prepareBookingPaymentForAppointment(
+      user.id,
+      appointmentId,
+    );
+    return {
+      payment: this.mapPayment(result.payment),
+      clientSecret: result.clientSecret ?? undefined,
+      checkoutUrl: result.checkoutUrl ?? undefined,
+      stripeConfigured: result.stripeConfigured,
+    };
+  }
+
   @Mutation(() => PaymentType, { name: 'confirmPaymentDemo' })
   async confirmPaymentDemo(
     @CurrentUser() user: AuthUser,

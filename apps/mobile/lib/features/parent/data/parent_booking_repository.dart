@@ -251,6 +251,18 @@ class SessionHistoryModel {
   }
 }
 
+class ConfirmAppointmentResult {
+  const ConfirmAppointmentResult({
+    required this.requiresPayment,
+    this.paymentId,
+    this.checkoutUrl,
+  });
+
+  final bool requiresPayment;
+  final String? paymentId;
+  final String? checkoutUrl;
+}
+
 class AppointmentModel {
   const AppointmentModel({
     required this.id,
@@ -260,6 +272,17 @@ class AppointmentModel {
     required this.childName,
     required this.therapistName,
     this.locationType,
+    this.confirmationStatus = 'PENDING',
+    this.parentConfirmedAt,
+    this.therapistConfirmedAt,
+    this.rescheduleRequestedBy,
+    this.proposedScheduledStart,
+    this.proposedScheduledEnd,
+    this.rescheduleReason,
+    this.childInsuranceType,
+    this.requiresSelfPayBookingPayment = false,
+    this.bookingPaymentId,
+    this.bookingPaymentStatus,
   });
 
   final String id;
@@ -269,10 +292,42 @@ class AppointmentModel {
   final String childName;
   final String therapistName;
   final String? locationType;
+  final String confirmationStatus;
+  final DateTime? parentConfirmedAt;
+  final DateTime? therapistConfirmedAt;
+  final String? rescheduleRequestedBy;
+  final DateTime? proposedScheduledStart;
+  final DateTime? proposedScheduledEnd;
+  final String? rescheduleReason;
+  final String? childInsuranceType;
+  final bool requiresSelfPayBookingPayment;
+  final String? bookingPaymentId;
+  final String? bookingPaymentStatus;
 
   bool get isTelehealth => locationType == 'TELEHEALTH';
 
   bool get isCompleted => status == 'COMPLETED';
+
+  bool get parentConfirmed => parentConfirmedAt != null;
+
+  bool get therapistConfirmed => therapistConfirmedAt != null;
+
+  bool get needsParentConfirmation =>
+      !parentConfirmed &&
+      confirmationStatus != 'CANCELLED' &&
+      !isCompleted &&
+      status != 'CANCELLED';
+
+  bool get needsBookingPayment =>
+      requiresSelfPayBookingPayment &&
+      bookingPaymentStatus != 'SUCCEEDED' &&
+      confirmationStatus != 'CONFIRMED' &&
+      confirmationStatus != 'CANCELLED';
+
+  bool get isFullyConfirmed => confirmationStatus == 'CONFIRMED';
+
+  bool get isRescheduleRequested =>
+      confirmationStatus == 'RESCHEDULE_REQUESTED';
 
   bool get isToday {
     final now = DateTime.now();
@@ -372,6 +427,17 @@ class ParentBookingRepository {
         therapyType
         scheduledStart
         locationType
+        confirmationStatus
+        parentConfirmedAt
+        therapistConfirmedAt
+        rescheduleRequestedBy
+        proposedScheduledStart
+        proposedScheduledEnd
+        rescheduleReason
+        childInsuranceType
+        requiresSelfPayBookingPayment
+        bookingPaymentId
+        bookingPaymentStatus
         child { firstName lastName }
         therapist { user { firstName lastName } }
       }
@@ -970,7 +1036,7 @@ class ParentBookingRepository {
     required DateTime end,
     String? locationType,
   }) async {
-    await _graphql.query(
+    final result = await _graphql.query(
       _bookMutation,
       variables: {
         'input': {
@@ -983,6 +1049,10 @@ class ParentBookingRepository {
         },
       },
     );
+    final booked = result['data']?['bookAppointment'];
+    if (booked == null) {
+      throw Exception('Failed to book appointment');
+    }
   }
 
   Future<int> bookRecurringAppointments({
@@ -1027,6 +1097,7 @@ class ParentBookingRepository {
     required String appointmentId,
     required DateTime start,
     required DateTime end,
+    String? reason,
   }) async {
     await _graphql.query(
       _rescheduleMutation,
@@ -1035,8 +1106,46 @@ class ParentBookingRepository {
           'appointmentId': appointmentId,
           'scheduledStart': start.toIso8601String(),
           'scheduledEnd': end.toIso8601String(),
+          'reason': ?reason,
         },
       },
+    );
+  }
+
+  static const _confirmMutation = r'''
+    mutation ConfirmParent($appointmentId: ID!) {
+      confirmAppointmentAsParent(appointmentId: $appointmentId) {
+        appointment {
+          id
+          status
+          confirmationStatus
+          requiresSelfPayBookingPayment
+          bookingPaymentId
+          bookingPaymentStatus
+        }
+        requiresPayment
+        paymentId
+        checkoutUrl
+      }
+    }
+  ''';
+
+  Future<ConfirmAppointmentResult> confirmAppointment({
+    required String appointmentId,
+  }) async {
+    final result = await _graphql.query(
+      _confirmMutation,
+      variables: {'appointmentId': appointmentId},
+    );
+    final data =
+        result['data']?['confirmAppointmentAsParent'] as Map<String, dynamic>?;
+    if (data == null) {
+      throw Exception('Failed to confirm appointment');
+    }
+    return ConfirmAppointmentResult(
+      requiresPayment: data['requiresPayment'] as bool? ?? false,
+      paymentId: data['paymentId'] as String?,
+      checkoutUrl: data['checkoutUrl'] as String?,
     );
   }
 
@@ -1150,6 +1259,26 @@ class ParentBookingRepository {
           ? '${user['firstName']} ${user['lastName']}'
           : 'Therapist',
       locationType: e['locationType'] as String?,
+      confirmationStatus: e['confirmationStatus'] as String? ?? 'PENDING',
+      parentConfirmedAt: e['parentConfirmedAt'] != null
+          ? DateTime.parse(e['parentConfirmedAt'] as String)
+          : null,
+      therapistConfirmedAt: e['therapistConfirmedAt'] != null
+          ? DateTime.parse(e['therapistConfirmedAt'] as String)
+          : null,
+      rescheduleRequestedBy: e['rescheduleRequestedBy'] as String?,
+      proposedScheduledStart: e['proposedScheduledStart'] != null
+          ? DateTime.parse(e['proposedScheduledStart'] as String)
+          : null,
+      proposedScheduledEnd: e['proposedScheduledEnd'] != null
+          ? DateTime.parse(e['proposedScheduledEnd'] as String)
+          : null,
+      rescheduleReason: e['rescheduleReason'] as String?,
+      childInsuranceType: e['childInsuranceType'] as String?,
+      requiresSelfPayBookingPayment:
+          e['requiresSelfPayBookingPayment'] as bool? ?? false,
+      bookingPaymentId: e['bookingPaymentId'] as String?,
+      bookingPaymentStatus: e['bookingPaymentStatus'] as String?,
     );
   }
 }

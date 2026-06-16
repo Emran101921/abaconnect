@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/network/graphql_client.dart';
+import '../../../core/utils/document_upload.dart';
 import '../../../core/utils/file_download.dart';
 import '../../../shared/models/analytics_metric.dart';
 import '../../therapist/models/eip_session_note_model.dart';
@@ -77,12 +78,87 @@ class AgencyTherapistModel {
     required this.displayName,
     required this.isVerified,
     this.licenseNumber,
+    this.rosterStatus,
+    this.onboardingStatus,
+    this.email,
   });
 
   final String id;
   final String displayName;
   final bool isVerified;
   final String? licenseNumber;
+  final String? rosterStatus;
+  final String? onboardingStatus;
+  final String? email;
+
+  bool get isPendingRoster =>
+      rosterStatus == 'PENDING' || rosterStatus == null;
+}
+
+class AgencyProfileModel {
+  const AgencyProfileModel({
+    required this.id,
+    required this.name,
+    this.ein,
+    this.phone,
+    this.addressLine1,
+    this.addressLine2,
+    this.city,
+    this.state,
+    this.zipCode,
+    this.email,
+    this.website,
+    required this.onboardingComplete,
+    this.documents = const [],
+  });
+
+  final String id;
+  final String name;
+  final String? ein;
+  final String? phone;
+  final String? addressLine1;
+  final String? addressLine2;
+  final String? city;
+  final String? state;
+  final String? zipCode;
+  final String? email;
+  final String? website;
+  final bool onboardingComplete;
+  final List<AgencyDocumentModel> documents;
+}
+
+class AgencyDocumentModel {
+  const AgencyDocumentModel({
+    required this.id,
+    required this.type,
+    required this.title,
+    required this.fileName,
+    required this.uploadedAt,
+  });
+
+  final String id;
+  final String type;
+  final String title;
+  final String fileName;
+  final DateTime uploadedAt;
+}
+
+class AgencyOnboardingStatusModel {
+  const AgencyOnboardingStatusModel({
+    required this.profileComplete,
+    required this.documentsComplete,
+    required this.onboardingComplete,
+    required this.missingDocuments,
+    required this.canComplete,
+    required this.uploadedDocumentTypes,
+  });
+
+  final bool profileComplete;
+  final bool documentsComplete;
+  final bool onboardingComplete;
+  final List<String> missingDocuments;
+  final bool canComplete;
+  final List<String> uploadedDocumentTypes;
 }
 
 class AgencyClaimsPipelineSummaryModel {
@@ -287,7 +363,9 @@ class AgencyRepository {
         id
         isVerified
         licenseNumber
-        user { firstName lastName }
+        rosterStatus
+        onboardingStatus
+        user { firstName lastName email }
       }
     }
   ''';
@@ -407,6 +485,226 @@ class AgencyRepository {
       displayName: name,
       isVerified: e['isVerified'] as bool? ?? false,
       licenseNumber: e['licenseNumber'] as String?,
+      rosterStatus: e['rosterStatus'] as String?,
+      onboardingStatus: e['onboardingStatus'] as String?,
+      email: user?['email'] as String?,
+    );
+  }
+
+  Future<AgencyProfileModel> fetchAgencyProfile() async {
+    const query = r'''
+      query AgencyProfile {
+        agencyProfile {
+          id name ein phone addressLine1 addressLine2 city state zipCode
+          email website onboardingComplete
+          documents { id type title fileName uploadedAt }
+        }
+      }
+    ''';
+    final result = await _graphql.query(query);
+    final data = result['data']?['agencyProfile'] as Map<String, dynamic>?;
+    if (data == null) throw Exception('Failed to load agency profile');
+    return _mapAgencyProfile(data);
+  }
+
+  Future<AgencyProfileModel> updateAgencyProfile({
+    required String name,
+    String? ein,
+    String? phone,
+    String? addressLine1,
+    String? addressLine2,
+    String? city,
+    String? state,
+    String? zipCode,
+    String? email,
+    String? website,
+  }) async {
+    const mutation = r'''
+      mutation UpdateProfile($input: UpdateAgencyProfileInput!) {
+        updateAgencyProfile(input: $input) {
+          id name ein phone addressLine1 addressLine2 city state zipCode
+          email website onboardingComplete
+          documents { id type title fileName uploadedAt }
+        }
+      }
+    ''';
+    final result = await _graphql.query(
+      mutation,
+      variables: {
+        'input': {
+          'name': name,
+          'ein': ein,
+          'phone': phone,
+          'addressLine1': addressLine1,
+          'addressLine2': addressLine2,
+          'city': city,
+          'state': state,
+          'zipCode': zipCode,
+          'email': email,
+          'website': website,
+        },
+      },
+    );
+    final data =
+        result['data']?['updateAgencyProfile'] as Map<String, dynamic>?;
+    if (data == null) throw Exception('Failed to update agency profile');
+    return _mapAgencyProfile(data);
+  }
+
+  Future<AgencyOnboardingStatusModel> fetchOnboardingStatus() async {
+    const query = r'''
+      query AgencyOnboardingStatus {
+        agencyOnboardingStatus {
+          profileComplete documentsComplete onboardingComplete
+          missingDocuments canComplete uploadedDocumentTypes
+        }
+      }
+    ''';
+    final result = await _graphql.query(query);
+    final data =
+        result['data']?['agencyOnboardingStatus'] as Map<String, dynamic>?;
+    if (data == null) throw Exception('Failed to load onboarding status');
+    return AgencyOnboardingStatusModel(
+      profileComplete: data['profileComplete'] as bool? ?? false,
+      documentsComplete: data['documentsComplete'] as bool? ?? false,
+      onboardingComplete: data['onboardingComplete'] as bool? ?? false,
+      missingDocuments: (data['missingDocuments'] as List<dynamic>? ?? [])
+          .cast<String>(),
+      canComplete: data['canComplete'] as bool? ?? false,
+      uploadedDocumentTypes:
+          (data['uploadedDocumentTypes'] as List<dynamic>? ?? [])
+              .cast<String>(),
+    );
+  }
+
+  Future<AgencyOnboardingStatusModel> completeAgencyOnboarding() async {
+    const mutation = r'''
+      mutation CompleteAgencyOnboarding {
+        completeAgencyOnboarding {
+          profileComplete documentsComplete onboardingComplete
+          missingDocuments canComplete uploadedDocumentTypes
+        }
+      }
+    ''';
+    final result = await _graphql.query(mutation);
+    final data =
+        result['data']?['completeAgencyOnboarding'] as Map<String, dynamic>?;
+    if (data == null) throw Exception('Failed to complete onboarding');
+    return AgencyOnboardingStatusModel(
+      profileComplete: data['profileComplete'] as bool? ?? false,
+      documentsComplete: data['documentsComplete'] as bool? ?? false,
+      onboardingComplete: data['onboardingComplete'] as bool? ?? false,
+      missingDocuments: (data['missingDocuments'] as List<dynamic>? ?? [])
+          .cast<String>(),
+      canComplete: data['canComplete'] as bool? ?? false,
+      uploadedDocumentTypes:
+          (data['uploadedDocumentTypes'] as List<dynamic>? ?? [])
+              .cast<String>(),
+    );
+  }
+
+  Future<void> uploadAgencyDocument({
+    required String type,
+    required String title,
+    required String fileName,
+    required Uint8List bytes,
+    required String mimeType,
+  }) async {
+    final ext = fileName.contains('.') ? fileName.split('.').last : null;
+    final validationError = validateDocumentUpload(
+      extension: ext,
+      mimeType: mimeType,
+    );
+    if (validationError != null) {
+      throw Exception(validationError);
+    }
+
+    try {
+      await _api.dio.post(
+        '/agencies/documents/upload',
+        data: FormData.fromMap({
+          'type': type,
+          'title': title,
+          'file': MultipartFile.fromBytes(
+            bytes,
+            filename: fileName,
+            contentType: DioMediaType.parse(mimeType),
+          ),
+        }),
+        options: Options(contentType: 'multipart/form-data'),
+      );
+    } catch (e) {
+      throw Exception(formatUploadError(e));
+    }
+  }
+
+  Future<void> createAgencyStaff({
+    required String email,
+    required String password,
+    required String firstName,
+    required String lastName,
+    String? phone,
+    String? licenseNumber,
+    String? licenseState,
+    String? npi,
+  }) async {
+    const mutation = r'''
+      mutation CreateStaff($input: CreateAgencyStaffInput!) {
+        createAgencyStaff(input: $input) { id email firstName lastName }
+      }
+    ''';
+    await _graphql.query(
+      mutation,
+      variables: {
+        'input': {
+          'email': email,
+          'password': password,
+          'firstName': firstName,
+          'lastName': lastName,
+          'phone': phone,
+          'licenseNumber': licenseNumber,
+          'licenseState': licenseState,
+          'npi': npi,
+        },
+      },
+    );
+  }
+
+  Future<void> approveAgencyStaff(String therapistId) async {
+    const mutation = r'''
+      mutation Approve($therapistId: ID!) {
+        approveAgencyStaff(therapistId: $therapistId) { id rosterStatus }
+      }
+    ''';
+    await _graphql.query(mutation, variables: {'therapistId': therapistId});
+  }
+
+  AgencyProfileModel _mapAgencyProfile(Map<String, dynamic> data) {
+    final docs = data['documents'] as List<dynamic>? ?? [];
+    return AgencyProfileModel(
+      id: data['id'] as String,
+      name: data['name'] as String? ?? '',
+      ein: data['ein'] as String?,
+      phone: data['phone'] as String?,
+      addressLine1: data['addressLine1'] as String?,
+      addressLine2: data['addressLine2'] as String?,
+      city: data['city'] as String?,
+      state: data['state'] as String?,
+      zipCode: data['zipCode'] as String?,
+      email: data['email'] as String?,
+      website: data['website'] as String?,
+      onboardingComplete: data['onboardingComplete'] as bool? ?? false,
+      documents: docs
+          .map(
+            (d) => AgencyDocumentModel(
+              id: d['id'] as String,
+              type: d['type'] as String? ?? 'OTHER',
+              title: d['title'] as String? ?? '',
+              fileName: d['fileName'] as String? ?? '',
+              uploadedAt: DateTime.parse(d['uploadedAt'] as String),
+            ),
+          )
+          .toList(),
     );
   }
 

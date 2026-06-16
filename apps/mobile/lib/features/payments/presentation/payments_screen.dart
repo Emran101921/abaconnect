@@ -11,14 +11,7 @@ import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_section_header.dart';
 import '../../../shared/widgets/glossy_button.dart';
 import '../data/payments_repository.dart';
-
-final parentPaymentsProvider = FutureProvider<List<PaymentModel>>((ref) {
-  return ref.watch(paymentsRepositoryProvider).fetchPayments();
-});
-
-final paymentsConfigProvider = FutureProvider<bool>((ref) {
-  return ref.watch(paymentsRepositoryProvider).fetchStripeConfigured();
-});
+import 'parent_billing_providers.dart';
 
 class PaymentsScreen extends ConsumerStatefulWidget {
   const PaymentsScreen({super.key, this.initialPaymentId});
@@ -92,8 +85,7 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
           final deepLinkId = widget.initialPaymentId;
           return RefreshIndicator(
             onRefresh: () async {
-              ref.invalidate(parentPaymentsProvider);
-              await ref.read(parentPaymentsProvider.future);
+              await refreshParentBillingState(ref);
             },
             child: AppContentContainer(
               child: ListView.separated(
@@ -307,7 +299,7 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
       final result = await ref
           .read(paymentsRepositoryProvider)
           .prepareSessionPayment(paymentId);
-      ref.invalidate(parentPaymentsProvider);
+      await refreshParentBillingState(ref);
       if (!context.mounted) return;
 
       if (result.payment.isPaid) {
@@ -408,7 +400,7 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
   ) async {
     try {
       await ref.read(billingRepositoryProvider).syncPayment(paymentId);
-      ref.invalidate(parentPaymentsProvider);
+      await refreshParentBillingState(ref);
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
@@ -479,11 +471,15 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
   ) async {
     try {
       await ref.read(paymentsRepositoryProvider).confirmPaymentDemo(paymentId);
-      ref.invalidate(parentPaymentsProvider);
+      await refreshParentBillingState(ref);
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('Payment marked as paid')));
+        ).showSnackBar(
+          const SnackBar(
+            content: Text('Payment confirmed — appointment updated'),
+          ),
+        );
       }
     } catch (e) {
       if (context.mounted) {

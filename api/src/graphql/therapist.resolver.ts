@@ -6,13 +6,14 @@ import {
   AuthUser,
   CurrentUser,
 } from '../common/decorators/current-user.decorator';
-import { AppointmentsService } from '../appointments/appointments.service';
+import { AppointmentsService, isAppointmentOperationallyConfirmed } from '../appointments/appointments.service';
 import { isSelfPayInsuranceType } from '../payments/self-pay.util';
 import { PaymentsService } from '../payments/payments.service';
 import { isEipFormFullySigned } from '../sessions/eip-form.util';
 import { SessionsService } from '../sessions/sessions.service';
 import { ProviderOnboardingService } from '../compliance/provider-onboarding.service';
 import { TherapistsService } from '../therapists/therapists.service';
+import { RequestRescheduleAppointmentInput } from './inputs/book-appointment.input';
 import {
   SaveSoapNoteInput,
   UpdateTherapistProfileInput,
@@ -207,6 +208,21 @@ export class TherapistResolver {
     };
   }
 
+  @Mutation(() => TherapistAppointmentType, { name: 'requestRescheduleAppointment' })
+  async requestRescheduleAppointment(
+    @CurrentUser() user: AuthUser,
+    @Args('input') input: RequestRescheduleAppointmentInput,
+  ): Promise<TherapistAppointmentType> {
+    const row = await this.appointmentsService.requestRescheduleForUser(
+      user.id,
+      input.appointmentId,
+      input.proposedStart,
+      input.proposedEnd,
+      input.reason,
+    );
+    return this.mapAppointment(row as Parameters<typeof this.mapAppointment>[0]);
+  }
+
   @Mutation(() => TherapistAppointmentType, { name: 'confirmAppointment' })
   async confirmAppointment(
     @CurrentUser() user: AuthUser,
@@ -217,7 +233,7 @@ export class TherapistResolver {
       appointmentId,
       'CONFIRM',
     );
-    return this.mapAppointment(row);
+    return this.mapAppointment(row as Parameters<typeof this.mapAppointment>[0]);
   }
 
   @Mutation(() => TherapistAppointmentType, {
@@ -233,7 +249,7 @@ export class TherapistResolver {
       appointmentId,
       reason,
     );
-    return this.mapAppointment(row);
+    return this.mapAppointment(row as Parameters<typeof this.mapAppointment>[0]);
   }
 
   @Mutation(() => TherapistAppointmentType, { name: 'declineAppointment' })
@@ -248,7 +264,7 @@ export class TherapistResolver {
       'DECLINE',
       reason,
     );
-    return this.mapAppointment(row);
+    return this.mapAppointment(row as Parameters<typeof this.mapAppointment>[0]);
   }
 
   @Mutation(() => TherapistSessionType, { name: 'completeSession' })
@@ -282,7 +298,7 @@ export class TherapistResolver {
       user.id,
       appointmentId,
     );
-    return this.mapAppointment(row);
+    return this.mapAppointment(row as Parameters<typeof this.mapAppointment>[0]);
   }
 
   @Mutation(() => PaymentIntentResultType, { name: 'requestSessionPayment' })
@@ -307,6 +323,7 @@ export class TherapistResolver {
       clientSecret: result.clientSecret ?? undefined,
       checkoutUrl: result.checkoutUrl ?? undefined,
       stripeConfigured: result.stripeConfigured,
+      alreadyPaid: result.alreadyPaid ?? undefined,
     };
   }
 
@@ -398,6 +415,13 @@ export class TherapistResolver {
     scheduledStart: Date;
     scheduledEnd: Date;
     locationType?: string | null;
+    confirmationStatus?: string;
+    parentConfirmedAt?: Date | null;
+    therapistConfirmedAt?: Date | null;
+    rescheduleRequestedBy?: string | null;
+    proposedScheduledStart?: Date | null;
+    proposedScheduledEnd?: Date | null;
+    rescheduleReason?: string | null;
     child: {
       id: string;
       firstName: string;
@@ -412,18 +436,32 @@ export class TherapistResolver {
         amount: unknown;
       } | null;
     } | null;
+    bookingPayment?: {
+      id: string;
+      status: string;
+      amount: unknown;
+    } | null;
   }): TherapistAppointmentType {
     const requiresSelfPay = isSelfPayInsuranceType(row.child.insuranceType);
-    const payment = row.session?.payment;
+    const sessionPayment = row.session?.payment;
+    const bookingPayment = row.bookingPayment;
+    const paymentSucceeded =
+      sessionPayment?.status === 'SUCCEEDED' ||
+      bookingPayment?.status === 'SUCCEEDED';
+    const outstandingPayment = sessionPayment ?? bookingPayment ?? null;
+    const succeededPayment =
+      sessionPayment?.status === 'SUCCEEDED'
+        ? sessionPayment
+        : bookingPayment?.status === 'SUCCEEDED'
+          ? bookingPayment
+          : null;
     const hasArrived = ['CHECKED_IN', 'IN_PROGRESS', 'COMPLETED'].includes(
       row.status,
     );
-    const paymentSucceeded = payment?.status === 'SUCCEEDED';
     const canStartSession = requiresSelfPay
       ? hasArrived && paymentSucceeded
-      : ['CONFIRMED', 'SCHEDULED', 'CHECKED_IN', 'IN_PROGRESS'].includes(
-          row.status,
-        );
+      : isAppointmentOperationallyConfirmed(row) ||
+        ['CHECKED_IN', 'IN_PROGRESS'].includes(row.status);
 
     return {
       id: row.id,
@@ -434,6 +472,15 @@ export class TherapistResolver {
       locationType: row.locationType
         ? (row.locationType as LocationType)
         : undefined,
+      confirmationStatus:
+        (row.confirmationStatus as TherapistAppointmentType['confirmationStatus']) ??
+        'PENDING',
+      parentConfirmedAt: row.parentConfirmedAt ?? undefined,
+      therapistConfirmedAt: row.therapistConfirmedAt ?? undefined,
+      rescheduleRequestedBy: row.rescheduleRequestedBy ?? undefined,
+      proposedScheduledStart: row.proposedScheduledStart ?? undefined,
+      proposedScheduledEnd: row.proposedScheduledEnd ?? undefined,
+      rescheduleReason: row.rescheduleReason ?? undefined,
       child: {
         id: row.child.id,
         firstName: row.child.firstName,
@@ -445,9 +492,17 @@ export class TherapistResolver {
       requiresSelfPayCollection: requiresSelfPay,
       hasArrived,
       canStartSession,
-      sessionPaymentId: payment?.id,
-      sessionPaymentStatus: payment?.status,
-      sessionPaymentAmount: payment ? Number(payment.amount) : undefined,
+      sessionPaymentId: paymentSucceeded
+        ? succeededPayment?.id
+        : outstandingPayment?.id,
+      sessionPaymentStatus: paymentSucceeded
+        ? 'SUCCEEDED'
+        : outstandingPayment?.status,
+      sessionPaymentAmount: paymentSucceeded
+        ? Number(succeededPayment?.amount ?? 0)
+        : outstandingPayment
+          ? Number(outstandingPayment.amount)
+          : undefined,
     };
   }
 }

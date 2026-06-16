@@ -57,6 +57,12 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     Permission.MESSAGING_SEND,
     Permission.BILLING_READ,
   ],
+  [UserRole.SERVICE_COORDINATOR]: [
+    Permission.PHI_READ_ASSIGNED,
+    Permission.PHI_WRITE_ASSIGNED,
+    Permission.MESSAGING_READ,
+    Permission.MESSAGING_SEND,
+  ],
   [UserRole.PARENT]: [
     Permission.PHI_READ_OWN,
     Permission.MESSAGING_READ,

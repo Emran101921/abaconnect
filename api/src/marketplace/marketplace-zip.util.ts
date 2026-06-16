@@ -1,16 +1,25 @@
+import zipcodes from 'zipcodes';
+
 /** Approximate ZIP centroid — never expose exact home address on marketplace map. */
 export function zipToApproxCentroid(zipCode: string): {
   lat: number;
   lng: number;
 } {
   const zip = zipCode.replace(/\D/g, '').slice(0, 5);
-  const z = parseInt(zip, 10);
-  if (!Number.isFinite(z) || zip.length < 5) {
+  if (zip.length < 5) {
     return { lat: 40.7128, lng: -74.006 };
   }
-  const lat = 25 + ((z % 1000) / 1000) * 24;
-  const lng = -125 + ((Math.floor(z / 1000) % 100) / 100) * 55;
-  return { lat: Number(lat.toFixed(6)), lng: Number(lng.toFixed(6)) };
+
+  const lookup = zipcodes.lookup(zip);
+  if (lookup) {
+    return {
+      lat: Number(lookup.latitude.toFixed(6)),
+      lng: Number(lookup.longitude.toFixed(6)),
+    };
+  }
+
+  // Unknown ZIP — keep a neutral US fallback instead of a misleading hash.
+  return { lat: 39.8283, lng: -98.5795 };
 }
 
 /** Small jitter so map pins are approximate, not exact household locations. */

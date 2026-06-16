@@ -4,6 +4,7 @@ enum UserRole {
   parent,
   therapist,
   agency,
+  serviceCoordinator,
   admin,
   billing,
   complianceAuditor,
@@ -17,6 +18,8 @@ enum UserRole {
         return 'Provider / Therapist';
       case UserRole.agency:
         return 'Agency Admin';
+      case UserRole.serviceCoordinator:
+        return 'Service Coordinator';
       case UserRole.admin:
         return 'Super Admin';
       case UserRole.billing:
@@ -36,6 +39,8 @@ enum UserRole {
         return '/therapist';
       case UserRole.agency:
         return '/agency';
+      case UserRole.serviceCoordinator:
+        return '/service-coordinator';
       case UserRole.admin:
       case UserRole.billing:
       case UserRole.complianceAuditor:

@@ -160,6 +160,7 @@ export class TherapistsService {
         child: true,
         parent: { include: { user: true } },
         session: { include: { payment: true } },
+        bookingPayment: true,
       },
       orderBy: { scheduledStart: 'asc' },
     });

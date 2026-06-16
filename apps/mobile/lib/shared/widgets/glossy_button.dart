@@ -290,6 +290,8 @@ class _GlossyButtonState extends State<GlossyButton> {
                     )
                   : Row(
                       mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize:
+                          widget.fullWidth ? MainAxisSize.max : MainAxisSize.min,
                       children: [
                         if (widget.loading) ...[
                           SizedBox(
@@ -312,23 +314,37 @@ class _GlossyButtonState extends State<GlossyButton> {
                           const SizedBox(width: 6),
                         ],
                         if (!widget.iconOnly)
-                          Expanded(
-                            child: Text(
-                              widget.title,
-                              textAlign: widget.iconLeading
-                                  ? TextAlign.start
-                                  : TextAlign.center,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: style.foreground,
-                                fontSize: _fontSize,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: -0.2,
-                                height: 1.2,
-                              ),
-                            ),
-                          ),
+                          widget.fullWidth
+                              ? Expanded(
+                                  child: Text(
+                                    widget.title,
+                                    textAlign: widget.iconLeading
+                                        ? TextAlign.start
+                                        : TextAlign.center,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: style.foreground,
+                                      fontSize: _fontSize,
+                                      fontWeight: FontWeight.w600,
+                                      letterSpacing: -0.2,
+                                      height: 1.2,
+                                    ),
+                                  ),
+                                )
+                              : Text(
+                                  widget.title,
+                                  textAlign: TextAlign.center,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: style.foreground,
+                                    fontSize: _fontSize,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: -0.2,
+                                    height: 1.2,
+                                  ),
+                                ),
                         if (showIcon && !widget.iconLeading) ...[
                           const SizedBox(width: 6),
                           _ButtonIcon(

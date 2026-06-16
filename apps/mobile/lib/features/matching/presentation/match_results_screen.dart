@@ -138,8 +138,27 @@ class _MatchResultsScreenState extends ConsumerState<MatchResultsScreen> {
                                 GlossyButton(
                                   title: 'Book session',
                                   variant: GlossyButtonVariant.greenTeal,
-                                  onPressed: () =>
-                                      context.push(AppRoutes.parentBooking),
+                                  onPressed: () {
+                                    final types = widget.therapyTypes;
+                                    final therapyType =
+                                        types != null && types.isNotEmpty
+                                        ? types.first
+                                        : null;
+                                    final params = <String, String>{
+                                      'therapistId': t.id,
+                                      if (therapyType != null)
+                                        'therapyType': therapyType,
+                                    };
+                                    final query = params.entries
+                                        .map(
+                                          (e) =>
+                                              '${e.key}=${Uri.encodeComponent(e.value)}',
+                                        )
+                                        .join('&');
+                                    context.push(
+                                      '${AppRoutes.parentBooking}?$query',
+                                    );
+                                  },
                                 ),
                               ],
                             ),

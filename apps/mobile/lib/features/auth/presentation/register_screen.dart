@@ -25,6 +25,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _lastNameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _agencyNameController = TextEditingController();
+  final _agencyPhoneController = TextEditingController();
+  final _agencyStateController = TextEditingController();
+  final _agencyZipController = TextEditingController();
   UserRole _role = UserRole.parent;
   bool _loading = false;
 
@@ -34,10 +38,22 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _lastNameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _agencyNameController.dispose();
+    _agencyPhoneController.dispose();
+    _agencyStateController.dispose();
+    _agencyZipController.dispose();
     super.dispose();
   }
 
   Future<void> _register() async {
+    if (_role == UserRole.agency &&
+        _agencyNameController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Agency name is required')),
+      );
+      return;
+    }
+
     setState(() => _loading = true);
     try {
       await ref
@@ -48,6 +64,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             firstName: _firstNameController.text.trim(),
             lastName: _lastNameController.text.trim(),
             role: _role,
+            agencyName: _role == UserRole.agency
+                ? _agencyNameController.text.trim()
+                : null,
+            agencyPhone: _role == UserRole.agency
+                ? _agencyPhoneController.text.trim()
+                : null,
+            agencyState: _role == UserRole.agency
+                ? _agencyStateController.text.trim()
+                : null,
+            agencyZipCode: _role == UserRole.agency
+                ? _agencyZipController.text.trim()
+                : null,
           );
       if (!mounted) return;
       final session = ref.read(authStateProvider).value;
@@ -57,6 +85,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               role: session.user.role,
               hipaaConsentGranted: ref.read(hipaaConsentGrantedProvider),
               mfaEnabled: ref.read(mfaEnabledProvider),
+              agencyOnboardingComplete:
+                  ref.read(agencyOnboardingCompleteProvider),
             ) ??
             session.user.role.homeRoute;
         context.go(destination);
@@ -226,9 +256,53 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               value: UserRole.therapist,
               child: Text('Therapist / provider'),
             ),
+            DropdownMenuItem(
+              value: UserRole.agency,
+              child: Text('Agency administrator'),
+            ),
           ],
           onChanged: (v) => setState(() => _role = v ?? UserRole.parent),
         ),
+        if (_role == UserRole.agency) ...[
+          const SizedBox(height: AppSpacing.md),
+          TextField(
+            controller: _agencyNameController,
+            decoration: const InputDecoration(
+              labelText: 'Agency name',
+              prefixIcon: Icon(Icons.business_outlined),
+            ),
+            textInputAction: TextInputAction.next,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          TextField(
+            controller: _agencyPhoneController,
+            decoration: const InputDecoration(
+              labelText: 'Agency phone (optional)',
+              prefixIcon: Icon(Icons.phone_outlined),
+            ),
+            keyboardType: TextInputType.phone,
+            textInputAction: TextInputAction.next,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          TextField(
+            controller: _agencyStateController,
+            decoration: const InputDecoration(
+              labelText: 'State (optional)',
+              prefixIcon: Icon(Icons.map_outlined),
+            ),
+            textInputAction: TextInputAction.next,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          TextField(
+            controller: _agencyZipController,
+            decoration: const InputDecoration(
+              labelText: 'ZIP code (optional)',
+              prefixIcon: Icon(Icons.pin_drop_outlined),
+            ),
+            keyboardType: TextInputType.number,
+            textInputAction: TextInputAction.next,
+          ),
+        ],
         const SizedBox(height: AppSpacing.md),
         TextField(
           controller: _emailController,

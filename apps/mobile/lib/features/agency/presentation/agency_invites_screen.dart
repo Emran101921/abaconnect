@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../core/router/app_router.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/glossy_button.dart';
@@ -15,11 +17,24 @@ class AgencyInvitesScreen extends ConsumerWidget {
 
     return AppScaffold(
       title: 'Invite therapists',
-      floatingActionButton: GlossyFab.extended(
-        icon: Icons.person_add,
-        label: 'Invite',
-        onPressed: () => showInviteTherapist(context, ref),
-        tooltip: 'Invite therapist',
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          GlossyFab.extended(
+            icon: Icons.person_add_alt_1,
+            label: 'Create staff',
+            onPressed: () => context.push(AppRoutes.agencyAddStaff),
+            tooltip: 'Create new staff account',
+          ),
+          const SizedBox(height: 12),
+          GlossyFab.extended(
+            icon: Icons.person_add,
+            label: 'Invite existing',
+            onPressed: () => showInviteTherapist(context, ref),
+            tooltip: 'Invite existing therapist',
+          ),
+        ],
       ),
       body: candidates.when(
         loading: () => const Center(child: CircularProgressIndicator()),

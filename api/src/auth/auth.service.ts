@@ -25,6 +25,7 @@ const ROLES_REQUIRING_ONBOARDING = new Set<string>([
   'PARENT',
   'THERAPIST',
   'AGENCY_ADMIN',
+  'SERVICE_COORDINATOR',
 ]);
 
 export type { LoginDto, RegisterDto };
@@ -49,6 +50,8 @@ export interface AuthMeResponse {
   tenantId: string;
   parentId?: string;
   therapistId?: string;
+  agencyId?: string;
+  agencyOnboardingComplete?: boolean;
   mfaEnabled: boolean;
   hipaaConsentGranted: boolean;
   /** True when the user has acknowledged the currently active Notice of Privacy Practices. */
@@ -75,7 +78,7 @@ export class AuthService {
   async me(userId: string): Promise<AuthMeResponse> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      include: { parent: true, therapist: true },
+      include: { parent: true, therapist: true, agency: true },
     });
     if (!user) {
       throw new NotFoundException('User not found');
@@ -86,10 +89,12 @@ export class AuthService {
     const requiresOnboarding = ROLES_REQUIRING_ONBOARDING.has(user.role);
     const providerPhiAccessApproved = user.therapist?.phiAccessApproved;
     const providerOnboardingStatus = user.therapist?.onboardingStatus;
+    const agencyOnboardingComplete = user.agency?.onboardingComplete;
     const onboardingComplete = requiresOnboarding
       ? hipaaConsentGranted &&
         user.mfaEnabled &&
-        (user.role !== 'THERAPIST' || providerPhiAccessApproved === true)
+        (user.role !== 'THERAPIST' || providerPhiAccessApproved === true) &&
+        (user.role !== 'AGENCY_ADMIN' || agencyOnboardingComplete === true)
       : true;
     return {
       id: user.id,
@@ -100,6 +105,8 @@ export class AuthService {
       tenantId: user.tenantId,
       parentId: user.parent?.id,
       therapistId: user.therapist?.id,
+      agencyId: user.agencyId ?? undefined,
+      agencyOnboardingComplete,
       mfaEnabled: user.mfaEnabled,
       hipaaConsentGranted,
       privacyNoticeAcknowledged: acknowledged,
@@ -149,26 +156,56 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const requestedRole = dto.role ?? 'PARENT';
     const role = this.resolvePublicRegisterRole(requestedRole);
-    const user = await this.prisma.user.create({
-      data: {
-        tenantId,
-        email: dto.email,
-        passwordHash,
-        role,
-        firstName: dto.firstName,
-        lastName: dto.lastName,
-      },
+
+    if (role === 'AGENCY_ADMIN' && !dto.agencyName?.trim()) {
+      throw new BadRequestException('Agency name is required');
+    }
+
+    const user = await this.prisma.$transaction(async (tx) => {
+      let agencyId: string | undefined;
+      if (role === 'AGENCY_ADMIN') {
+        const agency = await tx.agency.create({
+          data: {
+            tenantId,
+            name: dto.agencyName!.trim(),
+            ein: dto.agencyEin?.trim() || undefined,
+            phone: dto.agencyPhone?.trim() || undefined,
+            state: dto.agencyState?.trim() || undefined,
+            zipCode: dto.agencyZipCode?.trim() || undefined,
+            email: dto.email,
+            onboardingComplete: false,
+          },
+        });
+        agencyId = agency.id;
+      }
+
+      const created = await tx.user.create({
+        data: {
+          tenantId,
+          email: dto.email,
+          passwordHash,
+          role,
+          firstName: dto.firstName,
+          lastName: dto.lastName,
+          phone: dto.agencyPhone?.trim() || undefined,
+          agencyId,
+        },
+      });
+
+      if (role === 'PARENT') {
+        await tx.parent.create({
+          data: { userId: created.id, tenantId },
+        });
+      }
+      if (role === 'THERAPIST') {
+        await tx.therapist.create({
+          data: { userId: created.id, tenantId },
+        });
+      }
+
+      return created;
     });
-    if (role === 'PARENT') {
-      await this.prisma.parent.create({
-        data: { userId: user.id, tenantId },
-      });
-    }
-    if (role === 'THERAPIST') {
-      await this.prisma.therapist.create({
-        data: { userId: user.id, tenantId },
-      });
-    }
+
     await this.prisma.auditLog.create({
       data: {
         tenantId,
@@ -176,7 +213,7 @@ export class AuthService {
         action: 'CREATE',
         entityType: 'user',
         entityId: user.id,
-        metadata: { event: 'register' },
+        metadata: { event: 'register', role },
       },
     });
     const created = await this.prisma.user.findUniqueOrThrow({
@@ -222,8 +259,22 @@ export class AuthService {
       await this.handleFailedLogin(user, 'inactive_account', ctx);
       throw new UnauthorizedException('Invalid credentials');
     }
+    if (user.role === 'SERVICE_COORDINATOR') {
+      const rosterActive = await this.prisma.agencyRoster.findFirst({
+        where: {
+          userId: user.id,
+          role: 'SERVICE_COORDINATOR',
+          status: 'ACTIVE',
+          removedAt: null,
+        },
+      });
+      if (!rosterActive) {
+        await this.handleFailedLogin(user, 'roster_suspended', ctx);
+        throw new UnauthorizedException('Invalid credentials');
+      }
+    }
 
-    // Record the device this login originates from and detect whether it is a
+    // Record the device this login originates from
     // new/untrusted device. New devices always require a fresh MFA challenge.
     const { isNewDevice } = await this.devices.recordLogin(
       { id: user.id, tenantId: user.tenantId },
@@ -474,11 +525,12 @@ export class AuthService {
 
   private resolvePublicRegisterRole(
     role: RegisterDto['role'],
-  ): 'PARENT' | 'THERAPIST' {
+  ): 'PARENT' | 'THERAPIST' | 'AGENCY_ADMIN' {
     if (role === 'THERAPIST') return 'THERAPIST';
+    if (role === 'AGENCY_ADMIN') return 'AGENCY_ADMIN';
     if (role && role !== 'PARENT') {
       throw new BadRequestException(
-        'Only parent and therapist accounts can self-register',
+        'Only parent, therapist, and agency accounts can self-register',
       );
     }
     return 'PARENT';

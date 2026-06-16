@@ -16,8 +16,7 @@ final marketplaceInterestsProvider = FutureProvider.autoDispose
 
 final marketplaceRequestByIdProvider = FutureProvider.autoDispose
     .family<MarketplaceRequestModel?, String>((ref, requestId) async {
-  final requests =
-      await ref.watch(marketplaceRepositoryProvider).fetchMyRequests();
+  final requests = await ref.watch(parentMarketplaceRequestsProvider.future);
   for (final request in requests) {
     if (request.id == requestId) return request;
   }
@@ -115,9 +114,18 @@ class _ParentProviderCompareScreenState
                 '${detailsController.text.trim()}',
           );
       if (mounted) {
-        AppSnackBar.showSuccess(
-          context,
-          'Report submitted. Our compliance team will review.',
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Report submitted. Our compliance team will review.',
+            ),
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
+              label: 'My complaints',
+              onPressed: () =>
+                  context.push('${AppRoutes.parentHome}/complaints'),
+            ),
+          ),
         );
       }
     } catch (e) {
@@ -129,6 +137,63 @@ class _ParentProviderCompareScreenState
       }
     } finally {
       detailsController.dispose();
+    }
+  }
+
+  Future<void> _declineAllPending(
+    List<MarketplaceInterestModel> pending,
+  ) async {
+    if (pending.isEmpty) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Decline all pending providers?'),
+        content: Text(
+          '${pending.length} provider${pending.length == 1 ? '' : 's'} '
+          'will not receive your child\'s contact details. '
+          'You can still report a concern about any provider.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          GlossyButton(
+            title: 'Decline all',
+            size: GlossyButtonSize.small,
+            fullWidth: false,
+            variant: GlossyButtonVariant.redDarkRed,
+            onPressed: () => Navigator.pop(ctx, true),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      final repo = ref.read(marketplaceRepositoryProvider);
+      for (final item in pending) {
+        await repo.rejectInterest(
+          marketplaceRequestId: widget.marketplaceRequestId,
+          providerProfileId: item.providerId,
+        );
+      }
+      ref.invalidate(
+        marketplaceInterestsProvider(widget.marketplaceRequestId),
+      );
+      ref.invalidate(parentMarketplaceRequestsProvider);
+      if (mounted) {
+        AppSnackBar.showSuccess(
+          context,
+          'Declined ${pending.length} provider${pending.length == 1 ? '' : 's'} — no details were shared.',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        AppSnackBar.showError(
+          context,
+          'Decline failed: ${AppSnackBar.messageFromError(e)}',
+        );
+      }
     }
   }
 
@@ -388,6 +453,22 @@ class _ParentProviderCompareScreenState
                           ),
                         ),
                       ),
+                      if (pendingCount > 1 && !requestInactive)
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton.icon(
+                            onPressed: () => _declineAllPending(
+                              sorted
+                                  .where(
+                                    (item) =>
+                                        item.status == 'PENDING_PARENT_REVIEW',
+                                  )
+                                  .toList(),
+                            ),
+                            icon: const Icon(Icons.clear_all),
+                            label: Text('Decline all ($pendingCount)'),
+                          ),
+                        ),
                     ],
                   );
                 }

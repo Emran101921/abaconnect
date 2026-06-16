@@ -82,9 +82,11 @@ class MeProfile {
     required this.tenantId,
     this.parentId,
     this.therapistId,
+    this.agencyId,
     this.mfaEnabled = false,
     this.hipaaConsentGranted = false,
     this.onboardingComplete = true,
+    this.agencyOnboardingComplete,
     this.providerPhiAccessApproved,
   });
 
@@ -96,9 +98,11 @@ class MeProfile {
   final String tenantId;
   final String? parentId;
   final String? therapistId;
+  final String? agencyId;
   final bool mfaEnabled;
   final bool hipaaConsentGranted;
   final bool onboardingComplete;
+  final bool? agencyOnboardingComplete;
   final bool? providerPhiAccessApproved;
 
   String get fullName => '$firstName $lastName';
@@ -265,16 +269,38 @@ class AuthRepository {
     required String firstName,
     required String lastName,
     UserRole role = UserRole.parent,
+    String? agencyName,
+    String? agencyEin,
+    String? agencyPhone,
+    String? agencyState,
+    String? agencyZipCode,
   }) async {
+    final payload = <String, dynamic>{
+      'email': email,
+      'password': password,
+      'firstName': firstName,
+      'lastName': lastName,
+      'role': _roleToApi(role),
+    };
+    if (agencyName != null && agencyName.trim().isNotEmpty) {
+      payload['agencyName'] = agencyName.trim();
+    }
+    if (agencyEin != null && agencyEin.trim().isNotEmpty) {
+      payload['agencyEin'] = agencyEin.trim();
+    }
+    if (agencyPhone != null && agencyPhone.trim().isNotEmpty) {
+      payload['agencyPhone'] = agencyPhone.trim();
+    }
+    if (agencyState != null && agencyState.trim().isNotEmpty) {
+      payload['agencyState'] = agencyState.trim();
+    }
+    if (agencyZipCode != null && agencyZipCode.trim().isNotEmpty) {
+      payload['agencyZipCode'] = agencyZipCode.trim();
+    }
+
     final response = await _api.post<Map<String, dynamic>>(
       '/auth/register',
-      data: {
-        'email': email,
-        'password': password,
-        'firstName': firstName,
-        'lastName': lastName,
-        'role': _roleToApi(role),
-      },
+      data: payload,
     );
     final data = response.data;
     if (data == null) {
@@ -303,9 +329,11 @@ class AuthRepository {
       tenantId: data['tenantId'] as String,
       parentId: data['parentId'] as String?,
       therapistId: data['therapistId'] as String?,
+      agencyId: data['agencyId'] as String?,
       mfaEnabled: data['mfaEnabled'] as bool? ?? false,
       hipaaConsentGranted: data['hipaaConsentGranted'] as bool? ?? false,
       onboardingComplete: data['onboardingComplete'] as bool? ?? true,
+      agencyOnboardingComplete: data['agencyOnboardingComplete'] as bool?,
       providerPhiAccessApproved:
           data['providerPhiAccessApproved'] as bool?,
     );
@@ -407,6 +435,8 @@ class AuthRepository {
         return 'THERAPIST';
       case UserRole.agency:
         return 'AGENCY_ADMIN';
+      case UserRole.serviceCoordinator:
+        return 'SERVICE_COORDINATOR';
       case UserRole.admin:
         return 'PLATFORM_ADMIN';
       case UserRole.billing:
@@ -424,6 +454,8 @@ class AuthRepository {
         return UserRole.therapist;
       case 'AGENCY_ADMIN':
         return UserRole.agency;
+      case 'SERVICE_COORDINATOR':
+        return UserRole.serviceCoordinator;
       case 'PLATFORM_ADMIN':
         return UserRole.admin;
       case 'BILLING_STAFF':

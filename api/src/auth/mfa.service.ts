@@ -5,7 +5,12 @@ import { decryptField, encryptField } from '../common/crypto/field-crypto.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { DeviceContext, DeviceService } from './device.service';
 
-const ROLES_REQUIRING_MFA = new Set(['PARENT', 'THERAPIST', 'AGENCY_ADMIN']);
+const ROLES_REQUIRING_MFA = new Set([
+  'PARENT',
+  'THERAPIST',
+  'AGENCY_ADMIN',
+  'SERVICE_COORDINATOR',
+]);
 
 @Injectable()
 export class MfaService {

@@ -13,6 +13,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { AppThrottlerGuard } from './common/guards/app-throttler.guard';
 import { BullModule } from '@nestjs/bull';
 import { MailModule } from './mail/mail.module';
+import { SmsModule } from './sms/sms.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
@@ -22,6 +23,7 @@ import { ParentsModule } from './parents/parents.module';
 import { ChildrenModule } from './children/children.module';
 import { TherapistsModule } from './therapists/therapists.module';
 import { AgenciesModule } from './agencies/agencies.module';
+import { ServiceCoordinatorsModule } from './service-coordinators/service-coordinators.module';
 import { AppointmentsModule } from './appointments/appointments.module';
 import { SessionsModule } from './sessions/sessions.module';
 import { DocumentsModule } from './documents/documents.module';
@@ -49,6 +51,7 @@ import { MarketplaceModule } from './marketplace/marketplace.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     MailModule,
+    SmsModule,
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
       autoSchemaFile: true,
@@ -79,6 +82,7 @@ import { MarketplaceModule } from './marketplace/marketplace.module';
     ChildrenModule,
     TherapistsModule,
     AgenciesModule,
+    ServiceCoordinatorsModule,
     AppointmentsModule,
     SessionsModule,
     DocumentsModule,

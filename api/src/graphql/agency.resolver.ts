@@ -11,8 +11,15 @@ import { SessionsService } from '../sessions/sessions.service';
 import { ScreeningsService } from '../screenings/screenings.service';
 import { SaveSoapNoteInput } from './inputs/therapist.inputs';
 import {
+  CreateAgencyStaffInput,
+  UpdateAgencyProfileInput,
+} from './inputs/agency.inputs';
+import {
   AgencyAppointmentType,
   AgencyDashboardType,
+  AgencyOnboardingStatusType,
+  AgencyProfileType,
+  AgencyStaffMemberType,
   AgencyTherapistType,
 } from './types/agency.types';
 import { UpdateInsuranceClaimInput } from './inputs/admin.input';
@@ -48,7 +55,156 @@ export class AgencyResolver {
     if (!user.tenantId) {
       throw new Error('Tenant required');
     }
-    return this.agenciesService.getDashboardForTenant(user.tenantId);
+    const agency = await this.agenciesService.resolveAgencyForAdmin(
+      user.id,
+      user.tenantId,
+    );
+    return this.agenciesService.getDashboardForAgency(agency.id, user.tenantId);
+  }
+
+  @Query(() => AgencyProfileType, { name: 'agencyProfile' })
+  async agencyProfile(@CurrentUser() user: AuthUser): Promise<AgencyProfileType> {
+    if (!user.tenantId) {
+      throw new Error('Tenant required');
+    }
+    const agency = await this.agenciesService.resolveAgencyForAdmin(
+      user.id,
+      user.tenantId,
+    );
+    const profile = await this.agenciesService.getAgencyProfile(
+      agency.id,
+      user.tenantId,
+    );
+    return this.mapAgencyProfile(profile);
+  }
+
+  @Query(() => AgencyOnboardingStatusType, { name: 'agencyOnboardingStatus' })
+  async agencyOnboardingStatus(
+    @CurrentUser() user: AuthUser,
+  ): Promise<AgencyOnboardingStatusType> {
+    if (!user.tenantId) {
+      throw new Error('Tenant required');
+    }
+    const agency = await this.agenciesService.resolveAgencyForAdmin(
+      user.id,
+      user.tenantId,
+    );
+    return this.agenciesService.getAgencyOnboardingStatus(
+      agency.id,
+      user.tenantId,
+    );
+  }
+
+  @Mutation(() => AgencyProfileType, { name: 'updateAgencyProfile' })
+  async updateAgencyProfile(
+    @CurrentUser() user: AuthUser,
+    @Args('input') input: UpdateAgencyProfileInput,
+  ): Promise<AgencyProfileType> {
+    if (!user.tenantId) {
+      throw new Error('Tenant required');
+    }
+    const agency = await this.agenciesService.resolveAgencyForAdmin(
+      user.id,
+      user.tenantId,
+    );
+    const updated = await this.agenciesService.updateAgencyProfile(
+      agency.id,
+      user.tenantId,
+      input,
+    );
+    const profile = await this.agenciesService.getAgencyProfile(
+      updated.id,
+      user.tenantId,
+    );
+    return this.mapAgencyProfile(profile);
+  }
+
+  @Mutation(() => AgencyOnboardingStatusType, {
+    name: 'completeAgencyOnboarding',
+  })
+  async completeAgencyOnboarding(
+    @CurrentUser() user: AuthUser,
+  ): Promise<AgencyOnboardingStatusType> {
+    if (!user.tenantId) {
+      throw new Error('Tenant required');
+    }
+    const agency = await this.agenciesService.resolveAgencyForAdmin(
+      user.id,
+      user.tenantId,
+    );
+    await this.agenciesService.completeAgencyOnboarding(
+      agency.id,
+      user.tenantId,
+    );
+    return this.agenciesService.getAgencyOnboardingStatus(
+      agency.id,
+      user.tenantId,
+    );
+  }
+
+  @Mutation(() => AgencyStaffMemberType, { name: 'createAgencyStaff' })
+  async createAgencyStaff(
+    @CurrentUser() user: AuthUser,
+    @Args('input') input: CreateAgencyStaffInput,
+  ): Promise<AgencyStaffMemberType> {
+    if (!user.tenantId) {
+      throw new Error('Tenant required');
+    }
+    const agency = await this.agenciesService.resolveAgencyForAdmin(
+      user.id,
+      user.tenantId,
+    );
+    const { user: staffUser, therapist } =
+      await this.agenciesService.createAgencyStaff(
+        agency.id,
+        user.tenantId,
+        user.id,
+        input,
+      );
+    return {
+      id: staffUser.id,
+      email: staffUser.email,
+      firstName: staffUser.firstName,
+      lastName: staffUser.lastName,
+      therapistId: therapist.id,
+      rosterStatus: 'PENDING',
+      onboardingStatus: therapist.onboardingStatus,
+    };
+  }
+
+  @Mutation(() => AgencyTherapistType, { name: 'approveAgencyStaff' })
+  async approveAgencyStaff(
+    @CurrentUser() user: AuthUser,
+    @Args('therapistId', { type: () => ID }) therapistId: string,
+  ): Promise<AgencyTherapistType> {
+    if (!user.tenantId) {
+      throw new Error('Tenant required');
+    }
+    const agency = await this.agenciesService.resolveAgencyForAdmin(
+      user.id,
+      user.tenantId,
+    );
+    const link = await this.agenciesService.approveAgencyStaff(
+      agency.id,
+      user.tenantId,
+      therapistId,
+      user.id,
+    );
+    const t = link.therapist;
+    return {
+      id: t.id,
+      isVerified: t.isVerified,
+      licenseNumber: t.licenseNumber ?? undefined,
+      rosterStatus: link.status,
+      onboardingStatus: t.onboardingStatus,
+      user: t.user
+        ? {
+            firstName: t.user.firstName,
+            lastName: t.user.lastName,
+            email: t.user.email,
+          }
+        : undefined,
+    };
   }
 
   @Query(() => [AgencyAppointmentType], { name: 'agencyUpcomingAppointments' })
@@ -80,21 +236,12 @@ export class AgencyResolver {
     if (!user.tenantId) {
       throw new Error('Tenant required');
     }
-    const rows = await this.agenciesService.listTherapistsForTenant(
+    const agency = await this.agenciesService.resolveAgencyForAdmin(
+      user.id,
       user.tenantId,
     );
-    return rows.map((t) => ({
-      id: t.id,
-      isVerified: t.isVerified,
-      licenseNumber: t.licenseNumber ?? undefined,
-      user: t.user
-        ? {
-            firstName: t.user.firstName,
-            lastName: t.user.lastName,
-            email: t.user.email,
-          }
-        : undefined,
-    }));
+    const rows = await this.agenciesService.listTherapistsForAgency(agency.id);
+    return rows.map((t) => this.mapAgencyTherapist(t));
   }
 
   @Query(() => [AgencyTherapistType], {
@@ -106,21 +253,15 @@ export class AgencyResolver {
     if (!user.tenantId) {
       throw new Error('Tenant required');
     }
-    const rows = await this.agenciesService.listUnlinkedTherapistsForTenant(
+    const agency = await this.agenciesService.resolveAgencyForAdmin(
+      user.id,
       user.tenantId,
     );
-    return rows.map((t) => ({
-      id: t.id,
-      isVerified: t.isVerified,
-      licenseNumber: t.licenseNumber ?? undefined,
-      user: t.user
-        ? {
-            firstName: t.user.firstName,
-            lastName: t.user.lastName,
-            email: t.user.email,
-          }
-        : undefined,
-    }));
+    const rows = await this.agenciesService.listUnlinkedTherapistsForAgency(
+      agency.id,
+      user.tenantId,
+    );
+    return rows.map((t) => this.mapAgencyTherapist(t));
   }
 
   @Mutation(() => Boolean, { name: 'removeAgencyTherapist' })
@@ -131,9 +272,14 @@ export class AgencyResolver {
     if (!user.tenantId) {
       throw new Error('Tenant required');
     }
+    const agency = await this.agenciesService.resolveAgencyForAdmin(
+      user.id,
+      user.tenantId,
+    );
     await this.agenciesService.removeTherapistFromAgency(
       user.tenantId,
       therapistId,
+      agency.id,
     );
     return true;
   }
@@ -378,23 +524,19 @@ export class AgencyResolver {
     if (!user.tenantId) {
       throw new Error('Tenant required');
     }
-    const link = await this.agenciesService.inviteTherapistForTenant(
+    const agency = await this.agenciesService.resolveAgencyForAdmin(
+      user.id,
+      user.tenantId,
+    );
+    const link = await this.agenciesService.inviteTherapistForAgency(
+      agency.id,
       user.tenantId,
       therapistId,
     );
-    const t = link.therapist;
-    return {
-      id: t.id,
-      isVerified: t.isVerified,
-      licenseNumber: t.licenseNumber ?? undefined,
-      user: t.user
-        ? {
-            firstName: t.user.firstName,
-            lastName: t.user.lastName,
-            email: t.user.email,
-          }
-        : undefined,
-    };
+    return this.mapAgencyTherapist({
+      ...link.therapist,
+      rosterStatus: link.status,
+    });
   }
 
   @Query(() => [StaffSessionNoteSummaryType], { name: 'agencySessionNotes' })
@@ -465,6 +607,77 @@ export class AgencyResolver {
         isEipFormFullySigned(
           note.eipFormData as Record<string, unknown> | null,
         ),
+    };
+  }
+
+  private mapAgencyTherapist(t: {
+    id: string;
+    isVerified: boolean;
+    licenseNumber?: string | null;
+    onboardingStatus?: string;
+    rosterStatus?: string;
+    user?: { firstName: string; lastName: string; email: string } | null;
+  }): AgencyTherapistType {
+    return {
+      id: t.id,
+      isVerified: t.isVerified,
+      licenseNumber: t.licenseNumber ?? undefined,
+      rosterStatus: t.rosterStatus as AgencyTherapistType['rosterStatus'],
+      onboardingStatus:
+        t.onboardingStatus as AgencyTherapistType['onboardingStatus'],
+      user: t.user
+        ? {
+            firstName: t.user.firstName,
+            lastName: t.user.lastName,
+            email: t.user.email,
+          }
+        : undefined,
+    };
+  }
+
+  private mapAgencyProfile(agency: {
+    id: string;
+    name: string;
+    ein?: string | null;
+    phone?: string | null;
+    addressLine1?: string | null;
+    addressLine2?: string | null;
+    city?: string | null;
+    state?: string | null;
+    zipCode?: string | null;
+    email?: string | null;
+    website?: string | null;
+    onboardingComplete: boolean;
+    documents: Array<{
+      id: string;
+      type: string;
+      title: string;
+      fileName: string;
+      mimeType: string;
+      uploadedAt: Date;
+    }>;
+  }): AgencyProfileType {
+    return {
+      id: agency.id,
+      name: agency.name,
+      ein: agency.ein ?? undefined,
+      phone: agency.phone ?? undefined,
+      addressLine1: agency.addressLine1 ?? undefined,
+      addressLine2: agency.addressLine2 ?? undefined,
+      city: agency.city ?? undefined,
+      state: agency.state ?? undefined,
+      zipCode: agency.zipCode ?? undefined,
+      email: agency.email ?? undefined,
+      website: agency.website ?? undefined,
+      onboardingComplete: agency.onboardingComplete,
+      documents: agency.documents.map((d) => ({
+        id: d.id,
+        type: d.type as AgencyProfileType['documents'][0]['type'],
+        title: d.title,
+        fileName: d.fileName,
+        mimeType: d.mimeType,
+        uploadedAt: d.uploadedAt,
+      })),
     };
   }
 }

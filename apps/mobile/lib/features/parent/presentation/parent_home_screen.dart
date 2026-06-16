@@ -4,15 +4,16 @@ import 'package:go_router/go_router.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/models/dashboard_action_model.dart';
+import '../../../shared/layout/action_button.dart';
+import '../../../shared/layout/app_page_header.dart';
+import '../../../shared/layout/user_role_badge.dart';
 import '../../../shared/widgets/app_bottom_nav.dart';
+import '../../../shared/widgets/glossy_button.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_section_header.dart';
 import '../../../shared/widgets/app_stat_card.dart';
 import '../../../shared/widgets/app_wellness_action_menu.dart';
-import '../../../shared/widgets/app_wellness_home_header.dart';
 import '../../../shared/widgets/app_wellness_journey_card.dart';
-import '../../../shared/widgets/glossy_button.dart';
-import '../../../shared/widgets/app_theme_toggle.dart';
 import '../../../shared/widgets/app_snackbar.dart';
 import '../../../shared/widgets/dashboard_action_inbox.dart';
 import '../../messaging/messaging_providers.dart';
@@ -59,31 +60,16 @@ class ParentHomeScreen extends ConsumerWidget {
         'there';
 
     return AppScaffold(
-      title: 'Parent',
+      title: 'Parent dashboard',
+      subtitle: 'Family care coordination',
+      constrainBodyOnWide: false,
       bottomNavigationBar: ParentBottomNav(current: ParentNavTab.home),
       actions: [
-        const AppThemeToggle(compact: true),
         IconButton(
           icon: const Icon(Icons.history),
           tooltip: 'Recent visits',
           onPressed: () =>
               context.push('${AppRoutes.parentHome}/session-history'),
-        ),
-        IconButton(
-          icon: unreadCount > 0
-              ? Badge(
-                  label: Text('$unreadCount'),
-                  child: const Icon(Icons.notifications),
-                )
-              : const Icon(Icons.notifications),
-          onPressed: () => context.push(AppRoutes.notifications),
-        ),
-        IconButton(
-          icon: const Icon(Icons.logout),
-          onPressed: () async {
-            await ref.read(authStateProvider.notifier).logout();
-            if (context.mounted) context.go(AppRoutes.login);
-          },
         ),
       ],
       body: RefreshIndicator(
@@ -100,8 +86,40 @@ class ParentHomeScreen extends ConsumerWidget {
           padding: EdgeInsets.zero,
           child: ListView(
             children: [
-              AppWellnessHomeHeader(
-                greeting: 'Welcome back, $greetingName 👋',
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: AppPageHeader(
+                  title: 'Welcome back, $greetingName',
+                  description:
+                      'Manage screening, providers, appointments, and family documents in one secure place.',
+                  badge: user != null
+                      ? UserRoleBadge(role: user.role, compact: true)
+                      : null,
+                  actions: [
+                    ActionButton(
+                      label: 'Start screening',
+                      icon: Icons.fact_check_outlined,
+                      onPressed: () => context.push(
+                        dashboard.maybeWhen(
+                          data: (d) => d.hasChild
+                              ? '${AppRoutes.parentScreening}?autoStart=true'
+                              : AppRoutes.parentChildren,
+                          orElse: () => AppRoutes.parentScreening,
+                        ),
+                      ),
+                      fullWidth: false,
+                      size: GlossyButtonSize.medium,
+                    ),
+                    ActionButton(
+                      label: 'Find providers',
+                      icon: Icons.search_rounded,
+                      onPressed: () => context.push(AppRoutes.matching),
+                      variant: GlossyButtonVariant.secondary,
+                      fullWidth: false,
+                      size: GlossyButtonSize.medium,
+                    ),
+                  ],
+                ),
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),

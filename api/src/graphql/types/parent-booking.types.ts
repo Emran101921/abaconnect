@@ -5,10 +5,13 @@ import {
   ObjectType,
   registerEnumType,
 } from '@nestjs/graphql';
-import { LocationType, TherapyType } from '../../../generated/prisma/client';
+import { LocationType, TherapyType, AppointmentConfirmationStatus } from '../../../generated/prisma/client';
 
 registerEnumType(TherapyType, { name: 'TherapyType' });
 registerEnumType(LocationType, { name: 'LocationType' });
+registerEnumType(AppointmentConfirmationStatus, {
+  name: 'AppointmentConfirmationStatus',
+});
 
 @ObjectType()
 export class ChildType {
@@ -102,9 +105,63 @@ export class AppointmentType {
   @Field(() => LocationType, { nullable: true })
   locationType?: LocationType;
 
+  @Field(() => AppointmentConfirmationStatus)
+  confirmationStatus: AppointmentConfirmationStatus;
+
+  @Field({ nullable: true })
+  parentConfirmedAt?: Date;
+
+  @Field({ nullable: true })
+  therapistConfirmedAt?: Date;
+
+  @Field({ nullable: true })
+  rescheduleRequestedBy?: string;
+
+  @Field({ nullable: true })
+  proposedScheduledStart?: Date;
+
+  @Field({ nullable: true })
+  proposedScheduledEnd?: Date;
+
+  @Field({ nullable: true })
+  rescheduleReason?: string;
+
   @Field(() => ChildType, { nullable: true })
   child?: ChildType;
 
   @Field(() => TherapistMatchType, { nullable: true })
   therapist?: TherapistMatchType;
+
+  @Field({ nullable: true })
+  childInsuranceType?: string;
+
+  @Field()
+  requiresSelfPayBookingPayment: boolean;
+
+  @Field(() => ID, { nullable: true })
+  bookingPaymentId?: string;
+
+  @Field({ nullable: true })
+  bookingPaymentStatus?: string;
+}
+
+@ObjectType()
+export class ConfirmAppointmentResultType {
+  @Field(() => AppointmentType)
+  appointment: AppointmentType;
+
+  @Field()
+  requiresPayment: boolean;
+
+  @Field({ nullable: true })
+  checkoutUrl?: string;
+
+  @Field({ nullable: true })
+  clientSecret?: string;
+
+  @Field()
+  stripeConfigured: boolean;
+
+  @Field(() => ID, { nullable: true })
+  paymentId?: string;
 }

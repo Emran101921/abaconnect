@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
@@ -26,14 +27,21 @@ class MarketplaceApproxMap extends StatefulWidget {
 
 class _MarketplaceApproxMapState extends State<MarketplaceApproxMap> {
   GoogleMapController? _mapController;
+  bool _googleMapsFailed = false;
 
   List<MarketplaceRequestModel> get _pins => widget.requests
       .where((r) => r.mapPinLat != null && r.mapPinLng != null)
       .toList();
 
-  bool get _useGoogleMaps => !kIsWeb || MapsConstants.isConfigured;
+  bool get _showGoogleMap => !_googleMapsFailed;
 
-  bool get _showMapsSetupHint => kIsWeb && !MapsConstants.isConfigured;
+  bool get _showMapsSetupHint =>
+      _googleMapsFailed || (kIsWeb && !MapsConstants.isConfigured);
+
+  void _handleGoogleMapsFailed() {
+    if (!mounted || _googleMapsFailed) return;
+    setState(() => _googleMapsFailed = true);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -55,16 +63,18 @@ class _MarketplaceApproxMapState extends State<MarketplaceApproxMap> {
       clipBehavior: Clip.antiAlias,
       child: AspectRatio(
         aspectRatio: 1.1,
-        child: _useGoogleMaps
+        child: _showGoogleMap
             ? _GoogleMarketplaceMap(
                 pins: _pins,
                 onPinTap: widget.onPinTap,
                 onMapCreated: (controller) => _mapController = controller,
+                onLoadFailed: _handleGoogleMapsFailed,
               )
             : _FallbackApproxMap(
                 pins: _pins,
                 onPinTap: widget.onPinTap,
                 showSetupHint: _showMapsSetupHint,
+                mapsLoadFailed: _googleMapsFailed,
               ),
       ),
     );
@@ -77,22 +87,56 @@ class _MarketplaceApproxMapState extends State<MarketplaceApproxMap> {
   }
 }
 
-class _GoogleMarketplaceMap extends StatelessWidget {
+class _GoogleMarketplaceMap extends StatefulWidget {
   const _GoogleMarketplaceMap({
     required this.pins,
     required this.onPinTap,
     required this.onMapCreated,
+    required this.onLoadFailed,
   });
 
   final List<MarketplaceRequestModel> pins;
   final ValueChanged<MarketplaceRequestModel>? onPinTap;
   final ValueChanged<GoogleMapController> onMapCreated;
+  final VoidCallback onLoadFailed;
+
+  @override
+  State<_GoogleMarketplaceMap> createState() => _GoogleMarketplaceMapState();
+}
+
+class _GoogleMarketplaceMapState extends State<_GoogleMarketplaceMap> {
+  static const _loadTimeout = Duration(seconds: 8);
+
+  Timer? _loadTimer;
+  var _mapReady = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTimer = Timer(_loadTimeout, () {
+      if (!_mapReady && mounted) {
+        widget.onLoadFailed();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _loadTimer?.cancel();
+    super.dispose();
+  }
+
+  void _markReady() {
+    if (_mapReady) return;
+    _mapReady = true;
+    _loadTimer?.cancel();
+  }
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final bounds = _boundsForPins(pins);
-    final markers = pins.map((pin) {
+    final bounds = _boundsForPins(widget.pins);
+    final markers = widget.pins.map((pin) {
       return Marker(
         markerId: MarkerId(pin.id),
         position: LatLng(pin.mapPinLat!, pin.mapPinLng!),
@@ -100,11 +144,11 @@ class _GoogleMarketplaceMap extends StatelessWidget {
           title: pin.anonymousPublicId,
           snippet: pin.serviceAreaLabel,
         ),
-        onTap: () => onPinTap?.call(pin),
+        onTap: () => widget.onPinTap?.call(pin),
       );
     }).toSet();
 
-    final circles = pins.map((pin) {
+    final circles = widget.pins.map((pin) {
       return Circle(
         circleId: CircleId('area-${pin.id}'),
         center: LatLng(pin.mapPinLat!, pin.mapPinLng!),
@@ -128,11 +172,16 @@ class _GoogleMarketplaceMap extends StatelessWidget {
           zoomControlsEnabled: !kIsWeb,
           mapToolbarEnabled: false,
           onMapCreated: (controller) async {
-            onMapCreated(controller);
-            if (pins.length > 1) {
-              await controller.animateCamera(
-                CameraUpdate.newLatLngBounds(bounds.latLngBounds, 48),
-              );
+            _markReady();
+            widget.onMapCreated(controller);
+            try {
+              if (widget.pins.length > 1) {
+                await controller.animateCamera(
+                  CameraUpdate.newLatLngBounds(bounds.latLngBounds, 48),
+                );
+              }
+            } catch (_) {
+              if (mounted) widget.onLoadFailed();
             }
           },
         ),
@@ -154,13 +203,6 @@ class _GoogleMarketplaceMap extends StatelessWidget {
             ),
           ),
         ),
-        if (kIsWeb && !MapsConstants.isConfigured)
-          Positioned(
-            left: 12,
-            right: 12,
-            bottom: 12,
-            child: _MapsSetupBanner(compact: true),
-          ),
       ],
     );
   }
@@ -220,11 +262,13 @@ class _FallbackApproxMap extends StatelessWidget {
     required this.pins,
     required this.onPinTap,
     this.showSetupHint = false,
+    this.mapsLoadFailed = false,
   });
 
   final List<MarketplaceRequestModel> pins;
   final ValueChanged<MarketplaceRequestModel>? onPinTap;
   final bool showSetupHint;
+  final bool mapsLoadFailed;
 
   @override
   Widget build(BuildContext context) {
@@ -293,11 +337,11 @@ class _FallbackApproxMap extends StatelessWidget {
                 );
               }),
               if (showSetupHint)
-                const Positioned(
+                Positioned(
                   left: 12,
                   right: 12,
                   bottom: 12,
-                  child: _MapsSetupBanner(),
+                  child: _MapsSetupBanner(failed: mapsLoadFailed),
                 ),
             ],
           ),
@@ -354,9 +398,9 @@ class _ApproxMapPainter extends CustomPainter {
 }
 
 class _MapsSetupBanner extends StatelessWidget {
-  const _MapsSetupBanner({this.compact = false});
+  const _MapsSetupBanner({this.failed = false});
 
-  final bool compact;
+  final bool failed;
 
   @override
   Widget build(BuildContext context) {
@@ -370,13 +414,13 @@ class _MapsSetupBanner extends StatelessWidget {
         ),
       ),
       child: Padding(
-        padding: EdgeInsets.all(compact ? 10 : 12),
+        padding: const EdgeInsets.all(12),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Icon(
               Icons.map_outlined,
-              size: compact ? 18 : 20,
+              size: 20,
               color: colorScheme.onSecondaryContainer,
             ),
             const SizedBox(width: 8),
@@ -387,17 +431,30 @@ class _MapsSetupBanner extends StatelessWidget {
                   Text(
                     'Enable Google Maps tiles',
                     style: TextStyle(
-                      fontSize: compact ? 12 : 13,
+                      fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: colorScheme.onSecondaryContainer,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Run scripts/setup-google-maps.sh from the repo root, '
-                    'or pass --dart-define=GOOGLE_MAPS_API_KEY=your_key on web.',
+                    failed
+                        ? 'Google Maps could not load — showing approximate pin layout instead. Check Google Cloud Console:'
+                        : 'If the map is blank or shows a JavaScript error, check Google Cloud Console:',
                     style: TextStyle(
-                      fontSize: compact ? 11 : 12,
+                      fontSize: 12,
+                      color: colorScheme.onSecondaryContainer,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '• Enable Maps JavaScript API (web) and Maps SDK for iOS\n'
+                    '• Turn on billing for the project\n'
+                    '• Web referrers: http://localhost:8080/*\n'
+                    '• iOS bundle ID: com.abaconnect.mobile\n'
+                    '• Re-run: bash scripts/setup-google-maps.sh',
+                    style: TextStyle(
+                      fontSize: 11,
                       color: colorScheme.onSecondaryContainer,
                     ),
                   ),

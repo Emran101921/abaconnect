@@ -67,22 +67,25 @@ class TherapistAppointmentSessionActions extends ConsumerWidget {
     }
   }
 
+  void _openSessionDocumentation(BuildContext context, String sessionId) {
+    context.push(
+      '${AppRoutes.therapistHome}/session-notes/$sessionId/form',
+    );
+  }
+
   Future<void> _startSession(BuildContext context, WidgetRef ref) async {
     try {
-      await ref.read(therapistRepositoryProvider).startSession(appointment.id);
+      final sessionId = await ref
+          .read(therapistRepositoryProvider)
+          .startSession(appointment.id);
       ref.invalidate(therapistSessionsProvider);
       ref.invalidate(therapistAppointmentsProvider);
       ref.invalidate(therapistDashboardProvider);
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Session started for ${appointment.childName}'),
-          action: SnackBarAction(
-            label: 'SOAP',
-            onPressed: () => context.push(AppRoutes.therapistSessionNotes),
-          ),
-        ),
-      );
+      if (sessionId.isEmpty) {
+        throw Exception('Session id missing');
+      }
+      _openSessionDocumentation(context, sessionId);
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -98,9 +101,7 @@ class TherapistAppointmentSessionActions extends ConsumerWidget {
         compact ? 'Start' : 'Start session & document';
 
     if (!appointment.requiresSelfPayCollection) {
-      final canStart =
-          appointment.status == 'CONFIRMED' || appointment.status == 'SCHEDULED';
-      if (!canStart) return const SizedBox.shrink();
+      if (!appointment.canStartSession) return const SizedBox.shrink();
       return GlossyButton(
         title: startLabel,
         icon: Icons.play_circle_outline_rounded,
@@ -110,7 +111,7 @@ class TherapistAppointmentSessionActions extends ConsumerWidget {
       );
     }
 
-    final isPaid = appointment.sessionPaymentStatus == 'SUCCEEDED';
+    final isPaid = appointment.isSessionPaymentReceived;
     final paymentPending = appointment.sessionPaymentStatus == 'PENDING' &&
         appointment.sessionPaymentId != null;
     final awaitingPayment = appointment.hasArrived && !isPaid;

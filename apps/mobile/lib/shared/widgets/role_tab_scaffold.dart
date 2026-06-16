@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'app_bottom_nav.dart';
 import 'app_scaffold.dart';
+import '../layout/app_layout.dart';
 
 /// Parent main-tab shell — keeps bottom quick navigation on nested flows.
 class ParentTabScaffold extends StatelessWidget {
@@ -32,7 +33,7 @@ class ParentTabScaffold extends StatelessWidget {
       actions: actions,
       floatingActionButton: floatingActionButton,
       showBackButton: showBackButton,
-      bottomNavigationBar: ParentBottomNav(current: currentTab),
+      bottomNavigationBar: MobileBottomNav.parent(currentTab),
       body: body,
     );
   }
@@ -67,7 +68,7 @@ class TherapistTabScaffold extends StatelessWidget {
       actions: actions,
       floatingActionButton: floatingActionButton,
       showBackButton: showBackButton,
-      bottomNavigationBar: TherapistBottomNav(current: currentTab),
+      bottomNavigationBar: MobileBottomNav.therapist(currentTab),
       body: body,
     );
   }

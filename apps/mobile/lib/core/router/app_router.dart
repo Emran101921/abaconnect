@@ -15,10 +15,15 @@ import '../../features/admin/presentation/admin_payouts_screen.dart';
 import '../../features/admin/presentation/admin_reviews_screen.dart';
 import '../../features/admin/presentation/admin_users_screen.dart';
 import '../../features/admin/presentation/admin_verifications_screen.dart';
+import '../../features/agency/presentation/agency_add_staff_screen.dart';
+import '../../features/agency/presentation/agency_add_service_coordinator_screen.dart';
+import '../../features/agency/presentation/agency_cases_screen.dart';
 import '../../features/agency/presentation/agency_analytics_screen.dart';
 import '../../features/agency/presentation/agency_appointments_screen.dart';
 import '../../features/agency/presentation/agency_home_screen.dart';
 import '../../features/agency/presentation/agency_invites_screen.dart';
+import '../../features/agency/presentation/agency_onboarding_screen.dart';
+import '../../features/agency/presentation/agency_roster_member_screen.dart';
 import '../../features/agency/presentation/agency_roster_screen.dart';
 import '../../features/auth/presentation/forgot_password_screen.dart';
 import '../../features/auth/presentation/security_screen.dart';
@@ -73,6 +78,13 @@ import '../../features/marketplace/presentation/parent_marketplace_dashboard_scr
 import '../../features/marketplace/presentation/parent_provider_compare_screen.dart';
 import '../../features/marketplace/presentation/provider_authorized_child_screen.dart';
 import '../../features/marketplace/presentation/provider_marketplace_screen.dart';
+import '../../features/service_coordinator/data/service_coordinator_repository.dart';
+import '../../features/service_coordinator/presentation/ei_screening_screen.dart';
+import '../../features/service_coordinator/presentation/sc_case_detail_screen.dart';
+import '../../features/service_coordinator/presentation/sc_cases_screen.dart';
+import '../../features/service_coordinator/presentation/sc_dashboard_screen.dart';
+import '../../features/service_coordinator/presentation/sc_follow_ups_screen.dart';
+import '../../features/service_coordinator/presentation/sc_notes_screen.dart';
 import '../providers/app_providers.dart';
 import '../providers/consent_gate_provider.dart';
 import 'app_router_redirect.dart';
@@ -95,7 +107,10 @@ abstract final class AppRoutes {
   static const therapistAppointments = '/therapist/appointments';
   static const therapistSessionNotes = '/therapist/session-notes';
   static const agencyHome = '/agency';
+  static const agencyOnboarding = '/agency/onboarding';
+  static const agencyAddStaff = '/agency/add-staff';
   static const agencyMarketplace = '/agency/marketplace';
+  static const serviceCoordinatorHome = '/service-coordinator';
   static const adminHome = '/admin';
   static const telehealth = '/telehealth';
   static const messages = '/messages';
@@ -156,12 +171,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final mfaEnabled = ref.read(mfaEnabledProvider);
       final providerPhiAccessApproved =
           ref.read(providerPhiAccessApprovedProvider);
+      final agencyOnboardingComplete =
+          ref.read(agencyOnboardingCompleteProvider);
       return resolveAuthRedirect(
         auth: auth,
         matchedLocation: state.matchedLocation,
         hipaaConsentGranted: hipaaConsentGranted,
         mfaEnabled: mfaEnabled,
         providerPhiAccessApproved: providerPhiAccessApproved,
+        agencyOnboardingComplete: agencyOnboardingComplete,
       );
     },
     routes: [
@@ -218,7 +236,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'booking',
             name: 'parentBooking',
-            builder: (context, state) => const BookingScreen(),
+            builder: (context, state) => BookingScreen(
+              initialTherapistId: state.uri.queryParameters['therapistId'],
+              initialTherapyType: state.uri.queryParameters['therapyType'],
+            ),
           ),
           GoRoute(
             path: 'screening',
@@ -327,6 +348,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const ProviderOnboardingScreen(),
       ),
       GoRoute(
+        path: AppRoutes.agencyOnboarding,
+        name: 'agencyOnboarding',
+        builder: (context, state) => const AgencyOnboardingScreen(),
+      ),
+      GoRoute(
         path: AppRoutes.therapistHome,
         name: 'therapistHome',
         builder: (context, state) => const TherapistHomeScreen(),
@@ -397,11 +423,56 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: 'roster',
             name: 'agencyRoster',
             builder: (context, state) => const AgencyRosterScreen(),
+            routes: [
+              GoRoute(
+                path: 'add-service-coordinator',
+                name: 'agencyAddServiceCoordinator',
+                builder: (context, state) =>
+                    const AgencyAddServiceCoordinatorScreen(),
+              ),
+              GoRoute(
+                path: ':rosterMemberId',
+                name: 'agencyRosterMember',
+                builder: (context, state) => AgencyRosterMemberScreen(
+                  rosterMemberUserId: state.pathParameters['rosterMemberId']!,
+                ),
+              ),
+            ],
+          ),
+          GoRoute(
+            path: 'cases',
+            name: 'agencyCases',
+            builder: (context, state) => const AgencyCasesScreen(),
+            routes: [
+              GoRoute(
+                path: ':childId/assign-service-coordinator',
+                name: 'agencyAssignSc',
+                builder: (context, state) {
+                  final extra = state.extra;
+                  String? childName;
+                  String? assignmentId;
+                  if (extra is AgencyCaseModel) {
+                    childName = extra.childName;
+                    assignmentId = extra.assignmentId;
+                  }
+                  return AgencyAssignServiceCoordinatorScreen(
+                    childId: state.pathParameters['childId']!,
+                    childName: childName,
+                    assignmentId: assignmentId,
+                  );
+                },
+              ),
+            ],
           ),
           GoRoute(
             path: 'invites',
             name: 'agencyInvites',
             builder: (context, state) => const AgencyInvitesScreen(),
+          ),
+          GoRoute(
+            path: 'add-staff',
+            name: 'agencyAddStaff',
+            builder: (context, state) => const AgencyAddStaffScreen(),
           ),
           GoRoute(
             path: 'analytics',
@@ -485,6 +556,62 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+      GoRoute(
+        path: AppRoutes.serviceCoordinatorHome,
+        name: 'serviceCoordinatorHome',
+        builder: (context, state) => const ServiceCoordinatorDashboardScreen(),
+        routes: [
+          GoRoute(
+            path: 'cases',
+            name: 'scCases',
+            builder: (context, state) => const ScCasesScreen(),
+            routes: [
+              GoRoute(
+                path: ':childId',
+                name: 'scCaseDetail',
+                builder: (context, state) => ScCaseDetailScreen(
+                  childId: state.pathParameters['childId']!,
+                ),
+                routes: [
+                  GoRoute(
+                    path: 'initial-screening',
+                    name: 'scInitialScreening',
+                    builder: (context, state) => EiScreeningScreen(
+                      childId: state.pathParameters['childId']!,
+                      mode: EiScreeningMode.initial,
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'ongoing-screening',
+                    name: 'scOngoingScreening',
+                    builder: (context, state) => EiScreeningScreen(
+                      childId: state.pathParameters['childId']!,
+                      mode: EiScreeningMode.ongoing,
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'notes',
+                    name: 'scNotes',
+                    builder: (context, state) => ScNotesScreen(
+                      childId: state.pathParameters['childId']!,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          GoRoute(
+            path: 'follow-ups',
+            name: 'scFollowUps',
+            builder: (context, state) => const ScFollowUpsScreen(),
+          ),
+          GoRoute(
+            path: 'messages',
+            name: 'scMessages',
+            builder: (context, state) => const MessagesScreen(),
           ),
         ],
       ),

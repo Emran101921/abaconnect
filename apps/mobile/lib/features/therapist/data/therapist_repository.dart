@@ -143,6 +143,13 @@ class TherapistAppointmentModel {
     this.sessionPaymentId,
     this.sessionPaymentStatus,
     this.sessionPaymentAmount,
+    this.confirmationStatus = 'PENDING',
+    this.parentConfirmedAt,
+    this.therapistConfirmedAt,
+    this.rescheduleRequestedBy,
+    this.proposedScheduledStart,
+    this.proposedScheduledEnd,
+    this.rescheduleReason,
   });
 
   final String id;
@@ -159,10 +166,35 @@ class TherapistAppointmentModel {
   final String? sessionPaymentId;
   final String? sessionPaymentStatus;
   final double? sessionPaymentAmount;
+  final String confirmationStatus;
+  final DateTime? parentConfirmedAt;
+  final DateTime? therapistConfirmedAt;
+  final String? rescheduleRequestedBy;
+  final DateTime? proposedScheduledStart;
+  final DateTime? proposedScheduledEnd;
+  final String? rescheduleReason;
 
   bool get isTelehealth => locationType == 'TELEHEALTH';
 
   bool get isSelfPay => requiresSelfPayCollection;
+
+  bool get isSessionPaymentReceived => sessionPaymentStatus == 'SUCCEEDED';
+
+  bool get parentConfirmed => parentConfirmedAt != null;
+
+  bool get therapistConfirmed => therapistConfirmedAt != null;
+
+  bool get needsTherapistConfirmation =>
+      !therapistConfirmed &&
+      confirmationStatus != 'CANCELLED' &&
+      status != 'CANCELLED' &&
+      status != 'COMPLETED';
+
+  bool get isFullyConfirmed =>
+      confirmationStatus == 'CONFIRMED' && parentConfirmed && therapistConfirmed;
+
+  bool get isRescheduleRequested =>
+      confirmationStatus == 'RESCHEDULE_REQUESTED';
 }
 
 class TherapistServiceLogModel {
@@ -363,6 +395,13 @@ class TherapistRepository {
           therapyType
           scheduledStart
           locationType
+          confirmationStatus
+          parentConfirmedAt
+          therapistConfirmedAt
+          rescheduleRequestedBy
+          proposedScheduledStart
+          proposedScheduledEnd
+          rescheduleReason
           childInsuranceType
           requiresSelfPayCollection
           hasArrived
@@ -396,6 +435,21 @@ class TherapistRepository {
         sessionPaymentStatus: e['sessionPaymentStatus'] as String?,
         sessionPaymentAmount:
             (e['sessionPaymentAmount'] as num?)?.toDouble(),
+        confirmationStatus: e['confirmationStatus'] as String? ?? 'PENDING',
+        parentConfirmedAt: e['parentConfirmedAt'] != null
+            ? DateTime.parse(e['parentConfirmedAt'] as String)
+            : null,
+        therapistConfirmedAt: e['therapistConfirmedAt'] != null
+            ? DateTime.parse(e['therapistConfirmedAt'] as String)
+            : null,
+        rescheduleRequestedBy: e['rescheduleRequestedBy'] as String?,
+        proposedScheduledStart: e['proposedScheduledStart'] != null
+            ? DateTime.parse(e['proposedScheduledStart'] as String)
+            : null,
+        proposedScheduledEnd: e['proposedScheduledEnd'] != null
+            ? DateTime.parse(e['proposedScheduledEnd'] as String)
+            : null,
+        rescheduleReason: e['rescheduleReason'] as String?,
       );
     }).toList();
   }
@@ -498,10 +552,42 @@ class TherapistRepository {
   Future<void> confirmAppointment(String appointmentId) async {
     const mutation = r'''
       mutation Confirm($appointmentId: ID!) {
-        confirmAppointment(appointmentId: $appointmentId) { id status }
+        confirmAppointment(appointmentId: $appointmentId) {
+          id
+          status
+          confirmationStatus
+        }
       }
     ''';
     await _graphql.query(mutation, variables: {'appointmentId': appointmentId});
+  }
+
+  Future<void> requestRescheduleAppointment({
+    required String appointmentId,
+    required DateTime proposedStart,
+    required DateTime proposedEnd,
+    String? reason,
+  }) async {
+    const mutation = r'''
+      mutation Reschedule($input: RequestRescheduleAppointmentInput!) {
+        requestRescheduleAppointment(input: $input) {
+          id
+          status
+          confirmationStatus
+        }
+      }
+    ''';
+    await _graphql.query(
+      mutation,
+      variables: {
+        'input': {
+          'appointmentId': appointmentId,
+          'proposedStart': proposedStart.toIso8601String(),
+          'proposedEnd': proposedEnd.toIso8601String(),
+          'reason': ?reason,
+        },
+      },
+    );
   }
 
   Future<void> cancelAppointment(String appointmentId, {String? reason}) async {

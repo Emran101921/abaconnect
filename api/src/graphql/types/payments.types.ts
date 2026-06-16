@@ -52,6 +52,9 @@ export class PaymentIntentResultType {
 
   @Field()
   stripeConfigured: boolean;
+
+  @Field({ nullable: true })
+  alreadyPaid?: boolean;
 }
 
 @ObjectType()

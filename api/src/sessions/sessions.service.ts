@@ -9,6 +9,7 @@ import { PhiAuditService } from '../audit/phi-audit.service';
 import { InsuranceService } from '../insurance/insurance.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { isSelfPayInsuranceType } from '../payments/self-pay.util';
+import { isAppointmentOperationallyConfirmed } from '../appointments/appointments.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   hasInterventionistSignature,
@@ -108,7 +109,7 @@ export class SessionsService {
     if (!appointment) {
       throw new NotFoundException('Appointment not found');
     }
-    if (!['CONFIRMED', 'SCHEDULED'].includes(appointment.status)) {
+    if (!isAppointmentOperationallyConfirmed(appointment)) {
       throw new BadRequestException(
         'Arrival can only be recorded for confirmed appointments',
       );
@@ -153,8 +154,14 @@ export class SessionsService {
           'Record arrival and collect self-pay before starting the session',
         );
       }
-      const payment = appointment.session?.payment;
-      if (!payment || payment.status !== 'SUCCEEDED') {
+      const sessionPaid =
+        appointment.session?.payment?.status === 'SUCCEEDED';
+      const bookingPaid = sessionPaid
+        ? false
+        : (await this.prisma.payment.findFirst({
+            where: { appointmentId: appointment.id, status: 'SUCCEEDED' },
+          })) != null;
+      if (!sessionPaid && !bookingPaid) {
         throw new BadRequestException(
           'Parent must complete self-pay before the session can start',
         );

@@ -24,8 +24,21 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>GoogleMapsApiKey</key>
+	<string></string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>BloomOra uses your location for EVV check-in and to record GPS when signing session notes.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>BloomOra uses the microphone so you can dictate secure messages and session notes.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>BloomOra converts your speech to text when composing messages and clinical notes.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -47,19 +60,6 @@
 			</array>
 		</dict>
 	</dict>
-	<key>NSAppTransportSecurity</key>
-	<dict>
-		<key>NSAllowsLocalNetworking</key>
-		<true/>
-	</dict>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>BloomOra uses your location for EVV check-in and to record GPS when signing session notes.</string>
-	<key>GoogleMapsApiKey</key>
-	<string></string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>BloomOra uses the microphone so you can dictate secure messages and session notes.</string>
-	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>BloomOra converts your speech to text when composing messages and clinical notes.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

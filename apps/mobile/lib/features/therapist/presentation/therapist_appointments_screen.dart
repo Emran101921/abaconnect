@@ -19,6 +19,79 @@ class TherapistAppointmentsScreen extends ConsumerWidget {
 
   final String? highlightAppointmentId;
 
+  Future<void> _reschedule(
+    BuildContext context,
+    WidgetRef ref,
+    TherapistAppointmentModel appointment,
+  ) async {
+    var start = appointment.isRescheduleRequested &&
+            appointment.proposedScheduledStart != null
+        ? appointment.proposedScheduledStart!
+        : appointment.scheduledStart;
+    final date = await showDatePicker(
+      context: context,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 90)),
+      initialDate: start,
+    );
+    if (date == null || !context.mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(start),
+    );
+    if (time == null || !context.mounted) return;
+    start = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    final end = start.add(const Duration(hours: 1));
+
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        final controller = TextEditingController();
+        return AlertDialog(
+          title: const Text('Reschedule reason'),
+          content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(labelText: 'Reason (optional)'),
+            maxLines: 2,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, ''),
+              child: const Text('Skip'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+              child: const Text('Request'),
+            ),
+          ],
+        );
+      },
+    );
+    if (reason == null || !context.mounted) return;
+
+    try {
+      await ref.read(therapistRepositoryProvider).requestRescheduleAppointment(
+        appointmentId: appointment.id,
+        proposedStart: start,
+        proposedEnd: end,
+        reason: reason.isEmpty ? null : reason,
+      );
+      ref.invalidate(therapistAppointmentsProvider);
+      ref.invalidate(therapistDashboardProvider);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Reschedule requested')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Reschedule failed: $e')));
+      }
+    }
+  }
+
   Future<void> _confirm(
     BuildContext context,
     WidgetRef ref,
@@ -142,14 +215,22 @@ class TherapistAppointmentsScreen extends ConsumerWidget {
             separatorBuilder: (_, _) => const SizedBox(height: 8),
             itemBuilder: (context, index) {
               final a = list[index];
-              final isRequested = a.status == 'REQUESTED';
+              final needsConfirm = a.needsTherapistConfirmation;
               final highlighted = highlightAppointmentId == a.id;
               final canCancel = ![
                 'COMPLETED',
                 'CANCELLED',
                 'NO_SHOW',
-                'REQUESTED',
               ].contains(a.status);
+              final confirmationLabel = a.isFullyConfirmed
+                  ? 'Fully confirmed'
+                  : a.isRescheduleRequested
+                  ? 'Reschedule requested'
+                  : a.therapistConfirmed
+                  ? 'Waiting on parent'
+                  : a.parentConfirmed
+                  ? 'Waiting on you'
+                  : 'Awaiting confirmation';
               return Card(
                 color: highlighted
                     ? Theme.of(context).colorScheme.primaryContainer
@@ -180,8 +261,24 @@ class TherapistAppointmentsScreen extends ConsumerWidget {
                       Text(
                         DateFormat.yMMMd().add_jm().format(a.scheduledStart),
                       ),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 6,
+                        children: [
+                          Chip(label: Text(confirmationLabel)),
+                          if (a.isRescheduleRequested &&
+                              a.proposedScheduledStart != null)
+                            Chip(
+                              label: Text(
+                                'Proposed: ${DateFormat.yMMMd().add_jm().format(a.proposedScheduledStart!)}',
+                              ),
+                            ),
+                        ],
+                      ),
+                      if (a.isRescheduleRequested && a.rescheduleReason != null)
+                        Text('Reason: ${a.rescheduleReason}'),
                       SelfPayPaymentStatusChip(appointment: a),
-                      if (isRequested) ...[
+                      if (needsConfirm) ...[
                         const SizedBox(height: 12),
                         Row(
                           children: [
@@ -203,8 +300,16 @@ class TherapistAppointmentsScreen extends ConsumerWidget {
                             ),
                           ],
                         ),
+                        const SizedBox(height: 8),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: () => _reschedule(context, ref, a),
+                            child: const Text('Request reschedule'),
+                          ),
+                        ),
                       ],
-                      if (!isRequested &&
+                      if (!needsConfirm &&
                           (a.requiresSelfPayCollection ||
                               a.status == 'CONFIRMED' ||
                               a.status == 'SCHEDULED' ||
@@ -214,12 +319,19 @@ class TherapistAppointmentsScreen extends ConsumerWidget {
                       ],
                       if (canCancel) ...[
                         const SizedBox(height: 8),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton(
-                            onPressed: () => _cancel(context, ref, a),
-                            child: const Text('Cancel appointment'),
-                          ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            if (!needsConfirm)
+                              TextButton(
+                                onPressed: () => _reschedule(context, ref, a),
+                                child: const Text('Reschedule'),
+                              ),
+                            TextButton(
+                              onPressed: () => _cancel(context, ref, a),
+                              child: const Text('Cancel appointment'),
+                            ),
+                          ],
                         ),
                       ],
                     ],

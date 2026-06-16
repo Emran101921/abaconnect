@@ -7,12 +7,14 @@ import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/models/dashboard_action_model.dart';
 import '../../../shared/widgets/app_bottom_nav.dart';
+import '../../../shared/layout/action_button.dart';
+import '../../../shared/layout/app_page_header.dart';
+import '../../../shared/layout/user_role_badge.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/glossy_button.dart';
 import '../../../shared/widgets/app_section_header.dart';
 import '../../../shared/widgets/app_stat_card.dart';
-import '../../../shared/widgets/glossy_button.dart';
 import '../../../shared/widgets/app_wellness_action_menu.dart';
-import '../../../shared/widgets/app_wellness_home_header.dart';
 import '../../../shared/widgets/app_wellness_journey_card.dart';
 import '../../../shared/widgets/dashboard_action_inbox.dart';
 import '../../messaging/messaging_providers.dart';
@@ -48,19 +50,12 @@ class TherapistHomeScreen extends ConsumerWidget {
         user?.fullName?.split(' ').first ?? user?.email.split('@').first ?? 'there';
 
     return AppScaffold(
-      title: 'Therapist',
+      title: 'Therapist dashboard',
+      subtitle: 'Clinical sessions & referrals',
+      constrainBodyOnWide: false,
       bottomNavigationBar: TherapistBottomNav(
         current: TherapistNavTab.home,
       ),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.logout),
-          onPressed: () async {
-            await ref.read(authStateProvider.notifier).logout();
-            if (context.mounted) context.go(AppRoutes.login);
-          },
-        ),
-      ],
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(therapistDashboardProvider);
@@ -75,8 +70,36 @@ class TherapistHomeScreen extends ConsumerWidget {
           padding: EdgeInsets.zero,
           child: ListView(
             children: [
-              AppWellnessHomeHeader(
-                greeting: 'Welcome back, $greetingName 👋',
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: AppPageHeader(
+                  title: 'Welcome back, $greetingName',
+                  description:
+                      'Review referrals, manage your schedule, and complete session documentation.',
+                  badge: user != null
+                      ? UserRoleBadge(role: user.role, compact: true)
+                      : null,
+                  actions: [
+                    ActionButton(
+                      label: 'View marketplace',
+                      icon: Icons.storefront_outlined,
+                      onPressed: () =>
+                          context.push(AppRoutes.therapistMarketplace),
+                      fullWidth: false,
+                      size: GlossyButtonSize.medium,
+                    ),
+                    ActionButton(
+                      label: 'Session notes',
+                      icon: Icons.edit_note_outlined,
+                      onPressed: () => context.push(
+                        '${AppRoutes.therapistHome}/session-notes',
+                      ),
+                      variant: GlossyButtonVariant.secondary,
+                      fullWidth: false,
+                      size: GlossyButtonSize.medium,
+                    ),
+                  ],
+                ),
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),

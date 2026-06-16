@@ -17,6 +17,7 @@ enum UserRole {
   PARENT
   THERAPIST
   AGENCY_ADMIN
+  SERVICE_COORDINATOR
   PLATFORM_ADMIN
   BILLING_STAFF
   COMPLIANCE_AUDITOR
@@ -44,6 +45,13 @@ enum AppointmentStatus {
   CANCELLED
   NO_SHOW
   RESCHEDULED
+}
+
+enum AppointmentConfirmationStatus {
+  PENDING
+  CONFIRMED
+  RESCHEDULE_REQUESTED
+  CANCELLED
 }
 
 enum SessionStatus {
@@ -283,6 +291,42 @@ enum AgencyTherapistStatus {
   SUSPENDED
 }
 
+enum AgencyRosterMemberRole {
+  SERVICE_COORDINATOR
+  ADMIN_STAFF
+}
+
+enum AgencyRosterStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING
+}
+
+enum ChildScAssignmentStatus {
+  ACTIVE
+  REMOVED
+}
+
+enum EiScreeningPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum EiScreeningStatus {
+  DRAFT
+  SUBMITTED
+}
+
+enum AgencyDocumentType {
+  BAA
+  BUSINESS_LICENSE
+  INSURANCE_CERTIFICATE
+  W9
+  OTHER
+}
+
 enum DisputeStatus {
   OPEN
   UNDER_REVIEW
@@ -405,10 +449,24 @@ model User {
   providerMarketplaceProfile ProviderMarketplaceProfile?
   marketplaceSavedSearches MarketplaceSavedSearch[]
   marketplaceReportsFiled MarketplaceReport[] @relation("MarketplaceReportReporter")
+  agencyId                String?               @map("agency_id") @db.Uuid
+  agency                  Agency?               @relation("AgencyAdminUsers", fields: [agencyId], references: [id], onDelete: SetNull)
+  createdById             String?               @map("created_by_id") @db.Uuid
+  createdBy               User?                 @relation("UserCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  usersCreated            User[]                @relation("UserCreatedBy")
+  uploadedAgencyDocuments AgencyDocument[]
+  agencyRosterEntries     AgencyRoster[]        @relation("AgencyRosterUser")
+  agencyRosterAdded       AgencyRoster[]        @relation("AgencyRosterAddedBy")
+  scAssignmentsAsCoordinator ChildServiceCoordinatorAssignment[] @relation("ScCoordinator")
+  scAssignmentsMade       ChildServiceCoordinatorAssignment[] @relation("ScAssignedBy")
+  eiInitialScreenings     EiInitialScreening[]
+  eiOngoingScreenings     EiOngoingScreening[]
+  serviceCoordinationNotes ServiceCoordinationNote[]
 
   @@unique([tenantId, email])
   @@index([tenantId])
   @@index([role])
+  @@index([agencyId])
   @@map("users")
 }
 
@@ -486,6 +544,9 @@ model Parent {
   reviews              Review[]
   complaints           Complaint[]
   disputes             Dispute[]
+  eiInitialScreenings  EiInitialScreening[]
+  eiOngoingScreenings  EiOngoingScreening[]
+  serviceCoordinationNotes ServiceCoordinationNote[]
 
   @@index([tenantId])
   @@map("parents")
@@ -526,6 +587,10 @@ model Child {
   serviceLogs        ServiceLog[]
   marketplaceRequests MarketplaceRequest[]
   marketplaceConsents MarketplaceConsentRecord[]
+  scAssignments       ChildServiceCoordinatorAssignment[]
+  eiInitialScreenings EiInitialScreening[]
+  eiOngoingScreenings EiOngoingScreening[]
+  serviceCoordinationNotes ServiceCoordinationNote[]
 
   ageRange           MarketplaceAgeRange? @map("age_range")
   city               String?
@@ -675,18 +740,47 @@ model Agency {
   isVerified      Boolean   @default(false) @map("is_verified")
   stripeAccountId String?   @map("stripe_account_id")
   baaSignedAt     DateTime? @map("baa_signed_at")
-  baaDocumentKey  String?   @map("baa_document_key")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  baaDocumentKey     String?   @map("baa_document_key")
+  onboardingComplete Boolean   @default(false) @map("onboarding_complete")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
 
   tenant       Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  adminUsers   User[]            @relation("AgencyAdminUsers")
   therapists   AgencyTherapist[]
+  rosterMembers AgencyRoster[]
+  scAssignments ChildServiceCoordinatorAssignment[]
+  eiInitialScreenings EiInitialScreening[]
+  eiOngoingScreenings EiOngoingScreening[]
+  serviceCoordinationNotes ServiceCoordinationNote[]
+  documents    AgencyDocument[]
   appointments Appointment[]
   payouts      Payout[]
   marketplaceProfile ProviderMarketplaceProfile?
 
   @@index([tenantId])
   @@map("agencies")
+}
+
+model AgencyDocument {
+  id           String             @id @default(uuid()) @db.Uuid
+  agencyId     String             @map("agency_id") @db.Uuid
+  type         AgencyDocumentType
+  title        String
+  fileName     String             @map("file_name")
+  mimeType     String             @map("mime_type")
+  storageKey   String             @map("storage_key")
+  uploadedAt   DateTime           @default(now()) @map("uploaded_at")
+  uploadedById String             @map("uploaded_by_id") @db.Uuid
+  createdAt    DateTime           @default(now()) @map("created_at")
+  updatedAt    DateTime           @updatedAt @map("updated_at")
+
+  agency     Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  uploadedBy User   @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+
+  @@index([agencyId])
+  @@index([type])
+  @@map("agency_documents")
 }
 
 model AgencyTherapist {
@@ -706,6 +800,136 @@ model AgencyTherapist {
   @@index([agencyId])
   @@index([therapistId])
   @@map("agency_therapists")
+}
+
+/// Official agency roster for non-therapist staff (service coordinators, admin staff).
+model AgencyRoster {
+  id         String                 @id @default(uuid()) @db.Uuid
+  agencyId   String                 @map("agency_id") @db.Uuid
+  userId     String                 @map("user_id") @db.Uuid
+  role       AgencyRosterMemberRole
+  status     AgencyRosterStatus     @default(PENDING)
+  languages  String[]               @default([])
+  notes      String?
+  addedById  String                 @map("added_by_id") @db.Uuid
+  addedAt    DateTime               @default(now()) @map("added_at")
+  removedAt  DateTime?              @map("removed_at")
+  createdAt  DateTime               @default(now()) @map("created_at")
+  updatedAt  DateTime               @updatedAt @map("updated_at")
+
+  agency  Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  user    User   @relation("AgencyRosterUser", fields: [userId], references: [id], onDelete: Cascade)
+  addedBy User   @relation("AgencyRosterAddedBy", fields: [addedById], references: [id], onDelete: Restrict)
+
+  @@unique([agencyId, userId])
+  @@index([agencyId])
+  @@index([userId])
+  @@index([status])
+  @@map("agency_roster")
+}
+
+model ChildServiceCoordinatorAssignment {
+  id                    String                  @id @default(uuid()) @db.Uuid
+  childId               String                  @map("child_id") @db.Uuid
+  serviceCoordinatorId  String                  @map("service_coordinator_id") @db.Uuid
+  agencyId              String                  @map("agency_id") @db.Uuid
+  assignedById          String                  @map("assigned_by_id") @db.Uuid
+  assignedAt            DateTime                @default(now()) @map("assigned_at")
+  status                ChildScAssignmentStatus @default(ACTIVE)
+  isUrgent              Boolean                 @default(false) @map("is_urgent")
+  removedAt             DateTime?               @map("removed_at")
+  createdAt             DateTime                @default(now()) @map("created_at")
+  updatedAt             DateTime                @updatedAt @map("updated_at")
+
+  child              Child  @relation(fields: [childId], references: [id], onDelete: Cascade)
+  serviceCoordinator User   @relation("ScCoordinator", fields: [serviceCoordinatorId], references: [id], onDelete: Cascade)
+  agency             Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  assignedBy         User   @relation("ScAssignedBy", fields: [assignedById], references: [id], onDelete: Restrict)
+
+  @@unique([childId, serviceCoordinatorId, agencyId])
+  @@index([childId])
+  @@index([serviceCoordinatorId])
+  @@index([agencyId])
+  @@index([status])
+  @@map("child_service_coordinator_assignments")
+}
+
+model EiInitialScreening {
+  id                    String              @id @default(uuid()) @db.Uuid
+  childId               String              @map("child_id") @db.Uuid
+  parentId              String              @map("parent_id") @db.Uuid
+  agencyId              String              @map("agency_id") @db.Uuid
+  serviceCoordinatorId  String              @map("service_coordinator_id") @db.Uuid
+  answersJson           Json                @default("{}") @map("answers_json")
+  status                EiScreeningStatus   @default(DRAFT)
+  priorityLevel         EiScreeningPriority @default(LOW) @map("priority_level")
+  followUpRequired      Boolean             @default(false) @map("follow_up_required")
+  followUpDueDate       DateTime?           @map("follow_up_due_date") @db.Date
+  notes                 String?
+  createdAt             DateTime            @default(now()) @map("created_at")
+  updatedAt             DateTime            @updatedAt @map("updated_at")
+
+  child              Child  @relation(fields: [childId], references: [id], onDelete: Cascade)
+  parent             Parent @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  agency             Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  serviceCoordinator User   @relation(fields: [serviceCoordinatorId], references: [id], onDelete: Cascade)
+
+  @@index([childId])
+  @@index([serviceCoordinatorId])
+  @@index([agencyId])
+  @@map("ei_initial_screenings")
+}
+
+model EiOngoingScreening {
+  id                    String              @id @default(uuid()) @db.Uuid
+  childId               String              @map("child_id") @db.Uuid
+  parentId              String              @map("parent_id") @db.Uuid
+  agencyId              String              @map("agency_id") @db.Uuid
+  serviceCoordinatorId  String              @map("service_coordinator_id") @db.Uuid
+  answersJson           Json                @default("{}") @map("answers_json")
+  status                EiScreeningStatus   @default(DRAFT)
+  progressSummary       String?             @map("progress_summary")
+  newConcerns           String?             @map("new_concerns")
+  priorityLevel         EiScreeningPriority @default(LOW) @map("priority_level")
+  followUpRequired      Boolean             @default(false) @map("follow_up_required")
+  followUpDueDate       DateTime?           @map("follow_up_due_date") @db.Date
+  notes                 String?
+  createdAt             DateTime            @default(now()) @map("created_at")
+  updatedAt             DateTime            @updatedAt @map("updated_at")
+
+  child              Child  @relation(fields: [childId], references: [id], onDelete: Cascade)
+  parent             Parent @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  agency             Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  serviceCoordinator User   @relation(fields: [serviceCoordinatorId], references: [id], onDelete: Cascade)
+
+  @@index([childId])
+  @@index([serviceCoordinatorId])
+  @@index([agencyId])
+  @@map("ei_ongoing_screenings")
+}
+
+model ServiceCoordinationNote {
+  id                    String    @id @default(uuid()) @db.Uuid
+  childId               String    @map("child_id") @db.Uuid
+  parentId              String    @map("parent_id") @db.Uuid
+  agencyId              String    @map("agency_id") @db.Uuid
+  serviceCoordinatorId  String    @map("service_coordinator_id") @db.Uuid
+  noteType              String    @map("note_type")
+  noteText              String    @map("note_text")
+  actionRequired        Boolean   @default(false) @map("action_required")
+  actionDueDate         DateTime? @map("action_due_date") @db.Date
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  child              Child  @relation(fields: [childId], references: [id], onDelete: Cascade)
+  parent             Parent @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  agency             Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  serviceCoordinator User   @relation(fields: [serviceCoordinatorId], references: [id], onDelete: Cascade)
+
+  @@index([childId])
+  @@index([serviceCoordinatorId])
+  @@index([agencyId])
+  @@map("service_coordination_notes")
 }
 
 // ---------------------------------------------------------------------------
@@ -731,6 +955,14 @@ model Appointment {
   zipCode         String?           @map("zip_code")
   notes           String?
   cancelledReason String?           @map("cancelled_reason")
+  confirmationStatus     AppointmentConfirmationStatus @default(PENDING) @map("confirmation_status")
+  parentConfirmedAt      DateTime?                     @map("parent_confirmed_at")
+  therapistConfirmedAt   DateTime?                     @map("therapist_confirmed_at")
+  rescheduleRequestedBy  String?                       @map("reschedule_requested_by")
+  proposedScheduledStart DateTime?                   @map("proposed_scheduled_start")
+  proposedScheduledEnd   DateTime?                   @map("proposed_scheduled_end")
+  rescheduleReason       String?                       @map("reschedule_reason")
+  cancelRequestedBy      String?                       @map("cancel_requested_by")
   createdAt       DateTime          @default(now()) @map("created_at")
   updatedAt       DateTime          @updatedAt @map("updated_at")
 
@@ -741,6 +973,7 @@ model Appointment {
   agency           Agency?           @relation(fields: [agencyId], references: [id], onDelete: SetNull)
   session          Session?
   telehealthSession TelehealthSession?
+  bookingPayment   Payment?          @relation("AppointmentBookingPayment")
 
   @@index([tenantId])
   @@index([childId])
@@ -1074,6 +1307,7 @@ model Payment {
   tenantId              String        @map("tenant_id") @db.Uuid
   parentId              String        @map("parent_id") @db.Uuid
   sessionId             String?       @unique @map("session_id") @db.Uuid
+  appointmentId         String?       @unique @map("appointment_id") @db.Uuid
   amount                Decimal       @db.Decimal(10, 2)
   currency              String        @default("USD")
   status                PaymentStatus @default(PENDING)
@@ -1088,6 +1322,7 @@ model Payment {
   tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   parent   Parent    @relation(fields: [parentId], references: [id], onDelete: Cascade)
   session  Session?  @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  appointment Appointment? @relation("AppointmentBookingPayment", fields: [appointmentId], references: [id], onDelete: SetNull)
   disputes Dispute[]
 
   @@index([tenantId])

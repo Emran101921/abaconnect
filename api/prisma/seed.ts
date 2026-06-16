@@ -11,6 +11,10 @@ import {
   buildDefaultNoticeOfPrivacyPractices,
   buildDefaultPrivacyPolicy,
 } from '../src/compliance/privacy-notice.content';
+import {
+  jitterMapPin,
+  zipToApproxCentroid,
+} from '../src/marketplace/marketplace-zip.util';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
@@ -124,6 +128,129 @@ const LEGACY_DEMO_SEED_IDS = {
   dispute: '00000000-0000-4000-8000-000000000091',
   complaint: '00000000-0000-4000-8000-000000000070',
 };
+
+const DEMO_MARKETPLACE_SEED_IDS = {
+  child: '00000000-0000-4000-8000-000000000003',
+  activeRequest: '00000000-0000-4000-8000-000000000100',
+  pausedRequest: '00000000-0000-4000-8000-000000000101',
+  pendingInterest: '00000000-0000-4000-8000-000000000102',
+};
+
+async function seedMarketplaceDemoData(
+  tenantId: string,
+  parentUserId: string,
+  therapistProviderProfileId: string,
+) {
+  const parent = await prisma.parent.findUniqueOrThrow({
+    where: { userId: parentUserId },
+  });
+
+  const child = await prisma.child.upsert({
+    where: { id: DEMO_MARKETPLACE_SEED_IDS.child },
+    update: {
+      zipCode: '11230',
+      city: 'Brooklyn',
+      state: 'NY',
+      ageRange: 'YEARS_3_5',
+    },
+    create: {
+      id: DEMO_MARKETPLACE_SEED_IDS.child,
+      tenantId,
+      parentId: parent.id,
+      firstName: 'Jordan',
+      lastName: 'Demo',
+      dateOfBirth: new Date('2021-06-01'),
+      zipCode: '11230',
+      city: 'Brooklyn',
+      state: 'NY',
+      ageRange: 'YEARS_3_5',
+      primaryLanguage: 'English',
+    },
+  });
+
+  const requestIds = [
+    DEMO_MARKETPLACE_SEED_IDS.activeRequest,
+    DEMO_MARKETPLACE_SEED_IDS.pausedRequest,
+  ];
+  await prisma.marketplaceInterest.deleteMany({
+    where: { marketplaceRequestId: { in: requestIds } },
+  });
+  await prisma.marketplaceConsentRecord.deleteMany({
+    where: { marketplaceRequestId: { in: requestIds } },
+  });
+  await prisma.marketplaceRequest.deleteMany({
+    where: { id: { in: requestIds } },
+  });
+
+  const sharedRequestFields = {
+    tenantId,
+    childId: child.id,
+    parentUserId,
+    serviceCategories: ['SPEECH', 'ABA'],
+    concernTags: ['speech_delay'],
+    ageRange: 'YEARS_3_5' as const,
+    zipCode: '11230',
+    city: 'Brooklyn',
+    state: 'NY',
+    zipCentroidLat: 40.6182,
+    zipCentroidLng: -73.9607,
+    mapPinJitterLat: 40.619,
+    mapPinJitterLng: -73.961,
+    locationType: 'HOME' as const,
+    authorizationStatus: 'PARENT_SCREENING_ONLY' as const,
+    urgency: 'ROUTINE' as const,
+    languagePreference: 'English',
+    publicDescription: 'Seeking speech and ABA support in the Brooklyn area.',
+  };
+
+  await prisma.marketplaceRequest.create({
+    data: {
+      id: DEMO_MARKETPLACE_SEED_IDS.activeRequest,
+      anonymousPublicId: 'SR-SEED01',
+      status: 'ACTIVE',
+      ...sharedRequestFields,
+    },
+  });
+
+  await prisma.marketplaceInterest.create({
+    data: {
+      id: DEMO_MARKETPLACE_SEED_IDS.pendingInterest,
+      tenantId,
+      marketplaceRequestId: DEMO_MARKETPLACE_SEED_IDS.activeRequest,
+      providerProfileId: therapistProviderProfileId,
+      status: 'PENDING_PARENT_REVIEW',
+      message: 'Available weekday afternoons for evaluation.',
+    },
+  });
+
+  await prisma.marketplaceRequest.create({
+    data: {
+      id: DEMO_MARKETPLACE_SEED_IDS.pausedRequest,
+      anonymousPublicId: 'SR-SEED02',
+      status: 'PAUSED',
+      ...sharedRequestFields,
+    },
+  });
+}
+
+async function repairMarketplaceZipCentroids(): Promise<void> {
+  const requests = await prisma.marketplaceRequest.findMany({
+    select: { id: true, zipCode: true, childId: true },
+  });
+  for (const request of requests) {
+    const centroid = zipToApproxCentroid(request.zipCode);
+    const jitter = jitterMapPin(centroid.lat, centroid.lng, request.childId);
+    await prisma.marketplaceRequest.update({
+      where: { id: request.id },
+      data: {
+        zipCentroidLat: centroid.lat,
+        zipCentroidLng: centroid.lng,
+        mapPinJitterLat: jitter.lat,
+        mapPinJitterLng: jitter.lng,
+      },
+    });
+  }
+}
 
 async function cleanupTherapistCaseload(
   therapistId: string,
@@ -630,7 +757,7 @@ async function main() {
 
   const activeNotice = await seedActivePrivacyNotice(tenant.id);
 
-  await seedEmptyParentAccount(
+  const parent1User = await seedEmptyParentAccount(
     tenant.id,
     'parent1@demo.local',
     parent1Hash,
@@ -638,6 +765,18 @@ async function main() {
     'One',
     activeNotice.id,
   );
+
+  const therapistMarketplaceProfile =
+    await prisma.providerMarketplaceProfile.findUniqueOrThrow({
+      where: { userId: therapistUser.id },
+      select: { id: true },
+    });
+  await seedMarketplaceDemoData(
+    tenant.id,
+    parent1User.id,
+    therapistMarketplaceProfile.id,
+  );
+  await repairMarketplaceZipCentroids();
   await seedEmptyParentAccount(
     tenant.id,
     'parent2@demo.local',

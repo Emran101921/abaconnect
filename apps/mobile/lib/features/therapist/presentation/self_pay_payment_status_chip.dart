@@ -37,7 +37,7 @@ class SelfPayPaymentStatusChip extends StatelessWidget {
   }
 
   IconData get _statusIcon {
-    if (appointment.sessionPaymentStatus == 'SUCCEEDED') {
+    if (appointment.isSessionPaymentReceived) {
       return Icons.check_circle_outline_rounded;
     }
     if (appointment.hasArrived) {
@@ -47,9 +47,11 @@ class SelfPayPaymentStatusChip extends StatelessWidget {
   }
 
   (String, Color, Color) _statusStyle(ThemeData theme) {
-    if (appointment.sessionPaymentStatus == 'SUCCEEDED') {
+    if (appointment.isSessionPaymentReceived) {
       return (
-        'Self-pay · Paid',
+        appointment.hasArrived
+            ? 'Self-pay · Paid'
+            : 'Self-pay · Paid at booking',
         theme.colorScheme.primaryContainer,
         theme.colorScheme.onPrimaryContainer,
       );

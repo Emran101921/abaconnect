@@ -1,5 +1,9 @@
 import { Field, Float, ID, Int, ObjectType } from '@nestjs/graphql';
-import { LocationType, TherapyType } from '../../../generated/prisma/client';
+import {
+  AppointmentConfirmationStatus,
+  LocationType,
+  TherapyType,
+} from '../../../generated/prisma/client';
 import { ChildType, TherapistUserType } from './parent-booking.types';
 import { DashboardActionItemType } from './dashboard.types';
 
@@ -166,6 +170,27 @@ export class TherapistAppointmentType {
 
   @Field(() => LocationType, { nullable: true })
   locationType?: LocationType;
+
+  @Field(() => AppointmentConfirmationStatus)
+  confirmationStatus: AppointmentConfirmationStatus;
+
+  @Field({ nullable: true })
+  parentConfirmedAt?: Date;
+
+  @Field({ nullable: true })
+  therapistConfirmedAt?: Date;
+
+  @Field({ nullable: true })
+  rescheduleRequestedBy?: string;
+
+  @Field({ nullable: true })
+  proposedScheduledStart?: Date;
+
+  @Field({ nullable: true })
+  proposedScheduledEnd?: Date;
+
+  @Field({ nullable: true })
+  rescheduleReason?: string;
 
   @Field(() => ChildType)
   child: ChildType;

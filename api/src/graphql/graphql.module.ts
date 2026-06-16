@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AdminModule } from '../admin/admin.module';
 import { AgenciesModule } from '../agencies/agencies.module';
+import { ServiceCoordinatorsModule } from '../service-coordinators/service-coordinators.module';
 import { AiModule } from '../ai/ai.module';
 import { AnalyticsModule } from '../analytics/analytics.module';
 import { AppointmentsModule } from '../appointments/appointments.module';
@@ -34,6 +35,7 @@ import { PlatformResolver } from './platform.resolver';
 import { TherapistResolver } from './therapist.resolver';
 import { MarketplaceModule } from '../marketplace/marketplace.module';
 import { MarketplaceResolver } from './marketplace.resolver';
+import { ServiceCoordinatorResolver } from './service-coordinator.resolver';
 
 @Module({
   imports: [
@@ -45,6 +47,7 @@ import { MarketplaceResolver } from './marketplace.resolver';
     SessionsModule,
     AdminModule,
     AgenciesModule,
+    ServiceCoordinatorsModule,
     ReviewsModule,
     ScreeningsModule,
     MessagingModule,
@@ -74,6 +77,7 @@ import { MarketplaceResolver } from './marketplace.resolver';
     BillingResolver,
     PlatformResolver,
     MarketplaceResolver,
+    ServiceCoordinatorResolver,
   ],
 })
 export class GraphqlFeatureModule {}
