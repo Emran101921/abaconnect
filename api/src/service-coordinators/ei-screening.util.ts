@@ -1,9 +1,4 @@
-import {
-  AgencyRosterStatus,
-  EiScreeningPriority,
-  EiScreeningStatus,
-  Prisma,
-} from '../../generated/prisma/client';
+import { EiScreeningPriority } from '../../generated/prisma/client';
 
 /** Derive screening priority from questionnaire answers. */
 export function deriveEiScreeningPriority(

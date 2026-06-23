@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
@@ -88,19 +90,25 @@ class IncomingCallListener extends ConsumerStatefulWidget {
 
 class _IncomingCallListenerState extends ConsumerState<IncomingCallListener> {
   String? _presentedCallId;
+  Timer? _pollTimer;
 
-  @override
-  void initState() {
-    super.initState();
-    _schedulePoll();
-  }
-
-  void _schedulePoll() {
-    Future.delayed(const Duration(seconds: 12), () {
+  void _startPolling() {
+    if (_pollTimer != null) return;
+    _pollTimer = Timer.periodic(const Duration(seconds: 12), (_) {
       if (!mounted) return;
       _pollIncoming();
-      _schedulePoll();
     });
+  }
+
+  void _stopPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = null;
+  }
+
+  @override
+  void dispose() {
+    _stopPolling();
+    super.dispose();
   }
 
   Future<void> _pollIncoming() async {
@@ -121,5 +129,13 @@ class _IncomingCallListenerState extends ConsumerState<IncomingCallListener> {
   }
 
   @override
-  Widget build(BuildContext context) => widget.child;
+  Widget build(BuildContext context) {
+    final auth = ref.watch(authStateProvider).valueOrNull;
+    if (auth != null) {
+      _startPolling();
+    } else {
+      _stopPolling();
+    }
+    return widget.child;
+  }
 }

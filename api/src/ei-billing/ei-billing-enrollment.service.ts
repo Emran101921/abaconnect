@@ -1,8 +1,4 @@
-import {
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { AuditAction, Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -52,7 +48,11 @@ export class EiBillingEnrollmentService {
       phone?: string;
     },
   ) {
-    assertEiBillingRole(actor, ['AGENCY_ADMIN', 'PLATFORM_ADMIN', 'BILLING_STAFF']);
+    assertEiBillingRole(actor, [
+      'AGENCY_ADMIN',
+      'PLATFORM_ADMIN',
+      'BILLING_STAFF',
+    ]);
     const agencyId = await resolveAgencyIdForActor(
       this.prisma,
       actor,
@@ -159,7 +159,11 @@ export class EiBillingEnrollmentService {
       isActive?: boolean;
     },
   ) {
-    assertEiBillingRole(actor, ['AGENCY_ADMIN', 'PLATFORM_ADMIN', 'BILLING_STAFF']);
+    assertEiBillingRole(actor, [
+      'AGENCY_ADMIN',
+      'PLATFORM_ADMIN',
+      'BILLING_STAFF',
+    ]);
     const agencyId = await resolveAgencyIdForActor(
       this.prisma,
       actor,

@@ -7,7 +7,6 @@ import {
 import {
   AgencyTherapistStatus,
   JobApplicationStatus,
-  JobOpportunityStatus,
   Prisma,
 } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -179,11 +178,16 @@ export class JobOpportunitiesService {
       );
     }
 
-    let zipUpdate: { zipCentroidLat: number; zipCentroidLng: number } | undefined;
+    let zipUpdate:
+      | { zipCentroidLat: number; zipCentroidLng: number }
+      | undefined;
     if (input.zipCode) {
       const zip = input.zipCode.replace(/\D/g, '').slice(0, 5);
       const centroid = zipToApproxCentroid(zip);
-      zipUpdate = { zipCentroidLat: centroid.lat, zipCentroidLng: centroid.lng };
+      zipUpdate = {
+        zipCentroidLat: centroid.lat,
+        zipCentroidLng: centroid.lng,
+      };
     }
 
     const updated = await this.prisma.jobOpportunity.update({
@@ -392,16 +396,14 @@ export class JobOpportunitiesService {
       update: {
         status: 'NEW_APPLICANT',
         message,
-        credentialSnapshot: (wallet?.documents ??
-          []) as Prisma.InputJsonValue,
+        credentialSnapshot: (wallet?.documents ?? []) as Prisma.InputJsonValue,
       },
       create: {
         jobOpportunityId,
         therapistId: therapist.id,
         applicantUserId: userId,
         message,
-        credentialSnapshot: (wallet?.documents ??
-          []) as Prisma.InputJsonValue,
+        credentialSnapshot: (wallet?.documents ?? []) as Prisma.InputJsonValue,
       },
       include: {
         therapist: { include: { user: true } },
