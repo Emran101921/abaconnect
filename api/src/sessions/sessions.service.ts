@@ -17,6 +17,7 @@ import {
   isEipFormFullySigned,
   isReadyForParentSignature,
 } from './eip-form.util';
+import { EiBillingRecordService } from '../ei-billing/ei-billing-record.service';
 import { ServiceLogService } from './service-log.service';
 
 export interface SaveSoapNoteInput {
@@ -36,6 +37,7 @@ export class SessionsService {
     private readonly notifications: NotificationsService,
     private readonly insurance: InsuranceService,
     private readonly serviceLogs: ServiceLogService,
+    private readonly eiBilling: EiBillingRecordService,
   ) {}
 
   async findHistoryForParentUserId(userId: string) {
@@ -464,17 +466,28 @@ export class SessionsService {
       }
     }
 
+    let sessionJustCompleted = false;
     if (session.status === 'PENDING_DOCUMENTATION') {
       await this.prisma.session.update({
         where: { id: session.id },
         data: { status: 'COMPLETED' },
       });
+      sessionJustCompleted = true;
       const claim = await this.prisma.insuranceClaim.findUnique({
         where: { sessionId: session.id },
       });
       if (claim) {
         await this.insurance.prepareClaimEdi(claim.id);
       }
+    }
+
+    if (sessionJustCompleted || fullySigned) {
+      void this.eiBilling
+        .autoCreateFromCompletedSession(session.id)
+        .catch((err) => {
+          // autoCreateFromCompletedSession logs internally; swallow to protect SOAP save
+          void err;
+        });
     }
 
     return note;

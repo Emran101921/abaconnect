@@ -6,7 +6,6 @@ import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_snackbar.dart';
-import '../../service_coordinator/data/service_coordinator_repository.dart';
 import '../../service_coordinator/presentation/sc_providers.dart';
 
 class AgencyCasesScreen extends ConsumerWidget {
@@ -23,7 +22,17 @@ class AgencyCasesScreen extends ConsumerWidget {
         error: (e, _) => Center(child: Text('$e')),
         data: (list) {
           if (list.isEmpty) {
-            return const Center(child: Text('No children in tenant yet.'));
+            return const Padding(
+              padding: EdgeInsets.all(24),
+              child: Center(
+                child: Text(
+                  'No EI-eligible children yet. Children appear here after '
+                  'completing parent Early Intervention screening (moderate/high '
+                  'risk or evaluation requested) and are under 36 months.',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            );
           }
           return ListView.separated(
             padding: const EdgeInsets.all(16),
@@ -31,15 +40,37 @@ class AgencyCasesScreen extends ConsumerWidget {
             separatorBuilder: (_, _) => const SizedBox(height: 8),
             itemBuilder: (context, index) {
               final c = list[index];
+              final assigned = c.assignedCoordinatorName != null;
               return Card(
                 child: ListTile(
                   title: Text(c.childName),
                   subtitle: Text(
-                    c.assignedCoordinatorName != null
+                    assigned
                         ? 'SC: ${c.assignedCoordinatorName}'
-                        : 'No coordinator assigned',
+                        : c.eligibilityReason ?? 'EI eligible — not assigned',
                   ),
-                  trailing: const Icon(Icons.chevron_right),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (c.evaluationRequested)
+                        const Padding(
+                          padding: EdgeInsets.only(right: 8),
+                          child: Chip(
+                            label: Text('EI eval'),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        ),
+                      if (c.riskLevel != null)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: Chip(
+                            label: Text(c.riskLevel!),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        ),
+                      const Icon(Icons.chevron_right),
+                    ],
+                  ),
                   onTap: () => context.push(
                     '${AppRoutes.agencyHome}/cases/${c.childId}/assign-service-coordinator',
                     extra: c,
@@ -60,11 +91,15 @@ class AgencyAssignServiceCoordinatorScreen extends ConsumerWidget {
     required this.childId,
     this.childName,
     this.assignmentId,
+    this.eiEligible = true,
+    this.eligibilityReason,
   });
 
   final String childId;
   final String? childName;
   final String? assignmentId;
+  final bool eiEligible;
+  final String? eligibilityReason;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -92,6 +127,19 @@ class AgencyAssignServiceCoordinatorScreen extends ConsumerWidget {
                   childName!,
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
+              if (eligibilityReason != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  eligibilityReason!,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+              if (!eiEligible && assignmentId == null) ...[
+                const SizedBox(height: 16),
+                const Text(
+                  'This child is not eligible for service coordination.',
+                ),
+              ],
               if (assignmentId != null) ...[
                 const SizedBox(height: 16),
                 OutlinedButton(
@@ -121,27 +169,32 @@ class AgencyAssignServiceCoordinatorScreen extends ConsumerWidget {
                     title: Text(m.displayName),
                     subtitle: Text('Caseload: ${m.caseload}'),
                     trailing: const Icon(Icons.person_add_alt_1_outlined),
-                    onTap: () async {
-                      try {
-                        await ref
-                            .read(serviceCoordinatorRepositoryProvider)
-                            .assignChildToCoordinator(
-                              childId: childId,
-                              coordinatorUserId: m.userId,
-                            );
-                        ref.invalidate(agencyCasesProvider);
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Assigned to ${m.displayName}'),
-                            ),
-                          );
-                          context.pop();
-                        }
-                      } catch (e) {
-                        if (context.mounted) AppSnackBar.showError(context, e);
-                      }
-                    },
+                    enabled: eiEligible || assignmentId != null,
+                    onTap: eiEligible || assignmentId != null
+                        ? () async {
+                            try {
+                              await ref
+                                  .read(serviceCoordinatorRepositoryProvider)
+                                  .assignChildToCoordinator(
+                                    childId: childId,
+                                    coordinatorUserId: m.userId,
+                                  );
+                              ref.invalidate(agencyCasesProvider);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Assigned to ${m.displayName}'),
+                                  ),
+                                );
+                                context.pop();
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                AppSnackBar.showError(context, e);
+                              }
+                            }
+                          }
+                        : null,
                   ),
                 ),
               ),

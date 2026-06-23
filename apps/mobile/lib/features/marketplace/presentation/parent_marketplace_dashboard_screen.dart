@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
+import '../../../shared/widgets/app_select.dart';
 import '../../../shared/widgets/app_snackbar.dart';
 import '../../../shared/widgets/glossy_button.dart';
 import '../../../shared/widgets/role_tab_scaffold.dart';
@@ -139,42 +140,31 @@ class _ParentMarketplaceDashboardScreenState
         return;
       }
 
-      final child = children.length == 1
-          ? children.first
-          : await showModalBottomSheet<ChildModel>(
-              context: context,
-              showDragHandle: true,
-              isScrollControlled: true,
-              builder: (ctx) => SafeArea(
-                child: ListView(
-                  shrinkWrap: true,
-                  padding: const EdgeInsets.only(bottom: 16),
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Text(
-                        'Which child is this request for?',
-                        style: Theme.of(ctx).textTheme.titleMedium,
-                      ),
-                    ),
-                    ...children.map(
-                      (item) => ListTile(
-                        title: Text(item.displayName),
-                        subtitle: Text(
-                          item.zipCode != null
-                              ? 'ZIP ${item.zipCode}'
-                              : 'ZIP required for marketplace posting',
-                        ),
-                        enabled: item.zipCode?.trim().isNotEmpty ?? false,
-                        onTap: () => Navigator.pop(ctx, item),
-                      ),
-                    ),
-                  ],
+      ChildModel? child;
+      if (children.length == 1) {
+        child = children.first;
+      } else {
+        final pickedId = await AppSelect.show<String>(
+          context: context,
+          title: 'Which child is this request for?',
+          options: children
+              .map(
+                (item) => AppSelectOption(
+                  value: item.id,
+                  label: item.displayName,
+                  subtitle: item.zipCode != null
+                      ? 'ZIP ${item.zipCode}'
+                      : 'ZIP required for marketplace posting',
+                  enabled: item.zipCode?.trim().isNotEmpty ?? false,
                 ),
-              ),
-            );
+              )
+              .toList(),
+        );
+        if (!context.mounted || pickedId == null) return;
+        child = children.firstWhere((c) => c.id == pickedId);
+      }
 
-      if (child == null || !context.mounted) return;
+      if (!context.mounted) return;
       if (child.zipCode?.trim().isEmpty ?? true) {
         AppSnackBar.showError(
           context,

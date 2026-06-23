@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import { randomBytes } from 'crypto';
 import {
   existsSync,
   mkdirSync,
@@ -16,6 +17,7 @@ import {
   AgencyTherapistStatus,
 } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { buildCaseloadCharts } from '../common/caseload-charts.util';
 
 export interface UpdateAgencyProfileData {
   name?: string;
@@ -40,6 +42,39 @@ export interface CreateAgencyStaffData {
   licenseState?: string;
   npi?: string;
 }
+
+export type AddAgencyCaseloadChildData = {
+  firstName: string;
+  lastName: string;
+  dateOfBirth: Date;
+  gender?: string;
+  primaryLanguage?: string;
+  guardianName?: string;
+  guardianPhone?: string;
+  guardianEmail?: string;
+  addressLine1?: string;
+  zipCode?: string;
+  pediatricianName?: string;
+  insuranceType?: string;
+  hadEarlyIntervention?: boolean;
+};
+
+export type UpdateAgencyCaseloadChildData = {
+  childId: string;
+  firstName?: string;
+  lastName?: string;
+  dateOfBirth?: Date;
+  gender?: string;
+  primaryLanguage?: string;
+  guardianName?: string;
+  guardianPhone?: string;
+  guardianEmail?: string;
+  addressLine1?: string;
+  zipCode?: string;
+  pediatricianName?: string;
+  insuranceType?: string;
+  hadEarlyIntervention?: boolean;
+};
 
 @Injectable()
 export class AgenciesService {
@@ -349,6 +384,10 @@ export class AgenciesService {
       cancellationsToday,
       pendingTherapistRows,
       draftClaims,
+      serviceCoordinatorCount,
+      activeScCaseload,
+      urgentScCases,
+      scFollowUpsDue,
     ] = await Promise.all([
       this.prisma.agencyTherapist.count({
         where: {
@@ -411,6 +450,30 @@ export class AgenciesService {
         take: 3,
         include: { child: true },
       }),
+      this.prisma.agencyRoster.count({
+        where: {
+          agencyId,
+          role: 'SERVICE_COORDINATOR',
+          status: 'ACTIVE',
+          removedAt: null,
+        },
+      }),
+      this.prisma.childServiceCoordinatorAssignment.count({
+        where: {
+          agencyId,
+          status: 'ACTIVE',
+          removedAt: null,
+        },
+      }),
+      this.prisma.childServiceCoordinatorAssignment.count({
+        where: {
+          agencyId,
+          status: 'ACTIVE',
+          removedAt: null,
+          isUrgent: true,
+        },
+      }),
+      this.countAgencyScFollowUpsDue(agencyId),
     ]);
 
     const actionItems = [];
@@ -430,6 +493,24 @@ export class AgenciesService {
         subtitle: `${missingEvvCount} in last 14 days`,
         actionType: 'EVV',
         priority: 1,
+      });
+    }
+    if (urgentScCases > 0) {
+      actionItems.push({
+        id: 'sc-urgent-cases',
+        title: 'Urgent SC cases',
+        subtitle: `${urgentScCases} need attention`,
+        actionType: 'SC_CASE',
+        priority: 1,
+      });
+    }
+    if (scFollowUpsDue > 0) {
+      actionItems.push({
+        id: 'sc-follow-ups',
+        title: 'SC follow-ups due',
+        subtitle: `${scFollowUpsDue} overdue or due today`,
+        actionType: 'SC_FOLLOW_UP',
+        priority: 2,
       });
     }
     for (const claim of draftClaims) {
@@ -462,8 +543,33 @@ export class AgenciesService {
       missingEvvCount,
       draftClaimsCount,
       cancellationsToday,
+      serviceCoordinatorCount,
+      activeScCaseload,
+      urgentScCases,
+      scFollowUpsDue,
       actionItems,
     };
+  }
+
+  private async countAgencyScFollowUpsDue(agencyId: string) {
+    const now = new Date();
+    const [initialDue, ongoingDue] = await Promise.all([
+      this.prisma.eiInitialScreening.count({
+        where: {
+          agencyId,
+          followUpRequired: true,
+          followUpDueDate: { not: null, lte: now },
+        },
+      }),
+      this.prisma.eiOngoingScreening.count({
+        where: {
+          agencyId,
+          followUpRequired: true,
+          followUpDueDate: { not: null, lte: now },
+        },
+      }),
+    ]);
+    return initialDue + ongoingDue;
   }
 
   async getDashboardForTenant(tenantId: string) {
@@ -711,6 +817,242 @@ export class AgenciesService {
     await this.findOne(id);
     await this.prisma.agency.delete({ where: { id } });
     return { id, deleted: true };
+  }
+
+  async ensureAgencyCaseloadParent(agencyId: string, tenantId: string) {
+    const agency = await this.prisma.agency.findFirst({
+      where: { id: agencyId, tenantId },
+    });
+    if (!agency) {
+      throw new NotFoundException('Agency not found');
+    }
+    if (agency.caseloadParentId) {
+      const existing = await this.prisma.parent.findUnique({
+        where: { id: agency.caseloadParentId },
+      });
+      if (existing) {
+        return existing;
+      }
+    }
+
+    const email = `agency-caseload+${agencyId.replace(/-/g, '').slice(0, 12)}@internal.abaconnect.local`;
+    const passwordHash = await bcrypt.hash(randomBytes(32).toString('hex'), 10);
+
+    const parent = await this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          tenantId,
+          email,
+          passwordHash,
+          role: 'PARENT',
+          firstName: 'Agency',
+          lastName: 'Caseload',
+          isActive: false,
+        },
+      });
+      const createdParent = await tx.parent.create({
+        data: { userId: user.id, tenantId },
+      });
+      await tx.agency.update({
+        where: { id: agencyId },
+        data: { caseloadParentId: createdParent.id },
+      });
+      return createdParent;
+    });
+
+    return parent;
+  }
+
+  async addCaseloadChild(
+    agencyId: string,
+    tenantId: string,
+    actorUserId: string,
+    input: AddAgencyCaseloadChildData,
+  ) {
+    const parent = await this.ensureAgencyCaseloadParent(agencyId, tenantId);
+
+    const child = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.child.create({
+        data: {
+          parentId: parent.id,
+          tenantId,
+          firstName: input.firstName.trim(),
+          lastName: input.lastName.trim(),
+          dateOfBirth: input.dateOfBirth,
+          gender: input.gender,
+          primaryLanguage: input.primaryLanguage,
+          guardianName: input.guardianName?.trim(),
+          guardianPhone: input.guardianPhone?.trim(),
+          guardianEmail: input.guardianEmail?.trim(),
+          addressLine1: input.addressLine1?.trim(),
+          zipCode: input.zipCode?.trim(),
+          pediatricianName: input.pediatricianName?.trim(),
+          insuranceType: input.insuranceType,
+          hadEarlyIntervention: input.hadEarlyIntervention,
+        },
+      });
+      await tx.agencyCaseloadChild.create({
+        data: {
+          agencyId,
+          childId: created.id,
+          tenantId,
+          enrolledByUserId: actorUserId,
+        },
+      });
+      return created;
+    });
+
+    return child;
+  }
+
+  async listManagedCaseloadChildren(agencyId: string, tenantId: string) {
+    const rows = await this.prisma.agencyCaseloadChild.findMany({
+      where: { agencyId, tenantId },
+      include: { child: true },
+      orderBy: { enrolledAt: 'desc' },
+    });
+    return rows.map((row) => row.child);
+  }
+
+  async getManagedCaseloadChild(
+    agencyId: string,
+    tenantId: string,
+    childId: string,
+  ) {
+    const enrollment = await this.prisma.agencyCaseloadChild.findFirst({
+      where: { agencyId, tenantId, childId },
+      include: { child: true },
+    });
+    if (!enrollment) {
+      throw new NotFoundException(
+        'Child not found on agency-managed caseload',
+      );
+    }
+    return enrollment.child;
+  }
+
+  async updateCaseloadChild(
+    agencyId: string,
+    tenantId: string,
+    input: UpdateAgencyCaseloadChildData,
+  ) {
+    await this.getManagedCaseloadChild(agencyId, tenantId, input.childId);
+
+    const data: Record<string, unknown> = {};
+    if (input.firstName !== undefined) {
+      data.firstName = input.firstName.trim();
+    }
+    if (input.lastName !== undefined) {
+      data.lastName = input.lastName.trim();
+    }
+    if (input.dateOfBirth !== undefined) {
+      data.dateOfBirth = input.dateOfBirth;
+    }
+    if (input.gender !== undefined) data.gender = input.gender;
+    if (input.primaryLanguage !== undefined) {
+      data.primaryLanguage = input.primaryLanguage;
+    }
+    if (input.guardianName !== undefined) {
+      data.guardianName = input.guardianName.trim();
+    }
+    if (input.guardianPhone !== undefined) {
+      data.guardianPhone = input.guardianPhone.trim();
+    }
+    if (input.guardianEmail !== undefined) {
+      data.guardianEmail = input.guardianEmail.trim();
+    }
+    if (input.addressLine1 !== undefined) {
+      data.addressLine1 = input.addressLine1.trim();
+    }
+    if (input.zipCode !== undefined) data.zipCode = input.zipCode.trim();
+    if (input.pediatricianName !== undefined) {
+      data.pediatricianName = input.pediatricianName.trim();
+    }
+    if (input.insuranceType !== undefined) {
+      data.insuranceType = input.insuranceType;
+    }
+    if (input.hadEarlyIntervention !== undefined) {
+      data.hadEarlyIntervention = input.hadEarlyIntervention;
+    }
+
+    return this.prisma.child.update({
+      where: { id: input.childId },
+      data: data as Parameters<typeof this.prisma.child.update>[0]['data'],
+    });
+  }
+
+  async findCaseloadChartsForAgency(agencyId: string, tenantId: string) {
+    const therapistIds = await this.agencyTherapistIds(agencyId);
+    const therapistFilter =
+      therapistIds.length > 0 ? { in: therapistIds } : { in: [''] };
+
+    const [appointments, sessions, scAssignments, enrollments] =
+      await Promise.all([
+      this.prisma.appointment.findMany({
+        where: {
+          tenantId,
+          agencyId,
+          therapistId: therapistFilter,
+          status: { notIn: ['CANCELLED', 'NO_SHOW'] },
+        },
+        include: {
+          child: { include: { parent: { include: { user: true } } } },
+        },
+        orderBy: { scheduledStart: 'desc' },
+      }),
+      this.prisma.session.findMany({
+        where: { tenantId, therapistId: therapistFilter },
+        orderBy: { checkOutAt: 'desc' },
+      }),
+      this.prisma.childServiceCoordinatorAssignment.findMany({
+        where: {
+          agencyId,
+          status: 'ACTIVE',
+          removedAt: null,
+        },
+        include: {
+          child: { include: { parent: { include: { user: true } } } },
+        },
+      }),
+      this.prisma.agencyCaseloadChild.findMany({
+        where: { agencyId, tenantId },
+        include: {
+          child: { include: { parent: { include: { user: true } } } },
+        },
+      }),
+    ]);
+
+    const seedMap = new Map<
+      string,
+      { child: (typeof scAssignments)[0]['child']; parentName: string }
+    >();
+
+    const addSeed = (
+      child: (typeof scAssignments)[0]['child'],
+      parentName: string,
+    ) => {
+      if (!seedMap.has(child.id)) {
+        seedMap.set(child.id, { child, parentName });
+      }
+    };
+
+    for (const assignment of scAssignments) {
+      addSeed(
+        assignment.child,
+        `${assignment.child.parent.user.firstName} ${assignment.child.parent.user.lastName}`,
+      );
+    }
+    for (const enrollment of enrollments) {
+      const child = enrollment.child;
+      const parentName =
+        child.guardianName?.trim() ||
+        `${child.parent.user.firstName} ${child.parent.user.lastName}`;
+      addSeed(child, parentName);
+    }
+
+    const seeds = [...seedMap.values()];
+
+    return buildCaseloadCharts(appointments, sessions, seeds);
   }
 }
 

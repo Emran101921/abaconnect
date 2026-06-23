@@ -153,6 +153,7 @@ export class ParentBookingResolver {
         matchScore: s.score,
         user: t?.user
           ? {
+              id: t.user.id,
               firstName: t.user.firstName,
               lastName: t.user.lastName,
               email: t.user.email,
@@ -198,6 +199,7 @@ export class ParentBookingResolver {
       ratingAverage: Number(t.ratingAverage ?? 0),
       user: t.user
         ? {
+            id: t.user.id,
             firstName: t.user.firstName,
             lastName: t.user.lastName,
             email: t.user.email,
@@ -623,7 +625,7 @@ export class ParentBookingResolver {
     therapist?: {
       id: string;
       ratingAverage: unknown;
-      user?: { firstName: string; lastName: string; email: string };
+      user?: { id: string; firstName: string; lastName: string; email: string };
     };
     bookingPayment?: {
       id: string;
@@ -671,7 +673,14 @@ export class ParentBookingResolver {
         ? {
             id: row.therapist.id,
             ratingAverage: Number(row.therapist.ratingAverage),
-            user: row.therapist.user,
+            user: row.therapist.user
+              ? {
+                  id: row.therapist.user.id,
+                  firstName: row.therapist.user.firstName,
+                  lastName: row.therapist.user.lastName,
+                  email: row.therapist.user.email,
+                }
+              : undefined,
           }
         : undefined,
     };

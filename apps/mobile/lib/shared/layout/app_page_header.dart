@@ -28,6 +28,9 @@ class AppPageHeader extends StatelessWidget {
     final isWide = width >= AppSpacing.breakpointWide;
     final colorScheme = Theme.of(context).colorScheme;
 
+    final actionCount = actions?.length ?? 0;
+    final stackActions = !isWide || actionCount > 2;
+
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: AppSpacing.lg),
@@ -51,17 +54,20 @@ class AppPageHeader extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (showBreadcrumbs) const AppBreadcrumbs(),
-          if (isWide)
+          if (!stackActions)
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(child: _titleBlock(context, colorScheme)),
                 if (actions != null && actions!.isNotEmpty) ...[
                   const SizedBox(width: AppSpacing.md),
-                  Wrap(
-                    spacing: AppSpacing.sm,
-                    runSpacing: AppSpacing.sm,
-                    children: actions!,
+                  Flexible(
+                    child: Wrap(
+                      alignment: WrapAlignment.end,
+                      spacing: AppSpacing.sm,
+                      runSpacing: AppSpacing.sm,
+                      children: actions!,
+                    ),
                   ),
                 ],
               ],

@@ -7,6 +7,7 @@ import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/app_bottom_nav.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/app_select.dart';
 import '../../../shared/widgets/glossy_button.dart';
 import '../data/parent_booking_repository.dart';
 import 'ei_screening_wizard.dart';
@@ -30,6 +31,7 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
   bool _autoStartHandled = false;
   bool _wizardActive = false;
   bool _hasDraft = false;
+  String? _selectedChildId;
 
   ScreeningTemplateModel? _activeTemplate;
   ChildModel? _activeChild;
@@ -38,13 +40,27 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
 
   ChildModel? get _selectedChild {
     if (_children.isEmpty) return null;
-    if (widget.childId != null) {
+    final id = _selectedChildId ?? widget.childId;
+    if (id != null) {
       for (final child in _children) {
-        if (child.id == widget.childId) return child;
+        if (child.id == id) return child;
       }
       return null;
     }
     return _children.first;
+  }
+
+  List<ScreeningHistoryModel> _historyForChild(ChildModel? child) {
+    if (child == null) return _history;
+    return _history
+        .where((h) => h.childName == child.displayName)
+        .toList();
+  }
+
+  void _onChildSelected(String? childId) {
+    if (childId == null) return;
+    setState(() => _selectedChildId = childId);
+    _checkDraft();
   }
 
   ScreeningTemplateModel? get _eiTemplate {
@@ -75,6 +91,8 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
           _children = results[1] as List<ChildModel>;
           _history = results[2] as List<ScreeningHistoryModel>;
           _loading = false;
+          _selectedChildId ??= widget.childId ??
+              (_children.isNotEmpty ? _children.first.id : null);
         });
         await _checkDraft();
         _maybeAutoStartQuestionnaire();
@@ -109,6 +127,20 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
   void _maybeAutoStartQuestionnaire() {
     if (!widget.autoStart || _autoStartHandled) return;
     _autoStartHandled = true;
+
+    if (_children.length > 1 && widget.childId == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Choose which child to screen, then tap Start or Re-screen.',
+            ),
+          ),
+        );
+      });
+      return;
+    }
 
     final child = _selectedChild;
     if (child == null) {
@@ -232,6 +264,8 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
     final dateFmt = DateFormat.yMMMd();
     final selectedChild = _selectedChild;
     final eiTemplate = _eiTemplate;
+    final childHistory = _historyForChild(selectedChild);
+    final hasPriorScreening = childHistory.isNotEmpty;
 
     if (_wizardActive && _activeTemplate != null && _activeChild != null) {
       return AppScaffold(
@@ -255,9 +289,7 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
 
     return AppScaffold(
       title: 'Early Intervention Screening',
-      bottomNavigationBar: ParentBottomNav(
-        current: ParentNavTab.screening,
-      ),
+      bottomNavigationBar: const RoleBottomNav(current: CoreNavTab.profile),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : widget.childId != null && selectedChild == null
@@ -279,8 +311,31 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
                   Text(
                     selectedChild == null
                         ? 'Complete your child\'s profile first, then continue to sections A–G.'
+                        : _children.length > 1
+                        ? 'Choose a child below, then start or re-screen their questionnaire.'
                         : 'Screening for ${selectedChild.displayName}',
                   ),
+                  if (_children.length > 1) ...[
+                    const SizedBox(height: 16),
+                    AppSelectField<String>(
+                      label: 'Which child?',
+                      value: _selectedChildId,
+                      hint: 'Select a child',
+                      prefixIcon: const Icon(Icons.child_care_outlined),
+                      options: _children
+                          .map(
+                            (c) => AppSelectOption(
+                              value: c.id,
+                              label: c.displayName,
+                              subtitle: c.zipCode != null
+                                  ? 'ZIP ${c.zipCode}'
+                                  : null,
+                            ),
+                          )
+                          .toList(),
+                      onChanged: _onChildSelected,
+                    ),
+                  ],
                   const SizedBox(height: 16),
                   Card(
                     color: Theme.of(context).colorScheme.primaryContainer,
@@ -311,8 +366,14 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
                             GlossyButton(
                               title: _hasDraft
                                   ? 'Resume screening'
+                                  : hasPriorScreening
+                                  ? 'Re-screen ${selectedChild.displayName}'
                                   : 'Start screening (sections A–G)',
-                              icon: Icons.play_arrow,
+                              icon: _hasDraft
+                                  ? Icons.play_arrow
+                                  : hasPriorScreening
+                                  ? Icons.refresh_rounded
+                                  : Icons.play_arrow,
                               variant: GlossyButtonVariant.bluePurple,
                               onPressed: () => _startTemplate(
                                 eiTemplate,
@@ -323,7 +384,7 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
                       ),
                     ),
                   ),
-                  if (_history.isNotEmpty && selectedChild != null) ...[
+                  if (childHistory.isNotEmpty && selectedChild != null) ...[
                     const SizedBox(height: 16),
                     Card(
                       color: Theme.of(context).colorScheme.tertiaryContainer,
@@ -332,12 +393,13 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
                         title: const Text(
                           'Post anonymous marketplace request',
                         ),
-                        subtitle: const Text(
-                          'Share service needs from your screening with verified providers in your ZIP area',
+                        subtitle: Text(
+                          'For ${selectedChild.displayName} — share service needs '
+                          'with verified providers in your ZIP area',
                         ),
                         trailing: const Icon(Icons.chevron_right),
                         onTap: () {
-                          final latest = [..._history]
+                          final latest = [...childHistory]
                             ..sort(
                               (a, b) =>
                                   b.completedAt.compareTo(a.completedAt),
@@ -355,11 +417,16 @@ class _ScreeningScreenState extends ConsumerState<ScreeningScreen> {
                   if (_history.isNotEmpty) ...[
                     const SizedBox(height: 24),
                     Text(
-                      'Completed screenings',
+                      _children.length > 1 && selectedChild != null
+                          ? 'Screenings for ${selectedChild.displayName}'
+                          : 'Completed screenings',
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: 8),
-                    ..._history.map(
+                    ...(selectedChild != null && _children.length > 1
+                            ? childHistory
+                            : _history)
+                        .map(
                       (h) => Card(
                         margin: const EdgeInsets.only(bottom: 8),
                         child: ListTile(

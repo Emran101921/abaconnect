@@ -142,6 +142,87 @@ enum AuditAction {
   MARKETPLACE_INTEREST_SUBMITTED
   MARKETPLACE_INTEREST_REJECTED
   MARKETPLACE_IDENTIFIABLE_SHARED
+  EI_BILLING_PROFILE_UPDATED
+  EI_BILLING_RECORD_CREATED
+  EI_BILLING_RECORD_VALIDATED
+  EI_BILLING_QUEUE_TRANSITION
+  EI_BILLING_RECORD_LOCKED
+  EI_BILLING_RECORD_EXPORTED
+  EI_BILLING_RECORD_SUBMITTED
+  EI_BILLING_DENIAL_RECORDED
+  EI_BILLING_PAYMENT_POSTED
+  EI_BILLING_CLEARINGHOUSE_CONFIG_UPDATED
+  EI_BILLING_CLEARINGHOUSE_TESTED
+  EI_BILLING_ENROLLMENT_UPDATED
+}
+
+enum EiBillingQueueStatus {
+  DRAFT_INCOMPLETE
+  MISSING_INFORMATION
+  READY_AGENCY_REVIEW
+  READY_BILLING_VALIDATION
+  READY_AUTHORIZED_SUBMISSION
+  SUBMITTED
+  REJECTED
+  DENIED
+  CORRECTION_NEEDED
+  RESUBMITTED
+  PAID
+  ARCHIVED
+}
+
+enum EiClearinghouseWorkflow {
+  EI_HUB
+  STATE_FISCAL_AGENT
+  EMEDNY
+  EDI_837P_EXPORT
+  CSV_EXPORT
+  API_CLEARINGHOUSE
+}
+
+enum EiCredentialStatus {
+  PENDING
+  ACTIVE
+  EXPIRED
+  SUSPENDED
+  REVOKED
+}
+
+enum EiMedicaidEnrollmentStatus {
+  NOT_ENROLLED
+  PENDING
+  ENROLLED
+  SUSPENDED
+  TERMINATED
+}
+
+enum EiCorrectionStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  ESCALATED
+  CLOSED
+}
+
+enum EiReconciliationStatus {
+  UNRECONCILED
+  PARTIAL
+  RECONCILED
+  DISCREPANCY
+}
+
+enum EiEftEnrollmentStatus {
+  NOT_STARTED
+  PENDING
+  ACTIVE
+  REJECTED
+}
+
+enum EiConsentStatus {
+  PENDING
+  GRANTED
+  REVOKED
+  EXPIRED
 }
 
 enum MarketplaceRequestStatus {
@@ -308,6 +389,46 @@ enum ChildScAssignmentStatus {
   REMOVED
 }
 
+enum CallType {
+  AUDIO
+  VIDEO
+}
+
+enum CallSessionStatus {
+  INITIATED
+  RINGING
+  ACCEPTED
+  IN_PROGRESS
+  DECLINED
+  MISSED
+  FAILED
+  ENDED
+  CANCELLED
+}
+
+enum CallParticipantJoinStatus {
+  INVITED
+  RINGING
+  JOINED
+  LEFT
+  DECLINED
+  MISSED
+}
+
+enum CallAuditEventType {
+  CALL_INITIATED
+  CALL_RINGING
+  CALL_ACCEPTED
+  CALL_DECLINED
+  CALL_MISSED
+  CALL_FAILED
+  CALL_ENDED
+  CALL_CANCELLED
+  CALL_PERMISSION_DENIED
+  CALL_TOKEN_CREATED
+  CALL_TOKEN_EXPIRED
+}
+
 enum EiScreeningPriority {
   LOW
   MEDIUM
@@ -332,6 +453,69 @@ enum DisputeStatus {
   UNDER_REVIEW
   RESOLVED
   CLOSED
+}
+
+enum JobServiceType {
+  ABA
+  OT
+  PT
+  SPEECH
+  SPECIAL_INSTRUCTION
+  SOCIAL_WORK
+  PSYCHOLOGY
+  NURSING
+  EVALUATION
+  SERVICE_COORDINATION
+  OTHER
+}
+
+enum JobOpportunityStatus {
+  DRAFT
+  PENDING_REVIEW
+  PUBLISHED
+  PAUSED
+  CLOSED
+  BLOCKED
+  REMOVED
+}
+
+enum JobApplicationStatus {
+  NEW_APPLICANT
+  UNDER_REVIEW
+  INTERVIEW_REQUESTED
+  CREDENTIAL_REVIEW
+  OFFER_SENT
+  APPROVED
+  REJECTED
+  HIRED_CONTRACTED
+  WITHDRAWN
+}
+
+enum JobEmploymentType {
+  W2
+  FORM_1099
+  PER_DIEM
+  PART_TIME
+  FULL_TIME
+}
+
+enum JobLocationModality {
+  IN_PERSON
+  TELEHEALTH
+  HYBRID
+}
+
+enum ChildServiceNeedStatus {
+  OPEN
+  JOB_POSTED
+  FILLED
+  CLOSED
+}
+
+enum PostingModerationFlagStatus {
+  OPEN
+  RESOLVED
+  DISMISSED
 }
 
 // ---------------------------------------------------------------------------
@@ -386,6 +570,15 @@ model Tenant {
   providerMarketplaceProfiles ProviderMarketplaceProfile[]
   marketplaceSavedSearches MarketplaceSavedSearch[]
   marketplaceReports   MarketplaceReport[]
+  callSessions         CallSession[]
+  callAuditLogs        CallAuditLog[]
+  callNotifications    CallNotification[]
+  jobOpportunities     JobOpportunity[]
+  jobMarketplaceAuditLogs MarketplaceAuditLog[]
+  agencyCaseloadChildren AgencyCaseloadChild[]
+  eiBillingRecords       EiBillingRecord[]
+  eiClearinghouseConfigs EiClearinghouseConfig[]
+  eiAgencyBillingProfiles EiAgencyBillingProfile[]
 
   @@map("tenants")
 }
@@ -462,6 +655,22 @@ model User {
   eiInitialScreenings     EiInitialScreening[]
   eiOngoingScreenings     EiOngoingScreening[]
   serviceCoordinationNotes ServiceCoordinationNote[]
+  callSessionsInitiated    CallSession[]       @relation("CallInitiator")
+  callParticipants         CallParticipant[]
+  callAuditLogsAsActor     CallAuditLog[]      @relation("CallAuditActor")
+  callAuditLogsAsTarget    CallAuditLog[]      @relation("CallAuditTarget")
+  callNotifications        CallNotification[]
+  childServiceNeedsCreated ChildServiceNeed[]  @relation("ChildServiceNeedCreator")
+  jobApplicationsSubmitted JobOpportunityApplication[] @relation("JobApplicationApplicant")
+  applicationStatusChanges ApplicationStatusHistory[]
+  postingModerationFlags   PostingModerationFlag[]
+  agencyInvitesToApply     AgencyInviteToApply[] @relation("AgencyInviteSender")
+  jobMarketplaceAuditLogs  MarketplaceAuditLog[]
+  agencyCaseloadEnrollments AgencyCaseloadChild[] @relation("AgencyCaseloadEnrolledBy")
+  eiBillingRecordsReviewed  EiBillingRecord[]     @relation("EiBillingReviewedBy")
+  eiDenialsAssigned         EiDenialRejection[]     @relation("EiDenialAssignedStaff")
+  eiPaymentsPosted          EiPaymentPosting[]      @relation("EiPaymentPostedBy")
+  eiValidationIssuesResolved  EiBillingValidationIssue[] @relation("EiValidationResolvedBy")
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -547,6 +756,7 @@ model Parent {
   eiInitialScreenings  EiInitialScreening[]
   eiOngoingScreenings  EiOngoingScreening[]
   serviceCoordinationNotes ServiceCoordinationNote[]
+  agencyCaseloadFor        Agency[] @relation("AgencyCaseloadParent")
 
   @@index([tenantId])
   @@map("parents")
@@ -591,6 +801,11 @@ model Child {
   eiInitialScreenings EiInitialScreening[]
   eiOngoingScreenings EiOngoingScreening[]
   serviceCoordinationNotes ServiceCoordinationNote[]
+  callSessions             CallSession[]
+  serviceNeeds             ChildServiceNeed[]
+  agencyCaseloadEnrollments AgencyCaseloadChild[]
+  eiCaseBillingProfiles     EiCaseBillingProfile[]
+  eiBillingRecords          EiBillingRecord[]
 
   ageRange           MarketplaceAgeRange? @map("age_range")
   city               String?
@@ -704,6 +919,10 @@ model Therapist {
   agencyApprovedBy  User?             @relation("TherapistApprovedBy", fields: [agencyApprovedById], references: [id], onDelete: SetNull)
   tenant            Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   agencyLinks       AgencyTherapist[]
+  jobApplications   JobOpportunityApplication[]
+  credentialWallet  TherapistCredentialWallet?
+  savedJobOpportunities SavedJobOpportunity[]
+  agencyInvitesToApply  AgencyInviteToApply[]
   appointments      Appointment[]
   sessions          Session[]
   treatmentPlans    TreatmentPlan[]
@@ -715,6 +934,8 @@ model Therapist {
   serviceLogs       ServiceLog[]
   insuranceClaims   InsuranceClaim[]
   marketplaceProfile ProviderMarketplaceProfile?
+  eiProviderEnrollments EiProviderEnrollment[]
+  eiBillingRecords      EiBillingRecord[]
 
   @@index([tenantId])
   @@index([onboardingStatus])
@@ -742,6 +963,7 @@ model Agency {
   baaSignedAt     DateTime? @map("baa_signed_at")
   baaDocumentKey     String?   @map("baa_document_key")
   onboardingComplete Boolean   @default(false) @map("onboarding_complete")
+  callingEnabled     Boolean   @default(true) @map("calling_enabled")
   createdAt          DateTime  @default(now()) @map("created_at")
   updatedAt          DateTime  @updatedAt @map("updated_at")
 
@@ -757,9 +979,43 @@ model Agency {
   appointments Appointment[]
   payouts      Payout[]
   marketplaceProfile ProviderMarketplaceProfile?
+  callSessions       CallSession[]
+  callAuditLogs      CallAuditLog[]
+  callConsentSetting CallConsentSetting?
+  childServiceNeeds  ChildServiceNeed[]
+  jobOpportunities   JobOpportunity[]
+  caseloadParentId   String?              @map("caseload_parent_id") @db.Uuid
+  caseloadParent     Parent?              @relation("AgencyCaseloadParent", fields: [caseloadParentId], references: [id], onDelete: SetNull)
+  caseloadChildren   AgencyCaseloadChild[]
+  eiAgencyBillingProfile EiAgencyBillingProfile?
+  eiProviderEnrollments  EiProviderEnrollment[]
+  eiCaseBillingProfiles  EiCaseBillingProfile[]
+  eiBillingRecords       EiBillingRecord[]
+  eiClearinghouseConfigs EiClearinghouseConfig[]
 
   @@index([tenantId])
+  @@index([caseloadParentId])
   @@map("agencies")
+}
+
+model AgencyCaseloadChild {
+  id               String   @id @default(uuid()) @db.Uuid
+  agencyId         String   @map("agency_id") @db.Uuid
+  childId          String   @map("child_id") @db.Uuid
+  tenantId         String   @map("tenant_id") @db.Uuid
+  enrolledAt       DateTime @default(now()) @map("enrolled_at")
+  enrolledByUserId String   @map("enrolled_by_user_id") @db.Uuid
+
+  agency     Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  child      Child  @relation(fields: [childId], references: [id], onDelete: Cascade)
+  tenant     Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  enrolledBy User   @relation("AgencyCaseloadEnrolledBy", fields: [enrolledByUserId], references: [id], onDelete: Restrict)
+
+  @@unique([agencyId, childId])
+  @@index([agencyId])
+  @@index([childId])
+  @@index([tenantId])
+  @@map("agency_caseload_children")
 }
 
 model AgencyDocument {
@@ -1013,6 +1269,7 @@ model Session {
   locationEvents  LocationEvent[]
   payment         Payment?
   insuranceClaim  InsuranceClaim?
+  eiBillingRecord EiBillingRecord?
 
   @@index([tenantId])
   @@index([childId])
@@ -1937,4 +2194,577 @@ model MarketplaceReport {
   @@index([tenantId])
   @@index([status])
   @@map("marketplace_reports")
+}
+
+// ---------------------------------------------------------------------------
+// Secure in-app calling (HIPAA-aware metadata only; no recording by default)
+// ---------------------------------------------------------------------------
+
+model CallSession {
+  id               String            @id @default(uuid()) @db.Uuid
+  tenantId         String            @map("tenant_id") @db.Uuid
+  agencyId         String?           @map("agency_id") @db.Uuid
+  childId          String?           @map("child_id") @db.Uuid
+  callType         CallType          @map("call_type")
+  status           CallSessionStatus @default(INITIATED)
+  initiatedByUserId String           @map("initiated_by_user_id") @db.Uuid
+  providerName     String            @map("provider_name")
+  providerRoomId   String?           @map("provider_room_id")
+  startedAt        DateTime?         @map("started_at")
+  endedAt          DateTime?         @map("ended_at")
+  durationSeconds  Int?              @map("duration_seconds")
+  ringingExpiresAt DateTime?         @map("ringing_expires_at")
+  failureReason    String?           @map("failure_reason")
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+
+  tenant      Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  agency      Agency?           @relation(fields: [agencyId], references: [id], onDelete: SetNull)
+  child       Child?            @relation(fields: [childId], references: [id], onDelete: SetNull)
+  initiatedBy User              @relation("CallInitiator", fields: [initiatedByUserId], references: [id], onDelete: Cascade)
+  participants CallParticipant[]
+  auditLogs   CallAuditLog[]
+  notifications CallNotification[]
+
+  @@index([tenantId])
+  @@index([agencyId])
+  @@index([childId])
+  @@index([initiatedByUserId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("call_sessions")
+}
+
+model CallParticipant {
+  id            String                    @id @default(uuid()) @db.Uuid
+  callSessionId String                    @map("call_session_id") @db.Uuid
+  userId        String                    @map("user_id") @db.Uuid
+  role          UserRole
+  joinStatus    CallParticipantJoinStatus @default(INVITED) @map("join_status")
+  joinedAt      DateTime?                 @map("joined_at")
+  leftAt        DateTime?                 @map("left_at")
+  deviceInfo    Json?                     @map("device_info")
+  createdAt     DateTime                  @default(now()) @map("created_at")
+  updatedAt     DateTime                  @updatedAt @map("updated_at")
+
+  callSession CallSession @relation(fields: [callSessionId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([callSessionId, userId])
+  @@index([callSessionId])
+  @@index([userId])
+  @@map("call_participants")
+}
+
+/// Append-only call audit trail. No conversation content stored (HIPAA minimum necessary).
+model CallAuditLog {
+  id                 String              @id @default(uuid()) @db.Uuid
+  tenantId           String              @map("tenant_id") @db.Uuid
+  callSessionId      String              @map("call_session_id") @db.Uuid
+  agencyId           String?             @map("agency_id") @db.Uuid
+  childId            String?             @map("child_id") @db.Uuid
+  actorUserId        String              @map("actor_user_id") @db.Uuid
+  actorRole          UserRole            @map("actor_role")
+  targetUserId       String?             @map("target_user_id") @db.Uuid
+  targetRole         UserRole?           @map("target_role")
+  eventType          CallAuditEventType  @map("event_type")
+  callType           CallType?           @map("call_type")
+  callStatus         CallSessionStatus?  @map("call_status")
+  callStartTime      DateTime?           @map("call_start_time")
+  callEndTime        DateTime?           @map("call_end_time")
+  callDurationSeconds Int?               @map("call_duration_seconds")
+  eventDetails       Json                @default("{}") @map("event_details")
+  reason             String?
+  deviceType         String?             @map("device_type")
+  ipAddress          String?             @map("ip_address")
+  userAgent          String?             @map("user_agent")
+  immutableHash      String?             @map("immutable_hash")
+  createdAt          DateTime            @default(now()) @map("created_at")
+  createdBy          String              @map("created_by") @db.Uuid
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  callSession CallSession @relation(fields: [callSessionId], references: [id], onDelete: Cascade)
+  agency      Agency?     @relation(fields: [agencyId], references: [id], onDelete: SetNull)
+  actor       User        @relation("CallAuditActor", fields: [actorUserId], references: [id], onDelete: Cascade)
+  target      User?       @relation("CallAuditTarget", fields: [targetUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([callSessionId])
+  @@index([agencyId])
+  @@index([childId])
+  @@index([actorUserId])
+  @@index([targetUserId])
+  @@index([eventType])
+  @@index([createdAt])
+  @@map("call_audit_logs")
+}
+
+model CallNotification {
+  id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  callSessionId String   @map("call_session_id") @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  title         String
+  body          String
+  data          Json     @default("{}")
+  deliveredAt   DateTime? @map("delivered_at")
+  readAt        DateTime? @map("read_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  callSession CallSession @relation(fields: [callSessionId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([callSessionId])
+  @@index([userId])
+  @@map("call_notifications")
+}
+
+/// Future recording consent gate — disabled by default agency-wide.
+model CallConsentSetting {
+  id                String   @id @default(uuid()) @db.Uuid
+  agencyId          String   @unique @map("agency_id") @db.Uuid
+  recordingEnabled  Boolean  @default(false) @map("recording_enabled")
+  consentRequired   Boolean  @default(true) @map("consent_required")
+  retentionDays     Int      @default(90) @map("retention_days")
+  updatedById       String?  @map("updated_by_id") @db.Uuid
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  @@map("call_consent_settings")
+}
+
+// ---------------------------------------------------------------------------
+// Agency job opportunity marketplace (internal service need → public posting)
+// ---------------------------------------------------------------------------
+
+model ChildServiceNeed {
+  id                String               @id @default(uuid()) @db.Uuid
+  agencyId          String               @map("agency_id") @db.Uuid
+  childId           String               @map("child_id") @db.Uuid
+  serviceType       JobServiceType       @map("service_type")
+  internalNotes     String?              @map("internal_notes")
+  internalSchedule  Json                 @default("{}") @map("internal_schedule")
+  createdByUserId   String               @map("created_by_user_id") @db.Uuid
+  status            ChildServiceNeedStatus @default(OPEN)
+  createdAt         DateTime             @default(now()) @map("created_at")
+  updatedAt         DateTime             @updatedAt @map("updated_at")
+
+  agency    Agency          @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  child     Child           @relation(fields: [childId], references: [id], onDelete: Cascade)
+  createdBy User            @relation("ChildServiceNeedCreator", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  jobOpportunity JobOpportunity?
+
+  @@index([agencyId])
+  @@index([childId])
+  @@index([status])
+  @@map("child_service_needs")
+}
+
+model JobOpportunity {
+  id                  String              @id @default(uuid()) @db.Uuid
+  tenantId            String              @map("tenant_id") @db.Uuid
+  agencyId            String              @map("agency_id") @db.Uuid
+  childServiceNeedId  String              @unique @map("child_service_need_id") @db.Uuid
+  title               String
+  serviceType         JobServiceType      @map("service_type")
+  status              JobOpportunityStatus @default(DRAFT)
+  publicDescription   String?             @map("public_description")
+  zipCode             String              @map("zip_code")
+  borough             String?
+  county              String?
+  serviceRadiusMiles  Int?                @map("service_radius_miles")
+  zipCentroidLat      Decimal?            @map("zip_centroid_lat") @db.Decimal(10, 7)
+  zipCentroidLng      Decimal?            @map("zip_centroid_lng") @db.Decimal(10, 7)
+  schedule            Json                @default("{}")
+  languageRequirement String?             @map("language_requirement")
+  employmentType      JobEmploymentType?  @map("employment_type")
+  payRateMin          Decimal?            @map("pay_rate_min") @db.Decimal(10, 2)
+  payRateMax          Decimal?            @map("pay_rate_max") @db.Decimal(10, 2)
+  payRateDisplay      String?             @map("pay_rate_display")
+  locationModality    JobLocationModality @default(IN_PERSON) @map("location_modality")
+  requiredCredentials Json                @default("[]") @map("required_credentials")
+  requiredExperience  String?             @map("required_experience")
+  preferredStartDate  DateTime?           @map("preferred_start_date") @db.Date
+  phiScanPassed       Boolean             @default(false) @map("phi_scan_passed")
+  phiScanFlags        Json                @default("[]") @map("phi_scan_flags")
+  publishedAt         DateTime?           @map("published_at")
+  moderationNote      String?             @map("moderation_note")
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+
+  tenant           Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  agency           Agency                    @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  childServiceNeed ChildServiceNeed          @relation(fields: [childServiceNeedId], references: [id], onDelete: Cascade)
+  applications     JobOpportunityApplication[]
+  moderationFlags  PostingModerationFlag[]
+  savedBy          SavedJobOpportunity[]
+  invites          AgencyInviteToApply[]
+
+  @@index([tenantId])
+  @@index([agencyId])
+  @@index([status])
+  @@index([serviceType])
+  @@index([zipCode])
+  @@map("job_opportunities")
+}
+
+model JobOpportunityApplication {
+  id                 String              @id @default(uuid()) @db.Uuid
+  jobOpportunityId   String              @map("job_opportunity_id") @db.Uuid
+  therapistId        String              @map("therapist_id") @db.Uuid
+  applicantUserId    String              @map("applicant_user_id") @db.Uuid
+  status             JobApplicationStatus @default(NEW_APPLICANT)
+  message            String?
+  credentialSnapshot Json                @default("{}") @map("credential_snapshot")
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
+
+  jobOpportunity JobOpportunity           @relation(fields: [jobOpportunityId], references: [id], onDelete: Cascade)
+  therapist      Therapist                @relation(fields: [therapistId], references: [id], onDelete: Cascade)
+  applicant      User                     @relation("JobApplicationApplicant", fields: [applicantUserId], references: [id], onDelete: Cascade)
+  statusHistory  ApplicationStatusHistory[]
+
+  @@unique([jobOpportunityId, therapistId])
+  @@index([jobOpportunityId])
+  @@index([therapistId])
+  @@index([status])
+  @@map("job_opportunity_applications")
+}
+
+model ApplicationStatusHistory {
+  id              String              @id @default(uuid()) @db.Uuid
+  applicationId   String              @map("application_id") @db.Uuid
+  fromStatus      JobApplicationStatus? @map("from_status")
+  toStatus        JobApplicationStatus @map("to_status")
+  changedByUserId String              @map("changed_by_user_id") @db.Uuid
+  note            String?
+  createdAt       DateTime            @default(now()) @map("created_at")
+
+  application JobOpportunityApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  changedBy   User                     @relation(fields: [changedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([applicationId])
+  @@map("application_status_history")
+}
+
+model TherapistCredentialWallet {
+  id          String   @id @default(uuid()) @db.Uuid
+  therapistId String   @unique @map("therapist_id") @db.Uuid
+  documents   Json     @default("[]")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  therapist Therapist @relation(fields: [therapistId], references: [id], onDelete: Cascade)
+
+  @@map("therapist_credential_wallets")
+}
+
+model MarketplaceAuditLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  eventType   String   @map("event_type")
+  entityType  String   @map("entity_type")
+  entityId    String   @map("entity_id") @db.Uuid
+  actorUserId String?  @map("actor_user_id") @db.Uuid
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actor  User?  @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([entityType, entityId])
+  @@index([eventType])
+  @@index([createdAt])
+  @@map("marketplace_audit_logs")
+}
+
+model PostingModerationFlag {
+  id               String                    @id @default(uuid()) @db.Uuid
+  jobOpportunityId String                    @map("job_opportunity_id") @db.Uuid
+  reason           String
+  status           PostingModerationFlagStatus @default(OPEN)
+  flaggedByUserId  String                    @map("flagged_by_user_id") @db.Uuid
+  createdAt        DateTime                  @default(now()) @map("created_at")
+  updatedAt        DateTime                  @updatedAt @map("updated_at")
+
+  jobOpportunity JobOpportunity @relation(fields: [jobOpportunityId], references: [id], onDelete: Cascade)
+  flaggedBy      User           @relation(fields: [flaggedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([jobOpportunityId])
+  @@index([status])
+  @@map("posting_moderation_flags")
+}
+
+model SavedJobOpportunity {
+  id               String   @id @default(uuid()) @db.Uuid
+  therapistId      String   @map("therapist_id") @db.Uuid
+  jobOpportunityId String   @map("job_opportunity_id") @db.Uuid
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  therapist      Therapist      @relation(fields: [therapistId], references: [id], onDelete: Cascade)
+  jobOpportunity JobOpportunity @relation(fields: [jobOpportunityId], references: [id], onDelete: Cascade)
+
+  @@unique([therapistId, jobOpportunityId])
+  @@index([therapistId])
+  @@map("saved_job_opportunities")
+}
+
+model AgencyInviteToApply {
+  id               String   @id @default(uuid()) @db.Uuid
+  jobOpportunityId String   @map("job_opportunity_id") @db.Uuid
+  therapistId      String   @map("therapist_id") @db.Uuid
+  invitedByUserId  String   @map("invited_by_user_id") @db.Uuid
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  jobOpportunity JobOpportunity @relation(fields: [jobOpportunityId], references: [id], onDelete: Cascade)
+  therapist      Therapist      @relation(fields: [therapistId], references: [id], onDelete: Cascade)
+  invitedBy      User           @relation("AgencyInviteSender", fields: [invitedByUserId], references: [id], onDelete: Restrict)
+
+  @@unique([jobOpportunityId, therapistId])
+  @@index([therapistId])
+  @@map("agency_invites_to_apply")
+}
+
+// ---------------------------------------------------------------------------
+// NY Early Intervention billing (parallel to commercial insurance claims)
+// ---------------------------------------------------------------------------
+
+model EiAgencyBillingProfile {
+  id                   String                @id @default(uuid()) @db.Uuid
+  tenantId             String                @map("tenant_id") @db.Uuid
+  agencyId             String                @unique @map("agency_id") @db.Uuid
+  legalName            String                @map("legal_name")
+  npi                  String?
+  medicaidProviderId   String?               @map("medicaid_provider_id")
+  ein                  String?
+  etin                 String?
+  eiHubReferenceId     String?               @map("ei_hub_reference_id")
+  eftEnrollmentStatus  EiEftEnrollmentStatus @default(NOT_STARTED) @map("eft_enrollment_status")
+  baaSignedAt          DateTime?             @map("baa_signed_at")
+  baaDocumentKey       String?               @map("baa_document_key")
+  baaSignerName        String?               @map("baa_signer_name")
+  enrollmentComplete   Boolean               @default(false) @map("enrollment_complete")
+  addressLine1         String?               @map("address_line1")
+  addressLine2         String?               @map("address_line2")
+  city                 String?
+  state                String?               @default("NY")
+  zipCode              String?               @map("zip_code")
+  phone                String?
+  metadata             Json                  @default("{}")
+  createdAt            DateTime              @default(now()) @map("created_at")
+  updatedAt            DateTime              @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("ei_agency_billing_profiles")
+}
+
+model EiProviderEnrollment {
+  id                       String                     @id @default(uuid()) @db.Uuid
+  agencyId                 String                     @map("agency_id") @db.Uuid
+  therapistId              String                     @map("therapist_id") @db.Uuid
+  renderingNpi             String?                    @map("rendering_npi")
+  licenseNumber            String?                    @map("license_number")
+  licenseState             String?                    @map("license_state")
+  licenseExpiry            DateTime?                  @map("license_expiry") @db.Date
+  discipline               String?
+  eiCategory               String?                    @map("ei_category")
+  medicaidEnrollmentStatus EiMedicaidEnrollmentStatus @default(NOT_ENROLLED) @map("medicaid_enrollment_status")
+  credentialStatus         EiCredentialStatus         @default(PENDING) @map("credential_status")
+  credentialExpirations    Json                       @default("{}") @map("credential_expirations")
+  scrClearanceDate         DateTime?                  @map("scr_clearance_date") @db.Date
+  scrClearanceExpiry       DateTime?                  @map("scr_clearance_expiry") @db.Date
+  complianceDocs           Json                       @default("[]") @map("compliance_docs")
+  isActive                 Boolean                    @default(true) @map("is_active")
+  createdAt                DateTime                   @default(now()) @map("created_at")
+  updatedAt                DateTime                   @updatedAt @map("updated_at")
+
+  agency    Agency    @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  therapist Therapist @relation(fields: [therapistId], references: [id], onDelete: Cascade)
+
+  @@unique([agencyId, therapistId])
+  @@index([agencyId])
+  @@index([therapistId])
+  @@index([credentialStatus])
+  @@map("ei_provider_enrollments")
+}
+
+model EiCaseBillingProfile {
+  id                      String          @id @default(uuid()) @db.Uuid
+  agencyId                String          @map("agency_id") @db.Uuid
+  childId                 String          @map("child_id") @db.Uuid
+  eiCaseId                String?         @map("ei_case_id")
+  municipality            String?
+  scReferenceNumber       String?         @map("sc_reference_number")
+  ifspAuthorizationNumber String?         @map("ifsp_authorization_number")
+  serviceType             String?         @map("service_type")
+  frequencyPerWeek        Int?            @map("frequency_per_week")
+  durationMinutes         Int?            @map("duration_minutes")
+  authorizationStartDate  DateTime?       @map("authorization_start_date") @db.Date
+  authorizationEndDate    DateTime?       @map("authorization_end_date") @db.Date
+  placeOfService          String?         @map("place_of_service")
+  medicaidCin             String?         @map("medicaid_cin")
+  consentStatus           EiConsentStatus @default(PENDING) @map("consent_status")
+  consentSignedAt         DateTime?       @map("consent_signed_at")
+  createdAt               DateTime        @default(now()) @map("created_at")
+  updatedAt               DateTime        @updatedAt @map("updated_at")
+
+  agency         Agency           @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  child          Child            @relation(fields: [childId], references: [id], onDelete: Cascade)
+  billingRecords EiBillingRecord[]
+
+  @@unique([agencyId, childId])
+  @@index([agencyId])
+  @@index([childId])
+  @@index([eiCaseId])
+  @@map("ei_case_billing_profiles")
+}
+
+model EiBillingRecord {
+  id                    String                  @id @default(uuid()) @db.Uuid
+  tenantId              String                  @map("tenant_id") @db.Uuid
+  agencyId              String                  @map("agency_id") @db.Uuid
+  childId               String                  @map("child_id") @db.Uuid
+  sessionId             String?                 @unique @map("session_id") @db.Uuid
+  therapistId           String                  @map("therapist_id") @db.Uuid
+  caseProfileId         String                  @map("case_profile_id") @db.Uuid
+  queueStatus           EiBillingQueueStatus    @default(DRAFT_INCOMPLETE) @map("queue_status")
+  units                 Decimal                 @default(0) @db.Decimal(8, 2)
+  serviceDate           DateTime                @map("service_date") @db.Date
+  startTime             DateTime?               @map("start_time")
+  endTime               DateTime?               @map("end_time")
+  validationSnapshot    Json                    @default("{}") @map("validation_snapshot")
+  lockedAt              DateTime?               @map("locked_at")
+  reviewedById          String?                 @map("reviewed_by_id") @db.Uuid
+  reviewedAt            DateTime?               @map("reviewed_at")
+  billedAmount          Decimal?                @map("billed_amount") @db.Decimal(10, 2)
+  allowedAmount         Decimal?                @map("allowed_amount") @db.Decimal(10, 2)
+  submittedAt           DateTime?               @map("submitted_at")
+  externalReferenceId   String?                 @map("external_reference_id")
+  clearinghouseWorkflow EiClearinghouseWorkflow? @map("clearinghouse_workflow")
+  resubmissionOfId      String?                 @unique @map("resubmission_of_id") @db.Uuid
+  createdAt             DateTime                @default(now()) @map("created_at")
+  updatedAt             DateTime                @updatedAt @map("updated_at")
+
+  tenant         Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  agency         Agency                  @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  child          Child                   @relation(fields: [childId], references: [id], onDelete: Cascade)
+  session        Session?                @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  therapist      Therapist               @relation(fields: [therapistId], references: [id], onDelete: Cascade)
+  caseProfile    EiCaseBillingProfile    @relation(fields: [caseProfileId], references: [id], onDelete: Restrict)
+  reviewedBy     User?                   @relation("EiBillingReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  resubmissionOf EiBillingRecord?        @relation("EiBillingResubmission", fields: [resubmissionOfId], references: [id], onDelete: SetNull)
+  resubmissions  EiBillingRecord?        @relation("EiBillingResubmission")
+  validationIssues EiBillingValidationIssue[]
+  denials        EiDenialRejection[]
+  payments       EiPaymentPosting[]
+
+  @@index([tenantId])
+  @@index([agencyId])
+  @@index([childId])
+  @@index([therapistId])
+  @@index([queueStatus])
+  @@index([serviceDate])
+  @@map("ei_billing_records")
+}
+
+model EiBillingValidationIssue {
+  id           String   @id @default(uuid()) @db.Uuid
+  recordId     String   @map("record_id") @db.Uuid
+  code         String
+  severity     String
+  message      String
+  resolved     Boolean  @default(false)
+  resolvedAt   DateTime? @map("resolved_at")
+  resolvedById String?  @map("resolved_by_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  record     EiBillingRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  resolvedBy User?           @relation("EiValidationResolvedBy", fields: [resolvedById], references: [id], onDelete: SetNull)
+
+  @@index([recordId])
+  @@index([resolved])
+  @@map("ei_billing_validation_issues")
+}
+
+model EiClearinghouseConfig {
+  id                       String                  @id @default(uuid()) @db.Uuid
+  tenantId                 String                  @map("tenant_id") @db.Uuid
+  agencyId                 String?                 @map("agency_id") @db.Uuid
+  name                     String
+  workflow                 EiClearinghouseWorkflow
+  tradingPartnerId         String?                 @map("trading_partner_id")
+  submitterId              String?                 @map("submitter_id")
+  receiverId               String?                 @map("receiver_id")
+  apiEndpointRef           String?                 @map("api_endpoint_ref")
+  sftpHostRef              String?                 @map("sftp_host_ref")
+  credentialsRef           String?                 @map("credentials_ref")
+  baaSignedAt              DateTime?               @map("baa_signed_at")
+  baaEffectiveDate         DateTime?               @map("baa_effective_date") @db.Date
+  testMode                 Boolean                 @default(true) @map("test_mode")
+  lastConnectionTestAt     DateTime?               @map("last_connection_test_at")
+  lastConnectionTestResult String?                 @map("last_connection_test_result")
+  errorLogs                Json                    @default("[]") @map("error_logs")
+  isActive                 Boolean                 @default(false) @map("is_active")
+  createdAt                DateTime                @default(now()) @map("created_at")
+  updatedAt                DateTime                @updatedAt @map("updated_at")
+
+  tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  agency Agency? @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([agencyId])
+  @@index([workflow])
+  @@map("ei_clearinghouse_configs")
+}
+
+model EiDenialRejection {
+  id                   String             @id @default(uuid()) @db.Uuid
+  recordId             String             @map("record_id") @db.Uuid
+  code                 String
+  reason               String
+  payerName            String?            @map("payer_name")
+  receivedAt           DateTime           @map("received_at")
+  assignedStaffId      String?            @map("assigned_staff_id") @db.Uuid
+  correctionStatus     EiCorrectionStatus @default(OPEN) @map("correction_status")
+  correctionNotes      String?            @map("correction_notes")
+  resubmissionRecordId String?            @map("resubmission_record_id") @db.Uuid
+  auditMetadata        Json               @default("{}") @map("audit_metadata")
+  createdAt            DateTime           @default(now()) @map("created_at")
+  updatedAt            DateTime           @updatedAt @map("updated_at")
+
+  record        EiBillingRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  assignedStaff User?           @relation("EiDenialAssignedStaff", fields: [assignedStaffId], references: [id], onDelete: SetNull)
+
+  @@index([recordId])
+  @@index([correctionStatus])
+  @@map("ei_denial_rejections")
+}
+
+model EiPaymentPosting {
+  id                   String                 @id @default(uuid()) @db.Uuid
+  recordId             String                 @map("record_id") @db.Uuid
+  paidAmount           Decimal                @map("paid_amount") @db.Decimal(10, 2)
+  allowedAmount        Decimal?               @map("allowed_amount") @db.Decimal(10, 2)
+  adjustmentAmount     Decimal?               @map("adjustment_amount") @db.Decimal(10, 2)
+  deniedAmount         Decimal?               @map("denied_amount") @db.Decimal(10, 2)
+  eftReference         String?                @map("eft_reference")
+  eraPlaceholder       String?                @map("era_placeholder")
+  reconciliationStatus EiReconciliationStatus @default(UNRECONCILED) @map("reconciliation_status")
+  postedAt             DateTime               @map("posted_at")
+  postedById           String                 @map("posted_by_id") @db.Uuid
+  createdAt            DateTime               @default(now()) @map("created_at")
+
+  record   EiBillingRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  postedBy User            @relation("EiPaymentPostedBy", fields: [postedById], references: [id], onDelete: Restrict)
+
+  @@index([recordId])
+  @@index([reconciliationStatus])
+  @@map("ei_payment_postings")
 }

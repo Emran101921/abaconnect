@@ -269,8 +269,8 @@ class _ScreeningResultsScreenState
                   ),
                   const SizedBox(height: 8),
                   AppQuickActionCard(
-                    title: 'Edit screening',
-                    subtitle: 'Start new or continue from draft',
+                    title: 'Re-screen this child',
+                    subtitle: 'Start a new screening or continue from draft',
                     icon: Icons.edit_note,
                     onTap: () {
                       context.push(

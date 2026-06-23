@@ -48,6 +48,10 @@ class AgencyCaseModel {
     this.assignedCoordinatorId,
     this.assignedCoordinatorName,
     this.assignmentId,
+    required this.eiEligible,
+    this.eligibilityReason,
+    this.riskLevel,
+    required this.evaluationRequested,
   });
 
   final String childId;
@@ -56,6 +60,10 @@ class AgencyCaseModel {
   final String? assignedCoordinatorId;
   final String? assignedCoordinatorName;
   final String? assignmentId;
+  final bool eiEligible;
+  final String? eligibilityReason;
+  final String? riskLevel;
+  final bool evaluationRequested;
 }
 
 class ScCaseSummaryModel {
@@ -116,9 +124,11 @@ class ScCaseDetailModel {
     required this.childName,
     required this.dateOfBirth,
     required this.parentName,
+    required this.parentUserId,
     this.parentEmail,
     this.parentPhone,
     this.guardianPhone,
+    this.screeningPrefill = const {},
     this.initialScreening,
     this.ongoingScreenings = const [],
     this.notes = const [],
@@ -128,9 +138,11 @@ class ScCaseDetailModel {
   final String childName;
   final DateTime dateOfBirth;
   final String parentName;
+  final String parentUserId;
   final String? parentEmail;
   final String? parentPhone;
   final String? guardianPhone;
+  final Map<String, dynamic> screeningPrefill;
   final Map<String, dynamic>? initialScreening;
   final List<Map<String, dynamic>> ongoingScreenings;
   final List<Map<String, dynamic>> notes;
@@ -284,6 +296,7 @@ class ServiceCoordinatorRepository {
           agencyCases {
             childId childName parentName
             assignedCoordinatorId assignedCoordinatorName assignmentId
+            eiEligible eligibilityReason riskLevel evaluationRequested
           }
         }
       ''');
@@ -297,6 +310,10 @@ class ServiceCoordinatorRepository {
         assignedCoordinatorId: m['assignedCoordinatorId'] as String?,
         assignedCoordinatorName: m['assignedCoordinatorName'] as String?,
         assignmentId: m['assignmentId'] as String?,
+        eiEligible: m['eiEligible'] as bool? ?? false,
+        eligibilityReason: m['eligibilityReason'] as String?,
+        riskLevel: m['riskLevel'] as String?,
+        evaluationRequested: m['evaluationRequested'] as bool? ?? false,
       );
     }).toList();
   }
@@ -383,8 +400,8 @@ class ServiceCoordinatorRepository {
       r'''
         query ScCase($childId: ID!) {
           serviceCoordinatorCase(childId: $childId) {
-            childId childName dateOfBirth parentName parentEmail parentPhone
-            guardianPhone
+            childId childName dateOfBirth parentName parentUserId parentEmail parentPhone
+            guardianPhone screeningPrefillJson
             initialScreening {
               id answersJson status priorityLevel followUpRequired
               followUpDueDate notes createdAt updatedAt
@@ -403,14 +420,18 @@ class ServiceCoordinatorRepository {
     );
     final m = result['data']?['serviceCoordinatorCase'] as Map<String, dynamic>?;
     if (m == null) throw Exception('Failed to load case');
+    final prefillRaw = m['screeningPrefillJson'] as String? ?? '{}';
+    final prefill = jsonDecode(prefillRaw) as Map<String, dynamic>? ?? {};
     return ScCaseDetailModel(
       childId: m['childId'] as String,
       childName: m['childName'] as String,
       dateOfBirth: DateTime.parse(m['dateOfBirth'] as String),
       parentName: m['parentName'] as String,
+      parentUserId: m['parentUserId'] as String,
       parentEmail: m['parentEmail'] as String?,
       parentPhone: m['parentPhone'] as String?,
       guardianPhone: m['guardianPhone'] as String?,
+      screeningPrefill: prefill,
       initialScreening: m['initialScreening'] as Map<String, dynamic>?,
       ongoingScreenings:
           (m['ongoingScreenings'] as List<dynamic>? ?? [])

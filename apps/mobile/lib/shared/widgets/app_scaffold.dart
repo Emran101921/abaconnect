@@ -17,6 +17,7 @@ class AppScaffold extends ConsumerWidget {
     this.header,
     this.extendBodyBehindHeader = false,
     this.constrainBodyOnWide = true,
+    this.showPageBreadcrumbs = false,
   });
 
   final String title;
@@ -29,6 +30,7 @@ class AppScaffold extends ConsumerWidget {
   final Widget? header;
   final bool extendBodyBehindHeader;
   final bool constrainBodyOnWide;
+  final bool showPageBreadcrumbs;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -43,6 +45,7 @@ class AppScaffold extends ConsumerWidget {
       header: header,
       extendBodyBehindHeader: extendBodyBehindHeader,
       constrainBodyOnWide: constrainBodyOnWide,
+      showPageBreadcrumbs: showPageBreadcrumbs,
     );
   }
 }

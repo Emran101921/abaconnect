@@ -13,10 +13,12 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/app_dashboard_card.dart';
 import '../../../shared/widgets/app_glassy_tab_bar.dart';
 import '../../../shared/widgets/app_healthcare_illustration.dart';
+import '../../../shared/widgets/app_bottom_nav.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_section_header.dart';
 import '../../../shared/widgets/glossy_button.dart';
 import '../../telehealth/presentation/telehealth_screen.dart';
+import '../../calls/widgets/call_button.dart';
 import '../../payments/presentation/parent_billing_providers.dart';
 import '../data/parent_booking_repository.dart';
 import 'parent_dashboard_providers.dart';
@@ -294,6 +296,7 @@ class _ParentAppointmentsScreenState extends ConsumerState<ParentAppointmentsScr
 
     return AppScaffold(
       title: 'My Appointments',
+      bottomNavigationBar: const RoleBottomNav(current: CoreNavTab.schedule),
       actions: [
         IconButton(
           icon: const Icon(Icons.calendar_month),
@@ -731,6 +734,16 @@ class _UpcomingCard extends StatelessWidget {
                 onPressed: onJoinTelehealth,
               ),
             ),
+          if (a.therapistUserId != null &&
+              !['COMPLETED', 'CANCELLED'].contains(a.status)) ...[
+            const SizedBox(height: 8),
+            CallButton(
+              recipientUserId: a.therapistUserId!,
+              recipientName: a.therapistName,
+              childId: a.childId,
+              compact: true,
+            ),
+          ],
           if (canChange)
             Align(
               alignment: Alignment.centerRight,

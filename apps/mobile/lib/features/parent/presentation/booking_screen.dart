@@ -8,6 +8,7 @@ import '../../../shared/widgets/app_dashboard_card.dart';
 import '../../../shared/widgets/app_healthcare_illustration.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_section_header.dart';
+import '../../../shared/widgets/app_select.dart';
 import '../../../shared/widgets/glossy_button.dart';
 import '../../../shared/widgets/app_snackbar.dart';
 import '../data/parent_booking_repository.dart';
@@ -255,19 +256,19 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    DropdownMenu<String>(
-                      label: const Text('Child'),
-                      initialSelection: _childId,
-                      dropdownMenuEntries: _children
+                    AppSelectField<String>(
+                      label: 'Child',
+                      value: _childId,
+                      options: _children
                           .map(
-                            (c) => DropdownMenuEntry(
+                            (c) => AppSelectOption(
                               value: c.id,
-                              label:
-                                  '${c.displayName} · ${c.insuranceType ?? 'Self-pay'}',
+                              label: c.displayName,
+                              subtitle: c.insuranceType ?? 'Self-pay',
                             ),
                           )
                           .toList(),
-                      onSelected: (v) => setState(() => _childId = v),
+                      onChanged: (v) => setState(() => _childId = v),
                     ),
                     if (_selectedChild != null) ...[
                       const SizedBox(height: 12),
@@ -305,19 +306,19 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                       ],
                     ],
                     const SizedBox(height: 16),
-                    DropdownMenu<String>(
-                      label: const Text('Therapy type'),
-                      initialSelection: _therapyType,
-                      dropdownMenuEntries: const [
-                        DropdownMenuEntry(value: 'ABA', label: 'ABA Therapy'),
-                        DropdownMenuEntry(
+                    AppSelectField<String>(
+                      label: 'Therapy type',
+                      value: _therapyType,
+                      options: const [
+                        AppSelectOption(value: 'ABA', label: 'ABA Therapy'),
+                        AppSelectOption(
                           value: 'SPEECH',
                           label: 'Speech Therapy',
                         ),
-                        DropdownMenuEntry(value: 'OCCUPATIONAL', label: 'OT'),
-                        DropdownMenuEntry(value: 'PHYSICAL', label: 'PT'),
+                        AppSelectOption(value: 'OCCUPATIONAL', label: 'OT'),
+                        AppSelectOption(value: 'PHYSICAL', label: 'PT'),
                       ],
-                      onSelected: (v) async {
+                      onChanged: (v) async {
                         if (v == null) return;
                         setState(() {
                           _therapyType = v;
@@ -336,38 +337,39 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    DropdownMenu<String>(
-                      label: const Text('Therapist'),
-                      initialSelection: _therapistId,
-                      dropdownMenuEntries: _therapists
+                    AppSelectField<String>(
+                      label: 'Therapist',
+                      value: _therapistId,
+                      searchHint: _therapists.length > 6 ? 'Search therapists' : null,
+                      options: _therapists
                           .map(
-                            (t) => DropdownMenuEntry(
+                            (t) => AppSelectOption(
                               value: t.id,
-                              label:
-                                  '${t.displayName} (${t.rating.toStringAsFixed(1)}★)',
+                              label: t.displayName,
+                              subtitle: '${t.rating.toStringAsFixed(1)}★ rating',
                             ),
                           )
                           .toList(),
-                      onSelected: (v) => setState(() => _therapistId = v),
+                      onChanged: (v) => setState(() => _therapistId = v),
                     ),
                     const SizedBox(height: 16),
-                    DropdownMenu<String>(
-                      label: const Text('Session location'),
-                      initialSelection: _locationType,
-                      dropdownMenuEntries: const [
-                        DropdownMenuEntry(value: 'IN_HOME', label: 'In home'),
-                        DropdownMenuEntry(value: 'CLINIC', label: 'Clinic'),
-                        DropdownMenuEntry(value: 'SCHOOL', label: 'School'),
-                        DropdownMenuEntry(
+                    AppSelectField<String>(
+                      label: 'Session location',
+                      value: _locationType,
+                      options: const [
+                        AppSelectOption(value: 'IN_HOME', label: 'In home'),
+                        AppSelectOption(value: 'CLINIC', label: 'Clinic'),
+                        AppSelectOption(value: 'SCHOOL', label: 'School'),
+                        AppSelectOption(
                           value: 'TELEHEALTH',
                           label: 'Telehealth',
                         ),
-                        DropdownMenuEntry(
+                        AppSelectOption(
                           value: 'COMMUNITY',
                           label: 'Community',
                         ),
                       ],
-                      onSelected: (v) {
+                      onChanged: (v) {
                         if (v != null) setState(() => _locationType = v);
                       },
                     ),
@@ -387,17 +389,17 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                       onChanged: (v) => setState(() => _recurring = v),
                     ),
                     if (_recurring)
-                      DropdownMenu<int>(
-                        label: const Text('Number of weeks'),
-                        initialSelection: _recurringWeeks,
-                        dropdownMenuEntries: List.generate(
+                      AppSelectField<int>(
+                        label: 'Number of weeks',
+                        value: _recurringWeeks,
+                        options: List.generate(
                           11,
-                          (i) => DropdownMenuEntry(
+                          (i) => AppSelectOption(
                             value: i + 2,
                             label: '${i + 2} weeks',
                           ),
                         ),
-                        onSelected: (v) {
+                        onChanged: (v) {
                           if (v != null) setState(() => _recurringWeeks = v);
                         },
                       ),

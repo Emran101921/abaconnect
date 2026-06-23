@@ -5,8 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/app_select.dart';
 import '../../../shared/widgets/app_snackbar.dart';
 import '../../../shared/widgets/glossy_button.dart';
+import '../../service_coordinator/data/service_coordinator_repository.dart';
+import 'ei_screening_form_config.dart';
 import 'sc_providers.dart';
 
 enum EiScreeningMode { initial, ongoing }
@@ -27,6 +30,7 @@ class EiScreeningScreen extends ConsumerStatefulWidget {
 
 class _EiScreeningScreenState extends ConsumerState<EiScreeningScreen> {
   final _answers = <String, dynamic>{};
+  final _controllers = <String, TextEditingController>{};
   final _notesController = TextEditingController();
   final _progressController = TextEditingController();
   final _concernsController = TextEditingController();
@@ -34,6 +38,12 @@ class _EiScreeningScreenState extends ConsumerState<EiScreeningScreen> {
   DateTime? _followUpDate;
   int _completion = 0;
   bool _saving = false;
+  ScCaseDetailModel? _caseDetail;
+
+  List<EiSectionConfig> get _sections =>
+      widget.mode == EiScreeningMode.initial
+          ? initialEiSections()
+          : ongoingEiSections();
 
   @override
   void initState() {
@@ -46,15 +56,49 @@ class _EiScreeningScreenState extends ConsumerState<EiScreeningScreen> {
       final detail = await ref
           .read(serviceCoordinatorRepositoryProvider)
           .fetchCaseDetail(widget.childId);
+      _caseDetail = detail;
+      _answers.addAll(detail.screeningPrefill);
       if (widget.mode == EiScreeningMode.initial &&
           detail.initialScreening != null) {
-        final raw = detail.initialScreening!['answersJson'];
-        if (raw is String) {
-          _answers.addAll(jsonDecode(raw) as Map<String, dynamic>);
-        }
-        _notesController.text = detail.initialScreening!['notes'] as String? ?? '';
+        _mergeAnswersJson(detail.initialScreening!['answersJson']);
+        _notesController.text =
+            detail.initialScreening!['notes'] as String? ?? '';
       }
     } catch (_) {}
+    _syncControllers();
+    _updateCompletion();
+  }
+
+  void _mergeAnswersJson(dynamic raw) {
+    if (raw is String) {
+      _answers.addAll(jsonDecode(raw) as Map<String, dynamic>);
+    } else if (raw is Map) {
+      _answers.addAll(raw.cast<String, dynamic>());
+    }
+  }
+
+  void _syncControllers() {
+    for (final section in _sections) {
+      for (final field in section.fields) {
+        if (field.type == EiFieldType.text ||
+            field.type == EiFieldType.date ||
+            field.type == EiFieldType.multiChoice) {
+          final value = _answers[field.key]?.toString() ?? '';
+          _controllers[field.key] ??= TextEditingController(text: value);
+          _controllers[field.key]!.text = value;
+        }
+      }
+    }
+    if (widget.mode == EiScreeningMode.ongoing) {
+      _progressController.text = _answers['childProgress']?.toString() ?? '';
+      _concernsController.text = _answers['newConcernsDetail']?.toString() ?? '';
+    }
+  }
+
+  void _updateCompletion() {
+    setState(() {
+      _completion = completionPercentForSections(_answers, _sections);
+    });
   }
 
   Future<void> _save({bool submit = false}) async {
@@ -71,6 +115,8 @@ class _EiScreeningScreenState extends ConsumerState<EiScreeningScreen> {
           submit: submit,
         );
       } else {
+        _answers['childProgress'] = _progressController.text;
+        _answers['newConcerns'] = _concernsController.text;
         _completion = await repo.upsertOngoingScreening(
           childId: widget.childId,
           answers: _answers,
@@ -88,7 +134,9 @@ class _EiScreeningScreenState extends ConsumerState<EiScreeningScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              submit ? 'Screening submitted ($_completion% complete)' : 'Draft saved',
+              submit
+                  ? 'Screening submitted ($_completion% complete)'
+                  : 'Draft saved ($_completion% complete)',
             ),
           ),
         );
@@ -106,6 +154,9 @@ class _EiScreeningScreenState extends ConsumerState<EiScreeningScreen> {
     _notesController.dispose();
     _progressController.dispose();
     _concernsController.dispose();
+    for (final c in _controllers.values) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -126,63 +177,55 @@ class _EiScreeningScreenState extends ConsumerState<EiScreeningScreen> {
               ),
             ),
           ),
-          if (_completion > 0)
-            Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: LinearProgressIndicator(value: _completion / 100),
-            ),
+          const SizedBox(height: 12),
+          if (_caseDetail != null) _buildChildReferenceCard(_caseDetail!),
+          Row(
+            children: [
+              Expanded(
+                child: LinearProgressIndicator(value: _completion / 100),
+              ),
+              const SizedBox(width: 12),
+              Text('$_completion%'),
+            ],
+          ),
           const SizedBox(height: 16),
-          if (isInitial) ...[
-            _sectionTitle('Child information'),
-            _textField('childFirstName', 'Child first name'),
-            _textField('childDateOfBirth', 'Date of birth'),
-            _sectionTitle('Parent/guardian'),
-            _textField('guardianName', 'Guardian name'),
-            _textField('guardianPhone', 'Guardian phone'),
-            _sectionTitle('Referral & concerns'),
-            _textField('referralSource', 'Referral source'),
-            _textField('parentConcerns', 'Parent concerns', maxLines: 3),
-            _sectionTitle('Medical/birth history'),
-            _textField('medicalHistory', 'Medical/birth history', maxLines: 3),
-            _yesNo('communicationConcerns', 'Communication/speech concerns?'),
-            _yesNo('motorConcerns', 'Motor skills concerns?'),
-            _yesNo('socialEmotionalConcerns', 'Social-emotional concerns?'),
-            _yesNo('dailyLivingConcerns', 'Feeding/sleeping/daily living?'),
-            _sectionTitle('Consent'),
-            SwitchListTile(
-              title: const Text('Consent and privacy acknowledgment'),
-              value: _answers['consentAcknowledged'] == true,
-              onChanged: (v) => setState(() => _answers['consentAcknowledged'] = v),
-            ),
-          ] else ...[
-            _sectionTitle('Current services'),
-            _yesNo('servicesActive', 'Are services active?'),
-            _yesNo('missedSessions', 'Any missed sessions?'),
-            _yesNo('providerIssues', 'Any provider issues?'),
-            _yesNo('childRegression', 'Any child regression?'),
-            _yesNo('familyCrisis', 'Family crisis or urgent concern?'),
-            TextField(
-              controller: _progressController,
-              decoration: const InputDecoration(labelText: 'Child progress update'),
-              maxLines: 3,
-              onChanged: (v) => _answers['childProgress'] = v,
-            ),
-            TextField(
-              controller: _concernsController,
-              decoration: const InputDecoration(labelText: 'New concerns'),
-              maxLines: 2,
-            ),
-            _textField('nextFollowUpDate', 'Next follow-up date'),
-          ],
+          ..._sections.map(_buildSection),
           const SizedBox(height: 16),
           SwitchListTile(
             title: const Text('Follow-up required'),
             value: _followUpRequired,
-            onChanged: (v) => setState(() => _followUpRequired = v),
+            onChanged: (v) => setState(() {
+              _followUpRequired = v;
+              _answers['followUpRequired'] = v;
+              _updateCompletion();
+            }),
+          ),
+          ListTile(
+            title: const Text('Follow-up due date'),
+            subtitle: Text(
+              _followUpDate != null
+                  ? _followUpDate!.toLocal().toString().split(' ').first
+                  : 'Not set',
+            ),
+            trailing: const Icon(Icons.calendar_today_outlined),
+            onTap: () async {
+              final picked = await showDatePicker(
+                context: context,
+                initialDate: _followUpDate ?? DateTime.now(),
+                firstDate: DateTime.now().subtract(const Duration(days: 1)),
+                lastDate: DateTime.now().add(const Duration(days: 365)),
+              );
+              if (picked != null) {
+                setState(() {
+                  _followUpDate = picked;
+                  _answers['followUpDueDate'] = picked.toIso8601String();
+                });
+              }
+            },
           ),
           TextField(
             controller: _notesController,
-            decoration: const InputDecoration(labelText: 'Coordinator notes'),
+            decoration: const InputDecoration(labelText: 'Service coordinator notes'),
             maxLines: 3,
           ),
           const SizedBox(height: 24),
@@ -203,29 +246,146 @@ class _EiScreeningScreenState extends ConsumerState<EiScreeningScreen> {
     );
   }
 
-  Widget _sectionTitle(String title) => Padding(
-    padding: const EdgeInsets.only(top: 16, bottom: 8),
-    child: Text(title, style: Theme.of(context).textTheme.titleSmall),
-  );
-
-  Widget _textField(String key, String label, {int maxLines = 1}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: TextField(
-        decoration: InputDecoration(labelText: label),
-        maxLines: maxLines,
-        onChanged: (v) => _answers[key] = v,
-        controller: TextEditingController(text: _answers[key]?.toString() ?? ''),
+  Widget _buildChildReferenceCard(ScCaseDetailModel detail) {
+    final dob = detail.dateOfBirth.toLocal().toString().split(' ').first;
+    final phone = detail.guardianPhone ?? detail.parentPhone ?? '—';
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Child information (from case record)',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const SizedBox(height: 8),
+            Text('${detail.childName} · DOB $dob'),
+            Text('Guardian: ${detail.parentName}'),
+            Text('Phone: $phone'),
+            if (detail.parentEmail != null) Text('Email: ${detail.parentEmail}'),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _yesNo(String key, String label) {
-    final val = _answers[key] == true || _answers[key] == 'yes';
-    return SwitchListTile(
-      title: Text(label),
-      value: val,
-      onChanged: (v) => setState(() => _answers[key] = v),
+  Widget _buildSection(EiSectionConfig section) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ExpansionTile(
+        title: Text(section.title, style: Theme.of(context).textTheme.titleSmall),
+        children: section.fields.map(_buildField).toList(),
+      ),
     );
+  }
+
+  Widget _buildField(EiFieldConfig field) {
+    final readOnly = field.readOnly;
+    switch (field.type) {
+      case EiFieldType.yesNo:
+        final val = _answers[field.key] == true;
+        return SwitchListTile(
+          title: Text(field.label),
+          subtitle: field.required ? const Text('Required') : null,
+          value: val,
+          onChanged: readOnly
+              ? null
+              : (v) {
+                  setState(() {
+                    _answers[field.key] = v;
+                    _updateCompletion();
+                  });
+                },
+        );
+      case EiFieldType.priority:
+        final current = _answers[field.key]?.toString() ?? 'LOW';
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          child: AppSelectField<String>(
+            label: field.label,
+            value: current,
+            enabled: !readOnly,
+            options: const [
+              AppSelectOption(value: 'LOW', label: 'Low'),
+              AppSelectOption(value: 'MEDIUM', label: 'Medium'),
+              AppSelectOption(value: 'HIGH', label: 'High'),
+            ],
+            onChanged: readOnly
+                ? null
+                : (v) {
+                    if (v == null) return;
+                    setState(() {
+                      _answers[field.key] = v;
+                      _updateCompletion();
+                    });
+                  },
+          ),
+        );
+      case EiFieldType.multiChoice:
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          child: AppSelectField<String>(
+            label: field.label,
+            value: _answers[field.key]?.toString(),
+            enabled: !readOnly,
+            hint: 'Select…',
+            options: field.options
+                .map((o) => AppSelectOption(value: o, label: o))
+                .toList(),
+            onChanged: readOnly
+                ? null
+                : (v) {
+                    if (v == null) return;
+                    _controllers[field.key]?.text = v;
+                    setState(() {
+                      _answers[field.key] = v;
+                      _updateCompletion();
+                    });
+                  },
+          ),
+        );
+      case EiFieldType.date:
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          child: TextField(
+            controller: _controllers.putIfAbsent(
+              field.key,
+              () => TextEditingController(text: _answers[field.key]?.toString() ?? ''),
+            ),
+            readOnly: readOnly,
+            decoration: InputDecoration(
+              labelText: field.label,
+              hintText: 'YYYY-MM-DD',
+            ),
+            onChanged: readOnly
+                ? null
+                : (v) {
+                    _answers[field.key] = v;
+                    _updateCompletion();
+                  },
+          ),
+        );
+      case EiFieldType.text:
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          child: TextField(
+            controller: _controllers.putIfAbsent(
+              field.key,
+              () => TextEditingController(text: _answers[field.key]?.toString() ?? ''),
+            ),
+            readOnly: readOnly,
+            decoration: InputDecoration(labelText: field.label),
+            maxLines: field.maxLines,
+            onChanged: readOnly
+                ? null
+                : (v) {
+                    _answers[field.key] = v;
+                    _updateCompletion();
+                  },
+          ),
+        );
+    }
   }
 }

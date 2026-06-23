@@ -271,6 +271,8 @@ class AppointmentModel {
     required this.scheduledStart,
     required this.childName,
     required this.therapistName,
+    this.childId,
+    this.therapistUserId,
     this.locationType,
     this.confirmationStatus = 'PENDING',
     this.parentConfirmedAt,
@@ -291,6 +293,8 @@ class AppointmentModel {
   final DateTime scheduledStart;
   final String childName;
   final String therapistName;
+  final String? childId;
+  final String? therapistUserId;
   final String? locationType;
   final String confirmationStatus;
   final DateTime? parentConfirmedAt;
@@ -438,8 +442,8 @@ class ParentBookingRepository {
         requiresSelfPayBookingPayment
         bookingPaymentId
         bookingPaymentStatus
-        child { firstName lastName }
-        therapist { user { firstName lastName } }
+        child { id firstName lastName }
+        therapist { user { id firstName lastName } }
       }
     }
   ''';
@@ -1255,9 +1259,11 @@ class ParentBookingRepository {
       childName: child != null
           ? '${child['firstName']} ${child['lastName']}'
           : 'Child',
+      childId: child?['id'] as String?,
       therapistName: user != null
           ? '${user['firstName']} ${user['lastName']}'
           : 'Therapist',
+      therapistUserId: user?['id'] as String?,
       locationType: e['locationType'] as String?,
       confirmationStatus: e['confirmationStatus'] as String? ?? 'PENDING',
       parentConfirmedAt: e['parentConfirmedAt'] != null

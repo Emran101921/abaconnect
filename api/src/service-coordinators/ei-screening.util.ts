@@ -44,6 +44,7 @@ export function screeningCompletionPercent(
   if (requiredKeys.length === 0) return 100;
   const filled = requiredKeys.filter((k) => {
     const v = answers[k];
+    if (typeof v === 'boolean') return v;
     return v !== undefined && v !== null && String(v).trim() !== '';
   }).length;
   return Math.round((filled / requiredKeys.length) * 100);

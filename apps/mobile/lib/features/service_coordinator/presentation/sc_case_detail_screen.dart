@@ -8,6 +8,8 @@ import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_snackbar.dart';
 import '../../../shared/widgets/glossy_button.dart';
+import '../../calls/widgets/call_button.dart';
+import '../../calls/widgets/call_disclaimer.dart';
 import 'sc_providers.dart';
 
 class ScCaseDetailScreen extends ConsumerWidget {
@@ -51,6 +53,23 @@ class ScCaseDetailScreen extends ConsumerWidget {
                       ),
                     ],
                   ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const CallEmergencyDisclaimer(),
+              const SizedBox(height: 8),
+              CallButton(
+                recipientUserId: detail.parentUserId,
+                recipientName: detail.parentName,
+                childId: childId,
+              ),
+              const SizedBox(height: 8),
+              GlossyButton(
+                title: 'Call history',
+                icon: Icons.history_rounded,
+                variant: GlossyButtonVariant.neutral,
+                onPressed: () => context.push(
+                  '${AppRoutes.callHistory}?childId=$childId&title=Case call history',
                 ),
               ),
               const SizedBox(height: 16),

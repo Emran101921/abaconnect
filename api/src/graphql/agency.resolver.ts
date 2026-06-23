@@ -12,6 +12,8 @@ import { ScreeningsService } from '../screenings/screenings.service';
 import { SaveSoapNoteInput } from './inputs/therapist.inputs';
 import {
   CreateAgencyStaffInput,
+  AddAgencyCaseloadChildInput,
+  UpdateAgencyCaseloadChildInput,
   UpdateAgencyProfileInput,
 } from './inputs/agency.inputs';
 import {
@@ -36,7 +38,10 @@ import {
   SessionNoteFormContextType,
   SoapNoteType,
   StaffSessionNoteSummaryType,
+  TherapistCaseloadChartType,
 } from './types/therapist.types';
+import { ChildType } from './types/parent-booking.types';
+import { TherapyType } from '../../generated/prisma/client';
 
 @Resolver()
 @Roles('AGENCY_ADMIN')
@@ -62,6 +67,27 @@ export class AgencyResolver {
     return this.agenciesService.getDashboardForAgency(agency.id, user.tenantId);
   }
 
+  @Query(() => [TherapistCaseloadChartType], { name: 'agencyCaseloadCharts' })
+  async agencyCaseloadCharts(
+    @CurrentUser() user: AuthUser,
+  ): Promise<TherapistCaseloadChartType[]> {
+    if (!user.tenantId) {
+      throw new Error('Tenant required');
+    }
+    const agency = await this.agenciesService.resolveAgencyForAdmin(
+      user.id,
+      user.tenantId,
+    );
+    const rows = await this.agenciesService.findCaseloadChartsForAgency(
+      agency.id,
+      user.tenantId,
+    );
+    return rows.map((row) => ({
+      ...row,
+      therapyTypes: row.therapyTypes as TherapyType[],
+    }));
+  }
+
   @Query(() => AgencyProfileType, { name: 'agencyProfile' })
   async agencyProfile(@CurrentUser() user: AuthUser): Promise<AgencyProfileType> {
     if (!user.tenantId) {
@@ -76,6 +102,85 @@ export class AgencyResolver {
       user.tenantId,
     );
     return this.mapAgencyProfile(profile);
+  }
+
+  @Query(() => [ChildType], { name: 'agencyManagedCaseloadChildren' })
+  async agencyManagedCaseloadChildren(
+    @CurrentUser() user: AuthUser,
+  ): Promise<ChildType[]> {
+    if (!user.tenantId) {
+      throw new Error('Tenant required');
+    }
+    const agency = await this.agenciesService.resolveAgencyForAdmin(
+      user.id,
+      user.tenantId,
+    );
+    const children = await this.agenciesService.listManagedCaseloadChildren(
+      agency.id,
+      user.tenantId,
+    );
+    return children.map((child) => this.mapChild(child));
+  }
+
+  @Query(() => ChildType, { name: 'agencyManagedCaseloadChild' })
+  async agencyManagedCaseloadChild(
+    @CurrentUser() user: AuthUser,
+    @Args('childId', { type: () => ID }) childId: string,
+  ): Promise<ChildType> {
+    if (!user.tenantId) {
+      throw new Error('Tenant required');
+    }
+    const agency = await this.agenciesService.resolveAgencyForAdmin(
+      user.id,
+      user.tenantId,
+    );
+    const child = await this.agenciesService.getManagedCaseloadChild(
+      agency.id,
+      user.tenantId,
+      childId,
+    );
+    return this.mapChild(child);
+  }
+
+  @Mutation(() => ChildType, { name: 'addAgencyCaseloadChild' })
+  async addAgencyCaseloadChild(
+    @CurrentUser() user: AuthUser,
+    @Args('input') input: AddAgencyCaseloadChildInput,
+  ): Promise<ChildType> {
+    if (!user.tenantId) {
+      throw new Error('Tenant required');
+    }
+    const agency = await this.agenciesService.resolveAgencyForAdmin(
+      user.id,
+      user.tenantId,
+    );
+    const child = await this.agenciesService.addCaseloadChild(
+      agency.id,
+      user.tenantId,
+      user.id,
+      input,
+    );
+    return this.mapChild(child);
+  }
+
+  @Mutation(() => ChildType, { name: 'updateAgencyCaseloadChild' })
+  async updateAgencyCaseloadChild(
+    @CurrentUser() user: AuthUser,
+    @Args('input') input: UpdateAgencyCaseloadChildInput,
+  ): Promise<ChildType> {
+    if (!user.tenantId) {
+      throw new Error('Tenant required');
+    }
+    const agency = await this.agenciesService.resolveAgencyForAdmin(
+      user.id,
+      user.tenantId,
+    );
+    const child = await this.agenciesService.updateCaseloadChild(
+      agency.id,
+      user.tenantId,
+      input,
+    );
+    return this.mapChild(child);
   }
 
   @Query(() => AgencyOnboardingStatusType, { name: 'agencyOnboardingStatus' })
@@ -632,6 +737,40 @@ export class AgencyResolver {
             email: t.user.email,
           }
         : undefined,
+    };
+  }
+
+  private mapChild(child: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    dateOfBirth: Date;
+    gender?: string | null;
+    primaryLanguage?: string | null;
+    guardianName?: string | null;
+    guardianPhone?: string | null;
+    guardianEmail?: string | null;
+    addressLine1?: string | null;
+    zipCode?: string | null;
+    pediatricianName?: string | null;
+    insuranceType?: string | null;
+    hadEarlyIntervention?: boolean | null;
+  }): ChildType {
+    return {
+      id: child.id,
+      firstName: child.firstName,
+      lastName: child.lastName,
+      dateOfBirth: child.dateOfBirth,
+      gender: child.gender ?? undefined,
+      primaryLanguage: child.primaryLanguage ?? undefined,
+      guardianName: child.guardianName ?? undefined,
+      guardianPhone: child.guardianPhone ?? undefined,
+      guardianEmail: child.guardianEmail ?? undefined,
+      addressLine1: child.addressLine1 ?? undefined,
+      zipCode: child.zipCode ?? undefined,
+      pediatricianName: child.pediatricianName ?? undefined,
+      insuranceType: child.insuranceType ?? undefined,
+      hadEarlyIntervention: child.hadEarlyIntervention ?? undefined,
     };
   }
 

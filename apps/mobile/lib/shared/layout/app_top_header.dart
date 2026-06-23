@@ -2,14 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/providers/app_providers.dart';
 import '../../core/router/app_router.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../features/notifications/notification_providers.dart';
-import '../../shared/models/user_role.dart';
+import '../widgets/app_account_menu.dart';
 import '../widgets/app_theme_toggle.dart';
 import 'action_button.dart';
-import 'user_role_badge.dart';
 import '../widgets/glossy_button.dart';
 import '../widgets/app_web_sidebar.dart';
 
@@ -39,7 +37,6 @@ class AppTopHeader extends ConsumerWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final canPop = Navigator.of(context).canPop();
     final showBack = showBackButton ?? canPop;
-    final user = ref.watch(authStateProvider).valueOrNull?.user;
     final unread = ref.watch(unreadNotificationsProvider);
     final unreadCount = unread.maybeWhen(data: (c) => c, orElse: () => 0);
 
@@ -147,95 +144,7 @@ class AppTopHeader extends ConsumerWidget {
                         )
                       : const Icon(Icons.notifications_outlined),
                 ),
-                if (user != null)
-                  PopupMenuButton<String>(
-                    tooltip: 'Account menu',
-                    offset: const Offset(0, 44),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.sm,
-                      ),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 16,
-                            backgroundColor:
-                                colorScheme.primary.withValues(alpha: 0.12),
-                            child: Icon(
-                              Icons.person_outline,
-                              size: 18,
-                              color: colorScheme.primary,
-                            ),
-                          ),
-                          const SizedBox(width: AppSpacing.xs),
-                          const Icon(Icons.expand_more, size: 18),
-                        ],
-                      ),
-                    ),
-                    itemBuilder: (ctx) => [
-                      PopupMenuItem(
-                        enabled: false,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              user.fullName ?? user.email,
-                              style: Theme.of(ctx).textTheme.labelLarge,
-                            ),
-                            const SizedBox(height: AppSpacing.xs),
-                            UserRoleBadge(role: user.role, compact: true),
-                          ],
-                        ),
-                      ),
-                      const PopupMenuDivider(),
-                      const PopupMenuItem(
-                        value: 'profile',
-                        child: ListTile(
-                          leading: Icon(Icons.person_outline),
-                          title: Text('Profile & settings'),
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                      ),
-                      const PopupMenuItem(
-                        value: 'security',
-                        child: ListTile(
-                          leading: Icon(Icons.shield_outlined),
-                          title: Text('Security'),
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                      ),
-                      const PopupMenuItem(
-                        value: 'privacy',
-                        child: ListTile(
-                          leading: Icon(Icons.privacy_tip_outlined),
-                          title: Text('Privacy center'),
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                      ),
-                      const PopupMenuDivider(),
-                      const PopupMenuItem(
-                        value: 'logout',
-                        child: ListTile(
-                          leading: Icon(Icons.logout),
-                          title: Text('Sign out'),
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                      ),
-                    ],
-                    onSelected: (value) async {
-                      switch (value) {
-                        case 'profile':
-                          _openProfile(context, user.role);
-                        case 'security':
-                          context.push(AppRoutes.security);
-                        case 'privacy':
-                          context.push(AppRoutes.settingsPrivacy);
-                        case 'logout':
-                          await ref.read(authStateProvider.notifier).logout();
-                          if (context.mounted) context.go(AppRoutes.login);
-                      }
-                    },
-                  ),
+                const AppAccountMenuButton(),
               ],
             ),
           ),
@@ -286,17 +195,6 @@ class AppTopHeader extends ConsumerWidget {
         context.push('${AppRoutes.adminHome}/analytics');
       case AppShellRole.serviceCoordinator:
         context.push('${AppRoutes.serviceCoordinatorHome}/follow-ups');
-    }
-  }
-
-  void _openProfile(BuildContext context, UserRole role) {
-    switch (role) {
-      case UserRole.parent:
-        context.push(AppRoutes.parentProfile);
-      case UserRole.therapist:
-        context.push(AppRoutes.therapistProfile);
-      default:
-        context.push(AppRoutes.security);
     }
   }
 }

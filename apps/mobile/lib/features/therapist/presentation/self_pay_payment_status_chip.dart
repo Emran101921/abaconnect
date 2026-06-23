@@ -9,7 +9,9 @@ class SelfPayPaymentStatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!appointment.requiresSelfPayCollection) {
+    final hasPayment =
+        appointment.requiresSelfPayCollection || appointment.sessionPaymentId != null;
+    if (!hasPayment) {
       return const SizedBox.shrink();
     }
 

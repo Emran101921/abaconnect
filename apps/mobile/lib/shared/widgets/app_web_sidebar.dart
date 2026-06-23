@@ -56,6 +56,8 @@ AppShellRole? inferAppShellRole({
     AppRoutes.consent,
     AppRoutes.telehealth,
     AppRoutes.matching,
+    AppRoutes.callHistory,
+    AppRoutes.parentProfile,
   };
   const therapistShared = {
     AppRoutes.messages,
@@ -64,6 +66,8 @@ AppShellRole? inferAppShellRole({
     AppRoutes.payments,
     AppRoutes.documents,
     AppRoutes.telehealth,
+    AppRoutes.callHistory,
+    AppRoutes.therapistProfile,
   };
 
   if (userRole == UserRole.parent && parentShared.contains(location)) {
@@ -142,7 +146,7 @@ List<AppWebNavItem> parentWebNavItems({
       isSelected: (loc) => loc.startsWith(AppRoutes.parentMarketplace),
     ),
     AppWebNavItem(
-      label: 'Appointments',
+      label: 'Schedule',
       icon: Icons.calendar_month_outlined,
       selectedIcon: Icons.calendar_month_rounded,
       route: AppRoutes.parentAppointments,
@@ -155,6 +159,23 @@ List<AppWebNavItem> parentWebNavItems({
       route: AppRoutes.messages,
       badgeCount: messagesBadge,
       isSelected: (loc) => loc.startsWith(AppRoutes.messages),
+    ),
+    AppWebNavItem(
+      label: 'Calls',
+      icon: Icons.call_outlined,
+      selectedIcon: Icons.call_rounded,
+      route: AppRoutes.callHistory,
+      isSelected: (loc) => loc.startsWith(AppRoutes.callHistory),
+    ),
+    AppWebNavItem(
+      label: 'Profile',
+      icon: Icons.person_outline,
+      selectedIcon: Icons.person_rounded,
+      route: AppRoutes.parentProfile,
+      isSelected: (loc) =>
+          loc.startsWith(AppRoutes.parentProfile) ||
+          loc.startsWith(AppRoutes.parentChildren) ||
+          loc.startsWith(AppRoutes.parentScreening),
     ),
     AppWebNavItem(
       label: 'Documents',
@@ -191,14 +212,24 @@ List<AppWebNavItem> therapistWebNavItems({
           (loc.startsWith('${AppRoutes.therapistHome}/') &&
               !loc.startsWith(AppRoutes.therapistAppointments) &&
               !loc.startsWith(AppRoutes.therapistSessionNotes) &&
-              !loc.startsWith(AppRoutes.therapistMarketplace)),
+              !loc.startsWith(AppRoutes.therapistCharts) &&
+              !loc.startsWith(AppRoutes.therapistMarketplace) &&
+              !loc.startsWith(AppRoutes.therapistJobOpportunities)),
     ),
     AppWebNavItem(
-      label: 'Marketplace',
+      label: 'Parent referrals',
       icon: Icons.storefront_outlined,
       selectedIcon: Icons.storefront_rounded,
       route: AppRoutes.therapistMarketplace,
       isSelected: (loc) => loc.startsWith(AppRoutes.therapistMarketplace),
+    ),
+    AppWebNavItem(
+      label: 'Job opportunities',
+      icon: Icons.work_outline,
+      selectedIcon: Icons.work_rounded,
+      route: AppRoutes.therapistJobOpportunities,
+      isSelected: (loc) =>
+          loc.startsWith(AppRoutes.therapistJobOpportunities),
     ),
     AppWebNavItem(
       label: 'Schedule',
@@ -217,12 +248,26 @@ List<AppWebNavItem> therapistWebNavItems({
       isSelected: (loc) => loc.startsWith(AppRoutes.therapistSessionNotes),
     ),
     AppWebNavItem(
+      label: 'Charts',
+      icon: Icons.medical_information_outlined,
+      selectedIcon: Icons.medical_information_rounded,
+      route: AppRoutes.therapistCharts,
+      isSelected: (loc) => loc.startsWith(AppRoutes.therapistCharts),
+    ),
+    AppWebNavItem(
       label: 'Messages',
       icon: Icons.chat_bubble_outline_rounded,
       selectedIcon: Icons.chat_bubble_rounded,
       route: AppRoutes.messages,
       badgeCount: messagesBadge,
       isSelected: (loc) => loc.startsWith(AppRoutes.messages),
+    ),
+    AppWebNavItem(
+      label: 'Calls',
+      icon: Icons.call_outlined,
+      selectedIcon: Icons.call_rounded,
+      route: AppRoutes.callHistory,
+      isSelected: (loc) => loc.startsWith(AppRoutes.callHistory),
     ),
     AppWebNavItem(
       label: 'Profile',
@@ -241,6 +286,40 @@ List<AppWebNavItem> therapistWebNavItems({
   ];
 }
 
+List<AppWebNavItem> billingStaffWebNavItems({required int unreadCount}) {
+  return [
+    AppWebNavItem(
+      label: 'NY EI billing',
+      icon: Icons.medical_services_outlined,
+      selectedIcon: Icons.medical_services_rounded,
+      route: AppRoutes.adminEiBilling,
+      isSelected: (loc) => loc.startsWith(AppRoutes.adminEiBilling),
+    ),
+    AppWebNavItem(
+      label: 'Messages',
+      icon: Icons.chat_bubble_outline_rounded,
+      selectedIcon: Icons.chat_bubble_rounded,
+      route: AppRoutes.messages,
+      isSelected: (loc) => loc.startsWith(AppRoutes.messages),
+    ),
+    AppWebNavItem(
+      label: 'Notifications',
+      icon: Icons.notifications_outlined,
+      selectedIcon: Icons.notifications_rounded,
+      route: AppRoutes.notifications,
+      badgeCount: unreadCount,
+      isSelected: (loc) => loc.startsWith(AppRoutes.notifications),
+    ),
+    AppWebNavItem(
+      label: 'Security',
+      icon: Icons.settings_outlined,
+      selectedIcon: Icons.settings_rounded,
+      route: AppRoutes.security,
+      isSelected: (loc) => loc.startsWith(AppRoutes.security),
+    ),
+  ];
+}
+
 List<AppWebNavItem> adminWebNavItems({required int unreadCount}) {
   return [
     AppWebNavItem(
@@ -251,46 +330,122 @@ List<AppWebNavItem> adminWebNavItems({required int unreadCount}) {
       isSelected: (loc) => loc == AppRoutes.adminHome,
     ),
     AppWebNavItem(
+      label: 'Users',
+      icon: Icons.people_outline,
+      selectedIcon: Icons.people_rounded,
+      route: '${AppRoutes.adminHome}/users',
+      isSelected: (loc) => loc.startsWith('${AppRoutes.adminHome}/users'),
+    ),
+    AppWebNavItem(
       label: 'Verifications',
       icon: Icons.verified_user_outlined,
       selectedIcon: Icons.verified_user,
       route: '${AppRoutes.adminHome}/verifications',
+      isSelected: (loc) =>
+          loc.startsWith('${AppRoutes.adminHome}/verifications'),
+    ),
+    AppWebNavItem(
+      label: 'Scheduling',
+      icon: Icons.calendar_month_outlined,
+      selectedIcon: Icons.calendar_month_rounded,
+      route: '${AppRoutes.adminHome}/analytics',
+      isSelected: (loc) => loc.contains('/analytics'),
+    ),
+    AppWebNavItem(
+      label: 'Messages',
+      icon: Icons.chat_bubble_outline_rounded,
+      selectedIcon: Icons.chat_bubble_rounded,
+      route: AppRoutes.messages,
+      isSelected: (loc) => loc.startsWith(AppRoutes.messages),
+    ),
+    AppWebNavItem(
+      label: 'Secure calls',
+      icon: Icons.call_outlined,
+      selectedIcon: Icons.call_rounded,
+      route: AppRoutes.callHistory,
+      isSelected: (loc) => loc.startsWith(AppRoutes.callHistory),
+    ),
+    AppWebNavItem(
+      label: 'Billing & claims',
+      icon: Icons.receipt_long_outlined,
+      selectedIcon: Icons.receipt_long_rounded,
+      route: '${AppRoutes.adminHome}/insurance',
+      isSelected: (loc) =>
+          loc.startsWith('${AppRoutes.adminHome}/insurance') ||
+          loc.startsWith('${AppRoutes.adminHome}/payouts'),
+    ),
+    AppWebNavItem(
+      label: 'NY EI billing',
+      icon: Icons.medical_services_outlined,
+      selectedIcon: Icons.medical_services_rounded,
+      route: AppRoutes.adminEiBilling,
+      isSelected: (loc) => loc.startsWith(AppRoutes.adminEiBilling),
+    ),
+    AppWebNavItem(
+      label: 'Parent marketplace',
+      icon: Icons.storefront_outlined,
+      selectedIcon: Icons.storefront_rounded,
+      route: AppRoutes.adminMarketplace,
+      isSelected: (loc) =>
+          loc == AppRoutes.adminMarketplace ||
+          (loc.startsWith('${AppRoutes.adminHome}/marketplace') &&
+              !loc.startsWith(AppRoutes.adminMarketplaceAdmin)),
+    ),
+    AppWebNavItem(
+      label: 'Job marketplace admin',
+      icon: Icons.work_outline,
+      selectedIcon: Icons.work_rounded,
+      route: AppRoutes.adminMarketplaceAdmin,
+      isSelected: (loc) => loc.startsWith(AppRoutes.adminMarketplaceAdmin),
+    ),
+    AppWebNavItem(
+      label: 'Documents',
+      icon: Icons.folder_outlined,
+      selectedIcon: Icons.folder_rounded,
+      route: AppRoutes.documents,
+      isSelected: (loc) => loc.startsWith(AppRoutes.documents),
+    ),
+    AppWebNavItem(
+      label: 'Reports',
+      icon: Icons.insights_outlined,
+      selectedIcon: Icons.insights_rounded,
+      route: '${AppRoutes.adminHome}/analytics',
+      isSelected: (loc) => loc.startsWith('${AppRoutes.adminHome}/analytics'),
+    ),
+    AppWebNavItem(
+      label: 'Audit logs',
+      icon: Icons.history_outlined,
+      selectedIcon: Icons.history_rounded,
+      route: '${AppRoutes.adminHome}/audit',
+      isSelected: (loc) => loc.startsWith('${AppRoutes.adminHome}/audit'),
     ),
     AppWebNavItem(
       label: 'Complaints',
       icon: Icons.report_outlined,
       selectedIcon: Icons.report_rounded,
       route: '${AppRoutes.adminHome}/complaints',
+      isSelected: (loc) => loc.startsWith('${AppRoutes.adminHome}/complaints'),
     ),
     AppWebNavItem(
       label: 'Disputes',
       icon: Icons.gavel_outlined,
       selectedIcon: Icons.gavel_rounded,
       route: '${AppRoutes.adminHome}/disputes',
-    ),
-    AppWebNavItem(
-      label: 'Users',
-      icon: Icons.people_outline,
-      selectedIcon: Icons.people_rounded,
-      route: '${AppRoutes.adminHome}/users',
-    ),
-    AppWebNavItem(
-      label: 'Analytics',
-      icon: Icons.insights_outlined,
-      selectedIcon: Icons.insights_rounded,
-      route: '${AppRoutes.adminHome}/analytics',
+      isSelected: (loc) => loc.startsWith('${AppRoutes.adminHome}/disputes'),
     ),
     AppWebNavItem(
       label: 'Compliance',
       icon: Icons.policy_outlined,
       selectedIcon: Icons.policy_rounded,
       route: '${AppRoutes.adminHome}/compliance',
+      isSelected: (loc) => loc.startsWith('${AppRoutes.adminHome}/compliance'),
     ),
     AppWebNavItem(
-      label: 'Marketplace',
-      icon: Icons.storefront_outlined,
-      selectedIcon: Icons.storefront_rounded,
-      route: AppRoutes.adminMarketplace,
+      label: 'Settings',
+      icon: Icons.settings_outlined,
+      selectedIcon: Icons.settings_rounded,
+      route: AppRoutes.security,
+      isSelected: (loc) => loc.startsWith(AppRoutes.security),
     ),
     AppWebNavItem(
       label: 'Notifications',
@@ -298,6 +453,7 @@ List<AppWebNavItem> adminWebNavItems({required int unreadCount}) {
       selectedIcon: Icons.notifications_rounded,
       route: AppRoutes.notifications,
       badgeCount: unreadCount,
+      isSelected: (loc) => loc.startsWith(AppRoutes.notifications),
     ),
   ];
 }
@@ -319,6 +475,14 @@ List<AppWebNavItem> serviceCoordinatorWebNavItems({required int unreadCount}) {
       isSelected: (loc) => loc.startsWith('${AppRoutes.serviceCoordinatorHome}/cases'),
     ),
     AppWebNavItem(
+      label: 'Charts',
+      icon: Icons.medical_information_outlined,
+      selectedIcon: Icons.medical_information_rounded,
+      route: '${AppRoutes.serviceCoordinatorHome}/charts',
+      isSelected: (loc) =>
+          loc.startsWith('${AppRoutes.serviceCoordinatorHome}/charts'),
+    ),
+    AppWebNavItem(
       label: 'Follow-ups',
       icon: Icons.event_note_outlined,
       selectedIcon: Icons.event_note_rounded,
@@ -331,6 +495,13 @@ List<AppWebNavItem> serviceCoordinatorWebNavItems({required int unreadCount}) {
       icon: Icons.message_outlined,
       selectedIcon: Icons.message_rounded,
       route: AppRoutes.messages,
+    ),
+    AppWebNavItem(
+      label: 'Calls',
+      icon: Icons.call_outlined,
+      selectedIcon: Icons.call_rounded,
+      route: AppRoutes.callHistory,
+      isSelected: (loc) => loc.startsWith(AppRoutes.callHistory),
     ),
     AppWebNavItem(
       label: 'Notifications',
@@ -358,6 +529,20 @@ List<AppWebNavItem> agencyWebNavItems({required int unreadCount}) {
       route: '${AppRoutes.agencyHome}/roster',
     ),
     AppWebNavItem(
+      label: 'Cases',
+      icon: Icons.folder_shared_outlined,
+      selectedIcon: Icons.folder_shared_rounded,
+      route: '${AppRoutes.agencyHome}/cases',
+      isSelected: (loc) => loc.startsWith('${AppRoutes.agencyHome}/cases'),
+    ),
+    AppWebNavItem(
+      label: 'Charts',
+      icon: Icons.medical_information_outlined,
+      selectedIcon: Icons.medical_information_rounded,
+      route: '${AppRoutes.agencyHome}/charts',
+      isSelected: (loc) => loc.startsWith('${AppRoutes.agencyHome}/charts'),
+    ),
+    AppWebNavItem(
       label: 'Appointments',
       icon: Icons.calendar_month_outlined,
       selectedIcon: Icons.calendar_month_rounded,
@@ -370,16 +555,53 @@ List<AppWebNavItem> agencyWebNavItems({required int unreadCount}) {
       route: '${AppRoutes.agencyHome}/analytics',
     ),
     AppWebNavItem(
-      label: 'Marketplace',
+      label: 'Parent referrals',
       icon: Icons.storefront_outlined,
       selectedIcon: Icons.storefront_rounded,
       route: AppRoutes.agencyMarketplace,
+    ),
+    AppWebNavItem(
+      label: 'Service needs',
+      icon: Icons.medical_services_outlined,
+      selectedIcon: Icons.medical_services_rounded,
+      route: AppRoutes.agencyServiceNeeds,
+      isSelected: (loc) => loc.startsWith(AppRoutes.agencyServiceNeeds),
+    ),
+    AppWebNavItem(
+      label: 'Job opportunities',
+      icon: Icons.work_outline,
+      selectedIcon: Icons.work_rounded,
+      route: AppRoutes.agencyOpportunities,
+      isSelected: (loc) => loc.startsWith(AppRoutes.agencyOpportunities),
+    ),
+    AppWebNavItem(
+      label: 'NY EI billing',
+      icon: Icons.receipt_long_outlined,
+      selectedIcon: Icons.receipt_long_rounded,
+      route: AppRoutes.agencyEiBilling,
+      isSelected: (loc) => loc.startsWith(AppRoutes.agencyEiBilling),
+    ),
+    AppWebNavItem(
+      label: 'Profile',
+      icon: Icons.person_outline,
+      selectedIcon: Icons.person_rounded,
+      route: AppRoutes.agencyProfile,
+      isSelected: (loc) =>
+          loc.startsWith(AppRoutes.agencyProfile) ||
+          loc.startsWith(AppRoutes.agencyChildren),
     ),
     AppWebNavItem(
       label: 'Messages',
       icon: Icons.chat_bubble_outline_rounded,
       selectedIcon: Icons.chat_bubble_rounded,
       route: AppRoutes.messages,
+    ),
+    AppWebNavItem(
+      label: 'Calls',
+      icon: Icons.call_outlined,
+      selectedIcon: Icons.call_rounded,
+      route: AppRoutes.callHistory,
+      isSelected: (loc) => loc.startsWith(AppRoutes.callHistory),
     ),
     AppWebNavItem(
       label: 'Notifications',
@@ -408,22 +630,15 @@ class AppWebSidebar extends ConsumerWidget {
     final user = ref.watch(authStateProvider).valueOrNull?.user;
 
     return Material(
-      color: colorScheme.surface.withValues(alpha: 0.88),
+      color: colorScheme.surface,
       child: SizedBox(
         width: AppSpacing.sidebarWidth,
         child: DecoratedBox(
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                colorScheme.surface,
-                colorScheme.primaryContainer.withValues(alpha: 0.08),
-              ],
-            ),
+            color: colorScheme.surface,
             border: Border(
               right: BorderSide(
-                color: colorScheme.outlineVariant.withValues(alpha: 0.55),
+                color: AppColors.border,
               ),
             ),
             boxShadow: [
@@ -503,6 +718,11 @@ class AppWebSidebar extends ConsumerWidget {
   List<AppWebNavItem> _itemsForRole(WidgetRef ref) {
     final unread = ref.watch(unreadNotificationsProvider);
     final unreadCount = unread.maybeWhen(data: (c) => c, orElse: () => 0);
+    final userRole = ref.watch(authStateProvider).valueOrNull?.user.role;
+
+    if (userRole == UserRole.billing) {
+      return billingStaffWebNavItems(unreadCount: unreadCount);
+    }
 
     switch (role) {
       case AppShellRole.parent:

@@ -60,6 +60,9 @@ export class ChildType {
 
 @ObjectType()
 export class TherapistUserType {
+  @Field(() => ID, { nullable: true })
+  id?: string;
+
   @Field()
   firstName: string;
 

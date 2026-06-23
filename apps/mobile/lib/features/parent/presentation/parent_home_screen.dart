@@ -8,6 +8,7 @@ import '../../../shared/layout/action_button.dart';
 import '../../../shared/layout/app_page_header.dart';
 import '../../../shared/layout/user_role_badge.dart';
 import '../../../shared/widgets/app_bottom_nav.dart';
+import '../../../shared/widgets/app_trust_notice.dart';
 import '../../../shared/widgets/glossy_button.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_section_header.dart';
@@ -63,7 +64,7 @@ class ParentHomeScreen extends ConsumerWidget {
       title: 'Parent dashboard',
       subtitle: 'Family care coordination',
       constrainBodyOnWide: false,
-      bottomNavigationBar: ParentBottomNav(current: ParentNavTab.home),
+      bottomNavigationBar: const RoleBottomNav(current: CoreNavTab.home),
       actions: [
         IconButton(
           icon: const Icon(Icons.history),
@@ -120,6 +121,10 @@ class ParentHomeScreen extends ConsumerWidget {
                     ),
                   ],
                 ),
+              ),
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: AppTrustNotice(dense: true),
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -180,6 +185,12 @@ class ParentHomeScreen extends ConsumerWidget {
                           icon: Icons.chat_bubble_outline_rounded,
                           variant: AppGlossyButtonVariant.tertiary,
                           onTap: () => context.push(AppRoutes.messages),
+                        ),
+                        AppWellnessActionItem(
+                          label: 'Secure calls',
+                          icon: Icons.call_outlined,
+                          variant: AppGlossyButtonVariant.neutral,
+                          onTap: () => context.push(AppRoutes.callHistory),
                         ),
                         AppWellnessActionItem(
                           label: 'Upload Documents',

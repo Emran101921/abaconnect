@@ -9,6 +9,7 @@ import '../../../core/utils/document_upload.dart';
 import '../../../core/utils/file_download.dart';
 import '../../../shared/models/analytics_metric.dart';
 import '../../therapist/models/eip_session_note_model.dart';
+import '../../parent/data/parent_booking_repository.dart';
 
 class AgencyDashboardModel {
   const AgencyDashboardModel({
@@ -19,6 +20,10 @@ class AgencyDashboardModel {
     required this.missingEvvCount,
     required this.draftClaimsCount,
     required this.cancellationsToday,
+    required this.serviceCoordinatorCount,
+    required this.activeScCaseload,
+    required this.urgentScCases,
+    required this.scFollowUpsDue,
     this.actionItems = const [],
   });
 
@@ -29,6 +34,10 @@ class AgencyDashboardModel {
   final int missingEvvCount;
   final int draftClaimsCount;
   final int cancellationsToday;
+  final int serviceCoordinatorCount;
+  final int activeScCaseload;
+  final int urgentScCases;
+  final int scFollowUpsDue;
   final List<Map<String, dynamic>> actionItems;
 }
 
@@ -349,6 +358,10 @@ class AgencyRepository {
         missingEvvCount
         draftClaimsCount
         cancellationsToday
+        serviceCoordinatorCount
+        activeScCaseload
+        urgentScCases
+        scFollowUpsDue
         actionItems {
           id title subtitle actionType priority
           threadId appointmentId sessionId claimId
@@ -384,6 +397,10 @@ class AgencyRepository {
       missingEvvCount: data['missingEvvCount'] as int? ?? 0,
       draftClaimsCount: data['draftClaimsCount'] as int? ?? 0,
       cancellationsToday: data['cancellationsToday'] as int? ?? 0,
+      serviceCoordinatorCount: data['serviceCoordinatorCount'] as int? ?? 0,
+      activeScCaseload: data['activeScCaseload'] as int? ?? 0,
+      urgentScCases: data['urgentScCases'] as int? ?? 0,
+      scFollowUpsDue: data['scFollowUpsDue'] as int? ?? 0,
       actionItems: (data['actionItems'] as List<dynamic>? ?? [])
           .cast<Map<String, dynamic>>(),
     );
@@ -1112,6 +1129,179 @@ class AgencyRepository {
           'eipFormData': jsonEncode(form.toJson()),
         },
       },
+    );
+  }
+
+  Future<ChildModel> addAgencyCaseloadChild({
+    required String firstName,
+    required String lastName,
+    required DateTime dateOfBirth,
+    String? gender,
+    String? primaryLanguage,
+    String? guardianName,
+    String? guardianPhone,
+    String? guardianEmail,
+    String? addressLine1,
+    String? zipCode,
+    String? pediatricianName,
+    String? insuranceType,
+    bool? hadEarlyIntervention,
+  }) async {
+    const mutation = r'''
+      mutation AddAgencyCaseloadChild($input: AddAgencyCaseloadChildInput!) {
+        addAgencyCaseloadChild(input: $input) {
+          id firstName lastName dateOfBirth gender primaryLanguage
+          guardianName guardianPhone guardianEmail addressLine1 zipCode
+          pediatricianName insuranceType hadEarlyIntervention
+        }
+      }
+    ''';
+    final result = await _graphql.query(
+      mutation,
+      variables: {
+        'input': {
+          'firstName': firstName,
+          'lastName': lastName,
+          'dateOfBirth': _dateOnlyIso(dateOfBirth),
+          'gender': ?gender,
+          'primaryLanguage': ?primaryLanguage,
+          'guardianName': ?guardianName,
+          'guardianPhone': ?guardianPhone,
+          'guardianEmail': ?guardianEmail,
+          'addressLine1': ?addressLine1,
+          'zipCode': ?zipCode,
+          'pediatricianName': ?pediatricianName,
+          'insuranceType': ?insuranceType,
+          'hadEarlyIntervention': ?hadEarlyIntervention,
+        },
+      },
+    );
+    final e =
+        result['data']?['addAgencyCaseloadChild'] as Map<String, dynamic>?;
+    if (e == null) {
+      throw Exception('Failed to add child to agency caseload');
+    }
+    return _mapCaseloadChild(e);
+  }
+
+  Future<List<ChildModel>> fetchAgencyManagedChildren() async {
+    const query = r'''
+      query AgencyManagedCaseloadChildren {
+        agencyManagedCaseloadChildren {
+          id firstName lastName dateOfBirth gender primaryLanguage
+          guardianName guardianPhone guardianEmail addressLine1 zipCode
+          pediatricianName insuranceType hadEarlyIntervention
+        }
+      }
+    ''';
+    final result = await _graphql.query(query);
+    final list =
+        result['data']?['agencyManagedCaseloadChildren'] as List<dynamic>? ??
+            [];
+    return list
+        .map((e) => _mapCaseloadChild(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<ChildModel> fetchAgencyManagedChild(String childId) async {
+    const query = r'''
+      query AgencyManagedCaseloadChild($childId: ID!) {
+        agencyManagedCaseloadChild(childId: $childId) {
+          id firstName lastName dateOfBirth gender primaryLanguage
+          guardianName guardianPhone guardianEmail addressLine1 zipCode
+          pediatricianName insuranceType hadEarlyIntervention
+        }
+      }
+    ''';
+    final result = await _graphql.query(
+      query,
+      variables: {'childId': childId},
+    );
+    final e = result['data']?['agencyManagedCaseloadChild']
+        as Map<String, dynamic>?;
+    if (e == null) {
+      throw Exception('Child not found on agency caseload');
+    }
+    return _mapCaseloadChild(e);
+  }
+
+  Future<ChildModel> updateAgencyCaseloadChild({
+    required String childId,
+    String? firstName,
+    String? lastName,
+    DateTime? dateOfBirth,
+    String? gender,
+    String? primaryLanguage,
+    String? guardianName,
+    String? guardianPhone,
+    String? guardianEmail,
+    String? addressLine1,
+    String? zipCode,
+    String? pediatricianName,
+    String? insuranceType,
+    bool? hadEarlyIntervention,
+  }) async {
+    const mutation = r'''
+      mutation UpdateAgencyCaseloadChild($input: UpdateAgencyCaseloadChildInput!) {
+        updateAgencyCaseloadChild(input: $input) {
+          id firstName lastName dateOfBirth gender primaryLanguage
+          guardianName guardianPhone guardianEmail addressLine1 zipCode
+          pediatricianName insuranceType hadEarlyIntervention
+        }
+      }
+    ''';
+    final result = await _graphql.query(
+      mutation,
+      variables: {
+        'input': {
+          'childId': childId,
+          'firstName': ?firstName,
+          'lastName': ?lastName,
+          if (dateOfBirth != null) 'dateOfBirth': _dateOnlyIso(dateOfBirth),
+          'gender': ?gender,
+          'primaryLanguage': ?primaryLanguage,
+          'guardianName': ?guardianName,
+          'guardianPhone': ?guardianPhone,
+          'guardianEmail': ?guardianEmail,
+          'addressLine1': ?addressLine1,
+          'zipCode': ?zipCode,
+          'pediatricianName': ?pediatricianName,
+          'insuranceType': ?insuranceType,
+          'hadEarlyIntervention': ?hadEarlyIntervention,
+        },
+      },
+    );
+    final e =
+        result['data']?['updateAgencyCaseloadChild'] as Map<String, dynamic>?;
+    if (e == null) {
+      throw Exception('Failed to update child profile');
+    }
+    return _mapCaseloadChild(e);
+  }
+
+  static String _dateOnlyIso(DateTime date) {
+    final y = date.year.toString().padLeft(4, '0');
+    final m = date.month.toString().padLeft(2, '0');
+    final d = date.day.toString().padLeft(2, '0');
+    return '$y-$m-$d';
+  }
+
+  ChildModel _mapCaseloadChild(Map<String, dynamic> e) {
+    return ChildModel(
+      id: e['id'] as String,
+      firstName: e['firstName'] as String,
+      lastName: e['lastName'] as String,
+      dateOfBirth: DateTime.parse(e['dateOfBirth'] as String),
+      gender: e['gender'] as String?,
+      primaryLanguage: e['primaryLanguage'] as String?,
+      guardianName: e['guardianName'] as String?,
+      guardianPhone: e['guardianPhone'] as String?,
+      guardianEmail: e['guardianEmail'] as String?,
+      addressLine1: e['addressLine1'] as String?,
+      zipCode: e['zipCode'] as String?,
+      pediatricianName: e['pediatricianName'] as String?,
+      insuranceType: e['insuranceType'] as String?,
+      hadEarlyIntervention: e['hadEarlyIntervention'] as bool?,
     );
   }
 }

@@ -5,6 +5,7 @@ class MessageThreadModel {
     required this.id,
     required this.otherParticipantName,
     required this.updatedAt,
+    this.otherParticipantUserId,
     this.subject,
     this.lastMessageBody,
     this.lastMessageAt,
@@ -16,6 +17,7 @@ class MessageThreadModel {
   final String id;
   final String? subject;
   final String otherParticipantName;
+  final String? otherParticipantUserId;
   final String? lastMessageBody;
   final DateTime? lastMessageAt;
   final DateTime updatedAt;
@@ -33,6 +35,20 @@ class ParentContactModel {
 
   final String parentId;
   final String displayName;
+  final String? childSummary;
+}
+
+class ScContactModel {
+  const ScContactModel({
+    required this.userId,
+    required this.displayName,
+    required this.roleLabel,
+    this.childSummary,
+  });
+
+  final String userId;
+  final String displayName;
+  final String roleLabel;
   final String? childSummary;
 }
 
@@ -69,6 +85,7 @@ class MessagingRepository {
         id
         subject
         otherParticipantName
+        otherParticipantUserId
         lastMessageBody
         lastMessageAt
         updatedAt
@@ -140,6 +157,26 @@ class MessagingRepository {
   static const _startParentConversationMutation = r'''
     mutation StartParentChat($parentId: ID!) {
       startParentConversation(parentId: $parentId) {
+        id
+        otherParticipantName
+      }
+    }
+  ''';
+
+  static const _scContactsQuery = r'''
+    query ScContacts {
+      myServiceCoordinatorContacts {
+        userId
+        displayName
+        roleLabel
+        childSummary
+      }
+    }
+  ''';
+
+  static const _startScConversationMutation = r'''
+    mutation StartScChat($targetUserId: ID!) {
+      startServiceCoordinatorConversation(targetUserId: $targetUserId) {
         id
         otherParticipantName
       }
@@ -222,11 +259,40 @@ class MessagingRepository {
     return e['id'] as String;
   }
 
+  Future<List<ScContactModel>> fetchScContacts() async {
+    final result = await _graphql.query(_scContactsQuery);
+    final list =
+        result['data']?['myServiceCoordinatorContacts'] as List<dynamic>? ?? [];
+    return list
+        .map(
+          (e) => ScContactModel(
+            userId: e['userId'] as String,
+            displayName: e['displayName'] as String? ?? 'Contact',
+            roleLabel: e['roleLabel'] as String? ?? '',
+            childSummary: e['childSummary'] as String?,
+          ),
+        )
+        .toList();
+  }
+
+  Future<String> startScConversation(String targetUserId) async {
+    final result = await _graphql.query(
+      _startScConversationMutation,
+      variables: {'targetUserId': targetUserId},
+    );
+    final e =
+        result['data']?['startServiceCoordinatorConversation']
+            as Map<String, dynamic>?;
+    if (e == null) throw Exception('Could not start conversation');
+    return e['id'] as String;
+  }
+
   MessageThreadModel _mapThread(dynamic e) {
     return MessageThreadModel(
       id: e['id'] as String,
       subject: e['subject'] as String?,
       otherParticipantName: e['otherParticipantName'] as String? ?? 'Chat',
+      otherParticipantUserId: e['otherParticipantUserId'] as String?,
       lastMessageBody: e['lastMessageBody'] as String?,
       lastMessageAt: DateTime.tryParse(e['lastMessageAt'] as String? ?? ''),
       updatedAt: DateTime.parse(e['updatedAt'] as String),

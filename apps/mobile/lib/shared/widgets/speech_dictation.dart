@@ -51,13 +51,14 @@ class SpeechMicButton extends ConsumerWidget {
     final error = ref.read(speechToTextServiceProvider).lastError;
     if (error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Dictation unavailable: $error')),
+        SnackBar(content: Text(error)),
       );
     } else if (!ref.read(speechToTextServiceProvider).isAvailable) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(
-            'Speech recognition is not available. Check microphone permissions.',
+            ref.read(speechToTextServiceProvider).lastError ??
+                'Speech recognition is not available. Check microphone permissions.',
           ),
         ),
       );

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/location/location_service.dart';
 import '../../../core/providers/app_providers.dart';
+import '../../../core/router/app_router.dart';
 import '../models/eip_session_note_model.dart';
 import '../models/session_note_editor_mode.dart';
 import '../therapist_providers.dart';
@@ -1211,6 +1212,21 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(savedMessage)),
       );
+      if (!draft &&
+          form.isFullySigned &&
+          widget.editorMode == SessionNoteEditorMode.agency) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'EI billing record queued — review in NY EI billing.',
+            ),
+            action: SnackBarAction(
+              label: 'Review',
+              onPressed: () => context.push(AppRoutes.agencyEiBilling),
+            ),
+          ),
+        );
+      }
       if (serviceLogMissing) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

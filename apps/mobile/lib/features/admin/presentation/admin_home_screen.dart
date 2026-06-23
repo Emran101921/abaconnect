@@ -6,8 +6,10 @@ import '../../../core/router/app_router.dart';
 import '../../../shared/layout/action_button.dart';
 import '../../../shared/layout/app_page_header.dart';
 import '../../../shared/layout/user_role_badge.dart';
+import '../../../shared/widgets/app_bottom_nav.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_section_header.dart';
+import '../../../shared/widgets/app_trust_notice.dart';
 import '../../../shared/widgets/glossy_button.dart';
 import '../../notifications/notification_providers.dart';
 import 'admin_providers.dart';
@@ -30,6 +32,7 @@ class AdminHomeScreen extends ConsumerWidget {
       title: 'Admin dashboard',
       subtitle: 'Platform operations & compliance',
       constrainBodyOnWide: false,
+      bottomNavigationBar: const RoleBottomNav(current: CoreNavTab.home),
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(adminDashboardProvider);
@@ -70,6 +73,10 @@ class AdminHomeScreen extends ConsumerWidget {
                     ),
                   ],
                 ),
+              ),
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: AppTrustNotice(dense: true),
               ),
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16),

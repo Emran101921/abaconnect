@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/router/app_router.dart';
+import '../../../shared/widgets/app_select.dart';
 import '../../../shared/widgets/app_snackbar.dart';
 import '../../../shared/widgets/glossy_button.dart';
 import '../../../shared/widgets/role_tab_scaffold.dart';
@@ -203,27 +204,19 @@ class _MarketplaceOptInScreenState extends ConsumerState<MarketplaceOptInScreen>
               ),
             ),
             const SizedBox(height: 16),
-            DropdownButtonFormField<String?>(
-              initialValue: _languagePreference,
-              decoration: InputDecoration(
-                labelText: 'Preferred language',
-                helperText: widget.languagePreference != null
-                    ? 'Pre-filled from your child profile — change if needed'
-                    : 'Helps match providers who speak your language',
-              ),
-              items: [
-                const DropdownMenuItem<String?>(
-                  value: null,
-                  child: Text('No preference'),
-                ),
+            AppSelectField<String>(
+              label: 'Preferred language',
+              value: _languagePreference ?? '__none__',
+              hint: 'No preference',
+              options: [
+                const AppSelectOption(value: '__none__', label: 'No preference'),
                 ..._languagePresets.map(
-                  (lang) => DropdownMenuItem<String?>(
-                    value: lang,
-                    child: Text(lang),
-                  ),
+                  (lang) => AppSelectOption(value: lang, label: lang),
                 ),
               ],
-              onChanged: (v) => setState(() => _languagePreference = v),
+              onChanged: (v) => setState(
+                () => _languagePreference = v == '__none__' ? null : v,
+              ),
             ),
             const SizedBox(height: 12),
             Text(
@@ -255,18 +248,16 @@ class _MarketplaceOptInScreenState extends ConsumerState<MarketplaceOptInScreen>
               }).toList(),
             ),
             const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              initialValue: _locationType,
-              decoration: const InputDecoration(
-                labelText: 'Preferred service location',
-              ),
-              items: const [
-                DropdownMenuItem(value: 'HOME', child: Text('Home')),
-                DropdownMenuItem(value: 'DAYCARE', child: Text('Daycare')),
-                DropdownMenuItem(value: 'CLINIC', child: Text('Clinic')),
-                DropdownMenuItem(value: 'TELEHEALTH', child: Text('Telehealth')),
-                DropdownMenuItem(value: 'SCHOOL', child: Text('School')),
-                DropdownMenuItem(value: 'COMMUNITY', child: Text('Community')),
+            AppSelectField<String>(
+              label: 'Preferred service location',
+              value: _locationType,
+              options: const [
+                AppSelectOption(value: 'HOME', label: 'Home'),
+                AppSelectOption(value: 'DAYCARE', label: 'Daycare'),
+                AppSelectOption(value: 'CLINIC', label: 'Clinic'),
+                AppSelectOption(value: 'TELEHEALTH', label: 'Telehealth'),
+                AppSelectOption(value: 'SCHOOL', label: 'School'),
+                AppSelectOption(value: 'COMMUNITY', label: 'Community'),
               ],
               onChanged: (v) => setState(() => _locationType = v ?? 'HOME'),
             ),

@@ -7,6 +7,7 @@ import '../../../core/providers/app_providers.dart';
 import '../../../shared/utils/checkout_launcher.dart';
 import '../../../shared/widgets/app_dashboard_card.dart';
 import '../../../shared/widgets/app_healthcare_illustration.dart';
+import '../../../shared/widgets/app_bottom_nav.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_section_header.dart';
 import '../../../shared/widgets/glossy_button.dart';
@@ -42,6 +43,7 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
 
     return AppScaffold(
       title: 'Payments',
+      bottomNavigationBar: const RoleBottomNav(current: CoreNavTab.profile),
       floatingActionButton: GlossyFab(
         icon: Icons.add_card,
         onPressed: () => _paySession(context, ref),

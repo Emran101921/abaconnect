@@ -8,6 +8,7 @@ import '../../../core/providers/consent_gate_provider.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/document_upload.dart';
+import '../../../shared/layout/onboarding_wizard_shell.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/glossy_button.dart';
 import '../data/agency_repository.dart';
@@ -224,6 +225,19 @@ class _AgencyOnboardingScreenState extends ConsumerState<AgencyOnboardingScreen>
               return ListView(
                 padding: const EdgeInsets.all(AppSpacing.lg),
                 children: [
+                  OnboardingWizardShell(
+                    title: 'Agency onboarding',
+                    subtitle: 'Complete your agency profile, documents, and review.',
+                    currentStep: _step + 1,
+                    totalSteps: 3,
+                    stepLabels: const [
+                      'Profile',
+                      'Documents',
+                      'Review',
+                    ],
+                    child: const SizedBox.shrink(),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
                   Stepper(
                     currentStep: _step,
                     onStepContinue: _loading

@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import '../../../shared/widgets/app_dashboard_card.dart';
 import '../../../shared/widgets/app_section_header.dart';
+import '../../../shared/widgets/app_select.dart';
 import '../data/parent_booking_repository.dart';
 
 Future<DateTime?> pickChildDateOfBirth(BuildContext context, DateTime initial) {
@@ -201,13 +202,14 @@ class _ChildProfileFormState extends State<ChildProfileForm> {
                       },
               ),
               const SizedBox(height: 8),
-              DropdownButtonFormField<String>(
+              AppSelectField<String>(
+                label: 'Gender',
                 value: data.gender != null && _genderOptions(data).contains(data.gender)
                     ? data.gender
                     : null,
-                decoration: const InputDecoration(labelText: 'Gender'),
-                items: _genderOptions(data)
-                    .map((g) => DropdownMenuItem(value: g, child: Text(g)))
+                enabled: !widget.readOnly,
+                options: _genderOptions(data)
+                    .map((g) => AppSelectOption(value: g, label: g))
                     .toList(),
                 onChanged: widget.readOnly
                     ? null
@@ -217,13 +219,12 @@ class _ChildProfileFormState extends State<ChildProfileForm> {
                       },
               ),
               const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: data.primaryLanguage,
-                decoration: const InputDecoration(
-                  labelText: 'Primary language',
-                ),
-                items: _languages
-                    .map((l) => DropdownMenuItem(value: l, child: Text(l)))
+              AppSelectField<String>(
+                label: 'Primary language',
+                value: data.primaryLanguage,
+                enabled: !widget.readOnly,
+                options: _languages
+                    .map((l) => AppSelectOption(value: l, label: l))
                     .toList(),
                 onChanged: widget.readOnly
                     ? null
@@ -358,11 +359,12 @@ class _ChildProfileFormState extends State<ChildProfileForm> {
                 },
               ),
               const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: data.insuranceType,
-                decoration: const InputDecoration(labelText: 'Insurance type'),
-                items: _insuranceTypes
-                    .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+              AppSelectField<String>(
+                label: 'Insurance type',
+                value: data.insuranceType,
+                enabled: !widget.readOnly,
+                options: _insuranceTypes
+                    .map((t) => AppSelectOption(value: t, label: t))
                     .toList(),
                 onChanged: widget.readOnly
                     ? null

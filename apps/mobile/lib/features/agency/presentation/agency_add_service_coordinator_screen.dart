@@ -6,7 +6,7 @@ import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_snackbar.dart';
 import '../../../shared/widgets/glossy_button.dart';
-import '../presentation/sc_providers.dart';
+import '../../service_coordinator/presentation/sc_providers.dart';
 
 class AgencyAddServiceCoordinatorScreen extends ConsumerStatefulWidget {
   const AgencyAddServiceCoordinatorScreen({super.key});

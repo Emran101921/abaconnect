@@ -23,6 +23,8 @@ import {
   ScFollowUpReminderType,
   ServiceCoordinationNoteType,
 } from './types/service-coordinator.types';
+import { TherapistCaseloadChartType } from './types/therapist.types';
+import { TherapyType } from '../../generated/prisma/client';
 
 function mapEiScreening(
   s: {
@@ -94,9 +96,11 @@ export class ServiceCoordinatorResolver {
       childName: `${detail.child.firstName} ${detail.child.lastName}`,
       dateOfBirth: detail.child.dateOfBirth,
       parentName: `${parentUser.firstName} ${parentUser.lastName}`,
+      parentUserId: parentUser.id,
       parentEmail: parentUser.email,
       parentPhone: parentUser.phone ?? undefined,
       guardianPhone: detail.child.guardianPhone ?? undefined,
+      screeningPrefillJson: JSON.stringify(detail.screeningPrefill ?? {}),
       initialScreening: detail.initialScreening
         ? mapEiScreening(detail.initialScreening)
         : undefined,
@@ -120,6 +124,24 @@ export class ServiceCoordinatorResolver {
   ): Promise<ScFollowUpReminderType[]> {
     if (!user.tenantId) throw new Error('Tenant required');
     return this.scService.getFollowUpReminders(user.id, user.tenantId);
+  }
+
+  @Query(() => [TherapistCaseloadChartType], {
+    name: 'myServiceCoordinatorCaseloadCharts',
+  })
+  @Roles('SERVICE_COORDINATOR')
+  async myServiceCoordinatorCaseloadCharts(
+    @CurrentUser() user: AuthUser,
+  ): Promise<TherapistCaseloadChartType[]> {
+    if (!user.tenantId) throw new Error('Tenant required');
+    const rows = await this.scService.findCaseloadChartsByCoordinatorUserId(
+      user.id,
+      user.tenantId,
+    );
+    return rows.map((row) => ({
+      ...row,
+      therapyTypes: row.therapyTypes as TherapyType[],
+    }));
   }
 
   @Mutation(() => EiScreeningResultType, { name: 'upsertInitialEiScreening' })
@@ -344,7 +366,8 @@ export class ServiceCoordinatorResolver {
       agency.id,
       user.tenantId!,
     );
-    return children.map((c) => {
+    return children.map((row) => {
+      const c = row.child;
       const assignment = c.scAssignments[0];
       return {
         childId: c.id,
@@ -355,6 +378,10 @@ export class ServiceCoordinatorResolver {
           ? `${assignment.serviceCoordinator.firstName} ${assignment.serviceCoordinator.lastName}`
           : undefined,
         assignmentId: assignment?.id,
+        eiEligible: row.eiEligible,
+        eligibilityReason: row.eligibilityReason,
+        riskLevel: row.screening?.riskLevel ?? undefined,
+        evaluationRequested: row.screening?.evaluationRequestedAt != null,
       };
     });
   }

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/app_select.dart';
 import '../../../shared/widgets/glossy_button.dart';
 import '../data/parent_booking_repository.dart';
 import 'parent_dashboard_providers.dart';
@@ -90,31 +91,36 @@ class _ReviewsScreenState extends ConsumerState<ReviewsScreen> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              DropdownButtonFormField<String>(
-                initialValue: therapistId,
-                decoration: const InputDecoration(labelText: 'Therapist'),
-                items: _pendingTherapists
+              AppSelectField<String>(
+                label: 'Therapist',
+                value: therapistId,
+                searchHint: _pendingTherapists.length > 6 ? 'Search' : null,
+                options: _pendingTherapists
                     .map(
-                      (t) => DropdownMenuItem(
+                      (t) => AppSelectOption(
                         value: t.id,
-                        child: Text(t.displayName),
+                        label: t.displayName,
                       ),
                     )
                     .toList(),
-                onChanged: (v) => setDialog(() => therapistId = v!),
+                onChanged: (v) {
+                  if (v != null) setDialog(() => therapistId = v);
+                },
               ),
               const SizedBox(height: 12),
-              DropdownButtonFormField<int>(
-                initialValue: rating,
-                decoration: const InputDecoration(labelText: 'Rating'),
-                items: List.generate(
+              AppSelectField<int>(
+                label: 'Rating',
+                value: rating,
+                options: List.generate(
                   5,
-                  (i) => DropdownMenuItem(
+                  (i) => AppSelectOption(
                     value: i + 1,
-                    child: Text('${i + 1} stars'),
+                    label: '${i + 1} stars',
                   ),
                 ),
-                onChanged: (v) => setDialog(() => rating = v!),
+                onChanged: (v) {
+                  if (v != null) setDialog(() => rating = v);
+                },
               ),
               TextField(
                 controller: comment,

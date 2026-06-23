@@ -15,6 +15,11 @@ import {
   jitterMapPin,
   zipToApproxCentroid,
 } from '../src/marketplace/marketplace-zip.util';
+import { seedEiBillingDemo } from '../src/ei-billing/ei-billing.mock';
+import {
+  buildJobOpportunityTitle,
+  buildLocationAreaLabel,
+} from '../src/job-opportunities/job-opportunity-phi.util';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
@@ -136,6 +141,97 @@ const DEMO_MARKETPLACE_SEED_IDS = {
   pendingInterest: '00000000-0000-4000-8000-000000000102',
 };
 
+const DEMO_JOB_OPPORTUNITY_SEED_IDS = {
+  serviceNeed: '00000000-0000-4000-8000-000000000110',
+  opportunity: '00000000-0000-4000-8000-000000000111',
+};
+
+async function seedDemoJobOpportunity(
+  tenantId: string,
+  agencyId: string,
+  childId: string,
+  createdByUserId: string,
+) {
+  const zipCode = '11230';
+  const centroid = zipToApproxCentroid(zipCode);
+  const locationLabel = buildLocationAreaLabel(null, null, zipCode);
+  const title = buildJobOpportunityTitle('SPEECH', locationLabel);
+
+  const need = await prisma.childServiceNeed.upsert({
+    where: { id: DEMO_JOB_OPPORTUNITY_SEED_IDS.serviceNeed },
+    update: {},
+    create: {
+      id: DEMO_JOB_OPPORTUNITY_SEED_IDS.serviceNeed,
+      agencyId,
+      childId,
+      serviceType: 'SPEECH',
+      internalNotes: 'Demo internal staffing need for speech therapy',
+      createdByUserId,
+      status: 'JOB_POSTED',
+    },
+  });
+
+  await prisma.jobOpportunity.upsert({
+    where: { id: DEMO_JOB_OPPORTUNITY_SEED_IDS.opportunity },
+    update: {},
+    create: {
+      id: DEMO_JOB_OPPORTUNITY_SEED_IDS.opportunity,
+      tenantId,
+      agencyId,
+      childServiceNeedId: need.id,
+      title,
+      serviceType: 'SPEECH',
+      status: 'PUBLISHED',
+      publicDescription:
+        'Seeking a licensed speech-language pathologist for pediatric early intervention services.',
+      zipCode,
+      zipCentroidLat: centroid.lat,
+      zipCentroidLng: centroid.lng,
+      serviceRadiusMiles: 15,
+      phiScanPassed: true,
+      publishedAt: new Date(),
+    },
+  });
+}
+
+const DEMO_EI_SCREENING_ID = '00000000-0000-4000-8000-000000000050';
+
+async function seedDemoEiEligibility(
+  tenantId: string,
+  parentId: string,
+  childId: string,
+) {
+  const eiTemplate = await prisma.screeningTemplate.findFirstOrThrow({
+    where: { tenantId, therapyType: 'EARLY_INTERVENTION' },
+  });
+
+  await prisma.screeningResponse.upsert({
+    where: { id: DEMO_EI_SCREENING_ID },
+    update: {
+      riskLevel: 'MODERATE',
+      evaluationRequestedAt: new Date(),
+      isDraft: false,
+      concernTags: ['speech_delay', 'communication'],
+    },
+    create: {
+      id: DEMO_EI_SCREENING_ID,
+      tenantId,
+      childId,
+      parentId,
+      templateId: eiTemplate.id,
+      responses: { a_premature_birth: true },
+      score: 0.65,
+      riskLevel: 'MODERATE',
+      recommendations: ['Speech evaluation recommended'],
+      concernTags: ['speech_delay', 'communication'],
+      isDraft: false,
+      evaluationRequestedAt: new Date(),
+      disclaimerAccepted: true,
+      completedAt: new Date(),
+    },
+  });
+}
+
 async function seedMarketplaceDemoData(
   tenantId: string,
   parentUserId: string,
@@ -151,7 +247,14 @@ async function seedMarketplaceDemoData(
       zipCode: '11230',
       city: 'Brooklyn',
       state: 'NY',
-      ageRange: 'YEARS_3_5',
+      ageRange: 'MONTHS_25_36',
+      dateOfBirth: new Date('2024-04-01'),
+      gender: 'Male',
+      primaryLanguage: 'English',
+      guardianName: 'Parent One',
+      guardianPhone: '555-0101',
+      guardianEmail: 'parent1@demo.local',
+      insuranceType: 'Medicaid',
     },
     create: {
       id: DEMO_MARKETPLACE_SEED_IDS.child,
@@ -159,12 +262,17 @@ async function seedMarketplaceDemoData(
       parentId: parent.id,
       firstName: 'Jordan',
       lastName: 'Demo',
-      dateOfBirth: new Date('2021-06-01'),
+      dateOfBirth: new Date('2024-04-01'),
       zipCode: '11230',
       city: 'Brooklyn',
       state: 'NY',
-      ageRange: 'YEARS_3_5',
+      ageRange: 'MONTHS_25_36',
       primaryLanguage: 'English',
+      gender: 'Male',
+      guardianName: 'Parent One',
+      guardianPhone: '555-0101',
+      guardianEmail: 'parent1@demo.local',
+      insuranceType: 'Medicaid',
     },
   });
 
@@ -444,6 +552,8 @@ async function main() {
   const parent1Hash = await bcrypt.hash('Parent1Demo!', 10);
   const parent2Hash = await bcrypt.hash('Parent2Demo!', 10);
   const agencyHash = await bcrypt.hash('Agency123!', 10);
+  const scHash = await bcrypt.hash('SC123!', 10);
+  const billingHash = await bcrypt.hash('Billing123!', 10);
   const therapistHash = await bcrypt.hash('Therapist123!', 10);
 
   await prisma.user.upsert({
@@ -658,9 +768,20 @@ async function main() {
         city: 'Austin',
         state: 'TX',
         isVerified: true,
+        onboardingComplete: true,
       },
     });
+  } else {
+    await prisma.agency.update({
+      where: { id: agency.id },
+      data: { onboardingComplete: true },
+    });
   }
+
+  await prisma.user.update({
+    where: { id: agencyUser.id },
+    data: { agencyId: agency.id },
+  });
 
   await prisma.agencyTherapist.upsert({
     where: {
@@ -777,6 +898,117 @@ async function main() {
     therapistMarketplaceProfile.id,
   );
   await repairMarketplaceZipCentroids();
+
+  const scUser = await prisma.user.upsert({
+    where: {
+      tenantId_email: { tenantId: tenant.id, email: 'sc@demo.local' },
+    },
+    update: {
+      passwordHash: scHash,
+      role: 'SERVICE_COORDINATOR',
+      agencyId: agency.id,
+      isActive: true,
+    },
+    create: {
+      tenantId: tenant.id,
+      email: 'sc@demo.local',
+      passwordHash: scHash,
+      role: 'SERVICE_COORDINATOR',
+      firstName: 'Sarah',
+      lastName: 'Coordinator',
+      agencyId: agency.id,
+      createdById: agencyUser.id,
+    },
+  });
+
+  await prisma.agencyRoster.upsert({
+    where: {
+      agencyId_userId: { agencyId: agency.id, userId: scUser.id },
+    },
+    update: {
+      status: 'ACTIVE',
+      removedAt: null,
+      languages: ['English', 'Spanish'],
+    },
+    create: {
+      agencyId: agency.id,
+      userId: scUser.id,
+      role: 'SERVICE_COORDINATOR',
+      status: 'ACTIVE',
+      languages: ['English', 'Spanish'],
+      notes: 'Demo service coordinator for EI case management',
+      addedById: agencyUser.id,
+      addedAt: new Date(),
+    },
+  });
+
+  await prisma.childServiceCoordinatorAssignment.upsert({
+    where: {
+      childId_serviceCoordinatorId_agencyId: {
+        childId: DEMO_MARKETPLACE_SEED_IDS.child,
+        serviceCoordinatorId: scUser.id,
+        agencyId: agency.id,
+      },
+    },
+    update: {
+      status: 'ACTIVE',
+      removedAt: null,
+      assignedById: agencyUser.id,
+    },
+    create: {
+      childId: DEMO_MARKETPLACE_SEED_IDS.child,
+      serviceCoordinatorId: scUser.id,
+      agencyId: agency.id,
+      assignedById: agencyUser.id,
+      status: 'ACTIVE',
+    },
+  });
+
+  const parent1Record = await prisma.parent.findUniqueOrThrow({
+    where: { userId: parent1User.id },
+  });
+  await seedDemoEiEligibility(
+    tenant.id,
+    parent1Record.id,
+    DEMO_MARKETPLACE_SEED_IDS.child,
+  );
+
+  const billingUser = await prisma.user.upsert({
+    where: {
+      tenantId_email: { tenantId: tenant.id, email: 'billing@demo.local' },
+    },
+    update: {
+      agencyId: agency.id,
+      isActive: true,
+    },
+    create: {
+      tenantId: tenant.id,
+      email: 'billing@demo.local',
+      passwordHash: billingHash,
+      role: 'BILLING_STAFF',
+      firstName: 'Blake',
+      lastName: 'Billing',
+      agencyId: agency.id,
+      createdById: agencyUser.id,
+    },
+  });
+
+  await seedEiBillingDemo(
+    prisma,
+    tenant.id,
+    agency.id,
+    therapistProfile.id,
+    DEMO_MARKETPLACE_SEED_IDS.child,
+    billingUser.id,
+  );
+
+  await seedDemoJobOpportunity(
+    tenant.id,
+    agency.id,
+    DEMO_MARKETPLACE_SEED_IDS.child,
+    agencyUser.id,
+  );
+
   await seedEmptyParentAccount(
     tenant.id,
     'parent2@demo.local',
@@ -812,11 +1044,42 @@ async function main() {
     },
   });
 
+  await prisma.hipaaConsent.upsert({
+    where: { id: '00000000-0000-4000-8000-000000000063' },
+    update: {},
+    create: {
+      id: '00000000-0000-4000-8000-000000000063',
+      tenantId: tenant.id,
+      userId: scUser.id,
+      consentType: 'HIPAA_PRIVACY',
+      version: '1.0',
+      granted: true,
+    },
+  });
+
+  await prisma.hipaaConsent.upsert({
+    where: { id: '00000000-0000-4000-8000-000000000064' },
+    update: {},
+    create: {
+      id: '00000000-0000-4000-8000-000000000064',
+      tenantId: tenant.id,
+      userId: billingUser.id,
+      consentType: 'HIPAA_PRIVACY',
+      version: '1.0',
+      granted: true,
+    },
+  });
+
   // Demo clinical-role accounts must satisfy onboarding gates used in CI smoke tests.
   await seedNoticeAcknowledgment(tenant.id, therapistUser.id, activeNotice.id);
   await seedNoticeAcknowledgment(tenant.id, agencyUser.id, activeNotice.id);
+  await seedNoticeAcknowledgment(tenant.id, scUser.id, activeNotice.id);
+  await seedNoticeAcknowledgment(tenant.id, billingUser.id, activeNotice.id);
   await seedDemoOnboarding(therapistUser.id);
   await seedDemoOnboarding(agencyUser.id);
+  await seedDemoOnboarding(scUser.id);
+  await seedDemoOnboarding(billingUser.id);
+  await seedSmokeTrustedDevices(scUser.id);
 
   const legalDocs: Array<{
     documentType:
@@ -894,6 +1157,8 @@ async function main() {
   console.log('  Parent 2:  parent2@demo.local / Parent2Demo!  (MFA: 000000)');
   console.log('  Therapist: therapist@demo.local / Therapist123!');
   console.log('  Agency:    agency@demo.local / Agency123!');
+  console.log('  SC:        sc@demo.local / SC123!  (MFA: 000000)');
+  console.log('  Billing:   billing@demo.local / Billing123!  (MFA: 000000)');
   console.log('  Pending:   pending@demo.local / Pending123! (unverified)');
 }
 

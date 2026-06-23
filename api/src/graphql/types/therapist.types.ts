@@ -215,6 +215,12 @@ export class TherapistAppointmentType {
 
   @Field(() => Float, { nullable: true })
   sessionPaymentAmount?: number;
+
+  @Field(() => ID, { nullable: true })
+  parentUserId?: string;
+
+  @Field({ nullable: true })
+  parentName?: string;
 }
 
 @ObjectType()

@@ -429,6 +429,9 @@ export class TherapistResolver {
       dateOfBirth: Date;
       insuranceType?: string | null;
     };
+    parent?: {
+      user: { id: string; firstName: string; lastName: string };
+    };
     session?: {
       payment?: {
         id: string;
@@ -503,6 +506,10 @@ export class TherapistResolver {
         : outstandingPayment
           ? Number(outstandingPayment.amount)
           : undefined,
+      parentUserId: row.parent?.user.id,
+      parentName: row.parent
+        ? `${row.parent.user.firstName} ${row.parent.user.lastName}`
+        : undefined,
     };
   }
 }

@@ -6,6 +6,8 @@ import 'package:intl/intl.dart';
 import '../../../core/providers/app_providers.dart';
 import '../data/therapist_repository.dart';
 import '../therapist_providers.dart';
+import '../../calls/widgets/call_button.dart';
+import '../../calls/widgets/call_disclaimer.dart';
 import 'self_pay_payment_status_chip.dart';
 import 'therapist_appointment_session_actions.dart';
 import 'therapist_home_screen.dart';
@@ -194,9 +196,7 @@ class TherapistAppointmentsScreen extends ConsumerWidget {
 
     return AppScaffold(
       title: 'My Appointments',
-      bottomNavigationBar: TherapistBottomNav(
-        current: TherapistNavTab.appointments,
-      ),
+      bottomNavigationBar: const RoleBottomNav(current: CoreNavTab.schedule),
       actions: [
         IconButton(
           icon: const Icon(Icons.calendar_month),
@@ -211,10 +211,13 @@ class TherapistAppointmentsScreen extends ConsumerWidget {
           }
           return ListView.separated(
             padding: const EdgeInsets.all(16),
-            itemCount: list.length,
+            itemCount: list.length + 1,
             separatorBuilder: (_, _) => const SizedBox(height: 8),
             itemBuilder: (context, index) {
-              final a = list[index];
+              if (index == 0) {
+                return const CallEmergencyDisclaimer();
+              }
+              final a = list[index - 1];
               final needsConfirm = a.needsTherapistConfirmation;
               final highlighted = highlightAppointmentId == a.id;
               final canCancel = ![
@@ -278,6 +281,15 @@ class TherapistAppointmentsScreen extends ConsumerWidget {
                       if (a.isRescheduleRequested && a.rescheduleReason != null)
                         Text('Reason: ${a.rescheduleReason}'),
                       SelfPayPaymentStatusChip(appointment: a),
+                      if (a.parentUserId != null) ...[
+                        const SizedBox(height: 8),
+                        CallButton(
+                          recipientUserId: a.parentUserId!,
+                          recipientName: a.parentName ?? 'Parent',
+                          childId: a.childId,
+                          compact: true,
+                        ),
+                      ],
                       if (needsConfirm) ...[
                         const SizedBox(height: 12),
                         Row(
@@ -311,6 +323,7 @@ class TherapistAppointmentsScreen extends ConsumerWidget {
                       ],
                       if (!needsConfirm &&
                           (a.requiresSelfPayCollection ||
+                              a.sessionPaymentId != null ||
                               a.status == 'CONFIRMED' ||
                               a.status == 'SCHEDULED' ||
                               a.canStartSession)) ...[

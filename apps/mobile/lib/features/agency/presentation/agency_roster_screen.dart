@@ -4,11 +4,24 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/router/app_router.dart';
 import '../../../core/providers/app_providers.dart';
+import '../../../shared/widgets/app_data_table.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_snackbar.dart';
+import '../../../shared/widgets/app_status_badge.dart';
 import '../../../shared/widgets/glossy_button.dart';
+import '../../service_coordinator/data/service_coordinator_repository.dart';
 import '../../service_coordinator/presentation/sc_providers.dart';
+import '../data/agency_repository.dart';
 import 'agency_providers.dart';
+
+AppStatusKind _rosterStatusKind({
+  required bool pending,
+  required bool verified,
+}) {
+  if (pending) return AppStatusKind.pending;
+  if (verified) return AppStatusKind.active;
+  return AppStatusKind.pending;
+}
 
 class AgencyRosterScreen extends ConsumerWidget {
   const AgencyRosterScreen({super.key});
@@ -19,6 +32,8 @@ class AgencyRosterScreen extends ConsumerWidget {
       length: 2,
       child: AppScaffold(
         title: 'Agency roster',
+        subtitle: 'Providers and service coordinators',
+        showPageBreadcrumbs: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.storefront_outlined),
@@ -58,53 +73,80 @@ class _TherapistRosterTab extends ConsumerWidget {
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(child: Text(AppSnackBar.messageFromError(e))),
       data: (list) {
-        if (list.isEmpty) {
-          return const Center(child: Text('No therapists on your roster yet.'));
-        }
         return RefreshIndicator(
           onRefresh: () async {
             ref.invalidate(agencyTherapistsProvider);
             await ref.read(agencyTherapistsProvider.future);
           },
-          child: ListView.separated(
+          child: ListView(
             padding: const EdgeInsets.all(16),
-            itemCount: list.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 8),
-            itemBuilder: (context, index) {
-              final t = list[index];
-              final pending = t.rosterStatus == 'PENDING';
-              return Card(
-                child: ListTile(
-                  title: Text(t.displayName),
-                  subtitle: Text(
-                    pending
-                        ? 'Pending approval · ${t.onboardingStatus ?? 'PENDING'}'
-                        : t.isVerified
-                        ? 'Active · ${t.licenseNumber ?? 'Licensed'}'
-                        : 'Pending verification',
+            children: [
+              AppDataTable<AgencyTherapistModel>(
+                rows: list,
+                searchHint: 'Search providers…',
+                searchPredicate: (t, q) {
+                  final needle = q.toLowerCase();
+                  return t.displayName.toLowerCase().contains(needle) ||
+                      (t.email ?? '').toLowerCase().contains(needle) ||
+                      (t.licenseNumber ?? '').toLowerCase().contains(needle);
+                },
+                columns: [
+                  AppDataColumn(
+                    label: 'Provider',
+                    mobilePriority: true,
+                    cellBuilder: (context, t) => Text(
+                      t.displayName,
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
                   ),
-                  trailing: pending
-                      ? GlossyButton(
-                          title: 'Approve',
-                          size: GlossyButtonSize.small,
-                          fullWidth: false,
-                          onPressed: () async {
-                            try {
-                              await ref
-                                  .read(agencyRepositoryProvider)
-                                  .approveAgencyStaff(t.id);
-                              ref.invalidate(agencyTherapistsProvider);
-                            } catch (e) {
-                              if (context.mounted) {
-                                AppSnackBar.showError(context, e);
-                              }
-                            }
-                          },
-                        )
-                      : null,
-                ),
-              );
-            },
+                  AppDataColumn(
+                    label: 'Status',
+                    mobilePriority: true,
+                    cellBuilder: (context, t) {
+                      final pending = t.rosterStatus == 'PENDING';
+                      return AppStatusBadge.fromKind(
+                        _rosterStatusKind(
+                          pending: pending,
+                          verified: t.isVerified,
+                        ),
+                        label: pending
+                            ? 'Pending approval'
+                            : t.isVerified
+                            ? 'Active'
+                            : 'Pending verification',
+                      );
+                    },
+                  ),
+                  AppDataColumn(
+                    label: 'License',
+                    cellBuilder: (context, t) =>
+                        Text(t.licenseNumber ?? '—'),
+                  ),
+                ],
+                actionsBuilder: (context, t) {
+                  if (t.rosterStatus != 'PENDING') {
+                    return const SizedBox.shrink();
+                  }
+                  return GlossyButton(
+                    title: 'Approve',
+                    size: GlossyButtonSize.small,
+                    fullWidth: false,
+                    onPressed: () async {
+                      try {
+                        await ref
+                            .read(agencyRepositoryProvider)
+                            .approveAgencyStaff(t.id);
+                        ref.invalidate(agencyTherapistsProvider);
+                      } catch (e) {
+                        if (context.mounted) {
+                          AppSnackBar.showError(context, e);
+                        }
+                      }
+                    },
+                  );
+                },
+              ),
+            ],
           ),
         );
       },
@@ -137,24 +179,44 @@ class _ServiceCoordinatorRosterTab extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              if (list.isEmpty)
-                const Text('No service coordinators on roster yet.')
-              else
-                ...list.map(
-                  (m) => Card(
-                    child: ListTile(
-                      title: Text(m.displayName),
-                      subtitle: Text(
-                        '${m.status} · Caseload ${m.caseload}'
-                        '${m.lastLoginAt != null ? ' · Last login ${m.lastLoginAt}' : ''}',
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => context.push(
-                        '${AppRoutes.agencyHome}/roster/${m.userId}',
-                      ),
+              AppDataTable<AgencyRosterMemberModel>(
+                rows: list,
+                showSearch: list.isNotEmpty,
+                searchHint: 'Search coordinators…',
+                searchPredicate: (m, q) {
+                  final needle = q.toLowerCase();
+                  return m.displayName.toLowerCase().contains(needle) ||
+                      m.status.toLowerCase().contains(needle);
+                },
+                emptyMessage: 'No service coordinators on roster yet.',
+                columns: [
+                  AppDataColumn(
+                    label: 'Name',
+                    mobilePriority: true,
+                    cellBuilder: (context, m) => Text(
+                      m.displayName,
+                      style: Theme.of(context).textTheme.titleSmall,
                     ),
                   ),
+                  AppDataColumn(
+                    label: 'Status',
+                    mobilePriority: true,
+                    cellBuilder: (context, m) => AppStatusBadge.fromKind(
+                      m.status == 'ACTIVE'
+                          ? AppStatusKind.active
+                          : AppStatusKind.pending,
+                      label: m.status,
+                    ),
+                  ),
+                  AppDataColumn(
+                    label: 'Caseload',
+                    cellBuilder: (context, m) => Text('${m.caseload}'),
+                  ),
+                ],
+                onRowTap: (m) => context.push(
+                  '${AppRoutes.agencyHome}/roster/${m.userId}',
                 ),
+              ),
             ],
           ),
         );

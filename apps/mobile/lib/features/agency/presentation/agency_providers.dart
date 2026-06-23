@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/models/analytics_date_range.dart';
 import '../../../shared/models/analytics_metric.dart';
+import '../../../shared/widgets/app_select.dart';
 import '../data/agency_repository.dart';
 
 final agencyAnalyticsDateRangeProvider = StateProvider<AnalyticsDateRange>(
@@ -128,19 +129,15 @@ Future<void> showInviteTherapist(BuildContext context, WidgetRef ref) async {
     );
     return;
   }
-  final selected = await showDialog<String>(
+  final selected = await AppSelect.show<String>(
     context: context,
-    builder: (ctx) => SimpleDialog(
-      title: const Text('Invite therapist'),
-      children: candidates
-          .map(
-            (t) => SimpleDialogOption(
-              onPressed: () => Navigator.pop(ctx, t.id),
-              child: Text(t.displayName),
-            ),
-          )
-          .toList(),
-    ),
+    title: 'Invite therapist',
+    searchHint: candidates.length > 6 ? 'Search therapists' : null,
+    options: candidates
+        .map(
+          (t) => AppSelectOption(value: t.id, label: t.displayName),
+        )
+        .toList(),
   );
   if (selected == null) return;
   try {

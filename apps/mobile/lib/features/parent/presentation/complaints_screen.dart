@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/app_select.dart';
 import '../../../shared/widgets/glossy_button.dart';
 
 class ComplaintsScreen extends ConsumerStatefulWidget {
@@ -67,15 +68,17 @@ class _ComplaintsScreenState extends ConsumerState<ComplaintsScreen> {
             'Our team will review open complaints.',
           ),
           const SizedBox(height: 16),
-          DropdownButtonFormField<String>(
-            initialValue: _category,
-            decoration: const InputDecoration(labelText: 'Category'),
-            items: const [
-              DropdownMenuItem(value: 'SERVICE', child: Text('Service')),
-              DropdownMenuItem(value: 'BILLING', child: Text('Billing')),
-              DropdownMenuItem(value: 'SAFETY', child: Text('Safety')),
+          AppSelectField<String>(
+            label: 'Category',
+            value: _category,
+            options: const [
+              AppSelectOption(value: 'SERVICE', label: 'Service'),
+              AppSelectOption(value: 'BILLING', label: 'Billing'),
+              AppSelectOption(value: 'SAFETY', label: 'Safety'),
             ],
-            onChanged: (v) => setState(() => _category = v!),
+            onChanged: (v) {
+              if (v != null) setState(() => _category = v);
+            },
           ),
           const SizedBox(height: 12),
           TextField(

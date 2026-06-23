@@ -13,12 +13,18 @@ import {
   Prisma,
 } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { buildCaseloadCharts } from '../common/caseload-charts.util';
 import {
   deriveEiScreeningPriority,
   EI_INITIAL_REQUIRED_KEYS,
   EI_ONGOING_REQUIRED_KEYS,
   screeningCompletionPercent,
 } from './ei-screening.util';
+import { isEiServiceEligible } from './ei-eligibility.util';
+import {
+  buildEiScreeningPrefill,
+  mergePrefillIntoAnswers,
+} from './ei-prefill.util';
 
 export interface CreateServiceCoordinatorInput {
   email: string;
@@ -378,6 +384,17 @@ export class ServiceCoordinatorsService {
       throw new NotFoundException('Child not found in tenant');
     }
 
+    const latestScreening = await this.latestEiParentScreening(childId, tenantId);
+    const eligibility = isEiServiceEligible({
+      dateOfBirth: child.dateOfBirth,
+      screening: latestScreening,
+    });
+    if (!eligibility.eligible) {
+      throw new BadRequestException(
+        `Child is not eligible for service coordination: ${eligibility.reason}`,
+      );
+    }
+
     const existing = await this.prisma.childServiceCoordinatorAssignment.findFirst({
       where: {
         childId,
@@ -621,11 +638,22 @@ export class ServiceCoordinatorsService {
       take: 20,
     });
 
+    const latestParentScreening = await this.latestEiParentScreening(
+      childId,
+      tenantId,
+    );
+    const screeningPrefill = buildEiScreeningPrefill(
+      child,
+      child.parent.user,
+      latestParentScreening ?? undefined,
+    );
+
     return {
       child,
       initialScreening,
       ongoingScreenings,
       notes,
+      screeningPrefill,
     };
   }
 
@@ -643,9 +671,21 @@ export class ServiceCoordinatorsService {
 
     const child = await this.prisma.child.findFirstOrThrow({
       where: { id: childId, tenantId },
+      include: { parent: { include: { user: true } } },
     });
 
-    const answers = (input.answersJson ?? {}) as Record<string, unknown>;
+    const latestParentScreening = await this.latestEiParentScreening(
+      childId,
+      tenantId,
+    );
+    const answers = mergePrefillIntoAnswers(
+      buildEiScreeningPrefill(
+        child,
+        child.parent.user,
+        latestParentScreening ?? undefined,
+      ),
+      (input.answersJson ?? {}) as Record<string, unknown>,
+    );
     const priority = deriveEiScreeningPriority(answers);
     const completion = screeningCompletionPercent(answers, EI_INITIAL_REQUIRED_KEYS);
     const status: EiScreeningStatus =
@@ -933,6 +973,107 @@ export class ServiceCoordinatorsService {
       take: 200,
     });
 
-    return children;
+    const childIds = children.map((c) => c.id);
+    const screenings = childIds.length
+      ? await this.prisma.screeningResponse.findMany({
+          where: {
+            childId: { in: childIds },
+            tenantId,
+            isDraft: false,
+            template: { therapyType: 'EARLY_INTERVENTION' },
+          },
+          include: { template: true },
+          orderBy: { completedAt: 'desc' },
+        })
+      : [];
+
+    const screeningByChild = new Map<string, (typeof screenings)[number]>();
+    for (const row of screenings) {
+      if (!screeningByChild.has(row.childId)) {
+        screeningByChild.set(row.childId, row);
+      }
+    }
+
+    return children
+      .map((child) => {
+        const screening = screeningByChild.get(child.id) ?? null;
+        const eligibility = isEiServiceEligible({
+          dateOfBirth: child.dateOfBirth,
+          screening,
+        });
+        return {
+          child,
+          screening,
+          eiEligible: eligibility.eligible,
+          eligibilityReason: eligibility.reason,
+        };
+      })
+      .filter(
+        (row) =>
+          row.eiEligible || row.child.scAssignments.some((a) => a.status === 'ACTIVE'),
+      );
+  }
+
+  private async latestEiParentScreening(childId: string, tenantId: string) {
+    return this.prisma.screeningResponse.findFirst({
+      where: {
+        childId,
+        tenantId,
+        isDraft: false,
+        template: { therapyType: 'EARLY_INTERVENTION' },
+      },
+      include: { template: true },
+      orderBy: { completedAt: 'desc' },
+    });
+  }
+
+  async findCaseloadChartsByCoordinatorUserId(
+    coordinatorUserId: string,
+    tenantId: string,
+  ) {
+    const { agency } = await this.resolveAgencyForCoordinator(
+      coordinatorUserId,
+      tenantId,
+    );
+
+    const assignments = await this.prisma.childServiceCoordinatorAssignment.findMany({
+      where: {
+        serviceCoordinatorId: coordinatorUserId,
+        agencyId: agency.id,
+        status: 'ACTIVE',
+        removedAt: null,
+      },
+      include: {
+        child: { include: { parent: { include: { user: true } } } },
+      },
+    });
+
+    const childIds = assignments.map((a) => a.childId);
+    if (childIds.length === 0) return [];
+
+    const [appointments, sessions] = await Promise.all([
+      this.prisma.appointment.findMany({
+        where: {
+          tenantId,
+          childId: { in: childIds },
+          status: { notIn: ['CANCELLED', 'NO_SHOW'] },
+        },
+        include: {
+          child: { include: { parent: { include: { user: true } } } },
+        },
+        orderBy: { scheduledStart: 'desc' },
+      }),
+      this.prisma.session.findMany({
+        where: { tenantId, childId: { in: childIds } },
+        orderBy: { checkOutAt: 'desc' },
+      }),
+    ]);
+
+    const seeds = assignments.map((assignment) => ({
+      child: assignment.child,
+      parentName: `${assignment.child.parent.user.firstName} ${assignment.child.parent.user.lastName}`,
+    }));
+
+    return buildCaseloadCharts(appointments, sessions, seeds);
   }
 }

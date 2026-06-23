@@ -40,6 +40,18 @@ export class AgencyDashboardType {
   @Field(() => Int)
   cancellationsToday: number;
 
+  @Field(() => Int)
+  serviceCoordinatorCount: number;
+
+  @Field(() => Int)
+  activeScCaseload: number;
+
+  @Field(() => Int)
+  urgentScCases: number;
+
+  @Field(() => Int)
+  scFollowUpsDue: number;
+
   @Field(() => [DashboardActionItemType])
   actionItems: DashboardActionItemType[];
 }

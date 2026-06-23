@@ -8,6 +8,7 @@ import 'app_breadcrumbs.dart';
 import 'app_page_header.dart';
 import 'app_top_header.dart';
 import '../widgets/app_bottom_nav.dart';
+import '../widgets/app_account_menu.dart';
 import '../widgets/app_web_sidebar.dart';
 
 export '../widgets/app_web_sidebar.dart' show AppShellRole, AppWebSidebar;
@@ -55,7 +56,7 @@ class AppLayout extends ConsumerWidget {
     if (useWideLayout) {
       return _buildWideLayout(context, shellRole, location);
     }
-    return _buildMobileLayout(context);
+    return _buildMobileLayout(context, location);
   }
 
   Widget _buildWideLayout(
@@ -110,10 +111,15 @@ class AppLayout extends ConsumerWidget {
     );
   }
 
-  Widget _buildMobileLayout(BuildContext context) {
+  Widget _buildMobileLayout(BuildContext context, String location) {
     final canPop = Navigator.of(context).canPop();
     final colorScheme = Theme.of(context).colorScheme;
     final pageBody = _wrapBody(context, wide: false);
+    final navBar = bottomNavigationBar ?? AutoRoleBottomNav(location: location);
+    final appBarActions = [
+      ...?actions,
+      const AppAccountMenuButton(compact: true),
+    ];
 
     if (header != null) {
       return Scaffold(
@@ -123,7 +129,7 @@ class AppLayout extends ConsumerWidget {
               ? showBackButton!
               : canPop,
           title: _mobileTitle(context),
-          actions: actions,
+          actions: appBarActions,
           backgroundColor: extendBodyBehindHeader
               ? Colors.transparent
               : colorScheme.surface,
@@ -137,7 +143,7 @@ class AppLayout extends ConsumerWidget {
           ],
         ),
         floatingActionButton: floatingActionButton,
-        bottomNavigationBar: bottomNavigationBar,
+        bottomNavigationBar: navBar,
       );
     }
 
@@ -147,23 +153,28 @@ class AppLayout extends ConsumerWidget {
             ? showBackButton!
             : canPop,
         title: _mobileTitle(context),
-        actions: actions,
+        actions: appBarActions,
         surfaceTintColor: Colors.transparent,
       ),
       body: AppPageBackground(child: pageBody),
       floatingActionButton: floatingActionButton,
-      bottomNavigationBar: bottomNavigationBar,
+      bottomNavigationBar: navBar,
     );
   }
 
   Widget _mobileTitle(BuildContext context) {
-    if (subtitle == null) return Text(title);
+    if (subtitle == null) {
+      return Text(title, maxLines: 1, overflow: TextOverflow.ellipsis);
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Text(title),
+        Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
         Text(
           subtitle!,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
@@ -217,9 +228,9 @@ class AppLayout extends ConsumerWidget {
 class MobileBottomNav {
   MobileBottomNav._();
 
-  static Widget parent(ParentNavTab current) =>
-      ParentBottomNav(current: current);
+  static Widget parent(CoreNavTab current) => RoleBottomNav(current: current);
 
-  static Widget therapist(TherapistNavTab current) =>
-      TherapistBottomNav(current: current);
+  static Widget therapist(CoreNavTab current) => RoleBottomNav(current: current);
+
+  static Widget forRole(CoreNavTab current) => RoleBottomNav(current: current);
 }

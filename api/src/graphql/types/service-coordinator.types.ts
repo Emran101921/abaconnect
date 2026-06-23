@@ -1,4 +1,4 @@
-import { Field, Float, Int, ObjectType, registerEnumType } from '@nestjs/graphql';
+import { Field, Float, ID, Int, ObjectType, registerEnumType } from '@nestjs/graphql';
 import {
   AgencyRosterMemberRole,
   AgencyRosterStatus,
@@ -211,6 +211,9 @@ export class ScCaseDetailType {
   @Field()
   parentName: string;
 
+  @Field(() => ID)
+  parentUserId: string;
+
   @Field({ nullable: true })
   parentEmail?: string;
 
@@ -219,6 +222,9 @@ export class ScCaseDetailType {
 
   @Field({ nullable: true })
   guardianPhone?: string;
+
+  @Field()
+  screeningPrefillJson: string;
 
   @Field(() => EiScreeningType, { nullable: true })
   initialScreening?: EiScreeningType;
@@ -267,4 +273,16 @@ export class AgencyCaseType {
 
   @Field({ nullable: true })
   assignmentId?: string;
+
+  @Field()
+  eiEligible: boolean;
+
+  @Field({ nullable: true })
+  eligibilityReason?: string;
+
+  @Field({ nullable: true })
+  riskLevel?: string;
+
+  @Field()
+  evaluationRequested: boolean;
 }

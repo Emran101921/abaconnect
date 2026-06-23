@@ -33,6 +33,7 @@ import { InsuranceModule } from './insurance/insurance.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { MatchingModule } from './matching/matching.module';
 import { TelehealthModule } from './telehealth/telehealth.module';
+import { CallsModule } from './calls/calls.module';
 import { GpsModule } from './gps/gps.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AdminModule } from './admin/admin.module';
@@ -46,6 +47,8 @@ import { DisputesModule } from './disputes/disputes.module';
 import { PayoutsModule } from './payouts/payouts.module';
 import { SecurityModule } from './security/security.module';
 import { MarketplaceModule } from './marketplace/marketplace.module';
+import { JobOpportunitiesModule } from './job-opportunities/job-opportunities.module';
+import { EiBillingModule } from './ei-billing/ei-billing.module';
 
 @Module({
   imports: [
@@ -92,6 +95,7 @@ import { MarketplaceModule } from './marketplace/marketplace.module';
     ReviewsModule,
     MatchingModule,
     TelehealthModule,
+    CallsModule,
     GpsModule,
     NotificationsModule,
     AdminModule,
@@ -105,6 +109,8 @@ import { MarketplaceModule } from './marketplace/marketplace.module';
     PayoutsModule,
     SecurityModule,
     MarketplaceModule,
+    JobOpportunitiesModule,
+    EiBillingModule,
     GraphqlFeatureModule,
   ],
   controllers: [AppController],

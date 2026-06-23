@@ -23,6 +23,7 @@ import { ReviewsModule } from '../reviews/reviews.module';
 import { ScreeningsModule } from '../screenings/screenings.module';
 import { SessionsModule } from '../sessions/sessions.module';
 import { TelehealthModule } from '../telehealth/telehealth.module';
+import { CallsModule } from '../calls/calls.module';
 import { TherapistsModule } from '../therapists/therapists.module';
 import { AdminResolver } from './admin.resolver';
 import { AgencyResolver } from './agency.resolver';
@@ -34,8 +35,13 @@ import { PaymentsResolver } from './payments.resolver';
 import { PlatformResolver } from './platform.resolver';
 import { TherapistResolver } from './therapist.resolver';
 import { MarketplaceModule } from '../marketplace/marketplace.module';
+import { JobOpportunitiesModule } from '../job-opportunities/job-opportunities.module';
+import { EiBillingModule } from '../ei-billing/ei-billing.module';
 import { MarketplaceResolver } from './marketplace.resolver';
+import { JobOpportunityResolver } from './job-opportunity.resolver';
 import { ServiceCoordinatorResolver } from './service-coordinator.resolver';
+import { CallsResolver } from './calls.resolver';
+import { EiBillingResolver } from './ei-billing.resolver';
 
 @Module({
   imports: [
@@ -53,6 +59,7 @@ import { ServiceCoordinatorResolver } from './service-coordinator.resolver';
     MessagingModule,
     PaymentsModule,
     TelehealthModule,
+    CallsModule,
     DocumentsModule,
     NotificationsModule,
     InsuranceModule,
@@ -65,6 +72,8 @@ import { ServiceCoordinatorResolver } from './service-coordinator.resolver';
     DisputesModule,
     PayoutsModule,
     MarketplaceModule,
+    JobOpportunitiesModule,
+    EiBillingModule,
   ],
   providers: [
     ParentBookingResolver,
@@ -77,7 +86,10 @@ import { ServiceCoordinatorResolver } from './service-coordinator.resolver';
     BillingResolver,
     PlatformResolver,
     MarketplaceResolver,
+    JobOpportunityResolver,
     ServiceCoordinatorResolver,
+    CallsResolver,
+    EiBillingResolver,
   ],
 })
 export class GraphqlFeatureModule {}

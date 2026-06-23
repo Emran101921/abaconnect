@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/providers/app_providers.dart';
+import '../../../shared/widgets/app_data_table.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_snackbar.dart';
+import '../../../shared/widgets/app_status_badge.dart';
 import '../../../shared/widgets/glossy_button.dart';
 
 class AdminMarketplaceListing {
@@ -635,30 +637,55 @@ class _AdminMarketplaceScreenState extends ConsumerState<AdminMarketplaceScreen>
                                         : 'No listings match your search or filter.',
                                     icon: Icons.storefront_outlined,
                                   )
-                                : ListView.separated(
-                                    physics: const AlwaysScrollableScrollPhysics(),
+                                : ListView(
+                                    physics:
+                                        const AlwaysScrollableScrollPhysics(),
                                     padding: const EdgeInsets.all(16),
-                                    itemCount: _sortedFilteredListings.length,
-                                    separatorBuilder: (_, _) =>
-                                        const SizedBox(height: 8),
-                                    itemBuilder: (context, index) {
-                                      final item = _sortedFilteredListings[index];
-                                      return Card(
-                                        child: ListTile(
-                                          title: Text(item.anonymousPublicId),
-                                          subtitle: Text(
-                                            '${item.serviceAreaLabel}\n'
-                                            '${item.ageRangeLabel} · ${item.status}',
+                                    children: [
+                                      AppDataTable<AdminMarketplaceListing>(
+                                        rows: _sortedFilteredListings,
+                                        showSearch: false,
+                                        columns: [
+                                          AppDataColumn(
+                                            label: 'Reference',
+                                            mobilePriority: true,
+                                            cellBuilder: (context, item) =>
+                                                Text(
+                                              item.anonymousPublicId,
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .titleSmall,
+                                            ),
                                           ),
-                                          isThreeLine: true,
-                                          trailing: IconButton(
-                                            tooltip: 'Remove listing',
-                                            icon: const Icon(Icons.block),
-                                            onPressed: () => _removeListing(item),
+                                          AppDataColumn(
+                                            label: 'Area',
+                                            mobilePriority: true,
+                                            cellBuilder: (context, item) =>
+                                                Text(item.serviceAreaLabel),
                                           ),
+                                          AppDataColumn(
+                                            label: 'Age range',
+                                            cellBuilder: (context, item) =>
+                                                Text(item.ageRangeLabel),
+                                          ),
+                                          AppDataColumn(
+                                            label: 'Status',
+                                            cellBuilder: (context, item) =>
+                                                AppStatusBadge.fromKind(
+                                              _listingStatusKind(item.status),
+                                              label: item.status,
+                                            ),
+                                          ),
+                                        ],
+                                        actionsBuilder: (context, item) =>
+                                            IconButton(
+                                          tooltip: 'Remove listing',
+                                          icon: const Icon(Icons.block),
+                                          onPressed: () =>
+                                              _removeListing(item),
                                         ),
-                                      );
-                                    },
+                                      ),
+                                    ],
                                   ),
                           ),
                           RefreshIndicator(
@@ -703,47 +730,68 @@ class _AdminMarketplaceScreenState extends ConsumerState<AdminMarketplaceScreen>
                                         : 'No providers match your search.',
                                     icon: Icons.verified_user_outlined,
                                   )
-                                : ListView.separated(
-                                    physics: const AlwaysScrollableScrollPhysics(),
+                                : ListView(
+                                    physics:
+                                        const AlwaysScrollableScrollPhysics(),
                                     padding: const EdgeInsets.all(16),
-                                    itemCount: _filteredProviders.length,
-                                    separatorBuilder: (_, _) =>
-                                        const SizedBox(height: 8),
-                                    itemBuilder: (context, index) {
-                                      final provider = _filteredProviders[index];
-                                      return Card(
-                                        child: ListTile(
-                                          title: Text(provider.displayName),
-                                          subtitle: Text(
-                                            '${provider.accountType} · ${provider.verifiedStatus}\n'
-                                            '${provider.legalName}\n'
-                                            'Joined ${DateFormat.yMMMd().format(provider.createdAt)}',
+                                    children: [
+                                      AppDataTable<AdminPendingProvider>(
+                                        rows: _filteredProviders,
+                                        showSearch: false,
+                                        columns: [
+                                          AppDataColumn(
+                                            label: 'Provider',
+                                            mobilePriority: true,
+                                            cellBuilder: (context, provider) =>
+                                                Text(
+                                              provider.displayName,
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .titleSmall,
+                                            ),
                                           ),
-                                          isThreeLine: true,
-                                          trailing: Wrap(
-                                            spacing: 4,
-                                            children: [
-                                              if (provider.verifiedStatus ==
-                                                  'PENDING')
-                                                IconButton(
-                                                  tooltip: 'Verify provider',
-                                                  icon: const Icon(
-                                                    Icons.verified_user,
-                                                  ),
-                                                  onPressed: () =>
-                                                      _verifyProvider(provider),
-                                                ),
+                                          AppDataColumn(
+                                            label: 'Status',
+                                            mobilePriority: true,
+                                            cellBuilder: (context, provider) =>
+                                                AppStatusBadge.fromKind(
+                                              provider.verifiedStatus ==
+                                                      'PENDING'
+                                                  ? AppStatusKind.pending
+                                                  : AppStatusKind.approved,
+                                              label: provider.verifiedStatus,
+                                            ),
+                                          ),
+                                          AppDataColumn(
+                                            label: 'Type',
+                                            cellBuilder: (context, provider) =>
+                                                Text(provider.accountType),
+                                          ),
+                                        ],
+                                        actionsBuilder: (context, provider) =>
+                                            Wrap(
+                                          spacing: 4,
+                                          children: [
+                                            if (provider.verifiedStatus ==
+                                                'PENDING')
                                               IconButton(
-                                                tooltip: 'Suspend provider',
-                                                icon: const Icon(Icons.gpp_bad),
+                                                tooltip: 'Verify provider',
+                                                icon: const Icon(
+                                                  Icons.verified_user,
+                                                ),
                                                 onPressed: () =>
-                                                    _suspendProvider(provider),
+                                                    _verifyProvider(provider),
                                               ),
-                                            ],
-                                          ),
+                                            IconButton(
+                                              tooltip: 'Suspend provider',
+                                              icon: const Icon(Icons.gpp_bad),
+                                              onPressed: () =>
+                                                  _suspendProvider(provider),
+                                            ),
+                                          ],
                                         ),
-                                      );
-                                    },
+                                      ),
+                                    ],
                                   ),
                           ),
                           RefreshIndicator(
@@ -786,3 +834,14 @@ class _AdminMarketplaceScreenState extends ConsumerState<AdminMarketplaceScreen>
 }
 
 enum _ListingSort { status, refId }
+
+AppStatusKind _listingStatusKind(String status) {
+  return switch (status.toUpperCase()) {
+    'ACTIVE' => AppStatusKind.active,
+    'PAUSED' => AppStatusKind.pending,
+    'MATCHED' => AppStatusKind.completed,
+    'CLOSED' => AppStatusKind.cancelled,
+    'DRAFT' => AppStatusKind.draft,
+    _ => AppStatusKind.pending,
+  };
+}
