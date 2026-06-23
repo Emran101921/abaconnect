@@ -194,7 +194,7 @@ async function seedDemoJobOpportunity(
   });
 }
 
-const DEMO_EI_SCREENING_ID = '00000000-0000-4000-8000-000000000050';
+const DEMO_EI_SCREENING_ID = '00000000-0000-4000-8000-000000000052';
 
 async function seedDemoEiEligibility(
   tenantId: string,
@@ -281,7 +281,12 @@ async function seedMarketplaceDemoData(
     DEMO_MARKETPLACE_SEED_IDS.pausedRequest,
   ];
   await prisma.marketplaceInterest.deleteMany({
-    where: { marketplaceRequestId: { in: requestIds } },
+    where: {
+      OR: [
+        { marketplaceRequestId: { in: requestIds } },
+        { id: DEMO_MARKETPLACE_SEED_IDS.pendingInterest },
+      ],
+    },
   });
   await prisma.marketplaceConsentRecord.deleteMany({
     where: { marketplaceRequestId: { in: requestIds } },
@@ -311,8 +316,13 @@ async function seedMarketplaceDemoData(
     publicDescription: 'Seeking speech and ABA support in the Brooklyn area.',
   };
 
-  await prisma.marketplaceRequest.create({
-    data: {
+  await prisma.marketplaceRequest.upsert({
+    where: { id: DEMO_MARKETPLACE_SEED_IDS.activeRequest },
+    update: {
+      status: 'ACTIVE',
+      ...sharedRequestFields,
+    },
+    create: {
       id: DEMO_MARKETPLACE_SEED_IDS.activeRequest,
       anonymousPublicId: 'SR-SEED01',
       status: 'ACTIVE',
@@ -320,8 +330,16 @@ async function seedMarketplaceDemoData(
     },
   });
 
-  await prisma.marketplaceInterest.create({
-    data: {
+  await prisma.marketplaceInterest.upsert({
+    where: { id: DEMO_MARKETPLACE_SEED_IDS.pendingInterest },
+    update: {
+      tenantId,
+      marketplaceRequestId: DEMO_MARKETPLACE_SEED_IDS.activeRequest,
+      providerProfileId: therapistProviderProfileId,
+      status: 'PENDING_PARENT_REVIEW',
+      message: 'Available weekday afternoons for evaluation.',
+    },
+    create: {
       id: DEMO_MARKETPLACE_SEED_IDS.pendingInterest,
       tenantId,
       marketplaceRequestId: DEMO_MARKETPLACE_SEED_IDS.activeRequest,
@@ -331,8 +349,13 @@ async function seedMarketplaceDemoData(
     },
   });
 
-  await prisma.marketplaceRequest.create({
-    data: {
+  await prisma.marketplaceRequest.upsert({
+    where: { id: DEMO_MARKETPLACE_SEED_IDS.pausedRequest },
+    update: {
+      status: 'PAUSED',
+      ...sharedRequestFields,
+    },
+    create: {
       id: DEMO_MARKETPLACE_SEED_IDS.pausedRequest,
       anonymousPublicId: 'SR-SEED02',
       status: 'PAUSED',
