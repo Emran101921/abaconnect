@@ -439,8 +439,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'job-opportunities',
             name: 'therapistJobOpportunities',
-            builder: (context, state) =>
-                const TherapistJobOpportunitiesScreen(),
+            builder: (context, state) => TherapistJobOpportunitiesScreen(
+              initialSearchQuery: state.uri.queryParameters['q'],
+              initialZipCode: state.uri.queryParameters['zip'],
+            ),
             routes: [
               GoRoute(
                 path: ':jobId',

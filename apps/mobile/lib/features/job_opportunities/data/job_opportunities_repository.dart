@@ -27,6 +27,7 @@ class JobOpportunityModel {
     this.agencyName,
     this.applicationCount,
     this.publishedAt,
+    this.isSaved,
   });
 
   final String id;
@@ -51,6 +52,7 @@ class JobOpportunityModel {
   final String? agencyName;
   final int? applicationCount;
   final DateTime? publishedAt;
+  final bool? isSaved;
 
   factory JobOpportunityModel.fromJson(Map<String, dynamic> json) {
     return JobOpportunityModel(
@@ -78,6 +80,7 @@ class JobOpportunityModel {
       publishedAt: json['publishedAt'] != null
           ? DateTime.tryParse(json['publishedAt'] as String)
           : null,
+      isSaved: json['isSaved'] as bool?,
     );
   }
 }
@@ -303,6 +306,7 @@ class JobOpportunitiesRepository {
           distanceMiles locationModality disclaimer publicDescription
           payRateDisplay agencyName applicationCount publishedAt createdAt
           languageRequirement employmentType requiredExperience borough county
+          isSaved
         }
       }
     ''';
@@ -570,6 +574,37 @@ class JobOpportunitiesRepository {
     return list
         .map((e) => JobMarketplaceAuditLogModel.fromJson(e as Map<String, dynamic>))
         .toList();
+  }
+
+  Future<void> unsaveJobOpportunity(String jobOpportunityId) async {
+    const mutation = r'''
+      mutation UnsaveJobOpportunity($id: ID!) {
+        unsaveJobOpportunity(jobOpportunityId: $id)
+      }
+    ''';
+    await _client.query(
+      mutation,
+      variables: {'id': jobOpportunityId},
+    );
+  }
+
+  Future<JobOpportunityModel> saveJobOpportunity(String jobOpportunityId) async {
+    const mutation = r'''
+      mutation SaveJobOpportunity($id: ID!) {
+        saveJobOpportunity(jobOpportunityId: $id) {
+          id title isSaved
+        }
+      }
+    ''';
+    final data = _data(
+      await _client.query(
+        mutation,
+        variables: {'id': jobOpportunityId},
+      ),
+    );
+    return JobOpportunityModel.fromJson(
+      data['saveJobOpportunity'] as Map<String, dynamic>,
+    );
   }
 
   Future<void> adminPauseJob(String jobOpportunityId, {String? reason}) async {

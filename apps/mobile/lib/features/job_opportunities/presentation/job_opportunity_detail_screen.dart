@@ -21,6 +21,8 @@ class _JobOpportunityDetailScreenState
     extends ConsumerState<JobOpportunityDetailScreen> {
   final _messageController = TextEditingController();
   bool _applying = false;
+  bool _saving = false;
+  bool? _isSaved;
 
   @override
   void dispose() {
@@ -42,6 +44,32 @@ class _JobOpportunityDetailScreenState
       if (mounted) AppSnackBar.showError(context, e);
     } finally {
       if (mounted) setState(() => _applying = false);
+    }
+  }
+
+  Future<void> _toggleSaved(bool currentlySaved) async {
+    setState(() => _saving = true);
+    try {
+      final repo = ref.read(jobOpportunitiesRepositoryProvider);
+      if (currentlySaved) {
+        await repo.unsaveJobOpportunity(widget.jobOpportunityId);
+        if (mounted) {
+          setState(() => _isSaved = false);
+          AppSnackBar.showSuccess(context, 'Removed from saved jobs');
+        }
+      } else {
+        await repo.saveJobOpportunity(widget.jobOpportunityId);
+        if (mounted) {
+          setState(() => _isSaved = true);
+          AppSnackBar.showSuccess(context, 'Saved job');
+        }
+      }
+      ref.invalidate(therapistSavedJobsProvider);
+      ref.invalidate(therapistJobOpportunityProvider(widget.jobOpportunityId));
+    } catch (e) {
+      if (mounted) AppSnackBar.showError(context, e);
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
   }
 
@@ -67,9 +95,26 @@ class _JobOpportunityDetailScreenState
           );
         }
 
+        final isSaved = _isSaved ?? job.isSaved ?? false;
+
         return AppScaffold(
           title: job.title,
           subtitle: job.agencyName ?? job.locationAreaLabel,
+          actions: [
+            IconButton(
+              tooltip: isSaved ? 'Remove from saved' : 'Save job',
+              onPressed: _saving ? null : () => _toggleSaved(isSaved),
+              icon: _saving
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Icon(
+                      isSaved ? Icons.bookmark : Icons.bookmark_border,
+                    ),
+            ),
+          ],
           body: ListView(
             padding: const EdgeInsets.all(16),
             children: [
