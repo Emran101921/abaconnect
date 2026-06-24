@@ -115,6 +115,12 @@ fi
 
 echo
 echo "=== Marketplace (HIPAA module) ==="
+export SMOKE_PARENT_TOKEN="$PARENT"
+export SMOKE_THERAPIST_TOKEN="$THER"
+export SMOKE_ADMIN_TOKEN="$ADMIN"
+export SMOKE_AGENCY_TOKEN="$AGENCY"
+# Brief pause — prior scripts may have consumed auth rate-limit budget.
+sleep 3
 if bash "$(dirname "$0")/smoke-marketplace.sh"; then
   echo "PASS: smoke-marketplace.sh"
   pass=$((pass + 1))

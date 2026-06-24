@@ -51,14 +51,18 @@ echo "=== Health ==="
 curl -sf "$API/api/v1/health" | python3 -m json.tool
 echo
 
+# Reuse tokens from smoke-features.sh when exported; agency before admin on fallback.
+PARENT="${SMOKE_PARENT_TOKEN:-$(login parent1@demo.local 'Parent1Demo!')}"
+THER="${SMOKE_THERAPIST_TOKEN:-$(login therapist@demo.local 'Therapist123!')}"
+AGENCY="${SMOKE_AGENCY_TOKEN:-$(login agency@demo.local 'Agency123!')}"
+ADMIN="${SMOKE_ADMIN_TOKEN:-$(login admin@abaconnect.local 'Admin123!')}"
+
 echo "=== Parent marketplace requests (childId field) ==="
-PARENT=$(login parent1@demo.local 'Parent1Demo!')
 MY_REQS=$(gql "$PARENT" 'query { myMarketplaceRequests { id anonymousPublicId childId interestCount status } }')
 check "myMarketplaceRequests query" "isinstance(d.get('data',{}).get('myMarketplaceRequests'), list)" "$MY_REQS"
 
 echo
 echo "=== Provider browse + saved searches ==="
-THER=$(login therapist@demo.local 'Therapist123!')
 BROWSE=$(gql "$THER" 'query { browseMarketplaceRequests { id anonymousPublicId matchScore distanceMiles } }')
 check "browseMarketplaceRequests query" "isinstance(d.get('data',{}).get('browseMarketplaceRequests'), list)" "$BROWSE"
 
@@ -67,7 +71,6 @@ check "myMarketplaceSavedSearches query" "isinstance(d.get('data',{}).get('myMar
 
 echo
 echo "=== Admin moderation endpoints ==="
-ADMIN=$(login admin@abaconnect.local 'Admin123!')
 LISTINGS=$(rest GET "$ADMIN" '/admin/marketplace-requests')
 check "admin marketplace listings" "isinstance(d, list)" "$LISTINGS"
 
@@ -89,7 +92,6 @@ check "marketplaceConsentHistory handles missing request" \
 
 echo
 echo "=== Agency marketplace profile ==="
-AGENCY=$(login agency@demo.local 'Agency123!')
 AGENCY_PROFILE=$(gql "$AGENCY" 'query { myProviderMarketplaceProfile { id verifiedStatus displayName } }')
 check "myProviderMarketplaceProfile for agency" \
   "'myProviderMarketplaceProfile' in d.get('data', {})" "$AGENCY_PROFILE"
