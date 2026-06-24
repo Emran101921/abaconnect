@@ -476,92 +476,183 @@ class _EiBillingRecordDetailScreenState
     final allowedController = TextEditingController();
     final eftController = TextEditingController();
     final eraController = TextEditingController();
-    final saved = await showModalBottomSheet<bool>(
+    final eraJsonController = TextEditingController(
+      text: jsonEncode({
+        'paidAmount': 120,
+        'allowedAmount': 100,
+        'eftReference': 'EFT123',
+        'traceNumber': 'ERA-001',
+      }),
+    );
+    var eraImportExpanded = false;
+    var eraImporting = false;
+    final saved = await showModalBottomSheet<Object?>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
       builder: (ctx) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.viewInsetsOf(ctx).bottom,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text(
-                  'Record payment',
-                  style: Theme.of(ctx).textTheme.titleLarge,
-                ),
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            Future<void> importEraStub() async {
+              final eraJson = eraJsonController.text.trim();
+              if (eraJson.isEmpty) {
+                AppSnackBar.showError(ctx, 'Paste ERA JSON to import.');
+                return;
+              }
+              setSheetState(() => eraImporting = true);
+              try {
+                await ref.read(eiBillingRepositoryProvider).importEiEraStub(
+                      recordId: widget.recordId,
+                      eraJson: eraJson,
+                    );
+                if (ctx.mounted) Navigator.pop(ctx, 'era');
+              } catch (e) {
+                if (ctx.mounted) {
+                  AppSnackBar.showError(
+                    ctx,
+                    'Could not import ERA: ${AppSnackBar.messageFromError(e)}',
+                  );
+                }
+              } finally {
+                if (ctx.mounted) {
+                  setSheetState(() => eraImporting = false);
+                }
+              }
+            }
+
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.viewInsetsOf(ctx).bottom,
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: TextField(
-                  controller: paidController,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  decoration: const InputDecoration(labelText: 'Paid amount'),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: TextField(
-                  controller: allowedController,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  decoration: const InputDecoration(labelText: 'Allowed amount'),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: TextField(
-                  controller: eftController,
-                  decoration: const InputDecoration(labelText: 'EFT reference'),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: TextField(
-                  controller: eraController,
-                  decoration: const InputDecoration(
-                    labelText: 'ERA / 835 reference (optional)',
-                    hintText: 'Trace number or file reference',
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  'Full ERA import is not yet available — this reference is stored as a placeholder.',
-                  style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Text(
+                        'Record payment',
+                        style: Theme.of(ctx).textTheme.titleLarge,
                       ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: TextField(
+                        controller: paidController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration:
+                            const InputDecoration(labelText: 'Paid amount'),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: TextField(
+                        controller: allowedController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration:
+                            const InputDecoration(labelText: 'Allowed amount'),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: TextField(
+                        controller: eftController,
+                        decoration:
+                            const InputDecoration(labelText: 'EFT reference'),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: TextField(
+                        controller: eraController,
+                        decoration: const InputDecoration(
+                          labelText: 'ERA / 835 reference (optional)',
+                          hintText: 'Trace number or file reference',
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: ExpansionTile(
+                        title: const Text('Import ERA (stub)'),
+                        subtitle: const Text(
+                          'Paste structured JSON for demo posting — not a real 835 parser.',
+                        ),
+                        initiallyExpanded: eraImportExpanded,
+                        onExpansionChanged: (expanded) {
+                          setSheetState(() => eraImportExpanded = expanded);
+                        },
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            child: TextField(
+                              controller: eraJsonController,
+                              minLines: 4,
+                              maxLines: 8,
+                              decoration: const InputDecoration(
+                                labelText: 'ERA JSON',
+                                alignLabelWithHint: true,
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: GlossyButton(
+                              title: 'Import ERA',
+                              variant: GlossyButtonVariant.greenTeal,
+                              loading: eraImporting,
+                              disabled: eraImporting,
+                              onPressed: importEraStub,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SafeArea(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: GlossyButton(
+                          title: 'Post payment',
+                          variant: GlossyButtonVariant.greenTeal,
+                          onPressed: () => Navigator.pop(ctx, true),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 16),
-              SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: GlossyButton(
-                    title: 'Post payment',
-                    variant: GlossyButtonVariant.greenTeal,
-                    onPressed: () => Navigator.pop(ctx, true),
-                  ),
-                ),
-              ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
-    if (saved != true) return;
+    if (saved == 'era') {
+      eraJsonController.dispose();
+      paidController.dispose();
+      allowedController.dispose();
+      eftController.dispose();
+      eraController.dispose();
+      await _refreshRecord();
+      if (mounted) AppSnackBar.showSuccess(context, 'ERA imported.');
+      return;
+    }
+    if (saved != true) {
+      eraJsonController.dispose();
+      paidController.dispose();
+      allowedController.dispose();
+      eftController.dispose();
+      eraController.dispose();
+      return;
+    }
     final paid = double.tryParse(paidController.text.trim());
     if (paid == null) {
       if (mounted) AppSnackBar.showError(context, 'Enter a valid paid amount.');
@@ -595,6 +686,7 @@ class _EiBillingRecordDetailScreenState
       allowedController.dispose();
       eftController.dispose();
       eraController.dispose();
+      eraJsonController.dispose();
       if (mounted) setState(() => _busy = false);
     }
   }

@@ -997,6 +997,32 @@ $eiBillingRecordFields
     }
   }
 
+  Future<void> importEiEraStub({
+    required String recordId,
+    required String eraJson,
+  }) async {
+    const mutation = r'''
+      mutation ImportEiEraStub($input: ImportEiEraStubInput!) {
+        importEiEraStub(input: $input) {
+          id
+          paidAmount
+        }
+      }
+    ''';
+    final result = await _client.query(
+      mutation,
+      variables: {
+        'input': {
+          'recordId': recordId,
+          'eraJson': eraJson,
+        },
+      },
+    );
+    if (_graphqlData(result)['importEiEraStub'] == null) {
+      throw Exception('Failed to import ERA stub');
+    }
+  }
+
   Future<EiBillingExportResultModel> exportRecord({
     required String recordId,
     required String workflow,

@@ -263,6 +263,17 @@ export class RecordEiDenialInput {
 }
 
 @InputType()
+export class ImportEiEraStubInput {
+  @Field(() => ID)
+  @IsUUID()
+  recordId: string;
+
+  @Field()
+  @IsString()
+  eraJson: string;
+}
+
+@InputType()
 export class RecordEiPaymentInput {
   @Field(() => ID)
   @IsUUID()

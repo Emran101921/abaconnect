@@ -46,7 +46,7 @@ role_section() {
 }
 
 role_section "Parent"
-PARENT=$(login parent1@demo.local 'Parent1Demo!')
+PARENT="${SMOKE_PARENT_TOKEN:-$(login parent1@demo.local 'Parent1Demo!')}"
 CHILDREN=$(gql "$PARENT" 'query { myChildren { id firstName lastName } }')
 check "parent myChildren" "isinstance(d.get('data',{}).get('myChildren'), list)" "$CHILDREN"
 CHILD_ID=$(echo "$CHILDREN" | python3 -c "import sys,json; rows=json.load(sys.stdin).get('data',{}).get('myChildren') or []; print(rows[0]['id'] if rows else '')")
@@ -58,26 +58,26 @@ else
 fi
 
 role_section "Therapist"
-THER=$(login therapist@demo.local 'Therapist123!')
+THER="${SMOKE_THERAPIST_TOKEN:-$(login therapist@demo.local 'Therapist123!')}"
 CHARTS=$(gql "$THER" 'query { myTherapistCaseloadCharts { childId firstName lastName therapyTypes } }')
 check "therapist caseload charts" "isinstance(d.get('data',{}).get('myTherapistCaseloadCharts'), list)" "$CHARTS"
 ONBOARD=$(gql "$THER" 'query { providerOnboardingChecklist { onboardingStatus phiAccessApproved licenseComplete } }')
 check "therapist onboarding checklist" "d.get('data',{}).get('providerOnboardingChecklist') is not None" "$ONBOARD"
 
 role_section "Agency"
-AGENCY=$(login agency@demo.local 'Agency123!')
+AGENCY="${SMOKE_AGENCY_TOKEN:-$(login agency@demo.local 'Agency123!')}"
 AG_CHARTS=$(gql "$AGENCY" 'query { agencyCaseloadCharts { childId firstName lastName } }')
 check "agency caseload charts" "isinstance(d.get('data',{}).get('agencyCaseloadCharts'), list)" "$AG_CHARTS"
 ROSTER=$(gql "$AGENCY" 'query { agencyTherapists { id rosterStatus onboardingStatus } }')
 check "agency therapists roster" "isinstance(d.get('data',{}).get('agencyTherapists'), list)" "$ROSTER"
 
 role_section "Service coordinator"
-SC=$(login sc@demo.local 'SC123!')
+SC="${SMOKE_SC_TOKEN:-$(login sc@demo.local 'SC123!')}"
 SC_CHARTS=$(gql "$SC" 'query { myServiceCoordinatorCaseloadCharts { childId firstName lastName } }')
 check "SC caseload charts" "isinstance(d.get('data',{}).get('myServiceCoordinatorCaseloadCharts'), list)" "$SC_CHARTS"
 
 role_section "Admin"
-ADMIN=$(login admin@abaconnect.local 'Admin123!')
+ADMIN="${SMOKE_ADMIN_TOKEN:-$(login admin@abaconnect.local 'Admin123!')}"
 USERS=$(gql "$ADMIN" 'query { adminUsers { id email role firstName lastName } }')
 check "admin users" "isinstance(d.get('data',{}).get('adminUsers'), list)" "$USERS"
 CLAIMS=$(gql "$ADMIN" 'query { adminClaimsPipeline { summary { paidCount } } }')

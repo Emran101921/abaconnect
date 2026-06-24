@@ -130,6 +130,23 @@ else
 fi
 
 echo
+echo "=== Redesign routes ==="
+SC=$(login sc@demo.local 'SC123!')
+export SMOKE_PARENT_TOKEN="$PARENT"
+export SMOKE_THERAPIST_TOKEN="$THER"
+export SMOKE_AGENCY_TOKEN="$AGENCY"
+export SMOKE_ADMIN_TOKEN="$ADMIN"
+export SMOKE_SC_TOKEN="$SC"
+sleep 3
+if bash "$(dirname "$0")/smoke-redesign-routes.sh"; then
+  echo "PASS: smoke-redesign-routes.sh"
+  pass=$((pass + 1))
+else
+  echo "FAIL: smoke-redesign-routes.sh"
+  fail=$((fail + 1))
+fi
+
+echo
 echo "=== EI billing (NY Medicaid) ==="
 BILLING=$(login billing@demo.local 'Billing123!')
 export SMOKE_BILLING_TOKEN="$BILLING"

@@ -1,10 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { AuditAction } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import {
-  assertEiBillingRole,
-  EiBillingActor,
-} from './ei-billing-access.util';
+import { assertEiBillingRole, EiBillingActor } from './ei-billing-access.util';
 import { EiBillingAuditService } from './ei-billing-audit.service';
 
 @Injectable()
@@ -47,8 +48,11 @@ export class EiBillingPaymentService {
         eftReference: input.eftReference,
         eraPlaceholder: input.eraPlaceholder ?? 'ERA_IMPORT_PENDING',
         reconciliationStatus:
-          (input.reconciliationStatus as 'UNRECONCILED' | 'PARTIAL' | 'RECONCILED' | 'DISCREPANCY') ??
-          'UNRECONCILED',
+          (input.reconciliationStatus as
+            | 'UNRECONCILED'
+            | 'PARTIAL'
+            | 'RECONCILED'
+            | 'DISCREPANCY') ?? 'UNRECONCILED',
         postedAt: input.postedAt ?? new Date(),
         postedById: actor.id,
       },
@@ -74,5 +78,62 @@ export class EiBillingPaymentService {
     );
 
     return posting;
+  }
+
+  async importEiEraStub(
+    actor: EiBillingActor,
+    input: { recordId: string; eraJson: string },
+  ) {
+    assertEiBillingRole(actor, ['BILLING_STAFF', 'PLATFORM_ADMIN']);
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(input.eraJson);
+    } catch {
+      throw new BadRequestException('eraJson must be valid JSON');
+    }
+
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new BadRequestException('eraJson must be a JSON object');
+    }
+
+    const data = parsed as Record<string, unknown>;
+    const paidAmount = data.paidAmount;
+    if (
+      typeof paidAmount !== 'number' ||
+      !Number.isFinite(paidAmount) ||
+      paidAmount < 0
+    ) {
+      throw new BadRequestException(
+        'paidAmount must be a non-negative number',
+      );
+    }
+
+    let allowedAmount: number | undefined;
+    if (data.allowedAmount !== undefined) {
+      if (
+        typeof data.allowedAmount !== 'number' ||
+        !Number.isFinite(data.allowedAmount) ||
+        data.allowedAmount < 0
+      ) {
+        throw new BadRequestException(
+          'allowedAmount must be a non-negative number',
+        );
+      }
+      allowedAmount = data.allowedAmount;
+    }
+
+    const eftReference =
+      typeof data.eftReference === 'string' ? data.eftReference : undefined;
+    const traceNumber =
+      typeof data.traceNumber === 'string' ? data.traceNumber : undefined;
+
+    return this.recordPayment(actor, {
+      recordId: input.recordId,
+      paidAmount,
+      allowedAmount,
+      eftReference,
+      eraPlaceholder: traceNumber ?? 'ERA_STUB_IMPORTED',
+    });
   }
 }
