@@ -297,8 +297,8 @@ class _ChildrenListScreenState extends ConsumerState<ChildrenListScreen> {
     return AppScaffold(
       title: 'My Children',
       subtitle: 'Child profiles for screening & care',
-      bottomNavigationBar: ParentBottomNav(
-        current: ParentNavTab.children,
+      bottomNavigationBar: const RoleBottomNav(
+        current: CoreNavTab.profile,
       ),
       floatingActionButton: GlossyFab(
         icon: Icons.add,
@@ -396,7 +396,9 @@ class _ChildrenListScreenState extends ConsumerState<ChildrenListScreen> {
                             ),
                           ],
                         ),
-                        onTap: () => _editChild(child),
+                        onTap: () => context.push(
+                          '${AppRoutes.parentChildren}/${child.id}',
+                        ),
                       ),
                     );
                   },

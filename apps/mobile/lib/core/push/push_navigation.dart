@@ -12,6 +12,13 @@ void navigateFromPushPayload(
   final actionType = data['type'] as String? ?? data['actionType'] as String?;
   final threadId = data['threadId'] as String?;
   final appointmentId = data['appointmentId'] as String?;
+  if (actionType == 'INCOMING_CALL') {
+    final callSessionId = data['callSessionId'] as String?;
+    if (callSessionId != null) {
+      router.push('${AppRoutes.incomingCall}/$callSessionId');
+    }
+    return;
+  }
   if (actionType == 'MESSAGE' && threadId != null) {
     router.push('${AppRoutes.messages}/$threadId');
     return;

@@ -13,6 +13,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { AppThrottlerGuard } from './common/guards/app-throttler.guard';
 import { BullModule } from '@nestjs/bull';
 import { MailModule } from './mail/mail.module';
+import { SmsModule } from './sms/sms.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
@@ -22,6 +23,7 @@ import { ParentsModule } from './parents/parents.module';
 import { ChildrenModule } from './children/children.module';
 import { TherapistsModule } from './therapists/therapists.module';
 import { AgenciesModule } from './agencies/agencies.module';
+import { ServiceCoordinatorsModule } from './service-coordinators/service-coordinators.module';
 import { AppointmentsModule } from './appointments/appointments.module';
 import { SessionsModule } from './sessions/sessions.module';
 import { DocumentsModule } from './documents/documents.module';
@@ -31,6 +33,7 @@ import { InsuranceModule } from './insurance/insurance.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { MatchingModule } from './matching/matching.module';
 import { TelehealthModule } from './telehealth/telehealth.module';
+import { CallsModule } from './calls/calls.module';
 import { GpsModule } from './gps/gps.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AdminModule } from './admin/admin.module';
@@ -44,11 +47,14 @@ import { DisputesModule } from './disputes/disputes.module';
 import { PayoutsModule } from './payouts/payouts.module';
 import { SecurityModule } from './security/security.module';
 import { MarketplaceModule } from './marketplace/marketplace.module';
+import { JobOpportunitiesModule } from './job-opportunities/job-opportunities.module';
+import { EiBillingModule } from './ei-billing/ei-billing.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     MailModule,
+    SmsModule,
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
       autoSchemaFile: true,
@@ -79,6 +85,7 @@ import { MarketplaceModule } from './marketplace/marketplace.module';
     ChildrenModule,
     TherapistsModule,
     AgenciesModule,
+    ServiceCoordinatorsModule,
     AppointmentsModule,
     SessionsModule,
     DocumentsModule,
@@ -88,6 +95,7 @@ import { MarketplaceModule } from './marketplace/marketplace.module';
     ReviewsModule,
     MatchingModule,
     TelehealthModule,
+    CallsModule,
     GpsModule,
     NotificationsModule,
     AdminModule,
@@ -101,6 +109,8 @@ import { MarketplaceModule } from './marketplace/marketplace.module';
     PayoutsModule,
     SecurityModule,
     MarketplaceModule,
+    JobOpportunitiesModule,
+    EiBillingModule,
     GraphqlFeatureModule,
   ],
   controllers: [AppController],

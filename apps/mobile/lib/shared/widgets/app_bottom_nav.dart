@@ -2,154 +2,123 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/providers/app_providers.dart';
 import '../../core/router/app_router.dart';
+import '../../core/theme/app_spacing.dart';
 import '../../features/notifications/notification_providers.dart';
 import '../../features/parent/presentation/parent_dashboard_providers.dart';
+import '../../shared/models/user_role.dart';
 import '../providers/bottom_nav_badge_providers.dart';
 import 'glassy_bottom_nav.dart';
 
-/// Parent tabs — order matches futuristic bar left → right:
-/// Screening · Security · **Home** · Children · Messages
-enum ParentNavTab { screening, security, home, children, messages }
+/// Unified mobile bottom navigation: Home · Schedule · Messages · Calls · Profile
+enum CoreNavTab { home, schedule, messages, calls, profile }
 
-/// Therapist tabs — order matches futuristic bar left → right:
-/// Sessions · Security · **Home** · Appointments · Messages
-enum TherapistNavTab { sessions, security, home, appointments, messages }
+@Deprecated('Use CoreNavTab')
+typedef ParentNavTab = CoreNavTab;
 
-/// Legacy item type kept for any external references.
-class AppGlassyNavItem {
-  const AppGlassyNavItem({
-    required this.icon,
-    required this.selectedIcon,
-    required this.label,
-    required this.gradient,
-    this.badgeCount,
-  });
+@Deprecated('Use CoreNavTab')
+typedef TherapistNavTab = CoreNavTab;
 
-  final IconData icon;
-  final IconData selectedIcon;
-  final String label;
-  final LinearGradient gradient;
-  final int? badgeCount;
-}
+@Deprecated('Use RoleBottomNav')
+typedef ParentBottomNav = RoleBottomNav;
 
-/// @deprecated Use [GlassyBottomNav] directly. Kept for backward compatibility.
-typedef AppGlassyBottomNav = GlassyBottomNav;
+@Deprecated('Use RoleBottomNav')
+typedef TherapistBottomNav = RoleBottomNav;
 
-class ParentBottomNav extends ConsumerWidget {
-  const ParentBottomNav({super.key, required this.current});
+class RoleBottomNav extends ConsumerWidget {
+  const RoleBottomNav({super.key, required this.current});
 
-  final ParentNavTab current;
+  final CoreNavTab current;
+
+  static String homeRoute(UserRole role) => role.homeRoute;
+
+  static String scheduleRoute(UserRole role) {
+    switch (role) {
+      case UserRole.parent:
+        return AppRoutes.parentAppointments;
+      case UserRole.therapist:
+        return AppRoutes.therapistAppointments;
+      case UserRole.agency:
+        return '${AppRoutes.agencyHome}/appointments';
+      case UserRole.serviceCoordinator:
+        return '${AppRoutes.serviceCoordinatorHome}/cases';
+      case UserRole.admin:
+      case UserRole.billing:
+      case UserRole.complianceAuditor:
+      case UserRole.support:
+        return '${AppRoutes.adminHome}/analytics';
+    }
+  }
+
+  static String profileRoute(UserRole role) {
+    switch (role) {
+      case UserRole.parent:
+        return AppRoutes.parentProfile;
+      case UserRole.therapist:
+        return AppRoutes.therapistProfile;
+      case UserRole.agency:
+        return AppRoutes.agencyProfile;
+      case UserRole.serviceCoordinator:
+      case UserRole.admin:
+      case UserRole.billing:
+      case UserRole.complianceAuditor:
+      case UserRole.support:
+        return AppRoutes.security;
+    }
+  }
+
+  void _go(BuildContext context, WidgetRef ref, CoreNavTab tab) {
+    final role = ref.read(authStateProvider).valueOrNull?.user.role;
+    if (role == null) return;
+    if (tab == current && tab != CoreNavTab.home) return;
+
+    switch (tab) {
+      case CoreNavTab.home:
+        if (tab == current) return;
+        if (role == UserRole.parent) {
+          ref.invalidate(parentDashboardProvider);
+          ref.invalidate(unreadNotificationsProvider);
+        }
+        context.go(homeRoute(role));
+      case CoreNavTab.schedule:
+        context.go(scheduleRoute(role));
+      case CoreNavTab.messages:
+        context.go(AppRoutes.messages);
+      case CoreNavTab.calls:
+        context.go(AppRoutes.callHistory);
+      case CoreNavTab.profile:
+        context.go(profileRoute(role));
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final homeBadge = ref.watch(parentHomeNavBadgeProvider);
-    final messagesBadge = ref.watch(parentMessagesNavBadgeProvider);
+    final role = ref.watch(authStateProvider).valueOrNull?.user.role;
+    if (role == null) return const SizedBox.shrink();
+
+    final messagesBadge = switch (role) {
+      UserRole.parent => ref.watch(parentMessagesNavBadgeProvider),
+      UserRole.therapist => ref.watch(therapistMessagesNavBadgeProvider),
+      _ => null,
+    };
+    final homeBadge = role == UserRole.parent
+        ? ref.watch(parentHomeNavBadgeProvider)
+        : null;
+    final scheduleBadge = role == UserRole.therapist
+        ? ref.watch(therapistScheduleNavBadgeProvider)
+        : null;
 
     return GlassyBottomNav(
       activeTab: current.index,
-      onTabPress: (index) {
-        final tab = ParentNavTab.values[index];
-        if (tab == current && tab != ParentNavTab.home) return;
-        switch (tab) {
-          case ParentNavTab.screening:
-            context.go(AppRoutes.parentScreening);
-          case ParentNavTab.security:
-            context.go(AppRoutes.security);
-          case ParentNavTab.home:
-            ref.invalidate(parentDashboardProvider);
-            ref.invalidate(unreadNotificationsProvider);
-            if (tab != current) {
-              context.go(AppRoutes.parentHome);
-            }
-          case ParentNavTab.children:
-            context.go(AppRoutes.parentChildren);
-          case ParentNavTab.messages:
-            context.go(AppRoutes.messages);
-        }
-      },
+      onTabPress: (index) => _go(context, ref, CoreNavTab.values[index]),
       tabs: [
-        const GlassyNavTab(
-          label: 'Screening',
-          icon: Icons.fact_check_outlined,
-          selectedIcon: Icons.fact_check_rounded,
-        ),
-        const GlassyNavTab(
-          label: 'Security',
-          icon: Icons.shield_outlined,
-          selectedIcon: Icons.shield_rounded,
-        ),
         GlassyNavTab(
           label: 'Home',
           icon: Icons.home_outlined,
           selectedIcon: Icons.home_rounded,
           isCenter: true,
           badgeCount: homeBadge,
-        ),
-        const GlassyNavTab(
-          label: 'Children',
-          icon: Icons.child_care_outlined,
-          selectedIcon: Icons.child_care_rounded,
-        ),
-        GlassyNavTab(
-          label: 'Messages',
-          icon: Icons.chat_bubble_outline_rounded,
-          selectedIcon: Icons.chat_bubble_rounded,
-          badgeCount: messagesBadge,
-        ),
-      ],
-    );
-  }
-}
-
-class TherapistBottomNav extends ConsumerWidget {
-  const TherapistBottomNav({super.key, required this.current});
-
-  final TherapistNavTab current;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final scheduleBadge = ref.watch(therapistScheduleNavBadgeProvider);
-    final sessionsBadge = ref.watch(therapistSessionsNavBadgeProvider);
-    final messagesBadge = ref.watch(therapistMessagesNavBadgeProvider);
-
-    return GlassyBottomNav(
-      activeTab: current.index,
-      onTabPress: (index) {
-        final tab = TherapistNavTab.values[index];
-        if (tab == current && tab != TherapistNavTab.home) return;
-        switch (tab) {
-          case TherapistNavTab.sessions:
-            context.go(AppRoutes.therapistSessionNotes);
-          case TherapistNavTab.security:
-            context.go(AppRoutes.security);
-          case TherapistNavTab.home:
-            if (tab != current) {
-              context.go(AppRoutes.therapistHome);
-            }
-          case TherapistNavTab.appointments:
-            context.go(AppRoutes.therapistAppointments);
-          case TherapistNavTab.messages:
-            context.go(AppRoutes.messages);
-        }
-      },
-      tabs: [
-        GlassyNavTab(
-          label: 'Sessions',
-          icon: Icons.edit_note_outlined,
-          selectedIcon: Icons.edit_note_rounded,
-          badgeCount: sessionsBadge,
-        ),
-        const GlassyNavTab(
-          label: 'Security',
-          icon: Icons.shield_outlined,
-          selectedIcon: Icons.shield_rounded,
-        ),
-        const GlassyNavTab(
-          label: 'Home',
-          icon: Icons.home_outlined,
-          selectedIcon: Icons.home_rounded,
-          isCenter: true,
         ),
         GlassyNavTab(
           label: 'Schedule',
@@ -163,7 +132,90 @@ class TherapistBottomNav extends ConsumerWidget {
           selectedIcon: Icons.chat_bubble_rounded,
           badgeCount: messagesBadge,
         ),
+        const GlassyNavTab(
+          label: 'Calls',
+          icon: Icons.call_outlined,
+          selectedIcon: Icons.call_rounded,
+        ),
+        const GlassyNavTab(
+          label: 'Profile',
+          icon: Icons.person_outline,
+          selectedIcon: Icons.person_rounded,
+        ),
       ],
     );
+  }
+}
+
+/// Auto bottom nav on mobile for role shells that forgot to pass one.
+class AutoRoleBottomNav extends ConsumerWidget {
+  const AutoRoleBottomNav({super.key, required this.location});
+
+  final String location;
+
+  CoreNavTab? _tabForLocation(UserRole role) {
+    if (location == RoleBottomNav.homeRoute(role) ||
+        (location.startsWith('${RoleBottomNav.homeRoute(role)}/') &&
+            !_isNestedRoute(location, role))) {
+      return CoreNavTab.home;
+    }
+    if (location.startsWith(RoleBottomNav.scheduleRoute(role))) {
+      return CoreNavTab.schedule;
+    }
+    if (location.startsWith(AppRoutes.messages)) return CoreNavTab.messages;
+    if (location.startsWith(AppRoutes.callHistory) ||
+        location.startsWith('/active-call') ||
+        location.startsWith('/incoming-call')) {
+      return CoreNavTab.calls;
+    }
+    if (location.startsWith(AppRoutes.notifications)) {
+      return CoreNavTab.home;
+    }
+    if (location.startsWith(AppRoutes.payments) ||
+        location.startsWith(AppRoutes.consent) ||
+        location.startsWith(AppRoutes.insurance) ||
+        location.startsWith(AppRoutes.documents) ||
+        location.startsWith(AppRoutes.parentProfile) ||
+        location.startsWith(AppRoutes.therapistProfile) ||
+        location.startsWith(AppRoutes.agencyProfile)) {
+      return CoreNavTab.profile;
+    }
+    if (location.startsWith(AppRoutes.telehealth)) {
+      return CoreNavTab.schedule;
+    }
+    if (location.startsWith(RoleBottomNav.profileRoute(role)) ||
+        location.startsWith(AppRoutes.security) ||
+        location.startsWith(AppRoutes.agencyProfile) ||
+        location.startsWith(AppRoutes.agencyChildren) ||
+        location.startsWith(AppRoutes.parentChildren) ||
+        location.startsWith(AppRoutes.parentScreening)) {
+      return CoreNavTab.profile;
+    }
+    return null;
+  }
+
+  bool _isNestedRoute(String location, UserRole role) {
+    const nested = [
+      AppRoutes.parentAppointments,
+      AppRoutes.parentProfile,
+      AppRoutes.therapistAppointments,
+      AppRoutes.therapistProfile,
+      AppRoutes.therapistSessionNotes,
+      AppRoutes.therapistCharts,
+    ];
+    return nested.any((r) => location.startsWith(r));
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final width = MediaQuery.sizeOf(context).width;
+    if (width >= AppSpacing.breakpointWide) return const SizedBox.shrink();
+
+    final role = ref.watch(authStateProvider).valueOrNull?.user.role;
+    if (role == null) return const SizedBox.shrink();
+
+    final tab = _tabForLocation(role);
+    if (tab == null) return const SizedBox.shrink();
+    return RoleBottomNav(current: tab);
   }
 }

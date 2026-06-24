@@ -3,10 +3,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/providers/app_providers.dart';
+import '../../../shared/widgets/app_data_table.dart';
 import '../../../shared/widgets/app_scaffold.dart';
-import '../../../shared/widgets/glossy_button.dart';
+import '../../../shared/widgets/app_skeleton.dart';
+import '../../../shared/widgets/app_status_badge.dart';
 import '../data/admin_repository.dart';
 import 'admin_providers.dart';
+
+AppStatusKind _claimStatusKind(String status) {
+  return switch (status.toUpperCase()) {
+    'APPROVED' => AppStatusKind.approved,
+    'DENIED' => AppStatusKind.denied,
+    'PAID' => AppStatusKind.paid,
+    'DRAFT' => AppStatusKind.draft,
+    'IN_PROGRESS' || 'UNDER_REVIEW' => AppStatusKind.inProgress,
+    'SUBMITTED' || 'PENDING' => AppStatusKind.billingSubmitted,
+    _ => AppStatusKind.pending,
+  };
+}
 
 class AdminInsuranceScreen extends ConsumerWidget {
   const AdminInsuranceScreen({super.key});
@@ -18,117 +32,149 @@ class AdminInsuranceScreen extends ConsumerWidget {
 
     return AppScaffold(
       title: 'Insurance claims',
+      subtitle: 'Approve, deny, or mark claims paid',
+      showPageBreadcrumbs: true,
       body: claims.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => ListView(
+          padding: const EdgeInsets.all(16),
+          children: const [
+            AppSkeleton(height: 44),
+            SizedBox(height: 12),
+            AppSkeletonCard(lines: 4),
+          ],
+        ),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (list) {
-          if (list.isEmpty) {
-            return const Center(child: Text('No insurance claims'));
-          }
           return RefreshIndicator(
             onRefresh: () async {
               ref.invalidate(adminInsuranceClaimsProvider);
             },
-            child: ListView.separated(
+            child: ListView(
               padding: const EdgeInsets.all(16),
-              itemCount: list.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 8),
-              itemBuilder: (context, index) {
-                final c = list[index];
-                final actionable = [
-                  'SUBMITTED',
-                  'PENDING',
-                  'UNDER_REVIEW',
-                  'DRAFT',
-                ].contains(c.status);
-                return Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${c.payerName} · ${c.status}',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: 4),
-                        Text('${c.childName ?? ''} · ${c.parentEmail ?? ''}'),
-                        Text(currency.format(c.billedAmount)),
-                        if (c.claimNumber != null)
-                          Text('Claim #${c.claimNumber}'),
-                        if (c.ediReady == true)
-                          const Text('837 EDI payload ready'),
-                        if (c.clearinghouseStatus != null)
-                          Text('Clearinghouse: ${c.clearinghouseStatus}'),
-                        if (c.resubmissionOfId != null)
-                          const Text('Resubmission draft'),
+              children: [
+                AppDataTable<AdminInsuranceClaimModel>(
+                  rows: list,
+                  searchHint: 'Search claims…',
+                  searchPredicate: (c, q) {
+                    final needle = q.toLowerCase();
+                    return c.payerName.toLowerCase().contains(needle) ||
+                        c.status.toLowerCase().contains(needle) ||
+                        (c.childName ?? '').toLowerCase().contains(needle) ||
+                        (c.parentEmail ?? '').toLowerCase().contains(needle) ||
+                        (c.claimNumber ?? '').toLowerCase().contains(needle);
+                  },
+                  columns: [
+                    AppDataColumn(
+                      label: 'Payer',
+                      mobilePriority: true,
+                      cellBuilder: (context, c) => Text(
+                        c.payerName,
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                    ),
+                    AppDataColumn(
+                      label: 'Status',
+                      mobilePriority: true,
+                      cellBuilder: (context, c) => AppStatusBadge.fromKind(
+                        _claimStatusKind(c.status),
+                        label: c.status,
+                      ),
+                    ),
+                    AppDataColumn(
+                      label: 'Child',
+                      cellBuilder: (context, c) =>
+                          Text(c.childName ?? '—'),
+                    ),
+                    AppDataColumn(
+                      label: 'Amount',
+                      cellBuilder: (context, c) =>
+                          Text(currency.format(c.billedAmount)),
+                    ),
+                    AppDataColumn(
+                      label: 'Claim #',
+                      cellBuilder: (context, c) =>
+                          Text(c.claimNumber ?? '—'),
+                    ),
+                  ],
+                  actionsBuilder: (context, c) {
+                    final actionable = [
+                      'SUBMITTED',
+                      'PENDING',
+                      'UNDER_REVIEW',
+                      'DRAFT',
+                    ].contains(c.status);
+                    if (!actionable &&
+                        !(c.isLocked &&
+                            c.status == 'DENIED' &&
+                            c.resubmissionOfId == null)) {
+                      return const SizedBox.shrink();
+                    }
+                    return PopupMenuButton<String>(
+                      onSelected: (action) {
+                        switch (action) {
+                          case 'resubmit':
+                            _resubmit(context, ref, c);
+                          case 'submit837':
+                            _submitClearinghouse(context, ref, c);
+                          case 'approve':
+                            _update(
+                              context,
+                              ref,
+                              c,
+                              'APPROVED',
+                              c.billedAmount,
+                            );
+                          case 'deny':
+                            _update(
+                              context,
+                              ref,
+                              c,
+                              'DENIED',
+                              null,
+                              denial: 'Not covered under plan',
+                            );
+                          case 'paid':
+                            _update(
+                              context,
+                              ref,
+                              c,
+                              'PAID',
+                              c.billedAmount,
+                            );
+                        }
+                      },
+                      itemBuilder: (ctx) => [
                         if (c.isLocked &&
                             c.status == 'DENIED' &&
-                            c.resubmissionOfId == null) ...[
-                          const SizedBox(height: 12),
-                          GlossyOutlinedButton.icon(
-                            onPressed: () =>
-                                _resubmit(context, ref, c),
-                            icon: Icons.replay,
-                            child: const Text('Create resubmission'),
+                            c.resubmissionOfId == null)
+                          const PopupMenuItem(
+                            value: 'resubmit',
+                            child: Text('Create resubmission'),
                           ),
-                        ],
+                        if (c.status == 'DRAFT' || c.status == 'PENDING')
+                          const PopupMenuItem(
+                            value: 'submit837',
+                            child: Text('Submit 837'),
+                          ),
                         if (actionable) ...[
-                          const SizedBox(height: 12),
-                          Wrap(
-                            spacing: 8,
-                            children: [
-                              if (c.status == 'DRAFT' || c.status == 'PENDING')
-                                GlossyButton(
-                                  title: 'Submit 837',
-                                  size: GlossyButtonSize.small,
-                                  fullWidth: false,
-                                  variant: GlossyButtonVariant.neutral,
-                                  onPressed: () =>
-                                      _submitClearinghouse(context, ref, c),
-                                ),
-                              GlossyButton(
-                                title: 'Approve',
-                                size: GlossyButtonSize.small,
-                                fullWidth: false,
-                                variant: GlossyButtonVariant.greenTeal,
-                                onPressed: () => _update(
-                                  context,
-                                  ref,
-                                  c,
-                                  'APPROVED',
-                                  c.billedAmount,
-                                ),
-                              ),
-                              GlossyOutlinedButton(
-                                onPressed: () => _update(
-                                  context,
-                                  ref,
-                                  c,
-                                  'DENIED',
-                                  null,
-                                  denial: 'Not covered under plan',
-                                ),
-                                child: const Text('Deny'),
-                              ),
-                              TextButton(
-                                onPressed: () => _update(
-                                  context,
-                                  ref,
-                                  c,
-                                  'PAID',
-                                  c.billedAmount,
-                                ),
-                                child: const Text('Mark paid'),
-                              ),
-                            ],
+                          const PopupMenuItem(
+                            value: 'approve',
+                            child: Text('Approve'),
+                          ),
+                          const PopupMenuItem(
+                            value: 'deny',
+                            child: Text('Deny'),
+                          ),
+                          const PopupMenuItem(
+                            value: 'paid',
+                            child: Text('Mark paid'),
                           ),
                         ],
                       ],
-                    ),
-                  ),
-                );
-              },
+                    );
+                  },
+                ),
+              ],
             ),
           );
         },

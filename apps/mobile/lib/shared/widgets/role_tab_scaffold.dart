@@ -12,7 +12,7 @@ class ParentTabScaffold extends StatelessWidget {
     this.subtitle,
     this.actions,
     this.floatingActionButton,
-    this.currentTab = ParentNavTab.home,
+    this.currentTab = CoreNavTab.home,
     this.showBackButton,
   });
 
@@ -21,7 +21,7 @@ class ParentTabScaffold extends StatelessWidget {
   final Widget body;
   final List<Widget>? actions;
   final Widget? floatingActionButton;
-  final ParentNavTab currentTab;
+  final CoreNavTab currentTab;
   final bool? showBackButton;
 
   @override
@@ -32,7 +32,7 @@ class ParentTabScaffold extends StatelessWidget {
       actions: actions,
       floatingActionButton: floatingActionButton,
       showBackButton: showBackButton,
-      bottomNavigationBar: ParentBottomNav(current: currentTab),
+      bottomNavigationBar: RoleBottomNav(current: currentTab),
       body: body,
     );
   }
@@ -47,7 +47,7 @@ class TherapistTabScaffold extends StatelessWidget {
     this.subtitle,
     this.actions,
     this.floatingActionButton,
-    this.currentTab = TherapistNavTab.home,
+    this.currentTab = CoreNavTab.home,
     this.showBackButton,
   });
 
@@ -56,7 +56,7 @@ class TherapistTabScaffold extends StatelessWidget {
   final Widget body;
   final List<Widget>? actions;
   final Widget? floatingActionButton;
-  final TherapistNavTab currentTab;
+  final CoreNavTab currentTab;
   final bool? showBackButton;
 
   @override
@@ -67,7 +67,7 @@ class TherapistTabScaffold extends StatelessWidget {
       actions: actions,
       floatingActionButton: floatingActionButton,
       showBackButton: showBackButton,
-      bottomNavigationBar: TherapistBottomNav(current: currentTab),
+      bottomNavigationBar: RoleBottomNav(current: currentTab),
       body: body,
     );
   }

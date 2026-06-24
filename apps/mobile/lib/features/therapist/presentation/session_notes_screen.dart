@@ -346,9 +346,7 @@ class SessionNotesScreen extends ConsumerWidget {
 
     return AppScaffold(
       title: 'Session Notes and Service logs',
-      bottomNavigationBar: TherapistBottomNav(
-        current: TherapistNavTab.sessions,
-      ),
+      bottomNavigationBar: const RoleBottomNav(current: CoreNavTab.schedule),
       body: sessions.when(
         data: (list) {
           final docs = sessionDocs.valueOrNull ?? [];

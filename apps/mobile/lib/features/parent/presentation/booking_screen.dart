@@ -3,17 +3,26 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/app_providers.dart';
+import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/app_dashboard_card.dart';
 import '../../../shared/widgets/app_healthcare_illustration.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_section_header.dart';
+import '../../../shared/widgets/app_select.dart';
 import '../../../shared/widgets/glossy_button.dart';
 import '../../../shared/widgets/app_snackbar.dart';
 import '../data/parent_booking_repository.dart';
 import 'parent_dashboard_providers.dart';
 
 class BookingScreen extends ConsumerStatefulWidget {
-  const BookingScreen({super.key});
+  const BookingScreen({
+    super.key,
+    this.initialTherapistId,
+    this.initialTherapyType,
+  });
+
+  final String? initialTherapistId;
+  final String? initialTherapyType;
 
   @override
   ConsumerState<BookingScreen> createState() => _BookingScreenState();
@@ -36,6 +45,10 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialTherapyType != null &&
+        widget.initialTherapyType!.isNotEmpty) {
+      _therapyType = widget.initialTherapyType!;
+    }
     _load();
   }
 
@@ -48,11 +61,17 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
     try {
       final children = await repo.fetchChildren();
       final therapists = await repo.fetchTherapists(therapyType: _therapyType);
+      final preferredTherapistId = widget.initialTherapistId;
       setState(() {
         _children = children;
         _therapists = therapists;
         _childId = children.isNotEmpty ? children.first.id : null;
-        _therapistId = therapists.isNotEmpty ? therapists.first.id : null;
+        if (preferredTherapistId != null &&
+            therapists.any((t) => t.id == preferredTherapistId)) {
+          _therapistId = preferredTherapistId;
+        } else {
+          _therapistId = therapists.isNotEmpty ? therapists.first.id : null;
+        }
         _loading = false;
       });
     } catch (e) {
@@ -101,11 +120,23 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
           locationType: _locationType,
         );
         ref.invalidate(parentAppointmentsProvider);
+        ref.invalidate(parentDashboardProvider);
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Appointment booked')));
-          context.pop();
+          final isSelfPay = _isSelfPayChild(_selectedChild);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                isSelfPay
+                    ? 'Appointment requested — open Schedule to confirm & pay'
+                    : 'Appointment booked — waiting for therapist confirmation',
+              ),
+            ),
+          );
+          if (isSelfPay) {
+            context.push('${AppRoutes.parentAppointments}');
+          } else {
+            context.pop();
+          }
         }
       }
     } catch (e) {
@@ -225,19 +256,19 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    DropdownMenu<String>(
-                      label: const Text('Child'),
-                      initialSelection: _childId,
-                      dropdownMenuEntries: _children
+                    AppSelectField<String>(
+                      label: 'Child',
+                      value: _childId,
+                      options: _children
                           .map(
-                            (c) => DropdownMenuEntry(
+                            (c) => AppSelectOption(
                               value: c.id,
-                              label:
-                                  '${c.displayName} · ${c.insuranceType ?? 'Self-pay'}',
+                              label: c.displayName,
+                              subtitle: c.insuranceType ?? 'Self-pay',
                             ),
                           )
                           .toList(),
-                      onSelected: (v) => setState(() => _childId = v),
+                      onChanged: (v) => setState(() => _childId = v),
                     ),
                     if (_selectedChild != null) ...[
                       const SizedBox(height: 12),
@@ -265,30 +296,29 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                               .withValues(alpha: 0.35),
                           child: const ListTile(
                             leading: Icon(Icons.info_outline),
-                            title: Text('Self-pay payment'),
+                            title: Text('Self-pay booking'),
                             subtitle: Text(
-                              'After each completed session, you will receive a '
-                              'payment request in Payments. Pay securely via Stripe '
-                              'before the next visit when possible.',
+                              'After booking, open Schedule and tap '
+                              'Confirm & pay to secure the appointment with Stripe.',
                             ),
                           ),
                         ),
                       ],
                     ],
                     const SizedBox(height: 16),
-                    DropdownMenu<String>(
-                      label: const Text('Therapy type'),
-                      initialSelection: _therapyType,
-                      dropdownMenuEntries: const [
-                        DropdownMenuEntry(value: 'ABA', label: 'ABA Therapy'),
-                        DropdownMenuEntry(
+                    AppSelectField<String>(
+                      label: 'Therapy type',
+                      value: _therapyType,
+                      options: const [
+                        AppSelectOption(value: 'ABA', label: 'ABA Therapy'),
+                        AppSelectOption(
                           value: 'SPEECH',
                           label: 'Speech Therapy',
                         ),
-                        DropdownMenuEntry(value: 'OCCUPATIONAL', label: 'OT'),
-                        DropdownMenuEntry(value: 'PHYSICAL', label: 'PT'),
+                        AppSelectOption(value: 'OCCUPATIONAL', label: 'OT'),
+                        AppSelectOption(value: 'PHYSICAL', label: 'PT'),
                       ],
-                      onSelected: (v) async {
+                      onChanged: (v) async {
                         if (v == null) return;
                         setState(() {
                           _therapyType = v;
@@ -307,38 +337,39 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    DropdownMenu<String>(
-                      label: const Text('Therapist'),
-                      initialSelection: _therapistId,
-                      dropdownMenuEntries: _therapists
+                    AppSelectField<String>(
+                      label: 'Therapist',
+                      value: _therapistId,
+                      searchHint: _therapists.length > 6 ? 'Search therapists' : null,
+                      options: _therapists
                           .map(
-                            (t) => DropdownMenuEntry(
+                            (t) => AppSelectOption(
                               value: t.id,
-                              label:
-                                  '${t.displayName} (${t.rating.toStringAsFixed(1)}★)',
+                              label: t.displayName,
+                              subtitle: '${t.rating.toStringAsFixed(1)}★ rating',
                             ),
                           )
                           .toList(),
-                      onSelected: (v) => setState(() => _therapistId = v),
+                      onChanged: (v) => setState(() => _therapistId = v),
                     ),
                     const SizedBox(height: 16),
-                    DropdownMenu<String>(
-                      label: const Text('Session location'),
-                      initialSelection: _locationType,
-                      dropdownMenuEntries: const [
-                        DropdownMenuEntry(value: 'IN_HOME', label: 'In home'),
-                        DropdownMenuEntry(value: 'CLINIC', label: 'Clinic'),
-                        DropdownMenuEntry(value: 'SCHOOL', label: 'School'),
-                        DropdownMenuEntry(
+                    AppSelectField<String>(
+                      label: 'Session location',
+                      value: _locationType,
+                      options: const [
+                        AppSelectOption(value: 'IN_HOME', label: 'In home'),
+                        AppSelectOption(value: 'CLINIC', label: 'Clinic'),
+                        AppSelectOption(value: 'SCHOOL', label: 'School'),
+                        AppSelectOption(
                           value: 'TELEHEALTH',
                           label: 'Telehealth',
                         ),
-                        DropdownMenuEntry(
+                        AppSelectOption(
                           value: 'COMMUNITY',
                           label: 'Community',
                         ),
                       ],
-                      onSelected: (v) {
+                      onChanged: (v) {
                         if (v != null) setState(() => _locationType = v);
                       },
                     ),
@@ -358,30 +389,58 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                       onChanged: (v) => setState(() => _recurring = v),
                     ),
                     if (_recurring)
-                      DropdownMenu<int>(
-                        label: const Text('Number of weeks'),
-                        initialSelection: _recurringWeeks,
-                        dropdownMenuEntries: List.generate(
+                      AppSelectField<int>(
+                        label: 'Number of weeks',
+                        value: _recurringWeeks,
+                        options: List.generate(
                           11,
-                          (i) => DropdownMenuEntry(
+                          (i) => AppSelectOption(
                             value: i + 2,
                             label: '${i + 2} weeks',
                           ),
                         ),
-                        onSelected: (v) {
+                        onChanged: (v) {
                           if (v != null) setState(() => _recurringWeeks = v);
                         },
                       ),
                   ],
                 ),
               ),
+              if (_children.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Card(
+                    child: ListTile(
+                      leading: const Icon(Icons.child_care_outlined),
+                      title: const Text('Add a child first'),
+                      subtitle: const Text(
+                        'Create a child profile before booking therapy.',
+                      ),
+                    ),
+                  ),
+                ),
+              if (_therapists.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Card(
+                    child: ListTile(
+                      leading: const Icon(Icons.person_search_outlined),
+                      title: const Text('No therapists available'),
+                      subtitle: Text(
+                        'No verified providers offer $_therapyType in your area. '
+                        'Try another therapy type or browse matches.',
+                      ),
+                    ),
+                  ),
+                ),
               const SizedBox(height: 24),
               GlossyButton(
                 title: 'Confirm booking',
                 icon: Icons.event_available,
                 variant: GlossyButtonVariant.greenTeal,
                 loading: _submitting,
-                onPressed: _book,
+                onPressed:
+                    _childId == null || _therapistId == null ? null : _book,
               ),
             ],
           ),

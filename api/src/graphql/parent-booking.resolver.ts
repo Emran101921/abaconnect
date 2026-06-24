@@ -5,6 +5,8 @@ import {
   CurrentUser,
 } from '../common/decorators/current-user.decorator';
 import { AppointmentsService } from '../appointments/appointments.service';
+import { PaymentsService } from '../payments/payments.service';
+import { isSelfPayInsuranceType } from '../payments/self-pay.util';
 import { ChildrenService } from '../children/children.service';
 import { MatchingService } from '../matching/matching.service';
 import { ParentsService } from '../parents/parents.service';
@@ -30,6 +32,7 @@ import {
 import {
   AppointmentType,
   ChildType,
+  ConfirmAppointmentResultType,
   TherapistMatchType,
 } from './types/parent-booking.types';
 import {
@@ -48,6 +51,7 @@ export class ParentBookingResolver {
   constructor(
     private readonly childrenService: ChildrenService,
     private readonly appointmentsService: AppointmentsService,
+    private readonly paymentsService: PaymentsService,
     private readonly matchingService: MatchingService,
     private readonly parentsService: ParentsService,
     private readonly reviewsService: ReviewsService,
@@ -149,6 +153,7 @@ export class ParentBookingResolver {
         matchScore: s.score,
         user: t?.user
           ? {
+              id: t.user.id,
               firstName: t.user.firstName,
               lastName: t.user.lastName,
               email: t.user.email,
@@ -194,12 +199,57 @@ export class ParentBookingResolver {
       ratingAverage: Number(t.ratingAverage ?? 0),
       user: t.user
         ? {
+            id: t.user.id,
             firstName: t.user.firstName,
             lastName: t.user.lastName,
             email: t.user.email,
           }
         : undefined,
     }));
+  }
+
+  @Mutation(() => ConfirmAppointmentResultType, {
+    name: 'confirmAppointmentAsParent',
+  })
+  async confirmAppointmentAsParent(
+    @CurrentUser() user: AuthUser,
+    @Args('appointmentId', { type: () => ID }) appointmentId: string,
+  ): Promise<ConfirmAppointmentResultType> {
+    const row = await this.appointmentsService.confirmForUser(
+      user.id,
+      appointmentId,
+    );
+    const appointment = this.mapAppointment(row);
+    const needsPayment =
+      appointment.requiresSelfPayBookingPayment &&
+      appointment.bookingPaymentStatus !== 'SUCCEEDED';
+
+    if (!needsPayment) {
+      return {
+        appointment,
+        requiresPayment: false,
+        stripeConfigured: this.paymentsService.getConfig().stripeConfigured,
+        paymentId: appointment.bookingPaymentId,
+      };
+    }
+
+    const checkout = await this.paymentsService.ensureBookingPaymentForAppointment(
+      user.id,
+      appointmentId,
+    );
+    return {
+      appointment: this.mapAppointment({
+        ...row,
+        bookingPayment: checkout.payment,
+        child: row.child,
+        therapist: row.therapist,
+      }),
+      requiresPayment: checkout.payment.status !== 'SUCCEEDED',
+      checkoutUrl: checkout.checkoutUrl ?? undefined,
+      clientSecret: checkout.clientSecret ?? undefined,
+      stripeConfigured: checkout.stripeConfigured,
+      paymentId: checkout.payment.id,
+    };
   }
 
   @Mutation(() => AppointmentType, { name: 'rescheduleAppointment' })
@@ -212,6 +262,7 @@ export class ParentBookingResolver {
       input.appointmentId,
       input.scheduledStart,
       input.scheduledEnd,
+      input.reason,
     );
     return this.mapAppointment(row);
   }
@@ -557,18 +608,38 @@ export class ParentBookingResolver {
     scheduledStart: Date;
     scheduledEnd: Date;
     locationType?: string;
+    confirmationStatus?: string;
+    parentConfirmedAt?: Date | null;
+    therapistConfirmedAt?: Date | null;
+    rescheduleRequestedBy?: string | null;
+    proposedScheduledStart?: Date | null;
+    proposedScheduledEnd?: Date | null;
+    rescheduleReason?: string | null;
     child?: {
       id: string;
       firstName: string;
       lastName: string;
       dateOfBirth: Date;
+      insuranceType?: string | null;
     };
     therapist?: {
       id: string;
       ratingAverage: unknown;
-      user?: { firstName: string; lastName: string; email: string };
+      user?: { id: string; firstName: string; lastName: string; email: string };
     };
+    bookingPayment?: {
+      id: string;
+      status: string;
+    } | null;
   }): AppointmentType {
+    const childInsuranceType = row.child?.insuranceType ?? undefined;
+    const isSelfPay = isSelfPayInsuranceType(childInsuranceType);
+    const bookingPaymentStatus = row.bookingPayment?.status ?? undefined;
+    const requiresSelfPayBookingPayment =
+      isSelfPay &&
+      row.confirmationStatus !== 'CONFIRMED' &&
+      bookingPaymentStatus !== 'SUCCEEDED';
+
     return {
       id: row.id,
       status: row.status,
@@ -576,12 +647,40 @@ export class ParentBookingResolver {
       scheduledStart: row.scheduledStart,
       scheduledEnd: row.scheduledEnd,
       locationType: row.locationType as AppointmentType['locationType'],
-      child: row.child,
+      confirmationStatus:
+        (row.confirmationStatus as AppointmentType['confirmationStatus']) ??
+        'PENDING',
+      parentConfirmedAt: row.parentConfirmedAt ?? undefined,
+      therapistConfirmedAt: row.therapistConfirmedAt ?? undefined,
+      rescheduleRequestedBy: row.rescheduleRequestedBy ?? undefined,
+      proposedScheduledStart: row.proposedScheduledStart ?? undefined,
+      proposedScheduledEnd: row.proposedScheduledEnd ?? undefined,
+      rescheduleReason: row.rescheduleReason ?? undefined,
+      childInsuranceType,
+      requiresSelfPayBookingPayment,
+      bookingPaymentId: row.bookingPayment?.id ?? undefined,
+      bookingPaymentStatus,
+      child: row.child
+        ? {
+            id: row.child.id,
+            firstName: row.child.firstName,
+            lastName: row.child.lastName,
+            dateOfBirth: row.child.dateOfBirth,
+            insuranceType: row.child.insuranceType ?? undefined,
+          }
+        : undefined,
       therapist: row.therapist
         ? {
             id: row.therapist.id,
             ratingAverage: Number(row.therapist.ratingAverage),
-            user: row.therapist.user,
+            user: row.therapist.user
+              ? {
+                  id: row.therapist.user.id,
+                  firstName: row.therapist.user.firstName,
+                  lastName: row.therapist.user.lastName,
+                  email: row.therapist.user.email,
+                }
+              : undefined,
           }
         : undefined,
     };

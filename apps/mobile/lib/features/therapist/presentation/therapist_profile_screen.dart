@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/app_providers.dart';
+import '../../../core/router/app_router.dart';
+import '../../clinical/data/clinical_charts_repository.dart';
 import '../../clinical/data/clinical_repository.dart';
 import '../data/therapist_repository.dart';
+import '../../../shared/layout/dashboard_card.dart';
+import '../../../shared/widgets/app_bottom_nav.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/app_status_badge.dart';
+import '../../../shared/widgets/app_trust_notice.dart';
 import '../../../shared/widgets/glossy_button.dart';
 
 final therapistBadgesProvider = FutureProvider<List<TherapistBadgeModel>>((
@@ -22,9 +28,7 @@ final therapistProfileProvider = FutureProvider<TherapistProfileModel>((
 });
 
 final therapistCaseloadChartsProvider =
-    FutureProvider<List<TherapistCaseloadChartModel>>((ref) async {
-  return ref.watch(therapistRepositoryProvider).fetchCaseloadCharts();
-});
+    clinicalChartsProvider(ClinicalChartsAudience.therapist);
 
 class TherapistProfileScreen extends ConsumerStatefulWidget {
   const TherapistProfileScreen({super.key});
@@ -106,6 +110,7 @@ class _TherapistProfileScreenState
 
     return AppScaffold(
       title: 'My Profile',
+      bottomNavigationBar: const RoleBottomNav(current: CoreNavTab.profile),
       body: profile.when(
         data: (p) {
           _initFromProfile(p);
@@ -119,32 +124,50 @@ class _TherapistProfileScreenState
             child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              CircleAvatar(
-                radius: 48,
-                child: Text(
-                  p.displayName.isNotEmpty ? p.displayName[0] : '?',
-                  style: const TextStyle(fontSize: 32),
+              DashboardCard(
+                child: Column(
+                  children: [
+                    CircleAvatar(
+                      radius: 48,
+                      backgroundColor:
+                          Theme.of(context).colorScheme.primaryContainer,
+                      child: Text(
+                        p.displayName.isNotEmpty ? p.displayName[0] : '?',
+                        style: TextStyle(
+                          fontSize: 32,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      p.displayName,
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    Text(
+                      '${p.rating.toStringAsFixed(1)}★ · ${p.ratingCount} reviews',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant,
+                          ),
+                    ),
+                    const SizedBox(height: 8),
+                    if (p.isVerified)
+                      AppStatusBadge.fromKind(
+                        AppStatusKind.approved,
+                        label: 'Verified provider',
+                      )
+                    else
+                      AppStatusBadge.fromKind(
+                        AppStatusKind.pending,
+                        label: 'Verification pending',
+                      ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 16),
-              Center(
-                child: Text(
-                  p.displayName,
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-              ),
-              Center(
-                child: Text(
-                  '${p.rating.toStringAsFixed(1)}★ · ${p.ratingCount} reviews',
-                ),
-              ),
-              if (p.isVerified)
-                const Center(
-                  child: Chip(
-                    label: Text('Verified'),
-                    avatar: Icon(Icons.verified, size: 18),
-                  ),
-                ),
+              const SizedBox(height: 12),
+              const AppTrustNotice.protectedInfo(dense: true),
               if (!p.hasRequiredCredentials) ...[
                 const SizedBox(height: 16),
                 Card(
@@ -173,97 +196,74 @@ class _TherapistProfileScreenState
                 loading: () => const SizedBox.shrink(),
                 error: (_, _) => const SizedBox.shrink(),
               ),
-              const SizedBox(height: 24),
-              Text(
-                'Caseload · Medical charts',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Each child has a separate clinical chart on your caseload.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-              ),
-              const SizedBox(height: 12),
-              caseload.when(
-                data: (charts) {
-                  if (charts.isEmpty) {
-                    return Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Text(
-                          'No children on your caseload yet.',
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                      ),
-                    );
-                  }
-                  return Column(
-                    children: [
-                      for (var i = 0; i < charts.length; i++) ...[
-                        if (i > 0) const SizedBox(height: 12),
-                        _MedicalChartCard(chart: charts[i]),
-                      ],
-                    ],
-                  );
-                },
-                loading: () => const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24),
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-                error: (e, _) => Card(
-                  color: Theme.of(context).colorScheme.errorContainer,
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Text('Could not load caseload: $e'),
+              const SizedBox(height: 16),
+              DashboardCard(
+                title: 'Medical charts',
+                onTap: () => context.push(AppRoutes.therapistCharts),
+                trailing: const Icon(Icons.chevron_right),
+                child: Text(
+                  caseload.maybeWhen(
+                    data: (charts) => charts.isEmpty
+                        ? 'Each child on your caseload gets a separate chart.'
+                        : '${charts.length} child chart${charts.length == 1 ? '' : 's'} on your caseload',
+                    orElse: () =>
+                        'Each child on your caseload gets a separate chart.',
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
-              Text(
-                'Credentials',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _npiController,
-                decoration: const InputDecoration(
-                  labelText: 'NPI number *',
-                  hintText: '10-digit National Provider Identifier',
+              const SizedBox(height: 16),
+              DashboardCard(
+                title: 'Credentials',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextField(
+                      controller: _npiController,
+                      decoration: const InputDecoration(
+                        labelText: 'NPI number *',
+                        hintText: '10-digit National Provider Identifier',
+                      ),
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(10),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _licenseController,
+                      decoration: const InputDecoration(
+                        labelText: 'State license number *',
+                        hintText: 'License / certification #',
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _stateController,
+                      decoration: const InputDecoration(
+                        labelText: 'License state',
+                        hintText: 'e.g. NY',
+                      ),
+                      textCapitalization: TextCapitalization.characters,
+                      inputFormatters: [
+                        LengthLimitingTextInputFormatter(2),
+                        FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z]')),
+                      ],
+                    ),
+                  ],
                 ),
-                keyboardType: TextInputType.number,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(10),
-                ],
               ),
               const SizedBox(height: 16),
-              TextField(
-                controller: _licenseController,
-                decoration: const InputDecoration(
-                  labelText: 'State license number *',
-                  hintText: 'License / certification #',
+              DashboardCard(
+                title: 'Bio',
+                child: TextField(
+                  controller: _bioController,
+                  decoration: const InputDecoration(
+                    labelText: 'Tell families about your practice',
+                    border: InputBorder.none,
+                  ),
+                  maxLines: 3,
                 ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _stateController,
-                decoration: const InputDecoration(
-                  labelText: 'License state',
-                  hintText: 'e.g. NY',
-                ),
-                textCapitalization: TextCapitalization.characters,
-                inputFormatters: [
-                  LengthLimitingTextInputFormatter(2),
-                  FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z]')),
-                ],
-              ),
-              const SizedBox(height: 24),
-              TextField(
-                controller: _bioController,
-                decoration: const InputDecoration(labelText: 'Bio'),
-                maxLines: 3,
               ),
               const SizedBox(height: 24),
               GlossyButton(
@@ -272,249 +272,19 @@ class _TherapistProfileScreenState
                 loading: _saving,
                 onPressed: _save,
               ),
+              const SizedBox(height: 16),
+              GlossyButton.logOut(
+                onPressed: () async {
+                  await ref.read(authStateProvider.notifier).logout();
+                  if (context.mounted) context.go(AppRoutes.login);
+                },
+              ),
             ],
           ),
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
-      ),
-    );
-  }
-}
-
-class _MedicalChartCard extends StatelessWidget {
-  const _MedicalChartCard({required this.chart});
-
-  final TherapistCaseloadChartModel chart;
-
-  String _formatGender(String? gender) {
-    if (gender == null || gender.isEmpty) return '—';
-    return gender
-        .split('-')
-        .map((part) => part.isEmpty
-            ? part
-            : '${part[0].toUpperCase()}${part.substring(1)}')
-        .join('-');
-  }
-
-  String _therapyLabel(String type) {
-    switch (type) {
-      case 'ABA':
-        return 'ABA';
-      case 'SPEECH':
-        return 'Speech';
-      case 'OT':
-        return 'OT';
-      case 'PT':
-        return 'PT';
-      default:
-        return type;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final dateFmt = DateFormat.yMMMd();
-
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: theme.dividerColor),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            color: theme.colorScheme.surfaceContainerHighest,
-            child: Row(
-              children: [
-                Icon(
-                  Icons.medical_information_outlined,
-                  size: 20,
-                  color: theme.colorScheme.primary,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    chart.chartNumber,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-                ...chart.therapyTypes.map(
-                  (t) => Padding(
-                    padding: const EdgeInsets.only(left: 6),
-                    child: Chip(
-                      label: Text(_therapyLabel(t)),
-                      visualDensity: VisualDensity.compact,
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      padding: EdgeInsets.zero,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  chart.displayName,
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                const Divider(height: 1),
-                const SizedBox(height: 12),
-                _ChartField(
-                  label: 'Date of birth',
-                  value: dateFmt.format(chart.dateOfBirth),
-                ),
-                _ChartField(
-                  label: 'Sex',
-                  value: _formatGender(chart.gender),
-                ),
-                if (chart.primaryLanguage != null)
-                  _ChartField(
-                    label: 'Language',
-                    value: chart.primaryLanguage!,
-                  ),
-                _ChartField(
-                  label: 'Parent / guardian',
-                  value: chart.guardianName ?? chart.parentName,
-                ),
-                if (chart.pediatricianName != null)
-                  _ChartField(
-                    label: 'Pediatrician',
-                    value: chart.pediatricianName!,
-                  ),
-                if (chart.insuranceType != null)
-                  _ChartField(
-                    label: 'Insurance',
-                    value: chart.insuranceType!,
-                  ),
-                const SizedBox(height: 14),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _ChartStat(
-                      icon: Icons.event_outlined,
-                      label: 'Upcoming',
-                      value: '${chart.upcomingAppointments}',
-                    ),
-                    _ChartStat(
-                      icon: Icons.check_circle_outline,
-                      label: 'Sessions',
-                      value: '${chart.completedSessions}',
-                    ),
-                    _ChartStat(
-                      icon: Icons.edit_note_outlined,
-                      label: 'Notes due',
-                      value: '${chart.pendingDocumentation}',
-                      highlight: chart.pendingDocumentation > 0,
-                    ),
-                  ],
-                ),
-                if (chart.lastVisitAt != null) ...[
-                  const SizedBox(height: 10),
-                  Text(
-                    'Last visit ${dateFmt.format(chart.lastVisitAt!)}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ChartField extends StatelessWidget {
-  const _ChartField({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              label,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(value, style: theme.textTheme.bodyMedium),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ChartStat extends StatelessWidget {
-  const _ChartStat({
-    required this.icon,
-    required this.label,
-    required this.value,
-    this.highlight = false,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-  final bool highlight;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final bg = highlight
-        ? theme.colorScheme.errorContainer
-        : theme.colorScheme.secondaryContainer;
-    final fg = highlight
-        ? theme.colorScheme.onErrorContainer
-        : theme.colorScheme.onSecondaryContainer;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: fg),
-          const SizedBox(width: 6),
-          Text(
-            '$label $value',
-            style: theme.textTheme.labelMedium?.copyWith(color: fg),
-          ),
-        ],
       ),
     );
   }

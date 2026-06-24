@@ -141,7 +141,7 @@ class AppTheme {
         }),
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
-        backgroundColor: const Color(0xFF007AFF),
+        backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         elevation: 0,
         highlightElevation: 0,
@@ -179,7 +179,7 @@ class AppTheme {
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          backgroundColor: const Color(0xFF007AFF),
+          backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
           minimumSize: const Size(0, 50),
           padding: const EdgeInsets.symmetric(
@@ -198,7 +198,7 @@ class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: const Color(0xFF007AFF),
+          foregroundColor: AppColors.primary,
           backgroundColor: Colors.transparent,
           minimumSize: const Size(0, 50),
           padding: const EdgeInsets.symmetric(

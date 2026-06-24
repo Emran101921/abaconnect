@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 
 /// Preset color schemes for [GlossyButton] (semantic roles; rendered iOS-flat).
@@ -177,50 +178,31 @@ class _GlossyButtonState extends State<GlossyButton> {
 
   _IosButtonAppearance _appearance(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final separator = isDark
-        ? CupertinoColors.separator.darkColor
-        : CupertinoColors.separator.color;
 
     if (widget.bordered) {
       return _IosButtonAppearance(
         background: Colors.transparent,
-        foreground: CupertinoColors.activeBlue.resolveFrom(context),
-        border: Border.all(color: separator, width: 0.8),
+        foreground: AppColors.primary,
+        border: Border.all(color: AppColors.border, width: 1),
         pressedOpacity: 0.55,
       );
     }
 
     final (Color bg, Color fg) = switch (widget.variant) {
       GlossyButtonVariant.neutral => isDark
-          ? (const Color(0xFF3A3A3C), CupertinoColors.label.resolveFrom(context))
-          : (const Color(0xFFE5E5EA), const Color(0xFF1C1C1E)),
+          ? (const Color(0xFF334155), const Color(0xFFF8FAFC))
+          : (const Color(0xFFF1F5F9), AppColors.textPrimary),
       GlossyButtonVariant.danger ||
-      GlossyButtonVariant.redDarkRed => (
-        CupertinoColors.systemRed.resolveFrom(context),
-        Colors.white,
-      ),
+      GlossyButtonVariant.redDarkRed => (AppColors.error, Colors.white),
       GlossyButtonVariant.success ||
-      GlossyButtonVariant.greenTeal => (
-        CupertinoColors.systemGreen.resolveFrom(context),
-        Colors.white,
-      ),
+      GlossyButtonVariant.greenTeal => (AppColors.success, Colors.white),
       GlossyButtonVariant.warning ||
-      GlossyButtonVariant.orangeRed => (
-        CupertinoColors.systemOrange.resolveFrom(context),
-        Colors.white,
-      ),
-      GlossyButtonVariant.secondary => (
-        CupertinoColors.systemTeal.resolveFrom(context),
-        Colors.white,
-      ),
-      GlossyButtonVariant.tertiary => (
-        CupertinoColors.systemIndigo.resolveFrom(context),
-        Colors.white,
-      ),
-      _ => (
-        CupertinoColors.activeBlue.resolveFrom(context),
-        Colors.white,
-      ),
+      GlossyButtonVariant.orangeRed => (AppColors.warning, Colors.white),
+      GlossyButtonVariant.secondary ||
+      GlossyButtonVariant.tealBlue => (AppColors.secondary, Colors.white),
+      GlossyButtonVariant.tertiary ||
+      GlossyButtonVariant.bluePurple => (AppColors.primaryDark, Colors.white),
+      _ => (AppColors.primary, Colors.white),
     };
 
     return _IosButtonAppearance(
@@ -290,6 +272,8 @@ class _GlossyButtonState extends State<GlossyButton> {
                     )
                   : Row(
                       mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize:
+                          widget.fullWidth ? MainAxisSize.max : MainAxisSize.min,
                       children: [
                         if (widget.loading) ...[
                           SizedBox(
@@ -312,23 +296,37 @@ class _GlossyButtonState extends State<GlossyButton> {
                           const SizedBox(width: 6),
                         ],
                         if (!widget.iconOnly)
-                          Expanded(
-                            child: Text(
-                              widget.title,
-                              textAlign: widget.iconLeading
-                                  ? TextAlign.start
-                                  : TextAlign.center,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: style.foreground,
-                                fontSize: _fontSize,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: -0.2,
-                                height: 1.2,
-                              ),
-                            ),
-                          ),
+                          widget.fullWidth
+                              ? Expanded(
+                                  child: Text(
+                                    widget.title,
+                                    textAlign: widget.iconLeading
+                                        ? TextAlign.start
+                                        : TextAlign.center,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: style.foreground,
+                                      fontSize: _fontSize,
+                                      fontWeight: FontWeight.w600,
+                                      letterSpacing: -0.2,
+                                      height: 1.2,
+                                    ),
+                                  ),
+                                )
+                              : Text(
+                                  widget.title,
+                                  textAlign: TextAlign.center,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: style.foreground,
+                                    fontSize: _fontSize,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: -0.2,
+                                    height: 1.2,
+                                  ),
+                                ),
                         if (showIcon && !widget.iconLeading) ...[
                           const SizedBox(width: 6),
                           _ButtonIcon(

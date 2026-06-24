@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 
 abstract final class AppSnackBar {
-  static void showError(BuildContext context, String message) {
+  static void showError(BuildContext context, Object message) {
+    final text = message is String ? message : messageFromError(message);
     final scheme = Theme.of(context).colorScheme;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          message,
+          text,
           style: TextStyle(color: scheme.onErrorContainer),
         ),
         backgroundColor: scheme.errorContainer,

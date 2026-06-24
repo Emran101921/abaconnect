@@ -6,17 +6,21 @@ import 'package:intl/intl.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/models/dashboard_action_model.dart';
+import '../../../shared/layout/action_button.dart';
+import '../../../shared/layout/app_page_header.dart';
+import '../../../shared/layout/user_role_badge.dart';
+import '../../../shared/widgets/app_bottom_nav.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/app_trust_notice.dart';
+import '../../../shared/widgets/glossy_button.dart';
 import '../../../shared/widgets/app_section_header.dart';
 import '../../../shared/widgets/app_stat_card.dart';
-import '../../../shared/widgets/app_glossy_button.dart';
-import '../../../shared/widgets/app_theme_toggle.dart';
 import '../../../shared/widgets/app_wellness_action_menu.dart';
-import '../../../shared/widgets/app_wellness_home_header.dart';
 import '../../../shared/widgets/app_wellness_journey_card.dart';
 import '../../../shared/widgets/dashboard_action_inbox.dart';
 import '../../messaging/messaging_providers.dart';
 import '../../notifications/notification_providers.dart';
+import '../../service_coordinator/presentation/sc_providers.dart';
 import 'agency_providers.dart';
 
 class AgencyHomeScreen extends ConsumerWidget {
@@ -26,8 +30,6 @@ class AgencyHomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final dashboard = ref.watch(agencyDashboardProvider);
     final upcoming = ref.watch(agencyUpcomingAppointmentsProvider);
-    final unread = ref.watch(unreadNotificationsProvider);
-    final unreadCount = unread.maybeWhen(data: (c) => c, orElse: () => 0);
     final unreadMessages = ref.watch(unreadMessageThreadsProvider);
     final unreadMessageCount = unreadMessages.maybeWhen(
       data: (c) => c,
@@ -38,30 +40,16 @@ class AgencyHomeScreen extends ConsumerWidget {
         user?.fullName?.split(' ').first ?? user?.email.split('@').first ?? 'there';
 
     return AppScaffold(
-      title: 'Agency',
-      actions: [
-        const AppThemeToggle(compact: true),
-        IconButton(
-          icon: unreadCount > 0
-              ? Badge(
-                  label: Text('$unreadCount'),
-                  child: const Icon(Icons.notifications),
-                )
-              : const Icon(Icons.notifications),
-          onPressed: () => context.push(AppRoutes.notifications),
-        ),
-        IconButton(
-          icon: const Icon(Icons.logout),
-          onPressed: () async {
-            await ref.read(authStateProvider.notifier).logout();
-            if (context.mounted) context.go(AppRoutes.login);
-          },
-        ),
-      ],
+      title: 'Agency dashboard',
+      subtitle: 'Provider network operations',
+      constrainBodyOnWide: false,
+      bottomNavigationBar: const RoleBottomNav(current: CoreNavTab.home),
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(agencyDashboardProvider);
           ref.invalidate(agencyTherapistsProvider);
+          ref.invalidate(agencyRosterMembersProvider);
+          ref.invalidate(agencyCasesProvider);
           ref.invalidate(agencyAnalyticsProvider);
           ref.invalidate(agencyUpcomingAppointmentsProvider);
           ref.invalidate(unreadNotificationsProvider);
@@ -70,8 +58,47 @@ class AgencyHomeScreen extends ConsumerWidget {
           padding: EdgeInsets.zero,
           child: ListView(
             children: [
-              AppWellnessHomeHeader(
-                greeting: 'Welcome back, $greetingName 👋',
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: AppPageHeader(
+                  title: 'Welcome back, $greetingName',
+                  description:
+                      'Manage your provider roster, referrals, appointments, and agency reports.',
+                  showBreadcrumbs: false,
+                  badge: user != null
+                      ? UserRoleBadge(role: user.role, compact: true)
+                      : null,
+                  actions: [
+                    ActionButton(
+                      label: 'Agency profile',
+                      icon: Icons.business_outlined,
+                      onPressed: () => context.push(AppRoutes.agencyProfile),
+                      fullWidth: false,
+                      size: GlossyButtonSize.medium,
+                    ),
+                    ActionButton(
+                      label: 'Medical charts',
+                      icon: Icons.medical_information_outlined,
+                      onPressed: () =>
+                          context.push('${AppRoutes.agencyHome}/charts'),
+                      variant: GlossyButtonVariant.secondary,
+                      fullWidth: false,
+                      size: GlossyButtonSize.medium,
+                    ),
+                    ActionButton(
+                      label: 'Parent referrals',
+                      icon: Icons.storefront_outlined,
+                      onPressed: () => context.push(AppRoutes.agencyMarketplace),
+                      variant: GlossyButtonVariant.secondary,
+                      fullWidth: false,
+                      size: GlossyButtonSize.medium,
+                    ),
+                  ],
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: AppTrustNotice(dense: true),
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -114,6 +141,12 @@ class AgencyHomeScreen extends ConsumerWidget {
                           context.push('${AppRoutes.agencyHome}/roster'),
                     ),
                     AppWellnessActionItem(
+                      label: 'Case assignments',
+                      icon: Icons.folder_shared_outlined,
+                      variant: AppGlossyButtonVariant.secondary,
+                      onTap: () => context.push('${AppRoutes.agencyHome}/cases'),
+                    ),
+                    AppWellnessActionItem(
                       label: 'Appointments',
                       icon: Icons.event_outlined,
                       variant: AppGlossyButtonVariant.secondary,
@@ -137,6 +170,25 @@ class AgencyHomeScreen extends ConsumerWidget {
                           context.push('${AppRoutes.agencyHome}/analytics'),
                     ),
                     AppWellnessActionItem(
+                      label: 'Call audit',
+                      icon: Icons.call_outlined,
+                      variant: AppGlossyButtonVariant.neutral,
+                      onTap: () =>
+                          context.push('${AppRoutes.agencyHome}/call-audit'),
+                    ),
+                    AppWellnessActionItem(
+                      label: 'Job opportunities',
+                      icon: Icons.work_outline,
+                      variant: AppGlossyButtonVariant.secondary,
+                      onTap: () => context.push(AppRoutes.agencyOpportunities),
+                    ),
+                    AppWellnessActionItem(
+                      label: 'Service needs',
+                      icon: Icons.medical_services_outlined,
+                      variant: AppGlossyButtonVariant.secondary,
+                      onTap: () => context.push(AppRoutes.agencyServiceNeeds),
+                    ),
+                    AppWellnessActionItem(
                       label: 'Marketplace',
                       icon: Icons.storefront_outlined,
                       variant: AppGlossyButtonVariant.primary,
@@ -156,7 +208,9 @@ class AgencyHomeScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 12),
               dashboard.when(
-                data: (d) => Column(
+                data: (d) => Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Wrap(
@@ -194,6 +248,20 @@ class AgencyHomeScreen extends ConsumerWidget {
                           onTap: () =>
                               context.push('${AppRoutes.agencyHome}/roster'),
                         ),
+                        AppStatCard(
+                          label: 'Service coordinators',
+                          value: '${d.serviceCoordinatorCount}',
+                          icon: Icons.support_agent_outlined,
+                          onTap: () =>
+                              context.push('${AppRoutes.agencyHome}/roster'),
+                        ),
+                        AppStatCard(
+                          label: 'SC caseload',
+                          value: '${d.activeScCaseload}',
+                          icon: Icons.folder_shared_outlined,
+                          onTap: () =>
+                              context.push('${AppRoutes.agencyHome}/cases'),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 12),
@@ -228,6 +296,22 @@ class AgencyHomeScreen extends ConsumerWidget {
                             '${AppRoutes.agencyHome}/appointments',
                           ),
                         ),
+                        AppStatCard(
+                          label: 'Urgent SC cases',
+                          value: '${d.urgentScCases}',
+                          highlight: d.urgentScCases > 0,
+                          icon: Icons.priority_high,
+                          onTap: () =>
+                              context.push('${AppRoutes.agencyHome}/cases'),
+                        ),
+                        AppStatCard(
+                          label: 'SC follow-ups due',
+                          value: '${d.scFollowUpsDue}',
+                          highlight: d.scFollowUpsDue > 0,
+                          icon: Icons.event_repeat_outlined,
+                          onTap: () =>
+                              context.push('${AppRoutes.agencyHome}/cases'),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 12),
@@ -238,8 +322,15 @@ class AgencyHomeScreen extends ConsumerWidget {
                     ),
                   ],
                 ),
-                loading: () => const LinearProgressIndicator(),
-                error: (e, _) => Text('Overview error: $e'),
+                ),
+                loading: () => const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: LinearProgressIndicator(),
+                ),
+                error: (e, _) => Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Text('Overview error: $e'),
+                ),
               ),
               const SizedBox(height: 12),
               upcoming.when(
@@ -302,6 +393,12 @@ class AgencyHomeScreen extends ConsumerWidget {
                 onTap: () => context.push('${AppRoutes.agencyHome}/roster'),
               ),
               _OpsTile(
+                title: 'Case assignments',
+                subtitle: 'Assign children to service coordinators',
+                icon: Icons.folder_shared_outlined,
+                onTap: () => context.push('${AppRoutes.agencyHome}/cases'),
+              ),
+              _OpsTile(
                 title: 'Invite therapists',
                 subtitle: 'Add verified therapists to your agency',
                 icon: Icons.person_add,
@@ -332,6 +429,12 @@ class AgencyHomeScreen extends ConsumerWidget {
                 icon: Icons.assignment_outlined,
                 onTap: () =>
                     context.push('${AppRoutes.agencyHome}/session-notes'),
+              ),
+              _OpsTile(
+                title: 'NY EI billing',
+                subtitle: 'Medicaid EI claims, enrollment, and claim queue',
+                icon: Icons.receipt_long_outlined,
+                onTap: () => context.push(AppRoutes.agencyEiBilling),
               ),
               _OpsTile(
                 title: unreadMessageCount > 0

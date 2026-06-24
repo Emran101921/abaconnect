@@ -106,7 +106,7 @@ candidates = [
     if a.get('requiresSelfPayCollection')
     and a.get('child', {}).get('id') == '$CHILD_ID'
     and a.get('status') in ('CONFIRMED', 'SCHEDULED', 'CHECKED_IN')
-    and a.get('sessionPaymentStatus') != 'SUCCEEDED'
+    and a.get('sessionPaymentStatus') == 'SUCCEEDED'
 ]
 print(candidates[0]['id'] if candidates else '')
 " 2>/dev/null || true)
@@ -136,10 +136,40 @@ print(d['data']['bookAppointment']['id'])
   fi
   check "bookAppointment" "d.get('data',{}).get('bookAppointment',{}).get('id')" "$BOOK"
 
-  CONFIRM=$(gql_mutation "$THER" \
-    'mutation($appointmentId: ID!) { confirmAppointment(appointmentId: $appointmentId) { id status } }' \
+  PARENT_CONFIRM=$(gql_mutation "$PARENT" \
+    'mutation($appointmentId: ID!) { confirmAppointmentAsParent(appointmentId: $appointmentId) { appointment { id status confirmationStatus } requiresPayment paymentId } }' \
     "{\"appointmentId\":\"$APPOINTMENT_ID\"}")
-  check "confirmAppointment" "d.get('data',{}).get('confirmAppointment',{}).get('status') == 'CONFIRMED'" "$CONFIRM"
+  PAYMENT_ID=$(echo "$PARENT_CONFIRM" | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+if d.get('errors'):
+    print('', end='')
+    sys.exit(0)
+print(d['data']['confirmAppointmentAsParent'].get('paymentId') or '')
+" 2>/dev/null || true)
+  check "confirmAppointmentAsParent" \
+    "d.get('data',{}).get('confirmAppointmentAsParent',{}).get('requiresPayment') is True" \
+    "$PARENT_CONFIRM"
+
+  if [ -z "$PAYMENT_ID" ]; then
+    echo "FAIL: no booking payment id from parent confirm"
+    fail=$((fail + 1))
+    echo "=== Summary: $pass passed, $fail failed ==="
+    exit 1
+  fi
+
+  DEMO_PAY=$(gql_mutation "$PARENT" \
+    'mutation($id: ID!) { confirmPaymentDemo(paymentId: $id) { id status } }' \
+    "{\"id\":\"$PAYMENT_ID\"}")
+  check "confirmPaymentDemo (booking)" \
+    "d.get('data',{}).get('confirmPaymentDemo',{}).get('status') == 'SUCCEEDED'" \
+    "$DEMO_PAY"
+
+  CONFIRMED=$(gql "$PARENT" \
+    "query { myAppointments { id status confirmationStatus } }")
+  check "appointment confirmed after payment" \
+    "any(a.get('id')=='$APPOINTMENT_ID' and a.get('status')=='CONFIRMED' and a.get('confirmationStatus')=='CONFIRMED' for a in d.get('data',{}).get('myAppointments',[]))" \
+    "$CONFIRMED"
 else
   echo "Using existing appointment: $APPOINTMENT_ID"
   check "myTherapistAppointments has self-pay candidate" "True" "{\"ok\":true}"
@@ -166,37 +196,13 @@ else
 fi
 
 echo
-echo "=== Therapist requests session payment ==="
+echo "=== Therapist requests session payment (prepaid at booking) ==="
 PAY_REQ=$(gql_mutation "$THER" \
-  'mutation($appointmentId: ID!) { requestSessionPayment(appointmentId: $appointmentId) { payment { id status amount } stripeConfigured } }' \
+  'mutation($appointmentId: ID!) { requestSessionPayment(appointmentId: $appointmentId) { payment { id status amount } stripeConfigured alreadyPaid } }' \
   "{\"appointmentId\":\"$APPOINTMENT_ID\"}")
-PAYMENT_ID=$(echo "$PAY_REQ" | python3 -c "
-import sys, json
-d = json.load(sys.stdin)
-if d.get('errors'):
-    print('', end='')
-    sys.exit(0)
-print(d['data']['requestSessionPayment']['payment']['id'])
-" 2>/dev/null || true)
-if [ -z "$PAYMENT_ID" ]; then
-  echo "FAIL: requestSessionPayment"
-  echo "$PAY_REQ" | python3 -m json.tool 2>/dev/null | head -40 || echo "$PAY_REQ"
-  fail=$((fail + 1))
-  echo "=== Summary: $pass passed, $fail failed ==="
-  exit 1
-fi
-check "requestSessionPayment" \
-  "d.get('data',{}).get('requestSessionPayment',{}).get('payment',{}).get('status') in ('PENDING','SUCCEEDED')" \
+check "requestSessionPayment prepaid" \
+  "d.get('data',{}).get('requestSessionPayment',{}).get('alreadyPaid') is True" \
   "$PAY_REQ"
-
-echo
-echo "=== Parent completes demo payment ==="
-PAY_CONFIRM=$(gql_mutation "$PARENT" \
-  'mutation($id: ID!) { confirmPaymentDemo(paymentId: $id) { id status } }' \
-  "{\"id\":\"$PAYMENT_ID\"}")
-check "confirmPaymentDemo" \
-  "d.get('data',{}).get('confirmPaymentDemo',{}).get('status') == 'SUCCEEDED'" \
-  "$PAY_CONFIRM"
 
 echo
 echo "=== Therapist starts session ==="

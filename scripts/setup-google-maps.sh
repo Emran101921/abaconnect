@@ -14,17 +14,24 @@ MOBILE="$ROOT/apps/mobile"
 ANDROID_PROPS="$MOBILE/android/local.properties"
 IOS_PLIST="$MOBILE/ios/Runner/Info.plist"
 WEB_INDEX="$MOBILE/web/index.html"
+KEY_FILE="$MOBILE/.google-maps-api-key"
 
 if [ -n "${GOOGLE_MAPS_API_KEY:-}" ]; then
   API_KEY="$GOOGLE_MAPS_API_KEY"
+elif [ -f "$KEY_FILE" ]; then
+  API_KEY="$(tr -d '[:space:]' < "$KEY_FILE")"
 else
   read -r -p "Enter Google Maps API key: " API_KEY
 fi
 
 if [ -z "$API_KEY" ]; then
   echo "No API key provided. Platforms will use empty/placeholder values and the web fallback map."
+  echo "Tip: save your key to apps/mobile/.google-maps-api-key (gitignored) and re-run this script."
   exit 0
 fi
+
+# Keep a local copy for easy re-runs (gitignored).
+printf '%s\n' "$API_KEY" > "$KEY_FILE"
 
 # Android — local.properties is gitignored
 mkdir -p "$(dirname "$ANDROID_PROPS")"
@@ -55,16 +62,24 @@ else
   echo "Skipping iOS plist update (PlistBuddy requires macOS). Set GoogleMapsApiKey in $IOS_PLIST manually."
 fi
 
-# Web — Maps JavaScript API script tag
+# Web — legacy Maps JavaScript API script (google_maps_flutter_web README)
 if grep -q 'maps.googleapis.com/maps/api/js' "$WEB_INDEX"; then
   if [[ "$(uname)" == "Darwin" ]]; then
+    sed -i '' "s|key: \"[^\"]*\"|key: \"$API_KEY\"|" "$WEB_INDEX"
     sed -i '' "s|https://maps.googleapis.com/maps/api/js?key=[^\"']*|https://maps.googleapis.com/maps/api/js?key=$API_KEY|" "$WEB_INDEX"
   else
+    sed -i "s|key: \"[^\"]*\"|key: \"$API_KEY\"|" "$WEB_INDEX"
     sed -i "s|https://maps.googleapis.com/maps/api/js?key=[^\"']*|https://maps.googleapis.com/maps/api/js?key=$API_KEY|" "$WEB_INDEX"
   fi
   echo "Updated $WEB_INDEX"
 else
-  echo "Warning: could not find Maps script tag in $WEB_INDEX"
+  MAPS_LINE="<script src=\"https://maps.googleapis.com/maps/api/js?key=$API_KEY\"></script>"
+  if [[ "$(uname)" == "Darwin" ]]; then
+    sed -i '' "s|</head>|  $MAPS_LINE\n</head>|" "$WEB_INDEX"
+  else
+    sed -i "s|</head>|  $MAPS_LINE\n</head>|" "$WEB_INDEX"
+  fi
+  echo "Inserted Maps JS script into $WEB_INDEX"
 fi
 
 cat <<EOF
@@ -72,7 +87,7 @@ cat <<EOF
 Google Maps key configured.
 
 Optional Flutter dart-define (web fallback / MapsConstants.isConfigured):
-  flutter run --dart-define=GOOGLE_MAPS_API_KEY=$API_KEY
+  flutter run --dart-define=GOOGLE_MAPS_API_KEY=<your-key>
 
 Without a key, marketplace maps use the built-in fallback UI on web and empty keys on native.
 

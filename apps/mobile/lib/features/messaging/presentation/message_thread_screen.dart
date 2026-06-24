@@ -11,6 +11,8 @@ import '../../../shared/widgets/speech_dictation.dart';
 import '../../notifications/notification_providers.dart';
 import '../data/messaging_repository.dart';
 import '../messaging_providers.dart';
+import '../../calls/widgets/call_button.dart';
+import '../../calls/widgets/call_disclaimer.dart';
 import 'message_status_badge.dart';
 import 'messages_screen.dart' show messageThreadsProvider;
 
@@ -119,10 +121,34 @@ class _MessageThreadScreenState extends ConsumerState<MessageThreadScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final threads = ref.watch(messageThreadsProvider);
+    final otherUser = threads.maybeWhen(
+      data: (list) {
+        for (final t in list) {
+          if (t.id == widget.threadId) {
+            return (name: t.otherParticipantName, userId: t.otherParticipantUserId);
+          }
+        }
+        return null;
+      },
+      orElse: () => null,
+    );
+
     return AppScaffold(
       title: 'Conversation',
+      actions: [
+        if (otherUser?.userId != null)
+          CallAppBarAction(
+            recipientUserId: otherUser!.userId!,
+            recipientName: otherUser.name,
+          ),
+      ],
       body: Column(
         children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: CallEmergencyDisclaimer(compact: true),
+          ),
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator())

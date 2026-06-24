@@ -23,25 +23,40 @@ class GraphqlClient {
     Map<String, dynamic>? variables,
   }) async {
     final token = await _secureStorage.read(key: ApiConstants.authTokenKey);
-    final response = await _dio.post<Map<String, dynamic>>(
-      ApiConstants.graphqlUrl,
-      data: {'query': document, 'variables': ?variables},
-      options: Options(
-        headers: token != null && token.isNotEmpty
-            ? {'Authorization': 'Bearer $token'}
-            : null,
-      ),
-    );
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        ApiConstants.graphqlUrl,
+        data: {'query': document, 'variables': ?variables},
+        options: Options(
+          headers: token != null && token.isNotEmpty
+              ? {'Authorization': 'Bearer $token'}
+              : null,
+          validateStatus: (status) => status != null && status < 500,
+        ),
+      );
 
-    final body = response.data;
-    if (body == null) {
-      throw Exception('Empty GraphQL response');
+      final body = response.data;
+      if (body == null) {
+        throw Exception('Empty GraphQL response');
+      }
+      final errors = body['errors'];
+      if (errors is List && errors.isNotEmpty) {
+        throw Exception(_formatGraphqlError(errors.first));
+      }
+      if (response.statusCode != null && response.statusCode! >= 400) {
+        throw Exception('Request failed (${response.statusCode})');
+      }
+      return body;
+    } on DioException catch (e) {
+      final body = e.response?.data;
+      if (body is Map) {
+        final errors = body['errors'];
+        if (errors is List && errors.isNotEmpty) {
+          throw Exception(_formatGraphqlError(errors.first));
+        }
+      }
+      rethrow;
     }
-    final errors = body['errors'];
-    if (errors is List && errors.isNotEmpty) {
-      throw Exception(_formatGraphqlError(errors.first));
-    }
-    return body;
   }
 
   static String _formatGraphqlError(dynamic error) {

@@ -22,12 +22,33 @@ export class RegisterDto {
   lastName!: string;
 
   @IsOptional()
-  @IsIn(['PARENT', 'THERAPIST'])
-  role?: 'PARENT' | 'THERAPIST';
+  @IsIn(['PARENT', 'THERAPIST', 'AGENCY_ADMIN'])
+  role?: 'PARENT' | 'THERAPIST' | 'AGENCY_ADMIN';
 
   @IsOptional()
   @IsString()
   tenantId?: string;
+
+  /** Required when role is AGENCY_ADMIN */
+  @IsOptional()
+  @IsString()
+  agencyName?: string;
+
+  @IsOptional()
+  @IsString()
+  agencyEin?: string;
+
+  @IsOptional()
+  @IsString()
+  agencyPhone?: string;
+
+  @IsOptional()
+  @IsString()
+  agencyState?: string;
+
+  @IsOptional()
+  @IsString()
+  agencyZipCode?: string;
 }
 
 export class LoginDto {

@@ -72,7 +72,7 @@ check "therapist appointments locationType field" \
 echo
 echo "=== Agency & admin ==="
 AGENCY=$(login agency@demo.local 'Agency123!')
-AD=$(gql "$AGENCY" 'query { agencyDashboard { therapistCount activeClients appointmentsToday pendingTherapists } agencyUpcomingAppointments { id childName therapistName locationType } }')
+AD=$(gql "$AGENCY" 'query { agencyDashboard { therapistCount activeClients appointmentsToday pendingTherapists serviceCoordinatorCount activeScCaseload } agencyUpcomingAppointments { id childName therapistName locationType } }')
 check "agencyDashboard query" "d.get('data',{}).get('agencyDashboard') is not None" "$AD"
 check "agencyUpcomingAppointments query" "isinstance(d.get('data',{}).get('agencyUpcomingAppointments'), list)" "$AD"
 
@@ -104,7 +104,23 @@ check "claims pipeline paidAmountTotal" \
   "'paidAmountTotal' in d.get('data',{}).get('adminClaimsPipeline',{}).get('summary',{})" "$ANALYTICS"
 
 echo
+echo "=== Service coordinator flows ==="
+if bash "$(dirname "$0")/smoke-service-coordinator.sh"; then
+  echo "PASS: smoke-service-coordinator.sh"
+  pass=$((pass + 1))
+else
+  echo "FAIL: smoke-service-coordinator.sh"
+  fail=$((fail + 1))
+fi
+
+echo
 echo "=== Marketplace (HIPAA module) ==="
+export SMOKE_PARENT_TOKEN="$PARENT"
+export SMOKE_THERAPIST_TOKEN="$THER"
+export SMOKE_ADMIN_TOKEN="$ADMIN"
+export SMOKE_AGENCY_TOKEN="$AGENCY"
+# Brief pause — prior scripts may have consumed auth rate-limit budget.
+sleep 3
 if bash "$(dirname "$0")/smoke-marketplace.sh"; then
   echo "PASS: smoke-marketplace.sh"
   pass=$((pass + 1))

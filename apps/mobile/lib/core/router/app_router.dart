@@ -15,10 +15,15 @@ import '../../features/admin/presentation/admin_payouts_screen.dart';
 import '../../features/admin/presentation/admin_reviews_screen.dart';
 import '../../features/admin/presentation/admin_users_screen.dart';
 import '../../features/admin/presentation/admin_verifications_screen.dart';
+import '../../features/agency/presentation/agency_add_staff_screen.dart';
+import '../../features/agency/presentation/agency_add_service_coordinator_screen.dart';
+import '../../features/agency/presentation/agency_cases_screen.dart';
 import '../../features/agency/presentation/agency_analytics_screen.dart';
 import '../../features/agency/presentation/agency_appointments_screen.dart';
 import '../../features/agency/presentation/agency_home_screen.dart';
 import '../../features/agency/presentation/agency_invites_screen.dart';
+import '../../features/agency/presentation/agency_onboarding_screen.dart';
+import '../../features/agency/presentation/agency_roster_member_screen.dart';
 import '../../features/agency/presentation/agency_roster_screen.dart';
 import '../../features/auth/presentation/forgot_password_screen.dart';
 import '../../features/auth/presentation/security_screen.dart';
@@ -30,6 +35,7 @@ import '../../features/matching/presentation/match_results_screen.dart';
 import '../../features/messaging/presentation/message_thread_screen.dart';
 import '../../features/messaging/presentation/messages_screen.dart';
 import '../../features/parent/presentation/booking_screen.dart';
+import '../../features/parent/presentation/child_profile_screen.dart';
 import '../../features/parent/presentation/children_list_screen.dart';
 import '../../features/parent/presentation/parent_appointments_screen.dart';
 import '../../features/parent/presentation/parent_home_screen.dart';
@@ -55,6 +61,13 @@ import '../../features/insurance/presentation/insurance_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
 import '../../features/payments/presentation/payments_screen.dart';
 import '../../features/telehealth/presentation/telehealth_screen.dart';
+import '../../features/calls/data/call_models.dart';
+import '../../features/clinical/data/clinical_charts_repository.dart';
+import '../../features/clinical/presentation/clinical_charts_screen.dart';
+import '../../features/agency/presentation/agency_profile_screen.dart';
+import '../../features/agency/presentation/agency_child_chart_screen.dart';
+import '../../features/calls/presentation/call_history_screen.dart';
+import '../../features/calls/presentation/call_screens.dart';
 import '../../features/therapist/models/session_note_editor_mode.dart';
 import '../../features/therapist/presentation/eip_session_note_screen.dart';
 import '../../features/therapist/presentation/session_notes_screen.dart';
@@ -66,6 +79,15 @@ import '../../features/therapist/presentation/therapist_payouts_screen.dart';
 import '../../features/therapist/presentation/therapist_plans_screen.dart';
 import '../../features/therapist/presentation/therapist_profile_screen.dart';
 import '../../features/marketplace/presentation/admin_marketplace_screen.dart';
+import '../../features/job_opportunities/presentation/admin_marketplace_admin_screen.dart';
+import '../../features/job_opportunities/presentation/agency_applicants_screen.dart';
+import '../../features/job_opportunities/presentation/agency_child_service_needs_screen.dart';
+import '../../features/job_opportunities/presentation/agency_opportunities_screen.dart';
+import '../../features/job_opportunities/presentation/agency_opportunity_edit_screen.dart';
+import '../../features/job_opportunities/presentation/job_opportunity_detail_screen.dart';
+import '../../features/job_opportunities/presentation/therapist_job_opportunities_screen.dart';
+import '../../features/ei_billing/presentation/ei_billing_shell_screen.dart';
+import '../../features/ei_billing/presentation/ei_billing_record_detail_screen.dart';
 import '../../features/marketplace/presentation/marketplace_opt_in_screen.dart';
 import '../../features/marketplace/presentation/parent_consent_history_screen.dart';
 import '../../features/marketplace/presentation/parent_consent_share_screen.dart';
@@ -73,6 +95,13 @@ import '../../features/marketplace/presentation/parent_marketplace_dashboard_scr
 import '../../features/marketplace/presentation/parent_provider_compare_screen.dart';
 import '../../features/marketplace/presentation/provider_authorized_child_screen.dart';
 import '../../features/marketplace/presentation/provider_marketplace_screen.dart';
+import '../../features/service_coordinator/data/service_coordinator_repository.dart';
+import '../../features/service_coordinator/presentation/ei_screening_screen.dart';
+import '../../features/service_coordinator/presentation/sc_case_detail_screen.dart';
+import '../../features/service_coordinator/presentation/sc_cases_screen.dart';
+import '../../features/service_coordinator/presentation/sc_dashboard_screen.dart';
+import '../../features/service_coordinator/presentation/sc_follow_ups_screen.dart';
+import '../../features/service_coordinator/presentation/sc_notes_screen.dart';
 import '../providers/app_providers.dart';
 import '../providers/consent_gate_provider.dart';
 import 'app_router_redirect.dart';
@@ -94,11 +123,26 @@ abstract final class AppRoutes {
   static const therapistProfile = '/therapist/profile';
   static const therapistAppointments = '/therapist/appointments';
   static const therapistSessionNotes = '/therapist/session-notes';
+  static const therapistCharts = '/therapist/charts';
   static const agencyHome = '/agency';
+  static const agencyProfile = '/agency/profile';
+  static const agencyChildren = '/agency/children';
+  static String agencyChildChart(String childId) =>
+      '/agency/children/$childId/chart';
+  static const agencyOnboarding = '/agency/onboarding';
+  static const agencyAddStaff = '/agency/add-staff';
   static const agencyMarketplace = '/agency/marketplace';
+  static const agencyServiceNeeds = '/agency/service-needs';
+  static const agencyOpportunities = '/agency/opportunities';
+  static String agencyOpportunityDetail(String jobId) =>
+      '$agencyOpportunities/$jobId';
+  static const serviceCoordinatorHome = '/service-coordinator';
   static const adminHome = '/admin';
   static const telehealth = '/telehealth';
   static const messages = '/messages';
+  static const incomingCall = '/incoming-call';
+  static const activeCall = '/active-call';
+  static const callHistory = '/calls/history';
   static const payments = '/payments';
   static const matching = '/matching';
   static const notifications = '/notifications';
@@ -140,7 +184,17 @@ abstract final class AppRoutes {
   static const parentMarketplace = '/parent/marketplace';
   static const parentMarketplaceOptIn = '/parent/marketplace/opt-in';
   static const therapistMarketplace = '/therapist/marketplace';
+  static const therapistJobOpportunities = '/therapist/job-opportunities';
   static const adminMarketplace = '/admin/marketplace';
+  static const adminMarketplaceAdmin = '/admin/marketplace-admin';
+  static const adminEiBilling = '/admin/ei-billing';
+  static const agencyEiBilling = '/agency/ei-billing';
+
+  static String adminEiBillingRecord(String recordId) =>
+      '$adminEiBilling/records/$recordId';
+
+  static String agencyEiBillingRecord(String recordId) =>
+      '$agencyEiBilling/records/$recordId';
 }
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -156,12 +210,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final mfaEnabled = ref.read(mfaEnabledProvider);
       final providerPhiAccessApproved =
           ref.read(providerPhiAccessApprovedProvider);
+      final agencyOnboardingComplete =
+          ref.read(agencyOnboardingCompleteProvider);
       return resolveAuthRedirect(
         auth: auth,
         matchedLocation: state.matchedLocation,
         hipaaConsentGranted: hipaaConsentGranted,
         mfaEnabled: mfaEnabled,
         providerPhiAccessApproved: providerPhiAccessApproved,
+        agencyOnboardingComplete: agencyOnboardingComplete,
       );
     },
     routes: [
@@ -207,6 +264,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: 'children',
             name: 'parentChildren',
             builder: (context, state) => const ChildrenListScreen(),
+            routes: [
+              GoRoute(
+                path: ':childId',
+                name: 'parentChildProfile',
+                builder: (context, state) => ChildProfileScreen(
+                  childId: state.pathParameters['childId']!,
+                ),
+              ),
+            ],
           ),
           GoRoute(
             path: 'appointments',
@@ -218,7 +284,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'booking',
             name: 'parentBooking',
-            builder: (context, state) => const BookingScreen(),
+            builder: (context, state) => BookingScreen(
+              initialTherapistId: state.uri.queryParameters['therapistId'],
+              initialTherapyType: state.uri.queryParameters['therapyType'],
+            ),
           ),
           GoRoute(
             path: 'screening',
@@ -327,6 +396,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const ProviderOnboardingScreen(),
       ),
       GoRoute(
+        path: AppRoutes.agencyOnboarding,
+        name: 'agencyOnboarding',
+        builder: (context, state) => const AgencyOnboardingScreen(),
+      ),
+      GoRoute(
         path: AppRoutes.therapistHome,
         name: 'therapistHome',
         builder: (context, state) => const TherapistHomeScreen(),
@@ -356,6 +430,28 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 ),
               ),
             ],
+          ),
+          GoRoute(
+            path: 'job-opportunities',
+            name: 'therapistJobOpportunities',
+            builder: (context, state) =>
+                const TherapistJobOpportunitiesScreen(),
+            routes: [
+              GoRoute(
+                path: ':jobId',
+                name: 'therapistJobOpportunityDetail',
+                builder: (context, state) => JobOpportunityDetailScreen(
+                  jobOpportunityId: state.pathParameters['jobId']!,
+                ),
+              ),
+            ],
+          ),
+          GoRoute(
+            path: 'charts',
+            name: 'therapistCharts',
+            builder: (context, state) => const ClinicalChartsScreen(
+              audience: ClinicalChartsAudience.therapist,
+            ),
           ),
           GoRoute(
             path: 'session-notes',
@@ -397,11 +493,94 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: 'roster',
             name: 'agencyRoster',
             builder: (context, state) => const AgencyRosterScreen(),
+            routes: [
+              GoRoute(
+                path: 'add-service-coordinator',
+                name: 'agencyAddServiceCoordinator',
+                builder: (context, state) =>
+                    const AgencyAddServiceCoordinatorScreen(),
+              ),
+              GoRoute(
+                path: ':rosterMemberId',
+                name: 'agencyRosterMember',
+                builder: (context, state) => AgencyRosterMemberScreen(
+                  rosterMemberUserId: state.pathParameters['rosterMemberId']!,
+                ),
+              ),
+            ],
+          ),
+          GoRoute(
+            path: 'cases',
+            name: 'agencyCases',
+            builder: (context, state) => const AgencyCasesScreen(),
+            routes: [
+              GoRoute(
+                path: ':childId/assign-service-coordinator',
+                name: 'agencyAssignSc',
+                builder: (context, state) {
+                  final extra = state.extra;
+                  String? childName;
+                  String? assignmentId;
+                  var eiEligible = true;
+                  String? eligibilityReason;
+                  if (extra is AgencyCaseModel) {
+                    childName = extra.childName;
+                    assignmentId = extra.assignmentId;
+                    eiEligible = extra.eiEligible;
+                    eligibilityReason = extra.eligibilityReason;
+                  }
+                  return AgencyAssignServiceCoordinatorScreen(
+                    childId: state.pathParameters['childId']!,
+                    childName: childName,
+                    assignmentId: assignmentId,
+                    eiEligible: eiEligible,
+                    eligibilityReason: eligibilityReason,
+                  );
+                },
+              ),
+            ],
+          ),
+          GoRoute(
+            path: 'charts',
+            name: 'agencyCharts',
+            builder: (context, state) => ClinicalChartsScreen(
+              audience: ClinicalChartsAudience.agency,
+              chartRouteBuilder: (childId) => AppRoutes.agencyChildChart(childId),
+            ),
+          ),
+          GoRoute(
+            path: 'profile',
+            name: 'agencyProfile',
+            builder: (context, state) => const AgencyProfileScreen(),
+          ),
+          GoRoute(
+            path: 'children',
+            name: 'agencyChildren',
+            builder: (context, state) => const AgencyChildrenScreen(),
+            routes: [
+              GoRoute(
+                path: ':childId/chart',
+                name: 'agencyChildChart',
+                builder: (context, state) => AgencyChildChartScreen(
+                  childId: state.pathParameters['childId']!,
+                ),
+              ),
+            ],
+          ),
+          GoRoute(
+            path: 'call-audit',
+            name: 'agencyCallAudit',
+            builder: (context, state) => const AgencyCallAuditScreen(),
           ),
           GoRoute(
             path: 'invites',
             name: 'agencyInvites',
             builder: (context, state) => const AgencyInvitesScreen(),
+          ),
+          GoRoute(
+            path: 'add-staff',
+            name: 'agencyAddStaff',
+            builder: (context, state) => const AgencyAddStaffScreen(),
           ),
           GoRoute(
             path: 'analytics',
@@ -449,6 +628,35 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const AgencyAppointmentsScreen(),
           ),
           GoRoute(
+            path: 'service-needs',
+            name: 'agencyServiceNeeds',
+            builder: (context, state) =>
+                const AgencyChildServiceNeedsScreen(),
+          ),
+          GoRoute(
+            path: 'opportunities',
+            name: 'agencyOpportunities',
+            builder: (context, state) => const AgencyOpportunitiesScreen(),
+            routes: [
+              GoRoute(
+                path: ':jobId',
+                name: 'agencyOpportunityDetail',
+                builder: (context, state) => AgencyOpportunityEditScreen(
+                  jobOpportunityId: state.pathParameters['jobId']!,
+                ),
+                routes: [
+                  GoRoute(
+                    path: 'applicants',
+                    name: 'agencyOpportunityApplicants',
+                    builder: (context, state) => AgencyApplicantsScreen(
+                      jobOpportunityId: state.pathParameters['jobId']!,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          GoRoute(
             path: 'marketplace',
             name: 'agencyMarketplace',
             builder: (context, state) => const ProviderMarketplaceScreen(
@@ -460,6 +668,26 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 name: 'agencyMarketplaceAuthorizedChild',
                 builder: (context, state) => ProviderAuthorizedChildScreen(
                   marketplaceRequestId: state.pathParameters['requestId']!,
+                ),
+              ),
+            ],
+          ),
+          GoRoute(
+            path: 'ei-billing',
+            name: 'agencyEiBilling',
+            builder: (context, state) => const EiBillingShellScreen(
+              canManageBilling: true,
+              canSubmitClaims: false,
+            ),
+            routes: [
+              GoRoute(
+                path: 'records/:recordId',
+                name: 'agencyEiBillingRecord',
+                builder: (context, state) => EiBillingRecordDetailScreen(
+                  recordId: state.pathParameters['recordId']!,
+                  canManageBilling: true,
+                  canSubmitClaims: false,
+                  baseRoute: AppRoutes.agencyEiBilling,
                 ),
               ),
             ],
@@ -485,6 +713,69 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+      GoRoute(
+        path: AppRoutes.serviceCoordinatorHome,
+        name: 'serviceCoordinatorHome',
+        builder: (context, state) => const ServiceCoordinatorDashboardScreen(),
+        routes: [
+          GoRoute(
+            path: 'cases',
+            name: 'scCases',
+            builder: (context, state) => const ScCasesScreen(),
+            routes: [
+              GoRoute(
+                path: ':childId',
+                name: 'scCaseDetail',
+                builder: (context, state) => ScCaseDetailScreen(
+                  childId: state.pathParameters['childId']!,
+                ),
+                routes: [
+                  GoRoute(
+                    path: 'initial-screening',
+                    name: 'scInitialScreening',
+                    builder: (context, state) => EiScreeningScreen(
+                      childId: state.pathParameters['childId']!,
+                      mode: EiScreeningMode.initial,
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'ongoing-screening',
+                    name: 'scOngoingScreening',
+                    builder: (context, state) => EiScreeningScreen(
+                      childId: state.pathParameters['childId']!,
+                      mode: EiScreeningMode.ongoing,
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'notes',
+                    name: 'scNotes',
+                    builder: (context, state) => ScNotesScreen(
+                      childId: state.pathParameters['childId']!,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          GoRoute(
+            path: 'charts',
+            name: 'scCharts',
+            builder: (context, state) => const ClinicalChartsScreen(
+              audience: ClinicalChartsAudience.serviceCoordinator,
+            ),
+          ),
+          GoRoute(
+            path: 'follow-ups',
+            name: 'scFollowUps',
+            builder: (context, state) => const ScFollowUpsScreen(),
+          ),
+          GoRoute(
+            path: 'messages',
+            name: 'scMessages',
+            builder: (context, state) => const MessagesScreen(),
           ),
         ],
       ),
@@ -577,6 +868,33 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const AdminMarketplaceScreen(),
           ),
           GoRoute(
+            path: 'marketplace-admin',
+            name: 'adminMarketplaceAdmin',
+            builder: (context, state) => const AdminMarketplaceAdminScreen(),
+          ),
+          GoRoute(
+            path: 'ei-billing',
+            name: 'adminEiBilling',
+            builder: (context, state) => const EiBillingShellScreen(
+              showClearinghouseTab: true,
+              canManageBilling: true,
+              canSubmitClaims: true,
+              isAdminContext: true,
+            ),
+            routes: [
+              GoRoute(
+                path: 'records/:recordId',
+                name: 'adminEiBillingRecord',
+                builder: (context, state) => EiBillingRecordDetailScreen(
+                  recordId: state.pathParameters['recordId']!,
+                  canManageBilling: true,
+                  canSubmitClaims: true,
+                  baseRoute: AppRoutes.adminEiBilling,
+                ),
+              ),
+            ],
+          ),
+          GoRoute(
             path: 'compliance',
             name: 'adminCompliance',
             builder: (context, state) => const AdminComplianceScreen(),
@@ -641,6 +959,37 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.telehealth,
         name: 'telehealth',
         builder: (context, state) => const TelehealthScreen(),
+      ),
+      GoRoute(
+        path: '${AppRoutes.incomingCall}/:callSessionId',
+        name: 'incomingCall',
+        builder: (context, state) {
+          final call = state.extra as CallSessionModel?;
+          final callSessionId = state.pathParameters['callSessionId']!;
+          if (call != null) {
+            return IncomingCallScreen(call: call);
+          }
+          return IncomingCallLoaderScreen(callSessionId: callSessionId);
+        },
+      ),
+      GoRoute(
+        path: '${AppRoutes.activeCall}/:callSessionId',
+        name: 'activeCall',
+        builder: (context, state) {
+          final session = state.extra as CallSessionModel?;
+          if (session == null) {
+            return const Scaffold(body: Center(child: Text('Call not found')));
+          }
+          return ActiveCallScreen(session: session);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.callHistory,
+        name: 'callHistory',
+        builder: (context, state) => CallHistoryScreen(
+          childId: state.uri.queryParameters['childId'],
+          title: state.uri.queryParameters['title'] ?? 'Call history',
+        ),
       ),
       GoRoute(
         path: AppRoutes.messages,

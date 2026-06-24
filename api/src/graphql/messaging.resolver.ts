@@ -11,6 +11,7 @@ import {
   MessageDeliveryStatus,
   MessageThreadType,
   ParentContactType,
+  ScContactType,
 } from './types/messaging.types';
 
 type MessageRow = {
@@ -51,7 +52,7 @@ function deliveryStatus(m: {
 }
 
 @Resolver()
-@Roles('PARENT', 'THERAPIST')
+@Roles('PARENT', 'THERAPIST', 'SERVICE_COORDINATOR')
 export class MessagingResolver {
   constructor(private readonly messagingService: MessagingService) {}
 
@@ -110,6 +111,14 @@ export class MessagingResolver {
     return this.messagingService.listParentContactsForTherapist(user.id);
   }
 
+  @Query(() => [ScContactType], { name: 'myServiceCoordinatorContacts' })
+  @Roles('SERVICE_COORDINATOR')
+  async myServiceCoordinatorContacts(
+    @CurrentUser() user: AuthUser,
+  ): Promise<ScContactType[]> {
+    return this.messagingService.listContactsForServiceCoordinator(user.id);
+  }
+
   @Mutation(() => MessageThreadType, { name: 'startTherapistConversation' })
   @Roles('PARENT')
   async startTherapistConversation(
@@ -129,5 +138,17 @@ export class MessagingResolver {
     @Args('parentId', { type: () => ID }) parentId: string,
   ): Promise<MessageThreadType> {
     return this.messagingService.startConversationWithParent(user.id, parentId);
+  }
+
+  @Mutation(() => MessageThreadType, { name: 'startServiceCoordinatorConversation' })
+  @Roles('SERVICE_COORDINATOR')
+  async startServiceCoordinatorConversation(
+    @CurrentUser() user: AuthUser,
+    @Args('targetUserId', { type: () => ID }) targetUserId: string,
+  ): Promise<MessageThreadType> {
+    return this.messagingService.startConversationAsServiceCoordinator(
+      user.id,
+      targetUserId,
+    );
   }
 }

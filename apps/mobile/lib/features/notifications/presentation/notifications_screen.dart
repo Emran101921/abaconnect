@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/models/user_role.dart';
+import '../../../shared/widgets/app_bottom_nav.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../messaging/messaging_providers.dart';
 import '../../messaging/presentation/messages_screen.dart';
@@ -157,6 +158,7 @@ class NotificationsScreen extends ConsumerWidget {
 
     return AppScaffold(
       title: 'Notifications',
+      bottomNavigationBar: const RoleBottomNav(current: CoreNavTab.home),
       actions: [
         TextButton(
           onPressed: () async {

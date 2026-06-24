@@ -9,6 +9,7 @@ import { PhiAuditService } from '../audit/phi-audit.service';
 import { InsuranceService } from '../insurance/insurance.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { isSelfPayInsuranceType } from '../payments/self-pay.util';
+import { isAppointmentOperationallyConfirmed } from '../appointments/appointments.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   hasInterventionistSignature,
@@ -16,6 +17,7 @@ import {
   isEipFormFullySigned,
   isReadyForParentSignature,
 } from './eip-form.util';
+import { EiBillingRecordService } from '../ei-billing/ei-billing-record.service';
 import { ServiceLogService } from './service-log.service';
 
 export interface SaveSoapNoteInput {
@@ -35,6 +37,7 @@ export class SessionsService {
     private readonly notifications: NotificationsService,
     private readonly insurance: InsuranceService,
     private readonly serviceLogs: ServiceLogService,
+    private readonly eiBilling: EiBillingRecordService,
   ) {}
 
   async findHistoryForParentUserId(userId: string) {
@@ -108,7 +111,7 @@ export class SessionsService {
     if (!appointment) {
       throw new NotFoundException('Appointment not found');
     }
-    if (!['CONFIRMED', 'SCHEDULED'].includes(appointment.status)) {
+    if (!isAppointmentOperationallyConfirmed(appointment)) {
       throw new BadRequestException(
         'Arrival can only be recorded for confirmed appointments',
       );
@@ -153,8 +156,14 @@ export class SessionsService {
           'Record arrival and collect self-pay before starting the session',
         );
       }
-      const payment = appointment.session?.payment;
-      if (!payment || payment.status !== 'SUCCEEDED') {
+      const sessionPaid =
+        appointment.session?.payment?.status === 'SUCCEEDED';
+      const bookingPaid = sessionPaid
+        ? false
+        : (await this.prisma.payment.findFirst({
+            where: { appointmentId: appointment.id, status: 'SUCCEEDED' },
+          })) != null;
+      if (!sessionPaid && !bookingPaid) {
         throw new BadRequestException(
           'Parent must complete self-pay before the session can start',
         );
@@ -457,17 +466,28 @@ export class SessionsService {
       }
     }
 
+    let sessionJustCompleted = false;
     if (session.status === 'PENDING_DOCUMENTATION') {
       await this.prisma.session.update({
         where: { id: session.id },
         data: { status: 'COMPLETED' },
       });
+      sessionJustCompleted = true;
       const claim = await this.prisma.insuranceClaim.findUnique({
         where: { sessionId: session.id },
       });
       if (claim) {
         await this.insurance.prepareClaimEdi(claim.id);
       }
+    }
+
+    if (sessionJustCompleted || fullySigned) {
+      void this.eiBilling
+        .autoCreateFromCompletedSession(session.id)
+        .catch((err) => {
+          // autoCreateFromCompletedSession logs internally; swallow to protect SOAP save
+          void err;
+        });
     }
 
     return note;

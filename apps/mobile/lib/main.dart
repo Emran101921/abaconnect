@@ -1,4 +1,8 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/push/push_bootstrap.dart';
@@ -8,13 +12,20 @@ import 'core/router/app_router.dart';
 import 'core/providers/theme_mode_provider.dart';
 import 'core/security/session_idle_guard.dart';
 import 'core/theme/app_theme.dart';
+import 'features/calls/call_providers.dart';
 
 final pendingPushPayloadProvider = StateProvider<Map<String, dynamic>?>(
   (ref) => null,
 );
 
+const _enableWebSemantics =
+    bool.fromEnvironment('ENABLE_WEB_SEMANTICS', defaultValue: false);
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (kIsWeb && _enableWebSemantics) {
+    SemanticsBinding.instance.ensureSemantics();
+  }
   runApp(const ProviderScope(child: BloomOraApp()));
 }
 
@@ -52,14 +63,79 @@ class _BloomOraAppState extends ConsumerState<BloomOraApp> {
     final themeMode = ref.watch(themeModeProvider);
 
     return SessionIdleGuard(
-      child: MaterialApp.router(
-        title: 'BloomOra',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.light,
-        darkTheme: AppTheme.dark,
-        themeMode: themeMode,
-        routerConfig: router,
+      child: IncomingCallListener(
+        child: MaterialApp.router(
+          title: 'BloomOra',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light,
+          darkTheme: AppTheme.dark,
+          themeMode: themeMode,
+          routerConfig: router,
+        ),
       ),
     );
+  }
+}
+
+/// Polls for ringing calls and surfaces the incoming-call screen.
+class IncomingCallListener extends ConsumerStatefulWidget {
+  const IncomingCallListener({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  ConsumerState<IncomingCallListener> createState() =>
+      _IncomingCallListenerState();
+}
+
+class _IncomingCallListenerState extends ConsumerState<IncomingCallListener> {
+  String? _presentedCallId;
+  Timer? _pollTimer;
+
+  void _startPolling() {
+    if (_pollTimer != null) return;
+    _pollTimer = Timer.periodic(const Duration(seconds: 12), (_) {
+      if (!mounted) return;
+      _pollIncoming();
+    });
+  }
+
+  void _stopPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = null;
+  }
+
+  @override
+  void dispose() {
+    _stopPolling();
+    super.dispose();
+  }
+
+  Future<void> _pollIncoming() async {
+    final auth = ref.read(authStateProvider).valueOrNull;
+    if (auth == null) return;
+
+    ref.invalidate(incomingRingingCallProvider);
+    final call = await ref.read(incomingRingingCallProvider.future);
+    if (!mounted || call == null) return;
+    if (_presentedCallId == call.id) return;
+
+    final router = ref.read(appRouterProvider);
+    final location = router.state.matchedLocation;
+    if (location.contains('/incoming-call/')) return;
+
+    _presentedCallId = call.id;
+    router.push('${AppRoutes.incomingCall}/${call.id}', extra: call);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = ref.watch(authStateProvider).valueOrNull;
+    if (auth != null) {
+      _startPolling();
+    } else {
+      _stopPolling();
+    }
+    return widget.child;
   }
 }

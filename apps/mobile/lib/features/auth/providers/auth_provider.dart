@@ -69,6 +69,11 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthSession?>> {
     required String firstName,
     required String lastName,
     UserRole role = UserRole.parent,
+    String? agencyName,
+    String? agencyEin,
+    String? agencyPhone,
+    String? agencyState,
+    String? agencyZipCode,
   }) async {
     state = const AsyncValue.loading();
     try {
@@ -78,6 +83,11 @@ class AuthNotifier extends StateNotifier<AsyncValue<AuthSession?>> {
         firstName: firstName,
         lastName: lastName,
         role: role,
+        agencyName: agencyName,
+        agencyEin: agencyEin,
+        agencyPhone: agencyPhone,
+        agencyState: agencyState,
+        agencyZipCode: agencyZipCode,
       );
       final session = await _repository.loadSession();
       state = AsyncValue.data(session);

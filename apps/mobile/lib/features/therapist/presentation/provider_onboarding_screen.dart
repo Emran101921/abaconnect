@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
+import '../../../shared/layout/onboarding_wizard_shell.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/glossy_button.dart';
 import '../data/therapist_repository.dart';
@@ -73,6 +74,21 @@ class ProviderOnboardingScreen extends ConsumerWidget {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              OnboardingWizardShell(
+                title: 'Provider onboarding',
+                subtitle: 'Complete credentials and compliance before PHI access.',
+                currentStep: _completedSteps(c),
+                totalSteps: 5,
+                stepLabels: const [
+                  'Identity',
+                  'License',
+                  'NPI',
+                  'HIPAA',
+                  'Review',
+                ],
+                child: const SizedBox.shrink(),
+              ),
+              const SizedBox(height: 16),
               Text(
                 'Complete onboarding before accessing client PHI',
                 style: Theme.of(context).textTheme.titleMedium,
@@ -197,6 +213,16 @@ class ProviderOnboardingScreen extends ConsumerWidget {
       }
     }
   }
+}
+
+int _completedSteps(ProviderOnboardingChecklistModel c) {
+  var n = 0;
+  if (c.identityComplete) n++;
+  if (c.licenseComplete) n++;
+  if (c.npiComplete) n++;
+  if (c.hipaaTrainingComplete && c.confidentialityAgreementComplete) n++;
+  if (c.phiAccessApproved || c.onboardingStatus == 'IN_REVIEW') n++;
+  return n.clamp(1, 5);
 }
 
 class _CheckTile extends StatelessWidget {

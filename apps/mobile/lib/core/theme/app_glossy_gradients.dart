@@ -69,4 +69,26 @@ abstract final class AppGlossyGradients {
   static Color glowColor(LinearGradient gradient) {
     return gradient.colors.first.withValues(alpha: 0.55);
   }
+
+  /// Soft healthcare page backdrop for authenticated layouts.
+  static LinearGradient pageBackground(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    if (isDark) {
+      return const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+      );
+    }
+    return const LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [
+        Color(0xFFF8FAFC),
+        Color(0xFFEEF2FF),
+        Color(0xFFF0FDFA),
+      ],
+      stops: [0.0, 0.55, 1.0],
+    );
+  }
 }

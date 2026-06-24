@@ -13,6 +13,7 @@ import '../../features/payments/data/payments_repository.dart';
 import '../../features/clinical/data/clinical_repository.dart';
 import '../../features/compliance/data/privacy_repository.dart';
 import '../../features/platform/data/platform_repository.dart';
+import '../../features/service_coordinator/data/service_coordinator_repository.dart';
 import '../../features/therapist/data/therapist_repository.dart';
 
 final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
@@ -48,6 +49,11 @@ final agencyRepositoryProvider = Provider<AgencyRepository>((ref) {
     ref.watch(graphqlClientProvider),
     ref.watch(apiClientProvider),
   );
+});
+
+final serviceCoordinatorRepositoryProvider =
+    Provider<ServiceCoordinatorRepository>((ref) {
+  return ServiceCoordinatorRepository(ref.watch(graphqlClientProvider));
 });
 
 final messagingRepositoryProvider = Provider<MessagingRepository>((ref) {

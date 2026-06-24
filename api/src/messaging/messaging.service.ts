@@ -63,6 +63,7 @@ export class MessagingService {
           otherParticipantName: others.length
             ? `${others[0].firstName} ${others[0].lastName}`
             : 'Conversation',
+          otherParticipantUserId: others[0]?.id,
           lastMessageBody: last?.body ? this.decryptBody(last.body) : undefined,
           lastMessageAt: last?.sentAt ?? undefined,
           hasUnread: this.isThreadUnread(last, m.lastReadAt, userId),
@@ -420,6 +421,184 @@ export class MessagingService {
     });
     if (!row) {
       throw new ForbiddenException('Not a participant in this thread');
+    }
+  }
+
+  async listContactsForServiceCoordinator(coordinatorUserId: string) {
+    const coordinator = await this.prisma.user.findFirst({
+      where: { id: coordinatorUserId, role: 'SERVICE_COORDINATOR' },
+    });
+    if (!coordinator?.agencyId) {
+      return [];
+    }
+
+    const roster = await this.prisma.agencyRoster.findFirst({
+      where: {
+        userId: coordinatorUserId,
+        agencyId: coordinator.agencyId,
+        role: 'SERVICE_COORDINATOR',
+        status: 'ACTIVE',
+        removedAt: null,
+      },
+    });
+    if (!roster || !coordinator.isActive) {
+      throw new ForbiddenException('Service coordinator access suspended');
+    }
+
+    const assignments = await this.prisma.childServiceCoordinatorAssignment.findMany({
+      where: {
+        serviceCoordinatorId: coordinatorUserId,
+        agencyId: coordinator.agencyId,
+        status: 'ACTIVE',
+        removedAt: null,
+      },
+      include: {
+        child: {
+          include: {
+            parent: { include: { user: true } },
+          },
+        },
+      },
+    });
+
+    const childIds = assignments.map((a) => a.childId);
+    const appointments =
+      childIds.length > 0
+        ? await this.prisma.appointment.findMany({
+            where: {
+              childId: { in: childIds },
+              agencyId: coordinator.agencyId,
+              status: { notIn: ['CANCELLED'] },
+            },
+            include: {
+              child: true,
+              therapist: { include: { user: true } },
+            },
+            orderBy: { scheduledStart: 'desc' },
+            take: 200,
+          })
+        : [];
+
+    const contacts = new Map<
+      string,
+      { userId: string; displayName: string; roleLabel: string; children: Set<string> }
+    >();
+
+    for (const assignment of assignments) {
+      const parentUser = assignment.child.parent.user;
+      const parentKey = parentUser.id;
+      const childName = `${assignment.child.firstName} ${assignment.child.lastName}`;
+      const existingParent = contacts.get(parentKey);
+      if (existingParent) {
+        existingParent.children.add(childName);
+      } else {
+        contacts.set(parentKey, {
+          userId: parentUser.id,
+          displayName: `${parentUser.firstName} ${parentUser.lastName}`,
+          roleLabel: 'Parent',
+          children: new Set([childName]),
+        });
+      }
+    }
+
+    for (const apt of appointments) {
+      const therapistUser = apt.therapist.user;
+      const key = therapistUser.id;
+      const childName = `${apt.child.firstName} ${apt.child.lastName}`;
+      const existing = contacts.get(key);
+      if (existing) {
+        existing.children.add(childName);
+      } else {
+        contacts.set(key, {
+          userId: therapistUser.id,
+          displayName: `${therapistUser.firstName} ${therapistUser.lastName}`,
+          roleLabel: 'Provider',
+          children: new Set([childName]),
+        });
+      }
+    }
+
+    const agencyAdmins = await this.prisma.user.findMany({
+      where: {
+        agencyId: coordinator.agencyId,
+        role: 'AGENCY_ADMIN',
+        isActive: true,
+      },
+      take: 3,
+    });
+    for (const admin of agencyAdmins) {
+      if (admin.id === coordinatorUserId) continue;
+      contacts.set(admin.id, {
+        userId: admin.id,
+        displayName: `${admin.firstName} ${admin.lastName}`,
+        roleLabel: 'Agency admin',
+        children: new Set(['Agency support']),
+      });
+    }
+
+    return [...contacts.values()].map((c) => ({
+      userId: c.userId,
+      displayName: c.displayName,
+      roleLabel: c.roleLabel,
+      childSummary: [...c.children].slice(0, 3).join(', '),
+    }));
+  }
+
+  async startConversationAsServiceCoordinator(
+    coordinatorUserId: string,
+    targetUserId: string,
+  ) {
+    await this.assertServiceCoordinatorCanMessage(coordinatorUserId, targetUserId);
+
+    const coordinator = await this.prisma.user.findUniqueOrThrow({
+      where: { id: coordinatorUserId },
+    });
+    const target = await this.prisma.user.findFirst({
+      where: { id: targetUserId, tenantId: coordinator.tenantId },
+    });
+    if (!target) {
+      throw new NotFoundException('Contact not found');
+    }
+
+    const existing = await this.findThreadBetweenUsers(
+      coordinatorUserId,
+      targetUserId,
+      coordinator.tenantId,
+    );
+    if (existing) {
+      return existing;
+    }
+
+    const thread = await this.prisma.messageThread.create({
+      data: {
+        tenantId: coordinator.tenantId,
+        subject: `Care coordination — ${target.firstName} ${target.lastName}`,
+        participants: {
+          create: [{ userId: coordinatorUserId }, { userId: targetUserId }],
+        },
+      },
+      include: {
+        participants: { include: { user: true } },
+        messages: { take: 0 },
+      },
+    });
+
+    return {
+      id: thread.id,
+      subject: thread.subject ?? undefined,
+      updatedAt: thread.updatedAt,
+      otherParticipantName: `${target.firstName} ${target.lastName}`,
+      hasUnread: false,
+    };
+  }
+
+  private async assertServiceCoordinatorCanMessage(
+    coordinatorUserId: string,
+    targetUserId: string,
+  ) {
+    const allowed = await this.listContactsForServiceCoordinator(coordinatorUserId);
+    if (!allowed.some((c) => c.userId === targetUserId)) {
+      throw new ForbiddenException('Not authorized to message this contact');
     }
   }
 

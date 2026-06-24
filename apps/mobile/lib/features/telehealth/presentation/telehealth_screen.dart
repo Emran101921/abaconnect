@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/models/user_role.dart';
+import '../../../shared/widgets/app_bottom_nav.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/glossy_button.dart';
 import '../../parent/presentation/parent_dashboard_providers.dart';
@@ -32,6 +33,7 @@ class TelehealthScreen extends ConsumerWidget {
 
     return AppScaffold(
       title: 'Telehealth',
+      bottomNavigationBar: const RoleBottomNav(current: CoreNavTab.schedule),
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(telehealthSessionsProvider);

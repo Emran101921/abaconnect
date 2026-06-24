@@ -51,14 +51,18 @@ echo "=== Health ==="
 curl -sf "$API/api/v1/health" | python3 -m json.tool
 echo
 
+# Reuse tokens from smoke-features.sh when exported; agency before admin on fallback.
+PARENT="${SMOKE_PARENT_TOKEN:-$(login parent1@demo.local 'Parent1Demo!')}"
+THER="${SMOKE_THERAPIST_TOKEN:-$(login therapist@demo.local 'Therapist123!')}"
+AGENCY="${SMOKE_AGENCY_TOKEN:-$(login agency@demo.local 'Agency123!')}"
+ADMIN="${SMOKE_ADMIN_TOKEN:-$(login admin@abaconnect.local 'Admin123!')}"
+
 echo "=== Parent marketplace requests (childId field) ==="
-PARENT=$(login parent1@demo.local 'Parent1Demo!')
 MY_REQS=$(gql "$PARENT" 'query { myMarketplaceRequests { id anonymousPublicId childId interestCount status } }')
 check "myMarketplaceRequests query" "isinstance(d.get('data',{}).get('myMarketplaceRequests'), list)" "$MY_REQS"
 
 echo
 echo "=== Provider browse + saved searches ==="
-THER=$(login therapist@demo.local 'Therapist123!')
 BROWSE=$(gql "$THER" 'query { browseMarketplaceRequests { id anonymousPublicId matchScore distanceMiles } }')
 check "browseMarketplaceRequests query" "isinstance(d.get('data',{}).get('browseMarketplaceRequests'), list)" "$BROWSE"
 
@@ -67,7 +71,6 @@ check "myMarketplaceSavedSearches query" "isinstance(d.get('data',{}).get('myMar
 
 echo
 echo "=== Admin moderation endpoints ==="
-ADMIN=$(login admin@abaconnect.local 'Admin123!')
 LISTINGS=$(rest GET "$ADMIN" '/admin/marketplace-requests')
 check "admin marketplace listings" "isinstance(d, list)" "$LISTINGS"
 
@@ -89,7 +92,6 @@ check "marketplaceConsentHistory handles missing request" \
 
 echo
 echo "=== Agency marketplace profile ==="
-AGENCY=$(login agency@demo.local 'Agency123!')
 AGENCY_PROFILE=$(gql "$AGENCY" 'query { myProviderMarketplaceProfile { id verifiedStatus displayName } }')
 check "myProviderMarketplaceProfile for agency" \
   "'myProviderMarketplaceProfile' in d.get('data', {})" "$AGENCY_PROFILE"
@@ -136,16 +138,34 @@ else
   echo "SKIP: pause/resume mutations (no marketplace requests in seed)"
 fi
 
-PENDING_INTEREST=$(echo "$MY_REQS" | python3 -c "
+# Self-contained setup so rejectMarketplaceInterest always runs (even without DB seed).
+echo
+echo "=== rejectMarketplaceInterest mutation ==="
+CHILD_ID=$(gql "$PARENT" 'query { myChildren { id zipCode } }' | python3 -c "
 import sys, json
-rows = json.load(sys.stdin).get('data', {}).get('myMarketplaceRequests') or []
-for row in rows:
-    if (row.get('interestCount') or 0) > 0:
-        print(row['id'])
-        break
+rows = json.load(sys.stdin).get('data', {}).get('myChildren') or []
+with_zip = next((c['id'] for c in rows if c.get('zipCode')), '')
+print(with_zip or (rows[0]['id'] if rows else ''))
 ")
-if [ -n "$PENDING_INTEREST" ]; then
-  INTERESTS=$(gql "$PARENT" "query { marketplaceRequestInterests(marketplaceRequestId: \"$PENDING_INTEREST\") { status provider { id } } }")
+if [ -z "$CHILD_ID" ]; then
+  ADD_CHILD=$(gql "$PARENT" 'mutation { addChild(input: { firstName: "Smoke", lastName: "Child", dateOfBirth: "2021-06-01", zipCode: "11230" }) { id } }')
+  CHILD_ID=$(echo "$ADD_CHILD" | python3 -c "import sys,json; print(json.load(sys.stdin).get('data',{}).get('addChild',{}).get('id',''))")
+  check "addChild for rejectMarketplaceInterest setup" "bool('${CHILD_ID}')" "$ADD_CHILD"
+fi
+
+REJECT_REQ_ID=""
+if [ -n "$CHILD_ID" ]; then
+  CREATE_REJECT=$(gql "$PARENT" "mutation { createMarketplaceRequest(input: { childId: \"$CHILD_ID\", anonymousConsentGranted: true, locationType: HOME, publicDescription: \"Smoke reject interest test\" }) { id status } }")
+  REJECT_REQ_ID=$(echo "$CREATE_REJECT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('data',{}).get('createMarketplaceRequest',{}).get('id',''))")
+  check "createMarketplaceRequest for reject setup" "bool('${REJECT_REQ_ID}')" "$CREATE_REJECT"
+fi
+
+if [ -n "$REJECT_REQ_ID" ]; then
+  SUBMIT_INTEREST=$(gql "$THER" "mutation { submitMarketplaceInterest(input: { marketplaceRequestId: \"$REJECT_REQ_ID\", message: \"Smoke test provider interest\" }) }")
+  check "submitMarketplaceInterest for reject setup" \
+    "d.get('data',{}).get('submitMarketplaceInterest') is True" "$SUBMIT_INTEREST"
+
+  INTERESTS=$(gql "$PARENT" "query { marketplaceRequestInterests(marketplaceRequestId: \"$REJECT_REQ_ID\") { status provider { id } } }")
   PROVIDER_ID=$(echo "$INTERESTS" | python3 -c "
 import sys, json
 rows = json.load(sys.stdin).get('data', {}).get('marketplaceRequestInterests') or []
@@ -153,14 +173,16 @@ pending = next((r['provider']['id'] for r in rows if r.get('status') == 'PENDING
 print(pending)
 ")
   if [ -n "$PROVIDER_ID" ]; then
-    REJECT=$(gql "$PARENT" "mutation { rejectMarketplaceInterest(marketplaceRequestId: \"$PENDING_INTEREST\", providerProfileId: \"$PROVIDER_ID\") }")
+    REJECT=$(gql "$PARENT" "mutation { rejectMarketplaceInterest(marketplaceRequestId: \"$REJECT_REQ_ID\", providerProfileId: \"$PROVIDER_ID\") }")
     check "rejectMarketplaceInterest mutation" \
       "d.get('data',{}).get('rejectMarketplaceInterest') is True" "$REJECT"
   else
-    echo "SKIP: rejectMarketplaceInterest (no pending interests in seed)"
+    echo "FAIL: rejectMarketplaceInterest setup (no pending provider interest)"
+    fail=$((fail + 1))
   fi
 else
-  echo "SKIP: rejectMarketplaceInterest (no requests with interests in seed)"
+  echo "FAIL: rejectMarketplaceInterest setup (no child for parent1)"
+  fail=$((fail + 1))
 fi
 
 echo

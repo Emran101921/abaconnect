@@ -1,10 +1,13 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   NotFoundException,
+  forwardRef,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { AppointmentsService } from '../appointments/appointments.service';
 import {
   computeSessionFeeCents,
   isSelfPayInsuranceType,
@@ -17,6 +20,8 @@ export class PaymentsService {
     private readonly prisma: PrismaService,
     private readonly stripe: StripeService,
     private readonly notifications: NotificationsService,
+    @Inject(forwardRef(() => AppointmentsService))
+    private readonly appointments: AppointmentsService,
   ) {}
 
   getConfig() {
@@ -105,6 +110,20 @@ export class PaymentsService {
         'Session charges only apply to self-pay families',
       );
     }
+
+    const prepaidBooking = await this.prisma.payment.findFirst({
+      where: { appointmentId: appointment.id, status: 'SUCCEEDED' },
+    });
+    if (prepaidBooking) {
+      return {
+        payment: prepaidBooking,
+        clientSecret: null,
+        checkoutUrl: null,
+        stripeConfigured: this.stripe.isConfigured(),
+        alreadyPaid: true,
+      };
+    }
+
     if (!['CHECKED_IN', 'IN_PROGRESS'].includes(appointment.status)) {
       throw new BadRequestException(
         'Record arrival before requesting session payment',
@@ -178,6 +197,93 @@ export class PaymentsService {
       payment.id,
     );
     return { ...checkout, alreadyPaid: false };
+  }
+
+  /** Creates or returns the upfront booking payment for a self-pay appointment. */
+  async ensureBookingPaymentForAppointment(
+    parentUserId: string,
+    appointmentId: string,
+  ) {
+    const parent = await this.prisma.parent.findUnique({
+      where: { userId: parentUserId },
+    });
+    if (!parent) {
+      throw new BadRequestException('Parent profile not found');
+    }
+
+    const appointment = await this.prisma.appointment.findFirst({
+      where: { id: appointmentId, parentId: parent.id },
+      include: {
+        child: true,
+        therapist: true,
+        bookingPayment: true,
+      },
+    });
+    if (!appointment) {
+      throw new NotFoundException('Appointment not found');
+    }
+    if (!isSelfPayInsuranceType(appointment.child.insuranceType)) {
+      throw new BadRequestException(
+        'Booking payment only applies to self-pay appointments',
+      );
+    }
+    if (!appointment.parentConfirmedAt) {
+      throw new BadRequestException(
+        'Confirm the appointment before completing payment',
+      );
+    }
+
+    if (appointment.bookingPayment?.status === 'SUCCEEDED') {
+      return this.prepareCheckoutForParentPayment(
+        parentUserId,
+        appointment.bookingPayment.id,
+      );
+    }
+
+    if (appointment.bookingPayment?.status === 'PENDING') {
+      return this.prepareCheckoutForParentPayment(
+        parentUserId,
+        appointment.bookingPayment.id,
+      );
+    }
+
+    const hourlyRate = appointment.therapist.hourlyRate
+      ? Number(appointment.therapist.hourlyRate)
+      : 120;
+    const amountCents = computeSessionFeeCents(
+      appointment.scheduledStart,
+      appointment.scheduledEnd,
+      hourlyRate,
+    );
+    const childName = `${appointment.child.firstName} ${appointment.child.lastName}`;
+    const description = `Booking — ${appointment.therapyType} for ${childName}`;
+
+    const payment = await this.create({
+      parentId: parent.id,
+      tenantId: appointment.tenantId,
+      amountCents,
+      description,
+      appointmentId: appointment.id,
+    });
+
+    await this.notifications.createForUser(parentUserId, {
+      title: 'Complete payment to confirm',
+      body: `Pay for ${childName}'s ${appointment.therapyType} session on ${appointment.scheduledStart.toLocaleString()} to confirm the appointment.`,
+      data: {
+        type: 'APPOINTMENT_BOOKING_PAYMENT_DUE',
+        paymentId: payment.id,
+        appointmentId: appointment.id,
+      },
+    });
+
+    return this.prepareCheckoutForParentPayment(parentUserId, payment.id);
+  }
+
+  async prepareBookingPaymentForAppointment(
+    parentUserId: string,
+    appointmentId: string,
+  ) {
+    return this.ensureBookingPaymentForAppointment(parentUserId, appointmentId);
   }
 
   async findByParentUserId(userId: string) {
@@ -266,10 +372,16 @@ export class PaymentsService {
       payment.stripePaymentIntentId,
     );
     if (intent.status === 'succeeded') {
-      return this.prisma.payment.update({
+      const updated = await this.prisma.payment.update({
         where: { id: paymentId },
         data: { status: 'SUCCEEDED', paidAt: new Date() },
       });
+      if (updated.appointmentId) {
+        await this.appointments.finalizeAfterBookingPayment(
+          updated.appointmentId,
+        );
+      }
+      return updated;
     }
     return payment;
   }
@@ -288,15 +400,20 @@ export class PaymentsService {
     if (payment.status === 'SUCCEEDED') {
       return payment;
     }
-    return this.prisma.payment.update({
+    const updated = await this.prisma.payment.update({
       where: { id: paymentId },
       data: { status: 'SUCCEEDED', paidAt: new Date() },
     });
+    if (updated.appointmentId) {
+      await this.appointments.finalizeAfterBookingPayment(updated.appointmentId);
+    }
+    return updated;
   }
 
   async create(data: {
     parentId: string;
     sessionId?: string;
+    appointmentId?: string;
     amountCents: number;
     tenantId: string;
     description?: string;
@@ -304,11 +421,13 @@ export class PaymentsService {
     const intent = await this.stripe.createPaymentIntent(data.amountCents, {
       parentId: data.parentId,
       sessionId: data.sessionId ?? '',
+      appointmentId: data.appointmentId ?? '',
     });
     return this.prisma.payment.create({
       data: {
         parentId: data.parentId,
         sessionId: data.sessionId,
+        appointmentId: data.appointmentId,
         tenantId: data.tenantId,
         amount: data.amountCents / 100,
         description: data.description,
@@ -405,7 +524,7 @@ export class PaymentsService {
     if (!payment || payment.status === 'SUCCEEDED') {
       return payment;
     }
-    return this.prisma.payment.update({
+    const updated = await this.prisma.payment.update({
       where: { id: paymentId },
       data: {
         status: 'SUCCEEDED',
@@ -413,5 +532,9 @@ export class PaymentsService {
         ...(stripePaymentIntentId ? { stripePaymentIntentId } : {}),
       },
     });
+    if (updated.appointmentId) {
+      await this.appointments.finalizeAfterBookingPayment(updated.appointmentId);
+    }
+    return updated;
   }
 }

@@ -19,6 +19,9 @@ export class MessageThreadType {
   @Field()
   otherParticipantName: string;
 
+  @Field(() => ID, { nullable: true })
+  otherParticipantUserId?: string;
+
   @Field({ nullable: true })
   lastMessageBody?: string;
 
@@ -45,6 +48,21 @@ export class ParentContactType {
 
   @Field()
   displayName: string;
+
+  @Field({ nullable: true })
+  childSummary?: string;
+}
+
+@ObjectType()
+export class ScContactType {
+  @Field(() => ID)
+  userId: string;
+
+  @Field()
+  displayName: string;
+
+  @Field()
+  roleLabel: string;
 
   @Field({ nullable: true })
   childSummary?: string;

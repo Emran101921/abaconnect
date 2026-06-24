@@ -4,6 +4,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/theme/app_colors.dart';
+
 /// Tab descriptor for [GlassyBottomNav].
 class GlassyNavTab {
   const GlassyNavTab({
@@ -113,8 +115,8 @@ class _IosTabItemState extends State<_IosTabItem> {
   @override
   Widget build(BuildContext context) {
     final selected = widget.selected;
-    final activeColor = CupertinoColors.activeBlue.resolveFrom(context);
-    final inactiveColor = CupertinoColors.inactiveGray.resolveFrom(context);
+    final activeColor = AppColors.primary;
+    final inactiveColor = Theme.of(context).colorScheme.onSurfaceVariant;
     final color = selected ? activeColor : inactiveColor;
     final opacity = _pressed ? 0.55 : 1.0;
 

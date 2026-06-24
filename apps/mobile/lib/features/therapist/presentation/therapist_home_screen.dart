@@ -7,12 +7,15 @@ import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/models/dashboard_action_model.dart';
 import '../../../shared/widgets/app_bottom_nav.dart';
+import '../../../shared/layout/action_button.dart';
+import '../../../shared/layout/app_page_header.dart';
+import '../../../shared/layout/user_role_badge.dart';
 import '../../../shared/widgets/app_scaffold.dart';
+import '../../../shared/widgets/app_trust_notice.dart';
+import '../../../shared/widgets/glossy_button.dart';
 import '../../../shared/widgets/app_section_header.dart';
 import '../../../shared/widgets/app_stat_card.dart';
-import '../../../shared/widgets/glossy_button.dart';
 import '../../../shared/widgets/app_wellness_action_menu.dart';
-import '../../../shared/widgets/app_wellness_home_header.dart';
 import '../../../shared/widgets/app_wellness_journey_card.dart';
 import '../../../shared/widgets/dashboard_action_inbox.dart';
 import '../../messaging/messaging_providers.dart';
@@ -22,6 +25,7 @@ import '../data/therapist_repository.dart';
 import '../therapist_providers.dart';
 import 'therapist_appointment_session_actions.dart';
 import 'self_pay_payment_status_chip.dart';
+import '../../calls/widgets/call_button.dart';
 import 'therapist_weekly_progress_section.dart';
 
 final therapistAppointmentsProvider =
@@ -48,19 +52,10 @@ class TherapistHomeScreen extends ConsumerWidget {
         user?.fullName?.split(' ').first ?? user?.email.split('@').first ?? 'there';
 
     return AppScaffold(
-      title: 'Therapist',
-      bottomNavigationBar: TherapistBottomNav(
-        current: TherapistNavTab.home,
-      ),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.logout),
-          onPressed: () async {
-            await ref.read(authStateProvider.notifier).logout();
-            if (context.mounted) context.go(AppRoutes.login);
-          },
-        ),
-      ],
+      title: 'Therapist dashboard',
+      subtitle: 'Clinical sessions & referrals',
+      constrainBodyOnWide: false,
+      bottomNavigationBar: const RoleBottomNav(current: CoreNavTab.home),
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(therapistDashboardProvider);
@@ -75,8 +70,57 @@ class TherapistHomeScreen extends ConsumerWidget {
           padding: EdgeInsets.zero,
           child: ListView(
             children: [
-              AppWellnessHomeHeader(
-                greeting: 'Welcome back, $greetingName 👋',
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: AppPageHeader(
+                  title: 'Welcome back, $greetingName',
+                  description:
+                      'Review referrals, manage your schedule, and complete session documentation.',
+                  badge: user != null
+                      ? UserRoleBadge(role: user.role, compact: true)
+                      : null,
+                  actions: [
+                    ActionButton(
+                      label: 'Parent referrals',
+                      icon: Icons.storefront_outlined,
+                      onPressed: () =>
+                          context.push(AppRoutes.therapistMarketplace),
+                      fullWidth: false,
+                      size: GlossyButtonSize.medium,
+                    ),
+                    ActionButton(
+                      label: 'Job opportunities',
+                      icon: Icons.work_outline,
+                      onPressed: () =>
+                          context.push(AppRoutes.therapistJobOpportunities),
+                      variant: GlossyButtonVariant.secondary,
+                      fullWidth: false,
+                      size: GlossyButtonSize.medium,
+                    ),
+                    ActionButton(
+                      label: 'Session notes',
+                      icon: Icons.edit_note_outlined,
+                      onPressed: () => context.push(
+                        '${AppRoutes.therapistHome}/session-notes',
+                      ),
+                      variant: GlossyButtonVariant.secondary,
+                      fullWidth: false,
+                      size: GlossyButtonSize.medium,
+                    ),
+                    ActionButton(
+                      label: 'Medical charts',
+                      icon: Icons.medical_information_outlined,
+                      onPressed: () => context.push(AppRoutes.therapistCharts),
+                      variant: GlossyButtonVariant.secondary,
+                      fullWidth: false,
+                      size: GlossyButtonSize.medium,
+                    ),
+                  ],
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: AppTrustNotice(dense: true),
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -133,6 +177,12 @@ class TherapistHomeScreen extends ConsumerWidget {
                       icon: Icons.chat_bubble_outline_rounded,
                       variant: AppGlossyButtonVariant.tertiary,
                       onTap: () => context.push(AppRoutes.messages),
+                    ),
+                    AppWellnessActionItem(
+                      label: 'Secure calls',
+                      icon: Icons.call_outlined,
+                      variant: AppGlossyButtonVariant.neutral,
+                      onTap: () => context.push(AppRoutes.callHistory),
                     ),
                     AppWellnessActionItem(
                       label: 'My Profile',
@@ -283,8 +333,18 @@ class TherapistHomeScreen extends ConsumerWidget {
                                   ),
                                 ),
                                 SelfPayPaymentStatusChip(appointment: a),
+                                if (a.parentUserId != null)
+                                  CallButton(
+                                    recipientUserId: a.parentUserId!,
+                                    recipientName: a.parentName ?? 'Parent',
+                                    childId: a.childId,
+                                    compact: true,
+                                  ),
                                 if (!isRequested &&
+                                    !a.needsTherapistConfirmation &&
                                     (a.requiresSelfPayCollection ||
+                                        a.sessionPaymentId != null ||
+                                        a.status == 'CONFIRMED' ||
                                         a.canStartSession))
                                   TherapistAppointmentSessionActions(
                                     appointment: a,

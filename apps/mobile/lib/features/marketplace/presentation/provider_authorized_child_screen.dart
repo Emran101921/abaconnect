@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/providers/app_providers.dart';
@@ -58,16 +60,63 @@ class _ProviderAuthorizedChildScreenState
     }
   }
 
+  Future<void> _showDocumentActions(
+    MarketplaceSharedDocumentModel doc,
+    String path,
+  ) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.open_in_new),
+              title: Text('Open ${doc.title}'),
+              onTap: () async {
+                Navigator.pop(ctx);
+                await _openDownloadedFile(path);
+              },
+            ),
+            if (!kIsWeb)
+              ListTile(
+                leading: const Icon(Icons.share_outlined),
+                title: const Text('Share'),
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  await Share.shareXFiles(
+                    [XFile(path, name: doc.fileName)],
+                    subject: doc.title,
+                  );
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openDownloadedFile(String path) async {
+    final uri = Uri.file(path);
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      if (mounted) {
+        AppSnackBar.showError(context, 'Could not open downloaded file.');
+      }
+    }
+  }
+
   Future<void> _downloadDocument(MarketplaceSharedDocumentModel doc) async {
     try {
       final path = await ref
           .read(platformRepositoryProvider)
           .downloadDocumentFile(doc.id, doc.fileName);
       if (!mounted) return;
-      AppSnackBar.showSuccess(
-        context,
-        path.isEmpty ? 'Download started' : 'Saved: $path',
-      );
+      if (path.isEmpty) {
+        AppSnackBar.showSuccess(context, 'Download started');
+        return;
+      }
+      await _showDocumentActions(doc, path);
     } catch (e) {
       if (mounted) {
         AppSnackBar.showError(

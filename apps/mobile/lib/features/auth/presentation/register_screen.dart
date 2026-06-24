@@ -5,12 +5,11 @@ import 'package:go_router/go_router.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/providers/consent_gate_provider.dart';
 import '../../../core/router/onboarding_navigation.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../shared/layout/auth_shell.dart';
 import '../../../shared/models/user_role.dart';
-import '../../../shared/widgets/app_brand_logo.dart';
-import '../../../shared/widgets/app_healthcare_illustration.dart';
-import '../../../shared/widgets/app_theme_toggle.dart';
+import '../../../shared/widgets/app_select.dart';
+import '../../../shared/widgets/app_trust_notice.dart';
 import '../../../shared/widgets/glossy_button.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -25,6 +24,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _lastNameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _agencyNameController = TextEditingController();
+  final _agencyPhoneController = TextEditingController();
+  final _agencyStateController = TextEditingController();
+  final _agencyZipController = TextEditingController();
   UserRole _role = UserRole.parent;
   bool _loading = false;
 
@@ -34,10 +37,22 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _lastNameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _agencyNameController.dispose();
+    _agencyPhoneController.dispose();
+    _agencyStateController.dispose();
+    _agencyZipController.dispose();
     super.dispose();
   }
 
   Future<void> _register() async {
+    if (_role == UserRole.agency &&
+        _agencyNameController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Agency name is required')),
+      );
+      return;
+    }
+
     setState(() => _loading = true);
     try {
       await ref
@@ -48,6 +63,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             firstName: _firstNameController.text.trim(),
             lastName: _lastNameController.text.trim(),
             role: _role,
+            agencyName: _role == UserRole.agency
+                ? _agencyNameController.text.trim()
+                : null,
+            agencyPhone: _role == UserRole.agency
+                ? _agencyPhoneController.text.trim()
+                : null,
+            agencyState: _role == UserRole.agency
+                ? _agencyStateController.text.trim()
+                : null,
+            agencyZipCode: _role == UserRole.agency
+                ? _agencyZipController.text.trim()
+                : null,
           );
       if (!mounted) return;
       final session = ref.read(authStateProvider).value;
@@ -57,6 +84,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               role: session.user.role,
               hipaaConsentGranted: ref.read(hipaaConsentGrantedProvider),
               mfaEnabled: ref.read(mfaEnabledProvider),
+              agencyOnboardingComplete:
+                  ref.read(agencyOnboardingCompleteProvider),
             ) ??
             session.user.role.homeRoute;
         context.go(destination);
@@ -74,104 +103,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final wide = MediaQuery.sizeOf(context).width >= 900;
-
-    return Scaffold(
-      body: wide ? _buildWideLayout(context) : _buildNarrowLayout(context),
-    );
-  }
-
-  Widget _buildWideLayout(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Container(
-            decoration: const BoxDecoration(gradient: AppColors.warmGradient),
-            padding: const EdgeInsets.all(AppSpacing.xxl),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    IconButton(
-                      onPressed: () => context.go('/login'),
-                      icon: const Icon(Icons.arrow_back, color: Colors.white),
-                    ),
-                    const Spacer(),
-                    const AppThemeToggle(compact: true),
-                  ],
-                ),
-                const Spacer(),
-                const AppHealthcareIllustration(
-                  type: AppIllustrationType.family,
-                  size: 140,
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                Text(
-                  'Start your family\'s\ncare journey',
-                  style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Text(
-                  'Create a secure parent account to manage screening, '
-                  'therapy, appointments, and progress — all in one place.',
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Colors.white.withValues(alpha: 0.92),
-                  ),
-                ),
-                const Spacer(),
-              ],
-            ),
-          ),
-        ),
-        Expanded(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(AppSpacing.xxl),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 440),
-                child: _buildForm(context),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildNarrowLayout(BuildContext context) {
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                IconButton(
-                  onPressed: () => context.go('/login'),
-                  icon: const Icon(Icons.arrow_back),
-                ),
-                const Spacer(),
-                const AppThemeToggle(compact: true),
-              ],
-            ),
-            const Center(child: AppBrandLogo(size: AppBrandLogoSize.medium)),
-            const SizedBox(height: AppSpacing.md),
-            const Center(
-              child: AppHealthcareIllustration(
-                type: AppIllustrationType.family,
-                size: 96,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            _buildForm(context),
-          ],
-        ),
-      ),
+    return AuthShell(
+      title: 'Start your family\'s\ncare journey',
+      subtitle:
+          'Create a secure account to manage screening, therapy, appointments, '
+          'and progress — all in one place.',
+      child: _buildForm(context),
     );
   }
 
@@ -179,11 +116,20 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: () => context.go('/login'),
+            icon: const Icon(Icons.arrow_back, size: 18),
+            label: const Text('Back to sign in'),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
         Text(
           'Create account',
-          style: Theme.of(
-            context,
-          ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
         ),
         const SizedBox(height: AppSpacing.xs),
         Text(
@@ -211,24 +157,66 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           textInputAction: TextInputAction.next,
         ),
         const SizedBox(height: AppSpacing.md),
-        DropdownButtonFormField<UserRole>(
+        AppSelectField<UserRole>(
+          label: 'Account type',
           value: _role,
-          decoration: const InputDecoration(
-            labelText: 'Account type',
-            prefixIcon: Icon(Icons.badge_outlined),
-          ),
-          items: const [
-            DropdownMenuItem(
+          prefixIcon: const Icon(Icons.badge_outlined),
+          options: const [
+            AppSelectOption(
               value: UserRole.parent,
-              child: Text('Parent / caregiver'),
+              label: 'Parent / caregiver',
             ),
-            DropdownMenuItem(
+            AppSelectOption(
               value: UserRole.therapist,
-              child: Text('Therapist / provider'),
+              label: 'Therapist / provider',
+            ),
+            AppSelectOption(
+              value: UserRole.agency,
+              label: 'Agency administrator',
             ),
           ],
           onChanged: (v) => setState(() => _role = v ?? UserRole.parent),
         ),
+        if (_role == UserRole.agency) ...[
+          const SizedBox(height: AppSpacing.md),
+          TextField(
+            controller: _agencyNameController,
+            decoration: const InputDecoration(
+              labelText: 'Agency name',
+              prefixIcon: Icon(Icons.business_outlined),
+            ),
+            textInputAction: TextInputAction.next,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          TextField(
+            controller: _agencyPhoneController,
+            decoration: const InputDecoration(
+              labelText: 'Agency phone (optional)',
+              prefixIcon: Icon(Icons.phone_outlined),
+            ),
+            keyboardType: TextInputType.phone,
+            textInputAction: TextInputAction.next,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          TextField(
+            controller: _agencyStateController,
+            decoration: const InputDecoration(
+              labelText: 'State (optional)',
+              prefixIcon: Icon(Icons.map_outlined),
+            ),
+            textInputAction: TextInputAction.next,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          TextField(
+            controller: _agencyZipController,
+            decoration: const InputDecoration(
+              labelText: 'ZIP code (optional)',
+              prefixIcon: Icon(Icons.pin_drop_outlined),
+            ),
+            keyboardType: TextInputType.number,
+            textInputAction: TextInputAction.next,
+          ),
+        ],
         const SizedBox(height: AppSpacing.md),
         TextField(
           controller: _emailController,
@@ -249,10 +237,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           obscureText: true,
           onSubmitted: (_) => _loading ? null : _register(),
         ),
+        const SizedBox(height: AppSpacing.md),
+        const AppTrustNotice.dataProtected(dense: true),
         const SizedBox(height: AppSpacing.lg),
         GlossyButton(
           title: 'Create account',
-          variant: GlossyButtonVariant.tealBlue,
+          variant: GlossyButtonVariant.primary,
           loading: _loading,
           onPressed: _register,
         ),

@@ -13,10 +13,13 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/app_dashboard_card.dart';
 import '../../../shared/widgets/app_glassy_tab_bar.dart';
 import '../../../shared/widgets/app_healthcare_illustration.dart';
+import '../../../shared/widgets/app_bottom_nav.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_section_header.dart';
 import '../../../shared/widgets/glossy_button.dart';
 import '../../telehealth/presentation/telehealth_screen.dart';
+import '../../calls/widgets/call_button.dart';
+import '../../payments/presentation/parent_billing_providers.dart';
 import '../data/parent_booking_repository.dart';
 import 'parent_dashboard_providers.dart';
 
@@ -45,6 +48,55 @@ class _ParentAppointmentsScreenState extends ConsumerState<ParentAppointmentsScr
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  Future<void> _confirm(
+    BuildContext context,
+    WidgetRef ref,
+    AppointmentModel appointment,
+  ) async {
+    if (appointment.needsBookingPayment && appointment.parentConfirmed) {
+      final paymentId = appointment.bookingPaymentId;
+      if (paymentId != null && context.mounted) {
+        await context.push('${AppRoutes.payments}?paymentId=$paymentId');
+        if (!context.mounted) return;
+        await refreshParentBillingState(ref);
+      }
+      return;
+    }
+
+    try {
+      final result = await ref
+          .read(parentBookingRepositoryProvider)
+          .confirmAppointment(appointmentId: appointment.id);
+      ref.invalidate(parentAppointmentsProvider);
+      ref.invalidate(parentDashboardProvider);
+      if (!context.mounted) return;
+      if (result.requiresPayment && result.paymentId != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Confirm received — complete payment to finalize this appointment',
+            ),
+          ),
+        );
+        await context.push(
+          '${AppRoutes.payments}?paymentId=${result.paymentId}',
+        );
+        if (!context.mounted) return;
+        await refreshParentBillingState(ref);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Appointment confirmed')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Confirm failed: $e')));
+      }
+    }
   }
 
   Future<void> _cancel(
@@ -183,6 +235,36 @@ class _ParentAppointmentsScreenState extends ConsumerState<ParentAppointmentsScr
     start = DateTime(date.year, date.month, date.day, time.hour, time.minute);
     final end = start.add(const Duration(hours: 1));
 
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        final controller = TextEditingController();
+        return AlertDialog(
+          title: const Text('Reschedule reason'),
+          content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(
+              labelText: 'Reason (optional)',
+            ),
+            maxLines: 2,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, ''),
+              child: const Text('Skip'),
+            ),
+            GlossyButton(
+              title: 'Continue',
+              size: GlossyButtonSize.small,
+              fullWidth: false,
+              onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            ),
+          ],
+        );
+      },
+    );
+    if (reason == null || !context.mounted) return;
+
     try {
       await ref
           .read(parentBookingRepositoryProvider)
@@ -190,6 +272,7 @@ class _ParentAppointmentsScreenState extends ConsumerState<ParentAppointmentsScr
             appointmentId: appointment.id,
             start: start,
             end: end,
+            reason: reason.isEmpty ? null : reason,
           );
       ref.invalidate(parentAppointmentsProvider);
       ref.invalidate(parentDashboardProvider);
@@ -213,6 +296,7 @@ class _ParentAppointmentsScreenState extends ConsumerState<ParentAppointmentsScr
 
     return AppScaffold(
       title: 'My Appointments',
+      bottomNavigationBar: const RoleBottomNav(current: CoreNavTab.schedule),
       actions: [
         IconButton(
           icon: const Icon(Icons.calendar_month),
@@ -278,6 +362,7 @@ class _ParentAppointmentsScreenState extends ConsumerState<ParentAppointmentsScr
                         appointment: a,
                         highlightToday: a.isToday,
                         highlighted: highlightId == a.id,
+                        onConfirm: () => _confirm(context, ref, a),
                         onReschedule: () => _reschedule(context, ref, a),
                         onCancel: () => _cancel(context, ref, a),
                         onJoinTelehealth: () => _joinTelehealth(context, ref, a),
@@ -490,16 +575,37 @@ class _UpcomingCard extends StatelessWidget {
     required this.onReschedule,
     required this.onCancel,
     required this.onJoinTelehealth,
+    this.onConfirm,
     this.highlightToday = false,
     this.highlighted = false,
   });
 
   final AppointmentModel appointment;
+  final VoidCallback? onConfirm;
   final VoidCallback onReschedule;
   final VoidCallback onCancel;
   final VoidCallback onJoinTelehealth;
   final bool highlightToday;
   final bool highlighted;
+
+  String _confirmationLabel(AppointmentModel a) {
+    if (a.isFullyConfirmed) return 'Fully confirmed';
+    if (a.needsBookingPayment) return 'Payment required to confirm';
+    if (a.isRescheduleRequested) {
+      final proposed = a.proposedScheduledStart;
+      final when = proposed != null
+          ? DateFormat.yMMMd().add_jm().format(proposed)
+          : 'new time';
+      return 'Reschedule requested → $when';
+    }
+    if (a.parentConfirmed && !a.therapistConfirmed) {
+      return 'Waiting on therapist';
+    }
+    if (!a.parentConfirmed && a.therapistConfirmed) {
+      return 'Waiting on you';
+    }
+    return 'Awaiting confirmation';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -575,7 +681,49 @@ class _UpcomingCard extends StatelessWidget {
           Text('${a.therapistName} · $loc'),
           Text(DateFormat.yMMMd().add_jm().format(a.scheduledStart)),
           const SizedBox(height: 8),
-          Chip(label: Text(a.status)),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              Chip(label: Text(a.status)),
+              Chip(
+                label: Text(_confirmationLabel(a)),
+                backgroundColor: a.isFullyConfirmed
+                    ? Colors.green.withValues(alpha: 0.15)
+                    : null,
+              ),
+            ],
+          ),
+          if (a.isRescheduleRequested && a.rescheduleReason != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                'Reason: ${a.rescheduleReason}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
+          if (a.needsParentConfirmation && onConfirm != null) ...[
+            const SizedBox(height: 12),
+            GlossyButton(
+              title: a.requiresSelfPayBookingPayment
+                  ? 'Confirm & pay'
+                  : 'Confirm appointment',
+              icon: Icons.check_rounded,
+              variant: GlossyButtonVariant.greenTeal,
+              size: GlossyButtonSize.small,
+              onPressed: onConfirm,
+            ),
+          ],
+          if (a.needsBookingPayment && !a.needsParentConfirmation) ...[
+            const SizedBox(height: 12),
+            GlossyButton(
+              title: 'Complete payment',
+              icon: Icons.payment_outlined,
+              variant: GlossyButtonVariant.tealBlue,
+              size: GlossyButtonSize.small,
+              onPressed: onConfirm,
+            ),
+          ],
           if (a.isTelehealth && !['COMPLETED', 'CANCELLED'].contains(a.status))
             Padding(
               padding: const EdgeInsets.only(top: 8),
@@ -586,6 +734,16 @@ class _UpcomingCard extends StatelessWidget {
                 onPressed: onJoinTelehealth,
               ),
             ),
+          if (a.therapistUserId != null &&
+              !['COMPLETED', 'CANCELLED'].contains(a.status)) ...[
+            const SizedBox(height: 8),
+            CallButton(
+              recipientUserId: a.therapistUserId!,
+              recipientName: a.therapistName,
+              childId: a.childId,
+              compact: true,
+            ),
+          ],
           if (canChange)
             Align(
               alignment: Alignment.centerRight,

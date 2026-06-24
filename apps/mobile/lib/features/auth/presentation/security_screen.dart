@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../core/providers/consent_gate_provider.dart';
+import '../../../core/router/app_router.dart';
 import '../../../shared/models/user_role.dart';
 import '../../../shared/widgets/app_bottom_nav.dart';
 import '../../../shared/widgets/app_scaffold.dart';
@@ -158,10 +159,8 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
     return AppScaffold(
       title: 'Security',
       showBackButton: false,
-      bottomNavigationBar: isParent
-          ? const ParentBottomNav(current: ParentNavTab.security)
-          : isTherapist
-          ? const TherapistBottomNav(current: TherapistNavTab.security)
+      bottomNavigationBar: (isParent || isTherapist)
+          ? const RoleBottomNav(current: CoreNavTab.profile)
           : null,
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 88),
@@ -304,6 +303,13 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
             },
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) => Text('Could not load devices: $e'),
+          ),
+          const SizedBox(height: 32),
+          GlossyButton.logOut(
+            onPressed: () async {
+              await ref.read(authStateProvider.notifier).logout();
+              if (context.mounted) context.go(AppRoutes.login);
+            },
           ),
         ],
       ),

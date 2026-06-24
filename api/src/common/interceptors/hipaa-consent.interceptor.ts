@@ -11,7 +11,12 @@ import { ComplianceService } from '../../compliance/compliance.service';
 import { ProviderOnboardingService } from '../../compliance/provider-onboarding.service';
 import { AuthUser } from '../decorators/current-user.decorator';
 
-const ONBOARDING_ROLES = new Set(['PARENT', 'THERAPIST', 'AGENCY_ADMIN']);
+const ONBOARDING_ROLES = new Set([
+  'PARENT',
+  'THERAPIST',
+  'AGENCY_ADMIN',
+  'SERVICE_COORDINATOR',
+]);
 
 const GRAPHQL_ALLOWLIST = new Set([
   'myConsents',

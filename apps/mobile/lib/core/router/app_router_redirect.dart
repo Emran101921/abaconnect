@@ -11,6 +11,7 @@ String? resolveAuthRedirect({
   required bool hipaaConsentGranted,
   required bool mfaEnabled,
   bool providerPhiAccessApproved = true,
+  bool agencyOnboardingComplete = true,
 }) {
   if (auth.isLoading) {
     final waitingRoutes = <String>{
@@ -48,6 +49,7 @@ String? resolveAuthRedirect({
     hipaaConsentGranted: hipaaConsentGranted,
     mfaEnabled: mfaEnabled,
     providerPhiAccessApproved: providerPhiAccessApproved,
+    agencyOnboardingComplete: agencyOnboardingComplete,
   );
 
   if (matchedLocation == AppRoutes.login ||
@@ -66,6 +68,10 @@ String? resolveAuthRedirect({
   }
   if (matchedLocation.startsWith('/agency') &&
       session.user.role != UserRole.agency) {
+    return home;
+  }
+  if (matchedLocation.startsWith('/service-coordinator') &&
+      session.user.role != UserRole.serviceCoordinator) {
     return home;
   }
   final adminRoles = {
@@ -96,6 +102,8 @@ String? resolveAuthRedirect({
     final onSecurity = matchedLocation == AppRoutes.security;
     final onProviderOnboarding =
         matchedLocation == AppRoutes.providerOnboarding;
+    final onAgencyOnboarding =
+        matchedLocation == AppRoutes.agencyOnboarding;
     if (onboardingRoute == AppRoutes.consent &&
         !onConsent &&
         !isPrivacyOnboardingRoute) {
@@ -107,10 +115,18 @@ String? resolveAuthRedirect({
         !isPrivacyOnboardingRoute) {
       return AppRoutes.security;
     }
+    if (onboardingRoute == AppRoutes.agencyOnboarding &&
+        !onAgencyOnboarding &&
+        !onConsent &&
+        !onSecurity &&
+        !isPrivacyOnboardingRoute) {
+      return AppRoutes.agencyOnboarding;
+    }
     if (onboardingRoute == AppRoutes.providerOnboarding &&
         !onProviderOnboarding &&
         !onConsent &&
         !onSecurity &&
+        !onAgencyOnboarding &&
         !isPrivacyOnboardingRoute) {
       return AppRoutes.providerOnboarding;
     }
@@ -119,6 +135,7 @@ String? resolveAuthRedirect({
   if (matchedLocation == AppRoutes.consent ||
       matchedLocation == AppRoutes.security ||
       matchedLocation == AppRoutes.providerOnboarding ||
+      matchedLocation == AppRoutes.agencyOnboarding ||
       isPrivacyOnboardingRoute ||
       matchedLocation == AppRoutes.settingsPrivacy ||
       matchedLocation.startsWith('${AppRoutes.settingsPrivacy}/')) {
@@ -128,7 +145,8 @@ String? resolveAuthRedirect({
   if (matchedLocation == AppRoutes.messages ||
       matchedLocation.startsWith('${AppRoutes.messages}/')) {
     if (session.user.role != UserRole.parent &&
-        session.user.role != UserRole.therapist) {
+        session.user.role != UserRole.therapist &&
+        session.user.role != UserRole.serviceCoordinator) {
       return home;
     }
   }

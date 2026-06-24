@@ -3,11 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
+import '../../../shared/layout/action_button.dart';
+import '../../../shared/layout/app_page_header.dart';
+import '../../../shared/layout/user_role_badge.dart';
+import '../../../shared/widgets/app_bottom_nav.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_section_header.dart';
-import '../../../shared/widgets/app_welcome_banner.dart';
-import '../../../shared/widgets/app_healthcare_illustration.dart';
-import '../../../shared/widgets/app_theme_toggle.dart';
+import '../../../shared/widgets/app_trust_notice.dart';
+import '../../../shared/widgets/glossy_button.dart';
 import '../../notifications/notification_providers.dart';
 import 'admin_providers.dart';
 import 'admin_stat_card.dart';
@@ -23,27 +26,13 @@ class AdminHomeScreen extends ConsumerWidget {
     final unread = ref.watch(unreadNotificationsProvider);
     final unreadCount = unread.maybeWhen(data: (c) => c, orElse: () => 0);
 
+    final user = ref.watch(authStateProvider).valueOrNull?.user;
+
     return AppScaffold(
-      title: 'Admin',
-      actions: [
-        const AppThemeToggle(compact: true),
-        IconButton(
-          icon: unreadCount > 0
-              ? Badge(
-                  label: Text('$unreadCount'),
-                  child: const Icon(Icons.notifications),
-                )
-              : const Icon(Icons.notifications),
-          onPressed: () => context.push(AppRoutes.notifications),
-        ),
-        IconButton(
-          icon: const Icon(Icons.logout),
-          onPressed: () async {
-            await ref.read(authStateProvider.notifier).logout();
-            if (context.mounted) context.go(AppRoutes.login);
-          },
-        ),
-      ],
+      title: 'Admin dashboard',
+      subtitle: 'Platform operations & compliance',
+      constrainBodyOnWide: false,
+      bottomNavigationBar: const RoleBottomNav(current: CoreNavTab.home),
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(adminDashboardProvider);
@@ -55,11 +44,39 @@ class AdminHomeScreen extends ConsumerWidget {
           padding: EdgeInsets.zero,
           child: ListView(
             children: [
-              const AppWelcomeBanner(
-                greeting: 'Platform administration',
-                subtitle:
-                    'Secure oversight for users, claims, screenings, and compliance.',
-                illustrationType: AppIllustrationType.progress,
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: AppPageHeader(
+                  title: 'Platform administration',
+                  description:
+                      'Secure oversight for users, marketplace listings, compliance, and support workflows.',
+                  badge: user != null
+                      ? UserRoleBadge(role: user.role, compact: true)
+                      : null,
+                  actions: [
+                    ActionButton(
+                      label: 'User management',
+                      icon: Icons.people_outline,
+                      onPressed: () =>
+                          context.push('${AppRoutes.adminHome}/users'),
+                      fullWidth: false,
+                      size: GlossyButtonSize.medium,
+                    ),
+                    ActionButton(
+                      label: 'Analytics',
+                      icon: Icons.insights_outlined,
+                      onPressed: () =>
+                          context.push('${AppRoutes.adminHome}/analytics'),
+                      variant: GlossyButtonVariant.secondary,
+                      fullWidth: false,
+                      size: GlossyButtonSize.medium,
+                    ),
+                  ],
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: AppTrustNotice(dense: true),
               ),
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16),

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/theme/app_spacing.dart';
+import '../layout/app_layout.dart';
 
-class AppScaffold extends StatelessWidget {
+/// Backward-compatible scaffold — delegates to [AppLayout] for responsive shell.
+class AppScaffold extends ConsumerWidget {
   const AppScaffold({
     super.key,
     required this.title,
@@ -14,6 +16,8 @@ class AppScaffold extends StatelessWidget {
     this.showBackButton,
     this.header,
     this.extendBodyBehindHeader = false,
+    this.constrainBodyOnWide = true,
+    this.showPageBreadcrumbs = false,
   });
 
   final String title;
@@ -25,76 +29,23 @@ class AppScaffold extends StatelessWidget {
   final bool? showBackButton;
   final Widget? header;
   final bool extendBodyBehindHeader;
+  final bool constrainBodyOnWide;
+  final bool showPageBreadcrumbs;
 
   @override
-  Widget build(BuildContext context) {
-    final canPop = Navigator.of(context).canPop();
-    final colorScheme = Theme.of(context).colorScheme;
-
-    if (header != null) {
-      return Scaffold(
-        extendBodyBehindAppBar: extendBodyBehindHeader,
-        appBar: AppBar(
-          automaticallyImplyLeading: showBackButton != null
-              ? showBackButton!
-              : canPop,
-          title: subtitle == null
-              ? Text(title)
-              : Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title),
-                    Text(
-                      subtitle!,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-          actions: actions,
-          backgroundColor: extendBodyBehindHeader
-              ? Colors.transparent
-              : colorScheme.surface,
-          surfaceTintColor: Colors.transparent,
-        ),
-        body: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (!extendBodyBehindHeader) header!,
-            Expanded(child: body),
-          ],
-        ),
-        floatingActionButton: floatingActionButton,
-        bottomNavigationBar: bottomNavigationBar,
-      );
-    }
-
-    return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: showBackButton != null
-            ? showBackButton!
-            : canPop,
-        title: subtitle == null
-            ? Text(title)
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title),
-                  Text(
-                    subtitle!,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-        actions: actions,
-        surfaceTintColor: Colors.transparent,
-      ),
+  Widget build(BuildContext context, WidgetRef ref) {
+    return AppLayout(
+      title: title,
+      subtitle: subtitle,
       body: body,
+      actions: actions,
       floatingActionButton: floatingActionButton,
       bottomNavigationBar: bottomNavigationBar,
+      showBackButton: showBackButton,
+      header: header,
+      extendBodyBehindHeader: extendBodyBehindHeader,
+      constrainBodyOnWide: constrainBodyOnWide,
+      showPageBreadcrumbs: showPageBreadcrumbs,
     );
   }
 }
@@ -105,7 +56,7 @@ class AppContentContainer extends StatelessWidget {
     super.key,
     required this.child,
     this.maxWidth = 1200,
-    this.padding = const EdgeInsets.all(AppSpacing.md),
+    this.padding = const EdgeInsets.all(16),
   });
 
   final Widget child;

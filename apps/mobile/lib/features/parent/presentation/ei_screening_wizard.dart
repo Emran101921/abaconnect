@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/app_providers.dart';
 import '../../../core/theme/app_spacing.dart';
-import '../../../shared/widgets/app_animated_progress.dart';
+import '../../../shared/layout/step_progress.dart';
 import '../../../shared/widgets/app_choice_tile.dart';
 import '../../../shared/widgets/app_dashboard_card.dart';
 import '../../../shared/widgets/glossy_button.dart';
@@ -165,8 +165,6 @@ class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
     return _flatQuestions[_questionIndex];
   }
 
-  double get _progress =>
-      _flatQuestions.isEmpty ? 0 : (_questionIndex + 1) / _flatQuestions.length;
 
   bool get _isLastQuestion => _questionIndex >= _flatQuestions.length - 1;
 
@@ -378,9 +376,11 @@ class _EiScreeningWizardState extends ConsumerState<EiScreeningWizard> {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-          child: AppAnimatedProgress(
-            value: _progress,
-            label: 'Question ${_questionIndex + 1} of ${_flatQuestions.length}',
+          child: StepProgress(
+            currentStep: _questionIndex + 1,
+            totalSteps: _flatQuestions.length,
+            title: 'Section ${section.id}: ${section.title}',
+            labels: _sections.map((s) => s.id).toList(),
           ),
         ),
         Padding(
