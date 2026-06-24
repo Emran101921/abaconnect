@@ -17,7 +17,7 @@ import '../../../shared/widgets/app_bottom_nav.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_section_header.dart';
 import '../../../shared/widgets/glossy_button.dart';
-import '../../telehealth/presentation/telehealth_screen.dart';
+import '../../telehealth/presentation/telehealth_join.dart';
 import '../../calls/widgets/call_button.dart';
 import '../../payments/presentation/parent_billing_providers.dart';
 import '../data/parent_booking_repository.dart';
@@ -167,7 +167,12 @@ class _ParentAppointmentsScreenState extends ConsumerState<ParentAppointmentsScr
           .joinTelehealth(appointment.id);
       if (!context.mounted) return;
       if (session.joinUrl != null) {
-        showTelehealthRoomLinkDialog(context, session.joinUrl!);
+        openTelehealthJoinUrl(
+          context,
+          joinUrl: session.joinUrl!,
+          title: '${appointment.therapyType} · ${appointment.childName}',
+          vendor: session.vendor,
+        );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Room ready — open Telehealth to join')),

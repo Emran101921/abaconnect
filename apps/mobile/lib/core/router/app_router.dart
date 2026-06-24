@@ -60,6 +60,7 @@ import '../../features/documents/presentation/documents_screen.dart';
 import '../../features/insurance/presentation/insurance_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
 import '../../features/payments/presentation/payments_screen.dart';
+import '../../features/telehealth/presentation/telehealth_room_screen.dart';
 import '../../features/telehealth/presentation/telehealth_screen.dart';
 import '../../features/calls/data/call_models.dart';
 import '../../features/clinical/data/clinical_charts_repository.dart';
@@ -959,6 +960,25 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.telehealth,
         name: 'telehealth',
         builder: (context, state) => const TelehealthScreen(),
+        routes: [
+          GoRoute(
+            path: 'room',
+            name: 'telehealthRoom',
+            builder: (context, state) {
+              final joinUrl = state.uri.queryParameters['url'];
+              if (joinUrl == null || joinUrl.isEmpty) {
+                return const Scaffold(
+                  body: Center(child: Text('Session link missing')),
+                );
+              }
+              return TelehealthRoomScreen(
+                joinUrl: joinUrl,
+                title: state.uri.queryParameters['title'],
+                vendor: state.uri.queryParameters['vendor'],
+              );
+            },
+          ),
+        ],
       ),
       GoRoute(
         path: '${AppRoutes.incomingCall}/:callSessionId',
