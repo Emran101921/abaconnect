@@ -33,6 +33,8 @@ const SMOKE_DEVICE_IDS = [
   'smoke-marketplace-device',
   'smoke-self-pay-device',
   'smoke-sc-device',
+  'smoke-calls-device',
+  'smoke-ei-billing-device',
 ] as const;
 const SMOKE_DEVICE_ID = SMOKE_DEVICE_IDS[0];
 

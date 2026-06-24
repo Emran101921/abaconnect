@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -13,6 +12,7 @@ import '../../../shared/widgets/glossy_button.dart';
 import '../../parent/presentation/parent_dashboard_providers.dart';
 import '../../platform/data/platform_repository.dart';
 import '../../therapist/presentation/therapist_home_screen.dart';
+import 'telehealth_join.dart';
 
 final telehealthSessionsProvider = FutureProvider<List<TelehealthSessionModel>>(
   (ref) {
@@ -77,7 +77,12 @@ class TelehealthScreen extends ConsumerWidget {
                             fullWidth: false,
                             variant: GlossyButtonVariant.tealBlue,
                             onPressed: s.joinUrl != null
-                                ? () => _showRoomLink(context, s.joinUrl!)
+                                ? () => _openRoom(
+                                      context,
+                                      s.joinUrl!,
+                                      title: s.appointmentLabel,
+                                      vendor: s.vendor,
+                                    )
                                 : null,
                           ),
                         ),
@@ -174,7 +179,7 @@ class TelehealthScreen extends ConsumerWidget {
               size: GlossyButtonSize.small,
               fullWidth: false,
               variant: GlossyButtonVariant.tealBlue,
-              onPressed: () => _join(context, ref, a.id),
+              onPressed: () => _join(context, ref, a.id, title: a.title),
             ),
           ),
         );
@@ -185,15 +190,21 @@ class TelehealthScreen extends ConsumerWidget {
   Future<void> _join(
     BuildContext context,
     WidgetRef ref,
-    String appointmentId,
-  ) async {
+    String appointmentId, {
+    String? title,
+  }) async {
     try {
       final room = await ref
           .read(platformRepositoryProvider)
           .joinTelehealth(appointmentId);
       ref.invalidate(telehealthSessionsProvider);
       if (room.joinUrl != null && context.mounted) {
-        _showRoomLink(context, room.joinUrl!);
+        _openRoom(
+          context,
+          room.joinUrl!,
+          title: title ?? room.appointmentLabel,
+          vendor: room.vendor,
+        );
       }
     } catch (e) {
       if (context.mounted) {
@@ -204,38 +215,19 @@ class TelehealthScreen extends ConsumerWidget {
     }
   }
 
-  void _showRoomLink(BuildContext context, String url) {
-    showTelehealthRoomLinkDialog(context, url);
+  void _openRoom(
+    BuildContext context,
+    String url, {
+    String? title,
+    String? vendor,
+  }) {
+    openTelehealthJoinUrl(
+      context,
+      joinUrl: url,
+      title: title,
+      vendor: vendor,
+    );
   }
-}
-
-void showTelehealthRoomLinkDialog(BuildContext context, String url) {
-  showDialog<void>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      title: const Text('Session link'),
-      content: SelectableText(url),
-      actions: [
-        TextButton(
-          onPressed: () {
-            Clipboard.setData(ClipboardData(text: url));
-            Navigator.pop(ctx);
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(const SnackBar(content: Text('Link copied')));
-          },
-          child: const Text('Copy link'),
-        ),
-        GlossyButton(
-          title: 'Close',
-          size: GlossyButtonSize.small,
-          fullWidth: false,
-          variant: GlossyButtonVariant.neutral,
-          onPressed: () => Navigator.pop(ctx),
-        ),
-      ],
-    ),
-  );
 }
 
 class _TelehealthAppointmentRow {

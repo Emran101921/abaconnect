@@ -99,6 +99,9 @@ export class PublicJobOpportunityType {
 
   @Field()
   createdAt: Date;
+
+  @Field({ nullable: true })
+  isSaved?: boolean;
 }
 
 @ObjectType()

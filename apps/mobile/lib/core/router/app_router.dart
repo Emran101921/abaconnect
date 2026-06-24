@@ -60,6 +60,7 @@ import '../../features/documents/presentation/documents_screen.dart';
 import '../../features/insurance/presentation/insurance_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
 import '../../features/payments/presentation/payments_screen.dart';
+import '../../features/telehealth/presentation/telehealth_room_screen.dart';
 import '../../features/telehealth/presentation/telehealth_screen.dart';
 import '../../features/calls/data/call_models.dart';
 import '../../features/clinical/data/clinical_charts_repository.dart';
@@ -85,7 +86,9 @@ import '../../features/job_opportunities/presentation/agency_child_service_needs
 import '../../features/job_opportunities/presentation/agency_opportunities_screen.dart';
 import '../../features/job_opportunities/presentation/agency_opportunity_edit_screen.dart';
 import '../../features/job_opportunities/presentation/job_opportunity_detail_screen.dart';
+import '../../features/job_opportunities/presentation/therapist_job_applications_screen.dart';
 import '../../features/job_opportunities/presentation/therapist_job_opportunities_screen.dart';
+import '../../features/job_opportunities/presentation/therapist_saved_jobs_screen.dart';
 import '../../features/ei_billing/presentation/ei_billing_shell_screen.dart';
 import '../../features/ei_billing/presentation/ei_billing_record_detail_screen.dart';
 import '../../features/marketplace/presentation/marketplace_opt_in_screen.dart';
@@ -185,6 +188,8 @@ abstract final class AppRoutes {
   static const parentMarketplaceOptIn = '/parent/marketplace/opt-in';
   static const therapistMarketplace = '/therapist/marketplace';
   static const therapistJobOpportunities = '/therapist/job-opportunities';
+  static const therapistJobApplications = '/therapist/job-applications';
+  static const therapistSavedJobs = '/therapist/saved-jobs';
   static const adminMarketplace = '/admin/marketplace';
   static const adminMarketplaceAdmin = '/admin/marketplace-admin';
   static const adminEiBilling = '/admin/ei-billing';
@@ -434,8 +439,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'job-opportunities',
             name: 'therapistJobOpportunities',
-            builder: (context, state) =>
-                const TherapistJobOpportunitiesScreen(),
+            builder: (context, state) => TherapistJobOpportunitiesScreen(
+              initialSearchQuery: state.uri.queryParameters['q'],
+              initialZipCode: state.uri.queryParameters['zip'],
+            ),
             routes: [
               GoRoute(
                 path: ':jobId',
@@ -445,6 +452,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 ),
               ),
             ],
+          ),
+          GoRoute(
+            path: 'job-applications',
+            name: 'therapistJobApplications',
+            builder: (context, state) =>
+                const TherapistJobApplicationsScreen(),
+          ),
+          GoRoute(
+            path: 'saved-jobs',
+            name: 'therapistSavedJobs',
+            builder: (context, state) => const TherapistSavedJobsScreen(),
           ),
           GoRoute(
             path: 'charts',
@@ -959,6 +977,25 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.telehealth,
         name: 'telehealth',
         builder: (context, state) => const TelehealthScreen(),
+        routes: [
+          GoRoute(
+            path: 'room',
+            name: 'telehealthRoom',
+            builder: (context, state) {
+              final joinUrl = state.uri.queryParameters['url'];
+              if (joinUrl == null || joinUrl.isEmpty) {
+                return const Scaffold(
+                  body: Center(child: Text('Session link missing')),
+                );
+              }
+              return TelehealthRoomScreen(
+                joinUrl: joinUrl,
+                title: state.uri.queryParameters['title'],
+                vendor: state.uri.queryParameters['vendor'],
+              );
+            },
+          ),
+        ],
       ),
       GoRoute(
         path: '${AppRoutes.incomingCall}/:callSessionId',

@@ -27,6 +27,7 @@ class JobOpportunityModel {
     this.agencyName,
     this.applicationCount,
     this.publishedAt,
+    this.isSaved,
   });
 
   final String id;
@@ -51,6 +52,7 @@ class JobOpportunityModel {
   final String? agencyName;
   final int? applicationCount;
   final DateTime? publishedAt;
+  final bool? isSaved;
 
   factory JobOpportunityModel.fromJson(Map<String, dynamic> json) {
     return JobOpportunityModel(
@@ -78,6 +80,7 @@ class JobOpportunityModel {
       publishedAt: json['publishedAt'] != null
           ? DateTime.tryParse(json['publishedAt'] as String)
           : null,
+      isSaved: json['isSaved'] as bool?,
     );
   }
 }
@@ -295,6 +298,46 @@ class JobOpportunitiesRepository {
         .toList();
   }
 
+  Future<JobOpportunityModel?> fetchJobOpportunity(String jobOpportunityId) async {
+    const query = r'''
+      query JobOpportunity($jobOpportunityId: ID!) {
+        jobOpportunity(jobOpportunityId: $jobOpportunityId) {
+          id title serviceType serviceTypeLabel status locationAreaLabel zipCode
+          distanceMiles locationModality disclaimer publicDescription
+          payRateDisplay agencyName applicationCount publishedAt createdAt
+          languageRequirement employmentType requiredExperience borough county
+          isSaved
+        }
+      }
+    ''';
+    final data = _data(
+      await _client.query(
+        query,
+        variables: {'jobOpportunityId': jobOpportunityId},
+      ),
+    );
+    final row = data['jobOpportunity'];
+    if (row == null) return null;
+    return JobOpportunityModel.fromJson(row as Map<String, dynamic>);
+  }
+
+  Future<List<JobOpportunityModel>> fetchSavedJobOpportunities() async {
+    const query = r'''
+      query SavedJobOpportunities {
+        savedJobOpportunities {
+          id title serviceType serviceTypeLabel status locationAreaLabel zipCode
+          distanceMiles locationModality disclaimer publicDescription
+          payRateDisplay agencyName applicationCount publishedAt createdAt
+        }
+      }
+    ''';
+    final data = _data(await _client.query(query));
+    final list = data['savedJobOpportunities'] as List<dynamic>? ?? [];
+    return list
+        .map((e) => JobOpportunityModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
   Future<List<JobApplicationModel>> fetchMyApplications() async {
     const query = r'''
       query MyJobApplications {
@@ -444,6 +487,27 @@ class JobOpportunitiesRepository {
     );
   }
 
+  Future<JobApplicationModel> withdrawJobApplication(
+    String applicationId,
+  ) async {
+    const mutation = r'''
+      mutation WithdrawJobApplication($id: ID!) {
+        withdrawJobApplication(applicationId: $id) {
+          id status jobTitle updatedAt
+        }
+      }
+    ''';
+    final data = _data(
+      await _client.query(
+        mutation,
+        variables: {'id': applicationId},
+      ),
+    );
+    return JobApplicationModel.fromJson(
+      data['withdrawJobApplication'] as Map<String, dynamic>,
+    );
+  }
+
   Future<void> updateApplicationStatus({
     required String applicationId,
     required String status,
@@ -512,6 +576,37 @@ class JobOpportunitiesRepository {
         .toList();
   }
 
+  Future<void> unsaveJobOpportunity(String jobOpportunityId) async {
+    const mutation = r'''
+      mutation UnsaveJobOpportunity($id: ID!) {
+        unsaveJobOpportunity(jobOpportunityId: $id)
+      }
+    ''';
+    await _client.query(
+      mutation,
+      variables: {'id': jobOpportunityId},
+    );
+  }
+
+  Future<JobOpportunityModel> saveJobOpportunity(String jobOpportunityId) async {
+    const mutation = r'''
+      mutation SaveJobOpportunity($id: ID!) {
+        saveJobOpportunity(jobOpportunityId: $id) {
+          id title isSaved
+        }
+      }
+    ''';
+    final data = _data(
+      await _client.query(
+        mutation,
+        variables: {'id': jobOpportunityId},
+      ),
+    );
+    return JobOpportunityModel.fromJson(
+      data['saveJobOpportunity'] as Map<String, dynamic>,
+    );
+  }
+
   Future<void> adminPauseJob(String jobOpportunityId, {String? reason}) async {
     const mutation = r'''
       mutation AdminPause($input: AdminJobModerationInput!) {
@@ -563,6 +658,25 @@ final agencyJobOpportunitiesProvider =
 final therapistJobBrowseProvider =
     FutureProvider.autoDispose<List<JobOpportunityModel>>((ref) {
   return ref.watch(jobOpportunitiesRepositoryProvider).browseJobOpportunities();
+});
+
+final therapistMyJobApplicationsProvider =
+    FutureProvider.autoDispose<List<JobApplicationModel>>((ref) {
+  return ref.watch(jobOpportunitiesRepositoryProvider).fetchMyApplications();
+});
+
+final therapistSavedJobsProvider =
+    FutureProvider.autoDispose<List<JobOpportunityModel>>((ref) {
+  return ref
+      .watch(jobOpportunitiesRepositoryProvider)
+      .fetchSavedJobOpportunities();
+});
+
+final therapistJobOpportunityProvider = FutureProvider.autoDispose
+    .family<JobOpportunityModel?, String>((ref, jobOpportunityId) {
+  return ref
+      .watch(jobOpportunitiesRepositoryProvider)
+      .fetchJobOpportunity(jobOpportunityId);
 });
 
 final agencyJobApplicationsProvider = FutureProvider.autoDispose

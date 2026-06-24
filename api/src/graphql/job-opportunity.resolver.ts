@@ -90,6 +90,20 @@ export class JobOpportunityResolver {
     };
   }
 
+  @Query(() => PublicJobOpportunityType, { name: 'jobOpportunity' })
+  @Roles('THERAPIST')
+  async jobOpportunity(
+    @CurrentUser() user: AuthUser,
+    @Args('jobOpportunityId', { type: () => ID }) jobOpportunityId: string,
+  ) {
+    const row = await this.jobs.getPublishedJobOpportunityForTherapist(
+      user.id,
+      user.tenantId ?? '',
+      jobOpportunityId,
+    );
+    return mapPublicJobType(row);
+  }
+
   @Query(() => [JobApplicationType], { name: 'myJobApplications' })
   @Roles('THERAPIST')
   async myJobApplications(@CurrentUser() user: AuthUser) {
@@ -260,6 +274,33 @@ export class JobOpportunityResolver {
       applicationId,
     );
     return this.mapApplication(row);
+  }
+
+  @Mutation(() => PublicJobOpportunityType, { name: 'saveJobOpportunity' })
+  @Roles('THERAPIST')
+  async saveJobOpportunity(
+    @CurrentUser() user: AuthUser,
+    @Args('jobOpportunityId', { type: () => ID }) jobOpportunityId: string,
+  ) {
+    const row = await this.jobs.saveJobOpportunity(
+      user.id,
+      user.tenantId ?? '',
+      jobOpportunityId,
+    );
+    return mapPublicJobType(row);
+  }
+
+  @Mutation(() => Boolean, { name: 'unsaveJobOpportunity' })
+  @Roles('THERAPIST')
+  async unsaveJobOpportunity(
+    @CurrentUser() user: AuthUser,
+    @Args('jobOpportunityId', { type: () => ID }) jobOpportunityId: string,
+  ) {
+    return this.jobs.unsaveJobOpportunity(
+      user.id,
+      user.tenantId ?? '',
+      jobOpportunityId,
+    );
   }
 
   @Mutation(() => JobApplicationType, { name: 'updateJobApplicationStatus' })

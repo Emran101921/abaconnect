@@ -48,6 +48,14 @@ class ParentHomeScreen extends ConsumerWidget {
           .length,
       orElse: () => 0,
     );
+    final hasPendingSessionPayment = dashboard.maybeWhen(
+      data: (d) => d.actionItems.any(
+        (item) =>
+            item['actionType'] == 'SESSION_PAYMENT_DUE' &&
+            item['paymentId'] != null,
+      ),
+      orElse: () => false,
+    );
     final marketplaceRequests = ref.watch(parentMarketplaceRequestsProvider);
     final pausedRequests = marketplaceRequests.maybeWhen(
       data: (list) => list.where((r) => r.status == 'PAUSED').toList(),
@@ -551,8 +559,8 @@ class ParentHomeScreen extends ConsumerWidget {
                     ).map((category) {
                       final itemCount = switch (category.id) {
                         'scheduling' => 3,
-                        'care-team' => 7,
-                        'payments' => 2,
+                        'care-team' => 9,
+                        'payments' => hasPendingSessionPayment ? 3 : 2,
                         'account' => 6,
                         _ => 0,
                       };

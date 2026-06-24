@@ -130,8 +130,22 @@ else
 fi
 
 echo
+echo "=== EI billing (NY Medicaid) ==="
+BILLING=$(login billing@demo.local 'Billing123!')
+export SMOKE_BILLING_TOKEN="$BILLING"
+export SMOKE_AGENCY_TOKEN="$AGENCY"
+sleep 3
+if bash "$(dirname "$0")/smoke-ei-billing.sh"; then
+  echo "PASS: smoke-ei-billing.sh"
+  pass=$((pass + 1))
+else
+  echo "FAIL: smoke-ei-billing.sh"
+  fail=$((fail + 1))
+fi
+
+echo
 echo "=== Self-pay session flow ==="
-# Brief pause + retry — marketplace logins can trip auth rate limits.
+# Brief pause + retry — prior scripts can trip auth rate limits.
 sleep 3
 self_pay_ok=0
 for attempt in 1 2 3; do
@@ -147,6 +161,19 @@ if [[ "$self_pay_ok" -eq 1 ]]; then
   pass=$((pass + 1))
 else
   echo "FAIL: smoke-self-pay.sh"
+  fail=$((fail + 1))
+fi
+
+echo
+echo "=== Calls integration ==="
+export SMOKE_THERAPIST_TOKEN="$THER"
+export SMOKE_PARENT_TOKEN="$PARENT"
+sleep 3
+if bash "$(dirname "$0")/smoke-calls.sh"; then
+  echo "PASS: smoke-calls.sh"
+  pass=$((pass + 1))
+else
+  echo "FAIL: smoke-calls.sh"
   fail=$((fail + 1))
 fi
 

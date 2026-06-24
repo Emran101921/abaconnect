@@ -199,6 +199,18 @@ class AdminHomeScreen extends ConsumerWidget {
                 onTap: () => context.push('${AppRoutes.adminHome}/audit'),
               ),
               _OpsTile(
+                title: 'NY EI billing',
+                subtitle: 'Claims, denials, and clearinghouse workflows',
+                icon: Icons.receipt_long_outlined,
+                onTap: () => context.push(AppRoutes.adminEiBilling),
+              ),
+              _OpsTile(
+                title: 'Job opportunities moderation',
+                subtitle: 'Pause, remove, and audit agency staffing posts',
+                icon: Icons.work_outline,
+                onTap: () => context.push(AppRoutes.adminMarketplaceAdmin),
+              ),
+              _OpsTile(
                 title: 'Marketplace moderation',
                 subtitle: 'Review anonymous listings and consent audit trail',
                 icon: Icons.storefront_outlined,

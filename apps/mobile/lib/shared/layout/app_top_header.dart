@@ -109,14 +109,7 @@ class AppTopHeader extends ConsumerWidget {
                           vertical: AppSpacing.sm,
                         ),
                       ),
-                      onSubmitted: (q) {
-                        if (q.trim().isEmpty) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Search for "$q" is coming soon.'),
-                          ),
-                        );
-                      },
+                      onSubmitted: (q) => _onSearchSubmitted(context, q.trim()),
                     ),
                   ),
                   const SizedBox(width: AppSpacing.sm),
@@ -196,5 +189,63 @@ class AppTopHeader extends ConsumerWidget {
       case AppShellRole.serviceCoordinator:
         context.push('${AppRoutes.serviceCoordinatorHome}/follow-ups');
     }
+  }
+
+  void _onSearchSubmitted(BuildContext context, String query) {
+    if (query.isEmpty) return;
+    final role = shellRole;
+    if (role == null) return;
+
+    switch (role) {
+      case AppShellRole.parent:
+        final therapyTypes = _parentTherapyTypesFromQuery(query);
+        if (therapyTypes.isEmpty) {
+          context.push(AppRoutes.matching);
+        } else {
+          context.push(
+            '${AppRoutes.matching}?therapyTypes=${therapyTypes.join(',')}',
+          );
+        }
+      case AppShellRole.therapist:
+        final zip = RegExp(r'^\d{5}$').hasMatch(query) ? query : null;
+        final q = zip == null ? query : null;
+        final params = <String>[
+          if (q != null) 'q=${Uri.encodeComponent(q)}',
+          if (zip != null) 'zip=$zip',
+        ];
+        final uri = params.isEmpty
+            ? AppRoutes.therapistJobOpportunities
+            : '${AppRoutes.therapistJobOpportunities}?${params.join('&')}';
+        context.push(uri);
+      case AppShellRole.agency:
+        context.push(AppRoutes.agencyOpportunities);
+      case AppShellRole.admin:
+        context.push('${AppRoutes.adminHome}/users');
+      case AppShellRole.serviceCoordinator:
+        context.push('${AppRoutes.serviceCoordinatorHome}/follow-ups');
+    }
+  }
+
+  List<String> _parentTherapyTypesFromQuery(String query) {
+    final normalized = query.toLowerCase();
+    final types = <String>{};
+
+    if (RegExp(r'\baba\b|applied behavior').hasMatch(normalized)) {
+      types.add('ABA');
+    }
+    if (RegExp(r'\bspeech\b|slp\b|language therapy').hasMatch(normalized)) {
+      types.add('SPEECH');
+    }
+    if (RegExp(r'\bot\b|occupational').hasMatch(normalized)) {
+      types.add('OCCUPATIONAL');
+    }
+    if (RegExp(r'\bpt\b|physical therapy').hasMatch(normalized)) {
+      types.add('PHYSICAL');
+    }
+    if (RegExp(r'early intervention|\bei\b').hasMatch(normalized)) {
+      types.add('EARLY_INTERVENTION');
+    }
+
+    return types.toList();
   }
 }

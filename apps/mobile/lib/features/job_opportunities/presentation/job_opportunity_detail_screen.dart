@@ -19,42 +19,15 @@ class JobOpportunityDetailScreen extends ConsumerStatefulWidget {
 
 class _JobOpportunityDetailScreenState
     extends ConsumerState<JobOpportunityDetailScreen> {
-  JobOpportunityModel? _job;
   final _messageController = TextEditingController();
-  bool _loading = true;
   bool _applying = false;
+  bool _saving = false;
+  bool? _isSaved;
 
   @override
   void dispose() {
     _messageController.dispose();
     super.dispose();
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    try {
-      final items = await ref
-          .read(jobOpportunitiesRepositoryProvider)
-          .browseJobOpportunities();
-      JobOpportunityModel? match;
-      for (final item in items) {
-        if (item.id == widget.jobOpportunityId) {
-          match = item;
-          break;
-        }
-      }
-      setState(() {
-        _job = match;
-        _loading = false;
-      });
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
-    }
   }
 
   Future<void> _apply() async {
@@ -74,54 +47,108 @@ class _JobOpportunityDetailScreenState
     }
   }
 
+  Future<void> _toggleSaved(bool currentlySaved) async {
+    setState(() => _saving = true);
+    try {
+      final repo = ref.read(jobOpportunitiesRepositoryProvider);
+      if (currentlySaved) {
+        await repo.unsaveJobOpportunity(widget.jobOpportunityId);
+        if (mounted) {
+          setState(() => _isSaved = false);
+          AppSnackBar.showSuccess(context, 'Removed from saved jobs');
+        }
+      } else {
+        await repo.saveJobOpportunity(widget.jobOpportunityId);
+        if (mounted) {
+          setState(() => _isSaved = true);
+          AppSnackBar.showSuccess(context, 'Saved job');
+        }
+      }
+      ref.invalidate(therapistSavedJobsProvider);
+      ref.invalidate(therapistJobOpportunityProvider(widget.jobOpportunityId));
+    } catch (e) {
+      if (mounted) AppSnackBar.showError(context, e);
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
-      return const AppScaffold(
+    final jobAsync =
+        ref.watch(therapistJobOpportunityProvider(widget.jobOpportunityId));
+
+    return jobAsync.when(
+      loading: () => const AppScaffold(
         title: 'Job opportunity',
         body: Center(child: CircularProgressIndicator()),
-      );
-    }
-    final job = _job;
-    if (job == null) {
-      return const AppScaffold(
-        title: 'Job opportunity',
-        body: Center(child: Text('Opportunity not found')),
-      );
-    }
-
-    return AppScaffold(
-      title: job.title,
-      subtitle: job.agencyName ?? job.locationAreaLabel,
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          PhiWarningBanner(message: job.disclaimer),
-          const SizedBox(height: 16),
-          Text(job.serviceTypeLabel, style: Theme.of(context).textTheme.titleSmall),
-          if (job.payRateDisplay != null) ...[
-            const SizedBox(height: 8),
-            Text('Pay: ${job.payRateDisplay}'),
-          ],
-          if (job.publicDescription != null) ...[
-            const SizedBox(height: 16),
-            Text(job.publicDescription!),
-          ],
-          const SizedBox(height: 16),
-          TextField(
-            controller: _messageController,
-            maxLines: 4,
-            decoration: const InputDecoration(
-              labelText: 'Application message (optional)',
-            ),
-          ),
-          const SizedBox(height: 16),
-          GlossyButton(
-            label: _applying ? 'Submitting…' : 'Apply',
-            onPressed: _applying ? null : _apply,
-          ),
-        ],
       ),
+      error: (e, _) => AppScaffold(
+        title: 'Job opportunity',
+        body: Center(child: Text('$e')),
+      ),
+      data: (job) {
+        if (job == null) {
+          return const AppScaffold(
+            title: 'Job opportunity',
+            body: Center(child: Text('Opportunity not found')),
+          );
+        }
+
+        final isSaved = _isSaved ?? job.isSaved ?? false;
+
+        return AppScaffold(
+          title: job.title,
+          subtitle: job.agencyName ?? job.locationAreaLabel,
+          actions: [
+            IconButton(
+              tooltip: isSaved ? 'Remove from saved' : 'Save job',
+              onPressed: _saving ? null : () => _toggleSaved(isSaved),
+              icon: _saving
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Icon(
+                      isSaved ? Icons.bookmark : Icons.bookmark_border,
+                    ),
+            ),
+          ],
+          body: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              PhiWarningBanner(message: job.disclaimer),
+              const SizedBox(height: 16),
+              Text(
+                job.serviceTypeLabel,
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              if (job.payRateDisplay != null) ...[
+                const SizedBox(height: 8),
+                Text('Pay: ${job.payRateDisplay}'),
+              ],
+              if (job.publicDescription != null) ...[
+                const SizedBox(height: 16),
+                Text(job.publicDescription!),
+              ],
+              const SizedBox(height: 16),
+              TextField(
+                controller: _messageController,
+                maxLines: 4,
+                decoration: const InputDecoration(
+                  labelText: 'Application message (optional)',
+                ),
+              ),
+              const SizedBox(height: 16),
+              GlossyButton(
+                label: _applying ? 'Submitting…' : 'Apply',
+                onPressed: _applying ? null : _apply,
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

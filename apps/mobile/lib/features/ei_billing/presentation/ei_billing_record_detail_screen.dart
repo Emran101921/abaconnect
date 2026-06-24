@@ -1,10 +1,16 @@
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/router/app_router.dart';
+import '../../../core/utils/file_download.dart';
 import '../../../shared/layout/dashboard_card.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_snackbar.dart';
@@ -195,6 +201,67 @@ class _EiBillingRecordDetailScreenState
     }
   }
 
+  Future<String> _saveExportToFile(EiBillingExportResultModel result) async {
+    final bytes = Uint8List.fromList(utf8.encode(result.payload));
+    return downloadBytes(bytes, result.fileName);
+  }
+
+  Future<void> _openExportFile(String path) async {
+    final uri = Uri.file(path);
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      if (mounted) {
+        AppSnackBar.showError(context, 'Could not open downloaded file.');
+      }
+    }
+  }
+
+  Future<void> _downloadExportFile(
+    BuildContext ctx,
+    EiBillingExportResultModel result,
+  ) async {
+    try {
+      final path = await _saveExportToFile(result);
+      if (!ctx.mounted) return;
+      if (kIsWeb || path.isEmpty) {
+        AppSnackBar.showSuccess(ctx, 'Download started');
+        return;
+      }
+      await _openExportFile(path);
+    } catch (e) {
+      if (ctx.mounted) {
+        AppSnackBar.showError(
+          ctx,
+          'Download failed: ${AppSnackBar.messageFromError(e)}',
+        );
+      }
+    }
+  }
+
+  Future<void> _shareExportFile(
+    BuildContext ctx,
+    EiBillingExportResultModel result,
+  ) async {
+    try {
+      final path = await _saveExportToFile(result);
+      if (!ctx.mounted) return;
+      if (path.isEmpty) {
+        AppSnackBar.showError(ctx, 'Could not prepare file for sharing.');
+        return;
+      }
+      await Share.shareXFiles(
+        [XFile(path, name: result.fileName)],
+        subject: result.fileName,
+      );
+    } catch (e) {
+      if (ctx.mounted) {
+        AppSnackBar.showError(
+          ctx,
+          'Share failed: ${AppSnackBar.messageFromError(e)}',
+        );
+      }
+    }
+  }
+
   Future<void> _showExportDialog(EiBillingExportResultModel result) async {
     if (!mounted) return;
     await showDialog<void>(
@@ -236,6 +303,15 @@ class _EiBillingRecordDetailScreenState
               }
             },
             child: const Text('Copy to clipboard'),
+          ),
+          if (!kIsWeb)
+            TextButton(
+              onPressed: () => _shareExportFile(ctx, result),
+              child: const Text('Share file'),
+            ),
+          TextButton(
+            onPressed: () => _downloadExportFile(ctx, result),
+            child: const Text('Download'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx),

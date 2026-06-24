@@ -368,6 +368,105 @@ export class JobOpportunitiesService {
     return { items, page, pageSize, total: items.length };
   }
 
+  async getPublishedJobOpportunityForTherapist(
+    userId: string,
+    tenantId: string,
+    jobOpportunityId: string,
+  ) {
+    const therapist = await this.requireTherapist(userId, tenantId);
+    const row = await this.prisma.jobOpportunity.findFirst({
+      where: { id: jobOpportunityId, tenantId, status: 'PUBLISHED' },
+      include: {
+        agency: true,
+        _count: { select: { applications: true } },
+      },
+    });
+    if (!row) {
+      throw new NotFoundException('Published job opportunity not found');
+    }
+
+    let distanceMiles: number | undefined;
+    if (
+      therapist.zipCode &&
+      row.zipCentroidLat != null &&
+      row.zipCentroidLng != null
+    ) {
+      const centroid = zipToApproxCentroid(therapist.zipCode);
+      distanceMiles = haversineMiles(
+        centroid.lat,
+        centroid.lng,
+        Number(row.zipCentroidLat),
+        Number(row.zipCentroidLng),
+      );
+    }
+
+    const saved = await this.prisma.savedJobOpportunity.findUnique({
+      where: {
+        therapistId_jobOpportunityId: {
+          therapistId: therapist.id,
+          jobOpportunityId,
+        },
+      },
+    });
+
+    return {
+      ...toPublicJobOpportunity(row, { distanceMiles }),
+      isSaved: saved != null,
+    };
+  }
+
+  async saveJobOpportunity(
+    userId: string,
+    tenantId: string,
+    jobOpportunityId: string,
+  ) {
+    const therapist = await this.requireTherapist(userId, tenantId);
+    const opportunity = await this.prisma.jobOpportunity.findFirst({
+      where: { id: jobOpportunityId, tenantId, status: 'PUBLISHED' },
+      include: {
+        agency: true,
+        _count: { select: { applications: true } },
+      },
+    });
+    if (!opportunity) {
+      throw new NotFoundException('Published job opportunity not found');
+    }
+
+    await this.prisma.savedJobOpportunity.upsert({
+      where: {
+        therapistId_jobOpportunityId: {
+          therapistId: therapist.id,
+          jobOpportunityId,
+        },
+      },
+      create: {
+        therapistId: therapist.id,
+        jobOpportunityId,
+      },
+      update: {},
+    });
+
+    return {
+      ...toPublicJobOpportunity(opportunity),
+      isSaved: true,
+    };
+  }
+
+  async unsaveJobOpportunity(
+    userId: string,
+    tenantId: string,
+    jobOpportunityId: string,
+  ) {
+    const therapist = await this.requireTherapist(userId, tenantId);
+    await this.prisma.savedJobOpportunity.deleteMany({
+      where: {
+        therapistId: therapist.id,
+        jobOpportunityId,
+      },
+    });
+    return true;
+  }
+
   async applyToJobOpportunity(
     userId: string,
     tenantId: string,
