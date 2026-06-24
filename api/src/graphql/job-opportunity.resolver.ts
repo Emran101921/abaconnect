@@ -90,6 +90,20 @@ export class JobOpportunityResolver {
     };
   }
 
+  @Query(() => PublicJobOpportunityType, { name: 'jobOpportunity' })
+  @Roles('THERAPIST')
+  async jobOpportunity(
+    @CurrentUser() user: AuthUser,
+    @Args('jobOpportunityId', { type: () => ID }) jobOpportunityId: string,
+  ) {
+    const row = await this.jobs.getPublishedJobOpportunityForTherapist(
+      user.id,
+      user.tenantId ?? '',
+      jobOpportunityId,
+    );
+    return mapPublicJobType(row);
+  }
+
   @Query(() => [JobApplicationType], { name: 'myJobApplications' })
   @Roles('THERAPIST')
   async myJobApplications(@CurrentUser() user: AuthUser) {

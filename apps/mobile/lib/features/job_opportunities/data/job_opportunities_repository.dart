@@ -295,6 +295,45 @@ class JobOpportunitiesRepository {
         .toList();
   }
 
+  Future<JobOpportunityModel?> fetchJobOpportunity(String jobOpportunityId) async {
+    const query = r'''
+      query JobOpportunity($jobOpportunityId: ID!) {
+        jobOpportunity(jobOpportunityId: $jobOpportunityId) {
+          id title serviceType serviceTypeLabel status locationAreaLabel zipCode
+          distanceMiles locationModality disclaimer publicDescription
+          payRateDisplay agencyName applicationCount publishedAt createdAt
+          languageRequirement employmentType requiredExperience borough county
+        }
+      }
+    ''';
+    final data = _data(
+      await _client.query(
+        query,
+        variables: {'jobOpportunityId': jobOpportunityId},
+      ),
+    );
+    final row = data['jobOpportunity'];
+    if (row == null) return null;
+    return JobOpportunityModel.fromJson(row as Map<String, dynamic>);
+  }
+
+  Future<List<JobOpportunityModel>> fetchSavedJobOpportunities() async {
+    const query = r'''
+      query SavedJobOpportunities {
+        savedJobOpportunities {
+          id title serviceType serviceTypeLabel status locationAreaLabel zipCode
+          distanceMiles locationModality disclaimer publicDescription
+          payRateDisplay agencyName applicationCount publishedAt createdAt
+        }
+      }
+    ''';
+    final data = _data(await _client.query(query));
+    final list = data['savedJobOpportunities'] as List<dynamic>? ?? [];
+    return list
+        .map((e) => JobOpportunityModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
   Future<List<JobApplicationModel>> fetchMyApplications() async {
     const query = r'''
       query MyJobApplications {
@@ -589,6 +628,20 @@ final therapistJobBrowseProvider =
 final therapistMyJobApplicationsProvider =
     FutureProvider.autoDispose<List<JobApplicationModel>>((ref) {
   return ref.watch(jobOpportunitiesRepositoryProvider).fetchMyApplications();
+});
+
+final therapistSavedJobsProvider =
+    FutureProvider.autoDispose<List<JobOpportunityModel>>((ref) {
+  return ref
+      .watch(jobOpportunitiesRepositoryProvider)
+      .fetchSavedJobOpportunities();
+});
+
+final therapistJobOpportunityProvider = FutureProvider.autoDispose
+    .family<JobOpportunityModel?, String>((ref, jobOpportunityId) {
+  return ref
+      .watch(jobOpportunitiesRepositoryProvider)
+      .fetchJobOpportunity(jobOpportunityId);
 });
 
 final agencyJobApplicationsProvider = FutureProvider.autoDispose

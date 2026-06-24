@@ -19,42 +19,13 @@ class JobOpportunityDetailScreen extends ConsumerStatefulWidget {
 
 class _JobOpportunityDetailScreenState
     extends ConsumerState<JobOpportunityDetailScreen> {
-  JobOpportunityModel? _job;
   final _messageController = TextEditingController();
-  bool _loading = true;
   bool _applying = false;
 
   @override
   void dispose() {
     _messageController.dispose();
     super.dispose();
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    try {
-      final items = await ref
-          .read(jobOpportunitiesRepositoryProvider)
-          .browseJobOpportunities();
-      JobOpportunityModel? match;
-      for (final item in items) {
-        if (item.id == widget.jobOpportunityId) {
-          match = item;
-          break;
-        }
-      }
-      setState(() {
-        _job = match;
-        _loading = false;
-      });
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
-    }
   }
 
   Future<void> _apply() async {
@@ -76,52 +47,63 @@ class _JobOpportunityDetailScreenState
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
-      return const AppScaffold(
+    final jobAsync =
+        ref.watch(therapistJobOpportunityProvider(widget.jobOpportunityId));
+
+    return jobAsync.when(
+      loading: () => const AppScaffold(
         title: 'Job opportunity',
         body: Center(child: CircularProgressIndicator()),
-      );
-    }
-    final job = _job;
-    if (job == null) {
-      return const AppScaffold(
-        title: 'Job opportunity',
-        body: Center(child: Text('Opportunity not found')),
-      );
-    }
-
-    return AppScaffold(
-      title: job.title,
-      subtitle: job.agencyName ?? job.locationAreaLabel,
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          PhiWarningBanner(message: job.disclaimer),
-          const SizedBox(height: 16),
-          Text(job.serviceTypeLabel, style: Theme.of(context).textTheme.titleSmall),
-          if (job.payRateDisplay != null) ...[
-            const SizedBox(height: 8),
-            Text('Pay: ${job.payRateDisplay}'),
-          ],
-          if (job.publicDescription != null) ...[
-            const SizedBox(height: 16),
-            Text(job.publicDescription!),
-          ],
-          const SizedBox(height: 16),
-          TextField(
-            controller: _messageController,
-            maxLines: 4,
-            decoration: const InputDecoration(
-              labelText: 'Application message (optional)',
-            ),
-          ),
-          const SizedBox(height: 16),
-          GlossyButton(
-            label: _applying ? 'Submitting…' : 'Apply',
-            onPressed: _applying ? null : _apply,
-          ),
-        ],
       ),
+      error: (e, _) => AppScaffold(
+        title: 'Job opportunity',
+        body: Center(child: Text('$e')),
+      ),
+      data: (job) {
+        if (job == null) {
+          return const AppScaffold(
+            title: 'Job opportunity',
+            body: Center(child: Text('Opportunity not found')),
+          );
+        }
+
+        return AppScaffold(
+          title: job.title,
+          subtitle: job.agencyName ?? job.locationAreaLabel,
+          body: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              PhiWarningBanner(message: job.disclaimer),
+              const SizedBox(height: 16),
+              Text(
+                job.serviceTypeLabel,
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              if (job.payRateDisplay != null) ...[
+                const SizedBox(height: 8),
+                Text('Pay: ${job.payRateDisplay}'),
+              ],
+              if (job.publicDescription != null) ...[
+                const SizedBox(height: 16),
+                Text(job.publicDescription!),
+              ],
+              const SizedBox(height: 16),
+              TextField(
+                controller: _messageController,
+                maxLines: 4,
+                decoration: const InputDecoration(
+                  labelText: 'Application message (optional)',
+                ),
+              ),
+              const SizedBox(height: 16),
+              GlossyButton(
+                label: _applying ? 'Submitting…' : 'Apply',
+                onPressed: _applying ? null : _apply,
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

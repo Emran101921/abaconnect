@@ -88,6 +88,7 @@ import '../../features/job_opportunities/presentation/agency_opportunity_edit_sc
 import '../../features/job_opportunities/presentation/job_opportunity_detail_screen.dart';
 import '../../features/job_opportunities/presentation/therapist_job_applications_screen.dart';
 import '../../features/job_opportunities/presentation/therapist_job_opportunities_screen.dart';
+import '../../features/job_opportunities/presentation/therapist_saved_jobs_screen.dart';
 import '../../features/ei_billing/presentation/ei_billing_shell_screen.dart';
 import '../../features/ei_billing/presentation/ei_billing_record_detail_screen.dart';
 import '../../features/marketplace/presentation/marketplace_opt_in_screen.dart';
@@ -188,6 +189,7 @@ abstract final class AppRoutes {
   static const therapistMarketplace = '/therapist/marketplace';
   static const therapistJobOpportunities = '/therapist/job-opportunities';
   static const therapistJobApplications = '/therapist/job-applications';
+  static const therapistSavedJobs = '/therapist/saved-jobs';
   static const adminMarketplace = '/admin/marketplace';
   static const adminMarketplaceAdmin = '/admin/marketplace-admin';
   static const adminEiBilling = '/admin/ei-billing';
@@ -454,6 +456,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             name: 'therapistJobApplications',
             builder: (context, state) =>
                 const TherapistJobApplicationsScreen(),
+          ),
+          GoRoute(
+            path: 'saved-jobs',
+            name: 'therapistSavedJobs',
+            builder: (context, state) => const TherapistSavedJobsScreen(),
           ),
           GoRoute(
             path: 'charts',

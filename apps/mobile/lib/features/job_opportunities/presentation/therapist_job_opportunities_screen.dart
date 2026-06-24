@@ -59,6 +59,14 @@ class _TherapistJobOpportunitiesScreenState
       subtitle: 'Agency staffing posts — separate from parent referrals',
       actions: [
         ActionButton(
+          label: 'Saved jobs',
+          icon: Icons.bookmark_outline,
+          onPressed: () => context.push(AppRoutes.therapistSavedJobs),
+          variant: GlossyButtonVariant.secondary,
+          fullWidth: false,
+          size: GlossyButtonSize.medium,
+        ),
+        ActionButton(
           label: 'My applications',
           icon: Icons.assignment_outlined,
           onPressed: () => context.push(AppRoutes.therapistJobApplications),

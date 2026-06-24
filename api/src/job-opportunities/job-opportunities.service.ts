@@ -368,6 +368,41 @@ export class JobOpportunitiesService {
     return { items, page, pageSize, total: items.length };
   }
 
+  async getPublishedJobOpportunityForTherapist(
+    userId: string,
+    tenantId: string,
+    jobOpportunityId: string,
+  ) {
+    const therapist = await this.requireTherapist(userId, tenantId);
+    const row = await this.prisma.jobOpportunity.findFirst({
+      where: { id: jobOpportunityId, tenantId, status: 'PUBLISHED' },
+      include: {
+        agency: true,
+        _count: { select: { applications: true } },
+      },
+    });
+    if (!row) {
+      throw new NotFoundException('Published job opportunity not found');
+    }
+
+    let distanceMiles: number | undefined;
+    if (
+      therapist.zipCode &&
+      row.zipCentroidLat != null &&
+      row.zipCentroidLng != null
+    ) {
+      const centroid = zipToApproxCentroid(therapist.zipCode);
+      distanceMiles = haversineMiles(
+        centroid.lat,
+        centroid.lng,
+        Number(row.zipCentroidLat),
+        Number(row.zipCentroidLng),
+      );
+    }
+
+    return toPublicJobOpportunity(row, { distanceMiles });
+  }
+
   async applyToJobOpportunity(
     userId: string,
     tenantId: string,
