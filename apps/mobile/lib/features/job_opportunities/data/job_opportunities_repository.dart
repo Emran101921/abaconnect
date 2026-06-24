@@ -444,6 +444,27 @@ class JobOpportunitiesRepository {
     );
   }
 
+  Future<JobApplicationModel> withdrawJobApplication(
+    String applicationId,
+  ) async {
+    const mutation = r'''
+      mutation WithdrawJobApplication($id: ID!) {
+        withdrawJobApplication(applicationId: $id) {
+          id status jobTitle updatedAt
+        }
+      }
+    ''';
+    final data = _data(
+      await _client.query(
+        mutation,
+        variables: {'id': applicationId},
+      ),
+    );
+    return JobApplicationModel.fromJson(
+      data['withdrawJobApplication'] as Map<String, dynamic>,
+    );
+  }
+
   Future<void> updateApplicationStatus({
     required String applicationId,
     required String status,
@@ -563,6 +584,11 @@ final agencyJobOpportunitiesProvider =
 final therapistJobBrowseProvider =
     FutureProvider.autoDispose<List<JobOpportunityModel>>((ref) {
   return ref.watch(jobOpportunitiesRepositoryProvider).browseJobOpportunities();
+});
+
+final therapistMyJobApplicationsProvider =
+    FutureProvider.autoDispose<List<JobApplicationModel>>((ref) {
+  return ref.watch(jobOpportunitiesRepositoryProvider).fetchMyApplications();
 });
 
 final agencyJobApplicationsProvider = FutureProvider.autoDispose

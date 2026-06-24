@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/router/app_router.dart';
+import '../../../shared/layout/action_button.dart';
+import '../../../shared/widgets/glossy_button.dart';
 import '../../../shared/widgets/role_tab_scaffold.dart';
 import '../data/job_opportunities_repository.dart';
 import '../widgets/job_opportunity_card.dart';
@@ -55,6 +57,16 @@ class _TherapistJobOpportunitiesScreenState
     return TherapistTabScaffold(
       title: 'Job Opportunities',
       subtitle: 'Agency staffing posts — separate from parent referrals',
+      actions: [
+        ActionButton(
+          label: 'My applications',
+          icon: Icons.assignment_outlined,
+          onPressed: () => context.push(AppRoutes.therapistJobApplications),
+          variant: GlossyButtonVariant.secondary,
+          fullWidth: false,
+          size: GlossyButtonSize.medium,
+        ),
+      ],
       body: Column(
         children: [
           Padding(

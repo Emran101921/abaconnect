@@ -98,6 +98,15 @@ class TherapistHomeScreen extends ConsumerWidget {
                       size: GlossyButtonSize.medium,
                     ),
                     ActionButton(
+                      label: 'My applications',
+                      icon: Icons.assignment_outlined,
+                      onPressed: () =>
+                          context.push(AppRoutes.therapistJobApplications),
+                      variant: GlossyButtonVariant.secondary,
+                      fullWidth: false,
+                      size: GlossyButtonSize.medium,
+                    ),
+                    ActionButton(
                       label: 'Session notes',
                       icon: Icons.edit_note_outlined,
                       onPressed: () => context.push(
@@ -444,6 +453,18 @@ class TherapistHomeScreen extends ConsumerWidget {
                 subtitle: 'Browse anonymous requests by ZIP area',
                 icon: Icons.storefront_outlined,
                 onTap: () => context.push(AppRoutes.therapistMarketplace),
+              ),
+              _OpsTile(
+                title: 'Job opportunities',
+                subtitle: 'Browse agency staffing posts',
+                icon: Icons.work_outline,
+                onTap: () => context.push(AppRoutes.therapistJobOpportunities),
+              ),
+              _OpsTile(
+                title: 'My applications',
+                subtitle: 'Track submitted agency job applications',
+                icon: Icons.assignment_outlined,
+                onTap: () => context.push(AppRoutes.therapistJobApplications),
               ),
               _OpsTile(
                 title: 'My profile',
