@@ -6,6 +6,8 @@ import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_snackbar.dart';
 import '../../../shared/widgets/glossy_button.dart';
+import '../../agency/data/agency_repository.dart';
+import '../../agency/presentation/agency_providers.dart';
 import '../data/job_opportunities_repository.dart';
 import '../widgets/phi_warning_banner.dart';
 
@@ -75,6 +77,71 @@ class _AgencyOpportunityEditScreenState
       if (mounted) AppSnackBar.showError(context, e);
     } finally {
       if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _inviteTherapist(BuildContext context) async {
+    final therapists = await ref.read(agencyTherapistsProvider.future);
+    if (!context.mounted) return;
+    if (therapists.isEmpty) {
+      AppSnackBar.showError(context, 'No therapists on agency roster');
+      return;
+    }
+
+    final selected = await showModalBottomSheet<AgencyTherapistModel>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: Text(
+                  'Invite therapist to apply',
+                  style: Theme.of(ctx).textTheme.titleMedium,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: therapists.length,
+                  itemBuilder: (context, index) {
+                    final therapist = therapists[index];
+                    return ListTile(
+                      title: Text(therapist.displayName),
+                      subtitle: Text(
+                        therapist.email ?? therapist.licenseNumber ?? '',
+                      ),
+                      onTap: () => Navigator.pop(ctx, therapist),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (selected == null) return;
+
+    try {
+      await ref.read(jobOpportunitiesRepositoryProvider).inviteTherapistToApply(
+            jobOpportunityId: widget.jobOpportunityId,
+            therapistId: selected.id,
+          );
+      if (!mounted) return;
+      AppSnackBar.showSuccess(
+        context,
+        'Invite sent to ${selected.displayName}',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      AppSnackBar.showError(context, e);
     }
   }
 
@@ -186,6 +253,14 @@ class _AgencyOpportunityEditScreenState
                   onPressed: _saving || _publishing ? null : _publish,
                 ),
               ],
+              const SizedBox(height: 12),
+              GlossyButton(
+                label: 'Invite therapist',
+                variant: GlossyButtonVariant.secondary,
+                onPressed: _saving || _publishing
+                    ? null
+                    : () => _inviteTherapist(context),
+              ),
               const SizedBox(height: 12),
               GlossyButton(
                 label: 'View applicants',

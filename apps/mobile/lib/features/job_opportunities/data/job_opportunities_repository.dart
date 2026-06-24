@@ -161,6 +161,32 @@ class JobApplicationModel {
   }
 }
 
+class JobOpportunityInviteModel {
+  const JobOpportunityInviteModel({
+    required this.id,
+    required this.jobOpportunityId,
+    required this.jobTitle,
+    required this.agencyName,
+    required this.invitedAt,
+  });
+
+  final String id;
+  final String jobOpportunityId;
+  final String jobTitle;
+  final String agencyName;
+  final DateTime invitedAt;
+
+  factory JobOpportunityInviteModel.fromJson(Map<String, dynamic> json) {
+    return JobOpportunityInviteModel(
+      id: json['id'] as String,
+      jobOpportunityId: json['jobOpportunityId'] as String? ?? '',
+      jobTitle: json['jobTitle'] as String? ?? '',
+      agencyName: json['agencyName'] as String? ?? '',
+      invitedAt: DateTime.parse(json['invitedAt'] as String),
+    );
+  }
+}
+
 class JobMarketplaceAuditLogModel {
   const JobMarketplaceAuditLogModel({
     required this.id,
@@ -561,6 +587,49 @@ class JobOpportunitiesRepository {
         .toList();
   }
 
+  Future<List<JobOpportunityInviteModel>> fetchMyJobInvites() async {
+    const query = r'''
+      query MyJobOpportunityInvites {
+        myJobOpportunityInvites {
+          id jobOpportunityId jobTitle agencyName invitedAt
+        }
+      }
+    ''';
+    final data = _data(await _client.query(query));
+    final list = data['myJobOpportunityInvites'] as List<dynamic>? ?? [];
+    return list
+        .map((e) => JobOpportunityInviteModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<JobOpportunityInviteModel> inviteTherapistToApply({
+    required String jobOpportunityId,
+    required String therapistId,
+  }) async {
+    const mutation = r'''
+      mutation InviteTherapistToApply($jobOpportunityId: ID!, $therapistId: ID!) {
+        inviteTherapistToApply(
+          jobOpportunityId: $jobOpportunityId
+          therapistId: $therapistId
+        ) {
+          id jobOpportunityId jobTitle agencyName invitedAt
+        }
+      }
+    ''';
+    final data = _data(
+      await _client.query(
+        mutation,
+        variables: {
+          'jobOpportunityId': jobOpportunityId,
+          'therapistId': therapistId,
+        },
+      ),
+    );
+    return JobOpportunityInviteModel.fromJson(
+      data['inviteTherapistToApply'] as Map<String, dynamic>,
+    );
+  }
+
   Future<List<JobMarketplaceAuditLogModel>> adminAuditLogs() async {
     const query = r'''
       query AdminJobAuditLogs {
@@ -684,6 +753,11 @@ final agencyJobApplicationsProvider = FutureProvider.autoDispose
   return ref
       .watch(jobOpportunitiesRepositoryProvider)
       .fetchAgencyApplications(jobOpportunityId: jobOpportunityId);
+});
+
+final therapistJobInvitesProvider =
+    FutureProvider.autoDispose<List<JobOpportunityInviteModel>>((ref) {
+  return ref.watch(jobOpportunitiesRepositoryProvider).fetchMyJobInvites();
 });
 
 final adminJobOpportunitiesProvider =

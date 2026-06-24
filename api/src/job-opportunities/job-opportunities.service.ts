@@ -776,6 +776,88 @@ export class JobOpportunitiesService {
     });
   }
 
+  async inviteTherapistToApply(
+    userId: string,
+    tenantId: string,
+    jobOpportunityId: string,
+    therapistId: string,
+  ) {
+    const agency = await this.resolveAgencyForAdmin(userId, tenantId);
+    const job = await this.requireAgencyJobOpportunity(agency.id, jobOpportunityId);
+
+    const therapist = await this.prisma.therapist.findFirst({
+      where: { id: therapistId, tenantId },
+      include: {
+        agencyLinks: { where: { agencyId: agency.id } },
+      },
+    });
+    if (!therapist) {
+      throw new NotFoundException('Therapist not found in tenant');
+    }
+
+    const onRoster = therapist.agencyLinks.length > 0;
+    const verifiedInTenant = therapist.isVerified;
+    if (!onRoster && !verifiedInTenant) {
+      throw new BadRequestException(
+        'Therapist must be on agency roster or verified in tenant',
+      );
+    }
+
+    const invite = await this.prisma.agencyInviteToApply.upsert({
+      where: {
+        jobOpportunityId_therapistId: {
+          jobOpportunityId,
+          therapistId,
+        },
+      },
+      create: {
+        jobOpportunityId,
+        therapistId,
+        invitedByUserId: userId,
+      },
+      update: {
+        invitedByUserId: userId,
+      },
+      include: {
+        jobOpportunity: { include: { agency: true } },
+      },
+    });
+
+    await this.logAudit(tenantId, {
+      eventType: JOB_MARKETPLACE_EVENT_TYPES.THERAPIST_INVITED_TO_APPLY,
+      entityType: 'AgencyInviteToApply',
+      entityId: invite.id,
+      actorUserId: userId,
+      metadata: {
+        jobOpportunityId,
+        therapistId,
+        agencyId: agency.id,
+        jobTitle: job.title,
+      },
+    });
+
+    return invite;
+  }
+
+  async listJobInvitesForTherapist(userId: string, tenantId: string) {
+    const therapist = await this.requireTherapist(userId, tenantId);
+    const invites = await this.prisma.agencyInviteToApply.findMany({
+      where: { therapistId: therapist.id },
+      include: {
+        jobOpportunity: { include: { agency: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return invites.map((invite) => ({
+      id: invite.id,
+      jobOpportunityId: invite.jobOpportunityId,
+      jobTitle: invite.jobOpportunity.title,
+      agencyName: invite.jobOpportunity.agency.name,
+      invitedAt: invite.createdAt,
+    }));
+  }
+
   async listSavedJobOpportunities(userId: string, tenantId: string) {
     const therapist = await this.requireTherapist(userId, tenantId);
     const saved = await this.prisma.savedJobOpportunity.findMany({

@@ -192,6 +192,24 @@ export class JobMarketplaceAuditLogType {
 }
 
 @ObjectType()
+export class JobOpportunityInviteType {
+  @Field(() => ID)
+  id: string;
+
+  @Field(() => ID)
+  jobOpportunityId: string;
+
+  @Field()
+  jobTitle: string;
+
+  @Field()
+  agencyName: string;
+
+  @Field()
+  invitedAt: Date;
+}
+
+@ObjectType()
 export class JobOpportunityBrowseResultType {
   @Field(() => [PublicJobOpportunityType])
   items: PublicJobOpportunityType[];
