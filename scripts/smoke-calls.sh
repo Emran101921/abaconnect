@@ -40,18 +40,100 @@ gql() {
     -d "$body"
 }
 
+gql_mutation() {
+  local token="$1" query="$2" variables="$3"
+  local body
+  body=$(python3 -c "import json; print(json.dumps({'query': '''$query''', 'variables': $variables}))")
+  curl -sf -X POST "$GQL" \
+    -H "Authorization: Bearer $token" \
+    -H 'Content-Type: application/json' \
+    -d "$body"
+}
+
+auth_me_id() {
+  local token="$1"
+  curl -sf "$API/api/v1/auth/me" \
+    -H "Authorization: Bearer $token" \
+    | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))"
+}
+
+ensure_call_authorized_appointment() {
+  local parent_token="$1" therapist_token="$2" parent_user_id="$3"
+  local has_apt
+  has_apt=$(gql "$therapist_token" 'query { myTherapistAppointments { id parentUserId status } }' | python3 -c "
+import sys, json
+parent_id = '''$parent_user_id'''
+rows = json.load(sys.stdin).get('data', {}).get('myTherapistAppointments') or []
+print('yes' if any(
+    a.get('parentUserId') == parent_id and a.get('status') not in ('CANCELLED', 'NO_SHOW')
+    for a in rows
+) else '')
+")
+  if [[ -n "$has_apt" ]]; then
+    echo "INFO: therapist-parent appointment already exists for calls"
+    return 0
+  fi
+
+  echo "INFO: booking demo appointment so therapist can call parent..."
+  local therapist_id child_id sched_start sched_end book appointment_id payment_id
+
+  therapist_id=$(gql "$therapist_token" 'query { myTherapistProfile { id } }' \
+    | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['myTherapistProfile']['id'])")
+
+  child_id=$(gql "$parent_token" 'query { myChildren { id } }' | python3 -c "
+import sys, json
+rows = json.load(sys.stdin).get('data', {}).get('myChildren') or []
+print(rows[0]['id'] if rows else '')
+")
+  if [[ -z "$child_id" ]]; then
+    child_id=$(gql_mutation "$parent_token" \
+      'mutation($input: AddChildInput!) { addChild(input: $input) { id } }' \
+      '{"input":{"firstName":"Call","lastName":"Smoke","dateOfBirth":"2020-06-01T00:00:00.000Z","insuranceType":"Self-pay","zipCode":"11201"}}' \
+      | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['addChild']['id'])")
+  fi
+
+  read -r sched_start sched_end < <(python3 -c "from datetime import datetime, timedelta, timezone; s=datetime.now(timezone.utc)+timedelta(hours=3); e=s+timedelta(hours=1); print(s.strftime('%Y-%m-%dT%H:%M:%S.000Z'), e.strftime('%Y-%m-%dT%H:%M:%S.000Z'))")
+
+  book=$(gql_mutation "$parent_token" \
+    'mutation($input: BookAppointmentInput!) { bookAppointment(input: $input) { id } }' \
+    "{\"input\":{\"childId\":\"$child_id\",\"therapistId\":\"$therapist_id\",\"therapyType\":\"SPEECH\",\"scheduledStart\":\"$sched_start\",\"scheduledEnd\":\"$sched_end\",\"locationType\":\"IN_HOME\"}}")
+  appointment_id=$(echo "$book" | python3 -c "import sys,json; print(json.load(sys.stdin).get('data',{}).get('bookAppointment',{}).get('id',''))")
+  if [[ -z "$appointment_id" ]]; then
+    echo "FAIL: bookAppointment for call setup"
+    echo "$book" | python3 -m json.tool 2>/dev/null | head -20 || echo "$book"
+    return 1
+  fi
+
+  payment_id=$(gql_mutation "$parent_token" \
+    'mutation($appointmentId: ID!) { confirmAppointmentAsParent(appointmentId: $appointmentId) { paymentId } }' \
+    "{\"appointmentId\":\"$appointment_id\"}" \
+    | python3 -c "import sys,json; print(json.load(sys.stdin).get('data',{}).get('confirmAppointmentAsParent',{}).get('paymentId') or '')")
+  if [[ -n "$payment_id" ]]; then
+    gql_mutation "$parent_token" \
+      'mutation($id: ID!) { confirmPaymentDemo(paymentId: $id) { id status } }' \
+      "{\"id\":\"$payment_id\"}" >/dev/null
+  fi
+}
+
 echo "=== Call integration smoke test ==="
 
 THER="${SMOKE_THERAPIST_TOKEN:-$(login therapist@demo.local 'Therapist123!')}"
 PARENT="${SMOKE_PARENT_TOKEN:-$(login parent1@demo.local 'Parent1Demo!')}"
 
-PARENT_USER_ID=$(gql "$THER" 'query { myTherapistAppointments { parentUserId } }' | python3 -c "
+PARENT_USER_ID=$(auth_me_id "$PARENT")
+if [[ -z "$PARENT_USER_ID" ]]; then
+  PARENT_USER_ID=$(gql "$THER" 'query { myTherapistAppointments { parentUserId } }' | python3 -c "
 import sys, json
 rows = json.load(sys.stdin).get('data', {}).get('myTherapistAppointments') or []
 print(next((a['parentUserId'] for a in rows if a.get('parentUserId')), ''))
 ")
+fi
 if [[ -z "$PARENT_USER_ID" ]]; then
-  echo "FAIL: could not resolve parent user id from therapist appointments"
+  echo "FAIL: could not resolve parent user id from auth/me or therapist appointments"
+  exit 1
+fi
+
+if ! ensure_call_authorized_appointment "$PARENT" "$THER" "$PARENT_USER_ID"; then
   exit 1
 fi
 
