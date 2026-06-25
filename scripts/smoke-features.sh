@@ -131,8 +131,19 @@ fi
 
 echo
 echo "=== Job opportunities ==="
-sleep 3
-if bash "$(dirname "$0")/smoke-job-opportunities.sh"; then
+export SMOKE_THERAPIST_TOKEN="$THER"
+export SMOKE_AGENCY_TOKEN="$AGENCY"
+sleep 5
+job_ops_ok=0
+for attempt in 1 2 3; do
+  if bash "$(dirname "$0")/smoke-job-opportunities.sh"; then
+    job_ops_ok=1
+    break
+  fi
+  echo "WARN: smoke-job-opportunities attempt $attempt failed; retrying in ${attempt}0s..."
+  sleep $((attempt * 10))
+done
+if [[ "$job_ops_ok" -eq 1 ]]; then
   echo "PASS: smoke-job-opportunities.sh"
   pass=$((pass + 1))
 else

@@ -33,7 +33,7 @@ gql() {
   local token="$1" query="$2"
   local body
   body=$(python3 -c "import json; print(json.dumps({'query': '''$query'''}))")
-  curl -sf -X POST "$GQL" \
+  curl -s -X POST "$GQL" \
     -H "Authorization: Bearer $token" \
     -H 'Content-Type: application/json' \
     -d "$body"
@@ -46,7 +46,7 @@ AGENCY="${SMOKE_AGENCY_TOKEN:-$(login agency@demo.local 'Agency123!')}"
 
 echo
 echo "=== Therapist browse + saved jobs ==="
-BROWSE=$(gql "$THER" 'query { browseJobOpportunities { totalCount items { id title agencyName isSaved } } }')
+BROWSE=$(gql "$THER" 'query { browseJobOpportunities { total items { id title agencyName isSaved } } }')
 check "browseJobOpportunities query" \
   "isinstance(d.get('data',{}).get('browseJobOpportunities',{}).get('items'), list)" "$BROWSE"
 
