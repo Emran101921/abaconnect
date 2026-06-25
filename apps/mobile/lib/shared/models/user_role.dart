@@ -41,10 +41,13 @@ enum UserRole {
         return '/agency';
       case UserRole.serviceCoordinator:
         return '/service-coordinator';
-      case UserRole.admin:
       case UserRole.billing:
+        return '/admin/ei-billing';
       case UserRole.complianceAuditor:
+        return '/admin/compliance';
       case UserRole.support:
+        return '/admin/complaints';
+      case UserRole.admin:
         return '/admin';
     }
   }

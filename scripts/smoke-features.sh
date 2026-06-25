@@ -130,6 +130,45 @@ else
 fi
 
 echo
+echo "=== Job opportunities ==="
+export SMOKE_THERAPIST_TOKEN="$THER"
+export SMOKE_AGENCY_TOKEN="$AGENCY"
+sleep 5
+job_ops_ok=0
+for attempt in 1 2 3; do
+  if bash "$(dirname "$0")/smoke-job-opportunities.sh"; then
+    job_ops_ok=1
+    break
+  fi
+  echo "WARN: smoke-job-opportunities attempt $attempt failed; retrying in ${attempt}0s..."
+  sleep $((attempt * 10))
+done
+if [[ "$job_ops_ok" -eq 1 ]]; then
+  echo "PASS: smoke-job-opportunities.sh"
+  pass=$((pass + 1))
+else
+  echo "FAIL: smoke-job-opportunities.sh"
+  fail=$((fail + 1))
+fi
+
+echo
+echo "=== Redesign routes ==="
+SC=$(login sc@demo.local 'SC123!')
+export SMOKE_PARENT_TOKEN="$PARENT"
+export SMOKE_THERAPIST_TOKEN="$THER"
+export SMOKE_AGENCY_TOKEN="$AGENCY"
+export SMOKE_ADMIN_TOKEN="$ADMIN"
+export SMOKE_SC_TOKEN="$SC"
+sleep 3
+if bash "$(dirname "$0")/smoke-redesign-routes.sh"; then
+  echo "PASS: smoke-redesign-routes.sh"
+  pass=$((pass + 1))
+else
+  echo "FAIL: smoke-redesign-routes.sh"
+  fail=$((fail + 1))
+fi
+
+echo
 echo "=== EI billing (NY Medicaid) ==="
 BILLING=$(login billing@demo.local 'Billing123!')
 export SMOKE_BILLING_TOKEN="$BILLING"

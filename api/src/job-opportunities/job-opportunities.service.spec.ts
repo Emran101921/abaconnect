@@ -1,10 +1,15 @@
 import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { JobOpportunitiesService } from './job-opportunities.service';
 
 describe('JobOpportunitiesService publish PHI gate', () => {
   let service: JobOpportunitiesService;
+
+  const notifications = {
+    createForUser: jest.fn(),
+  };
 
   const prisma = {
     user: { findFirst: jest.fn() },
@@ -17,10 +22,12 @@ describe('JobOpportunitiesService publish PHI gate', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    notifications.createForUser.mockResolvedValue({});
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         JobOpportunitiesService,
         { provide: PrismaService, useValue: prisma },
+        { provide: NotificationsService, useValue: notifications },
       ],
     }).compile();
     service = module.get(JobOpportunitiesService);

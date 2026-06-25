@@ -26,6 +26,7 @@ import '../therapist_providers.dart';
 import 'therapist_appointment_session_actions.dart';
 import 'self_pay_payment_status_chip.dart';
 import '../../calls/widgets/call_button.dart';
+import '../../job_opportunities/data/job_opportunities_repository.dart';
 import 'therapist_weekly_progress_section.dart';
 
 final therapistAppointmentsProvider =
@@ -47,6 +48,10 @@ class TherapistHomeScreen extends ConsumerWidget {
       data: (c) => c,
       orElse: () => 0,
     );
+    final jobInviteCount = ref.watch(therapistJobInvitesProvider).maybeWhen(
+          data: (invites) => invites.length,
+          orElse: () => 0,
+        );
     final user = ref.watch(authStateProvider).valueOrNull?.user;
     final greetingName =
         user?.fullName?.split(' ').first ?? user?.email.split('@').first ?? 'there';
@@ -89,7 +94,9 @@ class TherapistHomeScreen extends ConsumerWidget {
                       size: GlossyButtonSize.medium,
                     ),
                     ActionButton(
-                      label: 'Job opportunities',
+                      label: jobInviteCount > 0
+                          ? 'Job opportunities ($jobInviteCount invites)'
+                          : 'Job opportunities',
                       icon: Icons.work_outline,
                       onPressed: () =>
                           context.push(AppRoutes.therapistJobOpportunities),
@@ -455,8 +462,12 @@ class TherapistHomeScreen extends ConsumerWidget {
                 onTap: () => context.push(AppRoutes.therapistMarketplace),
               ),
               _OpsTile(
-                title: 'Job opportunities',
-                subtitle: 'Browse agency staffing posts',
+                title: jobInviteCount > 0
+                    ? 'Job opportunities ($jobInviteCount invites)'
+                    : 'Job opportunities',
+                subtitle: jobInviteCount > 0
+                    ? 'Agencies invited you to apply'
+                    : 'Browse agency staffing posts',
                 icon: Icons.work_outline,
                 onTap: () => context.push(AppRoutes.therapistJobOpportunities),
               ),

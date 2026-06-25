@@ -54,6 +54,7 @@ class NotificationItemModel {
     this.sessionId,
     this.marketplaceRequestId,
     this.paymentId,
+    this.jobOpportunityId,
   });
 
   final String id;
@@ -66,6 +67,7 @@ class NotificationItemModel {
   final String? sessionId;
   final String? marketplaceRequestId;
   final String? paymentId;
+  final String? jobOpportunityId;
 }
 
 class InsuranceClaimItemModel {
@@ -265,7 +267,7 @@ class PlatformRepository {
 
   Future<List<NotificationItemModel>> fetchNotifications() async {
     final result = await _graphql.query(r'''
-      query { myNotifications { id title body readAt actionType threadId appointmentId sessionId marketplaceRequestId paymentId } }
+      query { myNotifications { id title body readAt actionType threadId appointmentId sessionId marketplaceRequestId paymentId jobOpportunityId } }
     ''');
     final list = result['data']?['myNotifications'] as List<dynamic>? ?? [];
     return list
@@ -281,6 +283,7 @@ class PlatformRepository {
             sessionId: e['sessionId'] as String?,
             marketplaceRequestId: e['marketplaceRequestId'] as String?,
             paymentId: e['paymentId'] as String?,
+            jobOpportunityId: e['jobOpportunityId'] as String?,
           ),
         )
         .toList();

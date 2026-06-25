@@ -19,6 +19,7 @@ import {
   JobApplicationType,
   JobMarketplaceAuditLogType,
   JobOpportunityBrowseResultType,
+  JobOpportunityInviteType,
   mapPublicJobType,
   PublicJobOpportunityType,
 } from './types/job-opportunity.types';
@@ -112,6 +113,15 @@ export class JobOpportunityResolver {
       user.tenantId ?? '',
     );
     return rows.map((row) => this.mapApplication(row));
+  }
+
+  @Query(() => [JobOpportunityInviteType], { name: 'myJobOpportunityInvites' })
+  @Roles('THERAPIST')
+  async myJobOpportunityInvites(@CurrentUser() user: AuthUser) {
+    return this.jobs.listJobInvitesForTherapist(
+      user.id,
+      user.tenantId ?? '',
+    );
   }
 
   @Query(() => [PublicJobOpportunityType], { name: 'savedJobOpportunities' })
@@ -231,6 +241,28 @@ export class JobOpportunityResolver {
       },
     );
     return mapPublicJobType(toPublicJobOpportunity(row));
+  }
+
+  @Mutation(() => JobOpportunityInviteType, { name: 'inviteTherapistToApply' })
+  @Roles('AGENCY_ADMIN')
+  async inviteTherapistToApply(
+    @CurrentUser() user: AuthUser,
+    @Args('jobOpportunityId', { type: () => ID }) jobOpportunityId: string,
+    @Args('therapistId', { type: () => ID }) therapistId: string,
+  ) {
+    const invite = await this.jobs.inviteTherapistToApply(
+      user.id,
+      user.tenantId ?? '',
+      jobOpportunityId,
+      therapistId,
+    );
+    return {
+      id: invite.id,
+      jobOpportunityId: invite.jobOpportunityId,
+      jobTitle: invite.jobOpportunity.title,
+      agencyName: invite.jobOpportunity.agency.name,
+      invitedAt: invite.createdAt,
+    };
   }
 
   @Mutation(() => PublicJobOpportunityType, { name: 'publishJobOpportunity' })

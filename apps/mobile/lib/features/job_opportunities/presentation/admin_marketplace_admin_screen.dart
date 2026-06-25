@@ -9,7 +9,9 @@ import '../../../shared/widgets/app_status_badge.dart';
 import '../data/job_opportunities_repository.dart';
 
 class AdminMarketplaceAdminScreen extends ConsumerStatefulWidget {
-  const AdminMarketplaceAdminScreen({super.key});
+  const AdminMarketplaceAdminScreen({super.key, this.initialSearchQuery});
+
+  final String? initialSearchQuery;
 
   @override
   ConsumerState<AdminMarketplaceAdminScreen> createState() =>
@@ -92,6 +94,18 @@ class _AdminMarketplaceAdminScreenState
                       children: [
                         AppDataTable<JobOpportunityModel>(
                           rows: rows,
+                          initialSearchQuery: widget.initialSearchQuery,
+                          searchPredicate: (job, q) {
+                            final needle = q.toLowerCase();
+                            return job.title.toLowerCase().contains(needle) ||
+                                (job.agencyName ?? '')
+                                    .toLowerCase()
+                                    .contains(needle) ||
+                                job.status.toLowerCase().contains(needle) ||
+                                job.serviceTypeLabel
+                                    .toLowerCase()
+                                    .contains(needle);
+                          },
                           columns: [
                             AppDataColumn(
                               label: 'Title',

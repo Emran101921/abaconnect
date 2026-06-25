@@ -24,6 +24,7 @@ class AppDataTable<T> extends StatefulWidget {
     required this.columns,
     required this.rows,
     this.searchHint = 'Search…',
+    this.initialSearchQuery,
     this.searchPredicate,
     this.emptyMessage = 'No records found',
     this.onRowTap,
@@ -34,6 +35,7 @@ class AppDataTable<T> extends StatefulWidget {
   final List<AppDataColumn<T>> columns;
   final List<T> rows;
   final String searchHint;
+  final String? initialSearchQuery;
   final bool Function(T row, String query)? searchPredicate;
   final String emptyMessage;
   final void Function(T row)? onRowTap;
@@ -45,7 +47,16 @@ class AppDataTable<T> extends StatefulWidget {
 }
 
 class _AppDataTableState<T> extends State<AppDataTable<T>> {
-  String _query = '';
+  late String _query = widget.initialSearchQuery?.trim() ?? '';
+  late final TextEditingController _searchController = TextEditingController(
+    text: _query,
+  );
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   List<T> get _filtered {
     if (_query.isEmpty || widget.searchPredicate == null) return widget.rows;
@@ -66,6 +77,7 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
           Padding(
             padding: const EdgeInsets.only(bottom: AppSpacing.md),
             child: TextField(
+              controller: _searchController,
               decoration: InputDecoration(
                 hintText: widget.searchHint,
                 prefixIcon: const Icon(Icons.search),

@@ -52,12 +52,13 @@ function assertNoForbiddenFields(payload: Record<string, unknown>): void {
 }
 
 export function toPublicJobOpportunity(
-  row: JobOpportunity & { agency?: { name: string }; _count?: { applications: number } },
+  row: JobOpportunity & {
+    agency?: { name: string };
+    _count?: { applications: number };
+  },
   options?: { distanceMiles?: number },
 ): PublicJobOpportunity {
-  assertNoForbiddenFields(row as unknown as Record<string, unknown>);
-
-  return {
+  const publicJob: PublicJobOpportunity = {
     id: row.id,
     title: row.title,
     serviceType: row.serviceType,
@@ -91,4 +92,8 @@ export function toPublicJobOpportunity(
     applicationCount: row._count?.applications,
     createdAt: row.createdAt,
   };
+
+  assertNoForbiddenFields(publicJob as unknown as Record<string, unknown>);
+
+  return publicJob;
 }

@@ -16,6 +16,7 @@ import { resolveEiBillingActor } from '../ei-billing/ei-billing-access.util';
 import {
   EiBillingQueueFilterInput,
   ExportEiBillingRecordInput,
+  ImportEiEraStubInput,
   RecordEiDenialInput,
   RecordEiPaymentInput,
   SubmitEiBillingRecordInput,
@@ -272,7 +273,12 @@ export class EiBillingResolver {
   }
 
   @Query(() => [EiBillingAuditLogType], { name: 'eiBillingAuditLogs' })
-  @Roles('PLATFORM_ADMIN', 'AGENCY_ADMIN', 'BILLING_STAFF', 'COMPLIANCE_AUDITOR')
+  @Roles(
+    'PLATFORM_ADMIN',
+    'AGENCY_ADMIN',
+    'BILLING_STAFF',
+    'COMPLIANCE_AUDITOR',
+  )
   async eiBillingAuditLogs(@CurrentUser() user: AuthUser) {
     const actor = await resolveEiBillingActor(
       this.prisma,
@@ -311,9 +317,7 @@ export class EiBillingResolver {
     );
     const profile = await this.enrollment.upsertAgencyProfile(actor, {
       ...input,
-      baaSignedAt: input.baaSignedAt
-        ? new Date(input.baaSignedAt)
-        : undefined,
+      baaSignedAt: input.baaSignedAt ? new Date(input.baaSignedAt) : undefined,
     });
     return this.mapAgencyProfile(profile);
   }
@@ -434,7 +438,11 @@ export class EiBillingResolver {
       user.id,
       user.tenantId ?? '',
     );
-    const row = await this.records.createFromSession(actor, sessionId, agencyId);
+    const row = await this.records.createFromSession(
+      actor,
+      sessionId,
+      agencyId,
+    );
     return this.mapRecord(row);
   }
 
@@ -543,6 +551,26 @@ export class EiBillingResolver {
     };
   }
 
+  @Mutation(() => EiPaymentPostingType, { name: 'importEiEraStub' })
+  @Roles('PLATFORM_ADMIN', 'BILLING_STAFF')
+  async importEiEraStub(
+    @CurrentUser() user: AuthUser,
+    @Args('input') input: ImportEiEraStubInput,
+  ) {
+    const actor = await resolveEiBillingActor(
+      this.prisma,
+      user.id,
+      user.tenantId ?? '',
+    );
+    const posting = await this.payments.importEiEraStub(actor, input);
+    return {
+      id: posting.id,
+      paidAmount: Number(posting.paidAmount),
+      reconciliationStatus: posting.reconciliationStatus,
+      postedAt: posting.postedAt,
+    };
+  }
+
   @Mutation(() => EiClearinghouseConfigType, {
     name: 'upsertEiClearinghouseConfig',
   })
@@ -558,9 +586,7 @@ export class EiBillingResolver {
     );
     const config = await this.clearinghouse.upsertConfig(actor, {
       ...input,
-      baaSignedAt: input.baaSignedAt
-        ? new Date(input.baaSignedAt)
-        : undefined,
+      baaSignedAt: input.baaSignedAt ? new Date(input.baaSignedAt) : undefined,
     });
     return this.mapClearinghouseConfig(config);
   }
