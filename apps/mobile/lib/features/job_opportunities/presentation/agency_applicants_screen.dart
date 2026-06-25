@@ -74,7 +74,16 @@ class AgencyApplicantsScreen extends ConsumerWidget {
               children: [
                 AppDataTable<JobApplicationModel>(
                   rows: rows,
-                  showSearch: false,
+                  searchHint: 'Search applicants…',
+                  searchPredicate: (app, q) {
+                    final needle = q.toLowerCase();
+                    return app.therapistName.toLowerCase().contains(needle) ||
+                        app.status.toLowerCase().contains(needle) ||
+                        (app.therapistEmail ?? '')
+                            .toLowerCase()
+                            .contains(needle) ||
+                        (app.message ?? '').toLowerCase().contains(needle);
+                  },
                   columns: [
                     AppDataColumn(
                       label: 'Therapist',

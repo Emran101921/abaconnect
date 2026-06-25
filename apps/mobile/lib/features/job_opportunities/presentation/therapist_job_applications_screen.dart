@@ -18,8 +18,46 @@ bool _canWithdrawApplication(String status) {
       status != 'HIRED_CONTRACTED';
 }
 
-class TherapistJobApplicationsScreen extends ConsumerWidget {
-  const TherapistJobApplicationsScreen({super.key});
+class TherapistJobApplicationsScreen extends ConsumerStatefulWidget {
+  const TherapistJobApplicationsScreen({super.key, this.initialSearchQuery});
+
+  final String? initialSearchQuery;
+
+  @override
+  ConsumerState<TherapistJobApplicationsScreen> createState() =>
+      _TherapistJobApplicationsScreenState();
+}
+
+class _TherapistJobApplicationsScreenState
+    extends ConsumerState<TherapistJobApplicationsScreen> {
+  late final TextEditingController _searchController;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController = TextEditingController(
+      text: widget.initialSearchQuery ?? '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<JobApplicationModel> _filterRows(List<JobApplicationModel> rows) {
+    final query = _searchController.text.trim().toLowerCase();
+    if (query.isEmpty) return rows;
+    return rows.where((app) {
+      final haystack = [
+        app.jobTitle,
+        app.status,
+        app.message,
+      ].whereType<String>().join(' ').toLowerCase();
+      return haystack.contains(query);
+    }).toList();
+  }
 
   Future<void> _withdraw(
     WidgetRef ref,
@@ -61,7 +99,7 @@ class TherapistJobApplicationsScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final applications = ref.watch(therapistMyJobApplicationsProvider);
     final dateFormat = DateFormat.yMMMd().add_jm();
 
@@ -81,6 +119,7 @@ class TherapistJobApplicationsScreen extends ConsumerWidget {
             ],
           ),
           data: (rows) {
+            final filtered = _filterRows(rows);
             if (rows.isEmpty) {
               return ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
@@ -116,71 +155,89 @@ class TherapistJobApplicationsScreen extends ConsumerWidget {
               );
             }
 
-            return ListView.separated(
+            return ListView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(16),
-              itemCount: rows.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                final app = rows[index];
-                return DashboardCard(
-                  onTap: app.jobOpportunityId.isNotEmpty
-                      ? () => context.push(
-                            '${AppRoutes.therapistJobOpportunities}/${app.jobOpportunityId}',
-                          )
-                      : null,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Column(
+              children: [
+                TextField(
+                  controller: _searchController,
+                  decoration: const InputDecoration(
+                    labelText: 'Search applications',
+                    hintText: 'Job title or status…',
+                    prefixIcon: Icon(Icons.search),
+                  ),
+                  onChanged: (_) => setState(() {}),
+                ),
+                const SizedBox(height: 16),
+                if (filtered.isEmpty)
+                  const Center(child: Text('No applications match your search.'))
+                else
+                  ...filtered.map(
+                    (app) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: DashboardCard(
+                        onTap: app.jobOpportunityId.isNotEmpty
+                            ? () => context.push(
+                                  '${AppRoutes.therapistJobOpportunities}/${app.jobOpportunityId}',
+                                )
+                            : null,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  app.jobTitle,
-                                  style:
-                                      Theme.of(context).textTheme.titleMedium,
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        app.jobTitle,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium,
+                                      ),
+                                      const SizedBox(height: AppSpacing.xs),
+                                      Text(
+                                        'Applied ${dateFormat.format(app.createdAt.toLocal())}',
+                                        style:
+                                            Theme.of(context).textTheme.bodySmall,
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                                const SizedBox(height: AppSpacing.xs),
-                                Text(
-                                  'Applied ${dateFormat.format(app.createdAt.toLocal())}',
-                                  style: Theme.of(context).textTheme.bodySmall,
-                                ),
+                                ApplicationStatusBadge(status: app.status),
                               ],
                             ),
-                          ),
-                          ApplicationStatusBadge(status: app.status),
-                        ],
+                            if (app.message != null &&
+                                app.message!.trim().isNotEmpty) ...[
+                              const SizedBox(height: AppSpacing.sm),
+                              Text(
+                                app.message!,
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                            if (_canWithdrawApplication(app.status)) ...[
+                              const SizedBox(height: AppSpacing.md),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: GlossyButton(
+                                  label: 'Withdraw',
+                                  size: GlossyButtonSize.small,
+                                  variant: GlossyButtonVariant.secondary,
+                                  onPressed: () =>
+                                      _withdraw(ref, context, app.id),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
                       ),
-                      if (app.message != null &&
-                          app.message!.trim().isNotEmpty) ...[
-                        const SizedBox(height: AppSpacing.sm),
-                        Text(
-                          app.message!,
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                      if (_canWithdrawApplication(app.status)) ...[
-                        const SizedBox(height: AppSpacing.md),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: GlossyButton(
-                            label: 'Withdraw',
-                            size: GlossyButtonSize.small,
-                            variant: GlossyButtonVariant.secondary,
-                            onPressed: () =>
-                                _withdraw(ref, context, app.id),
-                          ),
-                        ),
-                      ],
-                    ],
+                    ),
                   ),
-                );
-              },
+              ],
             );
           },
         ),

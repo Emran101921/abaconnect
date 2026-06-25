@@ -198,6 +198,20 @@ class AppTopHeader extends ConsumerWidget {
 
     switch (role) {
       case AppShellRole.parent:
+        final normalized = query.toLowerCase();
+        if (RegExp(r'marketplace|service request|anonymous request')
+            .hasMatch(normalized)) {
+          context.push(AppRoutes.parentMarketplace);
+          return;
+        }
+        if (RegExp(r'\bappointment|session|schedule\b').hasMatch(normalized)) {
+          context.push('${AppRoutes.parentHome}/appointments');
+          return;
+        }
+        if (RegExp(r'\bmessage|chat\b').hasMatch(normalized)) {
+          context.push(AppRoutes.messages);
+          return;
+        }
         final therapyTypes = _parentTherapyTypesFromQuery(query);
         if (therapyTypes.isEmpty) {
           context.push(AppRoutes.matching);
@@ -207,6 +221,13 @@ class AppTopHeader extends ConsumerWidget {
           );
         }
       case AppShellRole.therapist:
+        final normalized = query.toLowerCase();
+        if (RegExp(r'\bapplication|applied\b').hasMatch(normalized)) {
+          context.push(
+            '${AppRoutes.therapistJobApplications}?q=${Uri.encodeComponent(query)}',
+          );
+          return;
+        }
         final zip = RegExp(r'^\d{5}$').hasMatch(query) ? query : null;
         final q = zip == null ? query : null;
         final params = <String>[
@@ -218,12 +239,45 @@ class AppTopHeader extends ConsumerWidget {
             : '${AppRoutes.therapistJobOpportunities}?${params.join('&')}';
         context.push(uri);
       case AppShellRole.agency:
-        context.push(AppRoutes.agencyOpportunities);
+        context.push(
+          '${AppRoutes.agencyOpportunities}?q=${Uri.encodeComponent(query)}',
+        );
       case AppShellRole.admin:
-        context.push('${AppRoutes.adminHome}/users');
+        _routeAdminSearch(context, query);
       case AppShellRole.serviceCoordinator:
-        context.push('${AppRoutes.serviceCoordinatorHome}/follow-ups');
+        context.push(
+          '${AppRoutes.serviceCoordinatorHome}/follow-ups?q=${Uri.encodeComponent(query)}',
+        );
     }
+  }
+
+  void _routeAdminSearch(BuildContext context, String query) {
+    final normalized = query.toLowerCase();
+    if (RegExp(r'\bjob\b|staffing|opportunit|applicant').hasMatch(normalized)) {
+      context.push(
+        '${AppRoutes.adminMarketplaceAdmin}?q=${Uri.encodeComponent(query)}',
+      );
+      return;
+    }
+    if (RegExp(r'\bei\b|medicaid|claim|billing').hasMatch(normalized)) {
+      context.push(AppRoutes.adminEiBilling);
+      return;
+    }
+    if (RegExp(r'\bcomplaint|support|dispute').hasMatch(normalized)) {
+      context.push('${AppRoutes.adminHome}/complaints');
+      return;
+    }
+    if (RegExp(r'\bmarketplace|listing|provider request').hasMatch(normalized)) {
+      context.push(AppRoutes.adminMarketplace);
+      return;
+    }
+    if (RegExp(r'\baudit|compliance|hipaa').hasMatch(normalized)) {
+      context.push('${AppRoutes.adminHome}/audit');
+      return;
+    }
+    context.push(
+      '${AppRoutes.adminHome}/users?q=${Uri.encodeComponent(query)}',
+    );
   }
 
   List<String> _parentTherapyTypesFromQuery(String query) {

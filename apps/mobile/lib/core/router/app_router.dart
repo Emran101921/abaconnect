@@ -456,8 +456,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'job-applications',
             name: 'therapistJobApplications',
-            builder: (context, state) =>
-                const TherapistJobApplicationsScreen(),
+            builder: (context, state) => TherapistJobApplicationsScreen(
+              initialSearchQuery: state.uri.queryParameters['q'],
+            ),
           ),
           GoRoute(
             path: 'saved-jobs',
@@ -654,7 +655,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'opportunities',
             name: 'agencyOpportunities',
-            builder: (context, state) => const AgencyOpportunitiesScreen(),
+            builder: (context, state) => AgencyOpportunitiesScreen(
+              initialSearchQuery: state.uri.queryParameters['q'],
+            ),
             routes: [
               GoRoute(
                 path: ':jobId',
@@ -788,7 +791,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'follow-ups',
             name: 'scFollowUps',
-            builder: (context, state) => const ScFollowUpsScreen(),
+            builder: (context, state) => ScFollowUpsScreen(
+              initialSearchQuery: state.uri.queryParameters['q'],
+            ),
           ),
           GoRoute(
             path: 'messages',
@@ -873,7 +878,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'users',
             name: 'adminUsers',
-            builder: (context, state) => const AdminUsersScreen(),
+            builder: (context, state) => AdminUsersScreen(
+              initialSearchQuery: state.uri.queryParameters['q'],
+            ),
           ),
           GoRoute(
             path: 'audit',
@@ -888,7 +895,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'marketplace-admin',
             name: 'adminMarketplaceAdmin',
-            builder: (context, state) => const AdminMarketplaceAdminScreen(),
+            builder: (context, state) => AdminMarketplaceAdminScreen(
+              initialSearchQuery: state.uri.queryParameters['q'],
+            ),
           ),
           GoRoute(
             path: 'ei-billing',

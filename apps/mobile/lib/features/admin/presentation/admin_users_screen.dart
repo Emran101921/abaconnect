@@ -10,7 +10,9 @@ import '../data/admin_repository.dart';
 import 'admin_providers.dart';
 
 class AdminUsersScreen extends ConsumerWidget {
-  const AdminUsersScreen({super.key});
+  const AdminUsersScreen({super.key, this.initialSearchQuery});
+
+  final String? initialSearchQuery;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -43,6 +45,7 @@ class AdminUsersScreen extends ConsumerWidget {
                 AppDataTable<AdminUserModel>(
                   rows: list,
                   searchHint: 'Search users…',
+                  initialSearchQuery: initialSearchQuery,
                   searchPredicate: (u, q) {
                     final needle = q.toLowerCase();
                     return u.fullName.toLowerCase().contains(needle) ||
