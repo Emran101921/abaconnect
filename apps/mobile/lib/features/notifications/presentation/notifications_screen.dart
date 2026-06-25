@@ -41,6 +41,12 @@ class NotificationsScreen extends ConsumerWidget {
     if (n.actionType == 'SESSION_PAYMENT_DUE' && n.paymentId != null) {
       return true;
     }
+    if (n.jobOpportunityId != null &&
+        (n.actionType == 'JOB_INVITE_TO_APPLY' ||
+            n.actionType == 'JOB_APPLICATION_SUBMITTED' ||
+            n.actionType == 'JOB_APPLICATION_STATUS_CHANGED')) {
+      return true;
+    }
     return false;
   }
 
@@ -100,6 +106,23 @@ class NotificationsScreen extends ConsumerWidget {
         role == UserRole.parent) {
       context.push('${AppRoutes.payments}?paymentId=${n.paymentId}');
       return;
+    }
+
+    final jobId = n.jobOpportunityId;
+    if (jobId != null) {
+      if (n.actionType == 'JOB_INVITE_TO_APPLY' && role == UserRole.therapist) {
+        context.push('${AppRoutes.therapistJobOpportunities}/$jobId');
+        return;
+      }
+      if (n.actionType == 'JOB_APPLICATION_SUBMITTED' && role == UserRole.agency) {
+        context.push('${AppRoutes.agencyOpportunities}/$jobId/applicants');
+        return;
+      }
+      if (n.actionType == 'JOB_APPLICATION_STATUS_CHANGED' &&
+          role == UserRole.therapist) {
+        context.push(AppRoutes.therapistJobApplications);
+        return;
+      }
     }
 
     final marketplaceId = n.marketplaceRequestId;

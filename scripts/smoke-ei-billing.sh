@@ -86,5 +86,40 @@ check "exportEiBillingRecord mutation" "d.get('data',{}).get('exportEiBillingRec
 check "exportEiBillingRecord payload" "bool(d.get('data',{}).get('exportEiBillingRecord',{}).get('payload'))" "$EXPORT"
 
 echo
+echo "=== ERA stub import ==="
+ERA=$(python3 -c "
+import json, subprocess, os
+api = os.environ.get('API_URL', 'http://localhost:3000')
+token = '''$BILLING'''
+record_id = '''$RECORD_ID'''
+body = json.dumps({
+  'query': 'mutation(\$input: ImportEiEraStubInput!) { importEiEraStub(input: \$input) { id paidAmount reconciliationStatus } }',
+  'variables': {
+    'input': {
+      'recordId': record_id,
+      'eraJson': json.dumps({
+        'paidAmount': 120,
+        'allowedAmount': 100,
+        'eftReference': 'EFT-SMOKE',
+        'traceNumber': 'ERA-SMOKE-001',
+      }),
+    },
+  },
+})
+result = subprocess.run(
+  ['curl', '-sf', '-X', 'POST', f'{api}/graphql',
+   '-H', f'Authorization: Bearer {token}',
+   '-H', 'Content-Type: application/json',
+   '-d', body],
+  capture_output=True,
+  text=True,
+  check=True,
+)
+print(result.stdout)
+")
+check "importEiEraStub mutation" \
+  "d.get('data',{}).get('importEiEraStub',{}).get('paidAmount') == 120" "$ERA"
+
+echo
 echo "=== Summary: $pass passed, $fail failed ==="
 test "$fail" -eq 0

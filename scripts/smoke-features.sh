@@ -130,6 +130,17 @@ else
 fi
 
 echo
+echo "=== Job opportunities ==="
+sleep 3
+if bash "$(dirname "$0")/smoke-job-opportunities.sh"; then
+  echo "PASS: smoke-job-opportunities.sh"
+  pass=$((pass + 1))
+else
+  echo "FAIL: smoke-job-opportunities.sh"
+  fail=$((fail + 1))
+fi
+
+echo
 echo "=== Redesign routes ==="
 SC=$(login sc@demo.local 'SC123!')
 export SMOKE_PARENT_TOKEN="$PARENT"

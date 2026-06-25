@@ -90,6 +90,9 @@ export class NotificationType {
 
   @Field({ nullable: true })
   paymentId?: string;
+
+  @Field({ nullable: true })
+  jobOpportunityId?: string;
 }
 
 @ObjectType()

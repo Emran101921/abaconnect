@@ -1,10 +1,15 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { JobOpportunitiesService } from './job-opportunities.service';
 
 describe('JobOpportunitiesService inviteTherapistToApply', () => {
   let service: JobOpportunitiesService;
+
+  const notifications = {
+    createForUser: jest.fn(),
+  };
 
   const prisma = {
     user: { findFirst: jest.fn() },
@@ -16,10 +21,12 @@ describe('JobOpportunitiesService inviteTherapistToApply', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    notifications.createForUser.mockResolvedValue({});
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         JobOpportunitiesService,
         { provide: PrismaService, useValue: prisma },
+        { provide: NotificationsService, useValue: notifications },
       ],
     }).compile();
     service = module.get(JobOpportunitiesService);
@@ -42,8 +49,10 @@ describe('JobOpportunitiesService inviteTherapistToApply', () => {
     prisma.therapist.findFirst.mockResolvedValue({
       id: 'therapist-1',
       tenantId: 't1',
+      userId: 'therapist-user-1',
       isVerified: false,
       agencyLinks: [{ agencyId: 'agency-1' }],
+      user: { id: 'therapist-user-1' },
     });
     prisma.agencyInviteToApply.upsert.mockResolvedValue({
       id: 'invite-1',
@@ -70,6 +79,15 @@ describe('JobOpportunitiesService inviteTherapistToApply', () => {
       expect.objectContaining({
         data: expect.objectContaining({
           eventType: 'THERAPIST_INVITED_TO_APPLY',
+        }),
+      }),
+    );
+    expect(notifications.createForUser).toHaveBeenCalledWith(
+      'therapist-user-1',
+      expect.objectContaining({
+        data: expect.objectContaining({
+          type: 'JOB_INVITE_TO_APPLY',
+          jobOpportunityId: 'job-1',
         }),
       }),
     );

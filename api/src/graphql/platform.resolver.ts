@@ -170,6 +170,7 @@ export class PlatformResolver {
     const sessionId = data.sessionId;
     const marketplaceRequestId = data.marketplaceRequestId;
     const paymentId = data.paymentId;
+    const jobOpportunityId = data.jobOpportunityId;
     return {
       id: n.id,
       title: n.title,
@@ -186,6 +187,8 @@ export class PlatformResolver {
           ? marketplaceRequestId
           : undefined,
       paymentId: typeof paymentId === 'string' ? paymentId : undefined,
+      jobOpportunityId:
+        typeof jobOpportunityId === 'string' ? jobOpportunityId : undefined,
     };
   }
 

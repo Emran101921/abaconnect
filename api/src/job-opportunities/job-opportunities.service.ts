@@ -9,6 +9,7 @@ import {
   JobApplicationStatus,
   Prisma,
 } from '../../generated/prisma/client';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { JOB_MARKETPLACE_EVENT_TYPES } from './job-opportunity.constants';
 import {
@@ -35,7 +36,10 @@ type BrowseFilters = {
 
 @Injectable()
 export class JobOpportunitiesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   async createChildServiceNeed(
     userId: string,
@@ -518,6 +522,16 @@ export class JobOpportunitiesService {
       metadata: { jobOpportunityId },
     });
 
+    const therapistName = application.therapist.user.firstName?.trim() || 'A therapist';
+    await this.notifyAgencyAdmins(application.jobOpportunity.agencyId, {
+      title: 'New job application',
+      body: `${therapistName} applied for ${application.jobOpportunity.title}.`,
+      data: {
+        type: 'JOB_APPLICATION_SUBMITTED',
+        jobOpportunityId: application.jobOpportunityId,
+      },
+    });
+
     return application;
   }
 
@@ -632,6 +646,17 @@ export class JobOpportunitiesService {
       actorUserId: userId,
       metadata: { fromStatus: application.status, toStatus: status, note },
     });
+
+    if (updated.therapist.userId !== userId) {
+      await this.notifications.createForUser(updated.therapist.userId, {
+        title: 'Application status updated',
+        body: `Your application for ${updated.jobOpportunity.title} is now ${status.replace(/_/g, ' ').toLowerCase()}.`,
+        data: {
+          type: 'JOB_APPLICATION_STATUS_CHANGED',
+          jobOpportunityId: updated.jobOpportunityId,
+        },
+      });
+    }
 
     return updated;
   }
@@ -789,6 +814,7 @@ export class JobOpportunitiesService {
       where: { id: therapistId, tenantId },
       include: {
         agencyLinks: { where: { agencyId: agency.id } },
+        user: { select: { id: true } },
       },
     });
     if (!therapist) {
@@ -833,6 +859,15 @@ export class JobOpportunitiesService {
         therapistId,
         agencyId: agency.id,
         jobTitle: job.title,
+      },
+    });
+
+    await this.notifications.createForUser(therapist.userId, {
+      title: 'Agency invited you to apply',
+      body: `${agency.name} invited you to apply for ${job.title}.`,
+      data: {
+        type: 'JOB_INVITE_TO_APPLY',
+        jobOpportunityId,
       },
     });
 
@@ -1037,6 +1072,25 @@ export class JobOpportunitiesService {
         'Child must be on agency caseload or have an active SC assignment',
       );
     }
+  }
+
+  private async notifyAgencyAdmins(
+    agencyId: string,
+    notification: {
+      title: string;
+      body: string;
+      data: Record<string, unknown>;
+    },
+  ) {
+    const admins = await this.prisma.user.findMany({
+      where: { agencyId, role: 'AGENCY_ADMIN', isActive: true },
+      select: { id: true },
+    });
+    await Promise.all(
+      admins.map((admin) =>
+        this.notifications.createForUser(admin.id, notification),
+      ),
+    );
   }
 
   private async logAudit(
