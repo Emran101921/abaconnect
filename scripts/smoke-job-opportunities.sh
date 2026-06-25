@@ -52,7 +52,9 @@ check "browseJobOpportunities query" \
 
 JOB_ID=$(echo "$BROWSE" | python3 -c "
 import sys, json
-items = json.load(sys.stdin).get('data', {}).get('browseJobOpportunities', {}).get('items') or []
+d = json.load(sys.stdin)
+items = d.get('data', {}).get('browseJobOpportunities', {}) or {}
+items = items.get('items') or []
 match = next((i['id'] for i in items if i.get('id')), '')
 print(match or '$DEMO_JOB_ID')
 ")
