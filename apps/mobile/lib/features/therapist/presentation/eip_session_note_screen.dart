@@ -746,6 +746,7 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
     required bool readOnly,
   }) {
     final signed = form.hasGpsVerifiedParentSignature;
+    final remotePending = form.isRemoteParentSignaturePending;
     final canSign = _canSignParent(form);
     final gpsSummary = _gpsSummary(
       form.parentSignatureLatitude,
@@ -774,10 +775,24 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
                 ),
               ),
             )
+          else if (remotePending)
+            Card(
+              margin: EdgeInsets.zero,
+              color: Theme.of(context).colorScheme.secondaryContainer,
+              child: const ListTile(
+                leading: Icon(Icons.send_outlined),
+                title: Text('Remote signature requested'),
+                subtitle: Text(
+                  'The parent/caregiver will sign from their portal. '
+                  'In-person capture is disabled for this note.',
+                ),
+              ),
+            )
           else
             Text(
               canSign
-                  ? 'Capture parent or caregiver signature with GPS.'
+                  ? 'Capture parent signature on this device, or send to the '
+                      'caregiver portal for remote signing.'
                   : 'Complete all required form fields and relationship to child '
                       'before parent signs.',
               style: Theme.of(context).textTheme.bodyMedium,
@@ -789,7 +804,7 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
-          if (!readOnly) ...[
+          if (!readOnly && !remotePending) ...[
             const SizedBox(height: 8),
             GlossyButton(
               title: signed ? 'Re-sign with GPS' : 'Sign with GPS',
@@ -802,8 +817,45 @@ class _EipSessionNoteScreenState extends ConsumerState<EipSessionNoteScreen> {
                       ? () => _signParent(context, form)
                       : () => _showParentSignRequirements(context, form),
             ),
+            if (canSign &&
+                form.hasGpsVerifiedInterventionistSignature &&
+                !signed) ...[
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: () => _requestRemoteParentSignature(form),
+                icon: const Icon(Icons.phone_android_outlined),
+                label: const Text('Request remote parent signature'),
+              ),
+            ],
           ],
         ],
+      ),
+    );
+  }
+
+  void _requestRemoteParentSignature(EipSessionNoteModel form) {
+    if (!form.isReadyForParentSignature) {
+      _showParentSignRequirements(context, form);
+      return;
+    }
+    if (!form.hasGpsVerifiedInterventionistSignature) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Sign as interventionist before requesting remote parent signature.',
+          ),
+        ),
+      );
+      return;
+    }
+    setState(
+      () => _form = form.copyWith(parentSignatureRemoteRequested: true),
+    );
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Remote signature enabled. Save the note to notify the caregiver portal.',
+        ),
       ),
     );
   }

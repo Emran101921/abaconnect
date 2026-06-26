@@ -505,18 +505,7 @@ export class AdminResolver {
       user.tenantId,
       user.id,
     );
-    return rows.map((s) => ({
-      sessionId: s.id,
-      childName: `${s.child.firstName} ${s.child.lastName}`,
-      therapistName: `${s.therapist.user.firstName} ${s.therapist.user.lastName}`,
-      sessionDate: s.appointment.scheduledStart.toISOString().slice(0, 10),
-      isFullySigned:
-        s.soapNote?.signedAt != null ||
-        isEipFormFullySigned(
-          s.soapNote?.eipFormData as Record<string, unknown> | null,
-        ),
-      hasServiceLog: s.serviceLog != null,
-    }));
+    return rows.map((s) => this.sessionsService.mapSessionNoteSummary(s));
   }
 
   @Query(() => SessionNoteFormContextType, {

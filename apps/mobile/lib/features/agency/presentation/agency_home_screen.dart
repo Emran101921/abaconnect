@@ -21,6 +21,8 @@ import '../../../shared/widgets/dashboard_action_inbox.dart';
 import '../../messaging/messaging_providers.dart';
 import '../../notifications/notification_providers.dart';
 import '../../service_coordinator/presentation/sc_providers.dart';
+import '../../agency_platform/widgets/bloomora_compliance_disclaimer.dart';
+import '../../agency_platform/widgets/agency_operational_alerts_banner.dart';
 import 'agency_providers.dart';
 
 class AgencyHomeScreen extends ConsumerWidget {
@@ -100,6 +102,11 @@ class AgencyHomeScreen extends ConsumerWidget {
                 padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
                 child: AppTrustNotice(dense: true),
               ),
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: BloomoraComplianceDisclaimer(dense: true),
+              ),
+              const AgencyOperationalAlertsBanner(),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: dashboard.when(

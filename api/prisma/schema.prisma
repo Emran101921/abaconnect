@@ -17,9 +17,11 @@ enum UserRole {
   PARENT
   THERAPIST
   AGENCY_ADMIN
+  DEPARTMENT_ADMIN
   SERVICE_COORDINATOR
   PLATFORM_ADMIN
   BILLING_STAFF
+  PAYROLL_STAFF
   COMPLIANCE_AUDITOR
   SUPPORT_STAFF
 }
@@ -491,6 +493,14 @@ enum JobApplicationStatus {
   WITHDRAWN
 }
 
+enum JobInterviewStatus {
+  SCHEDULED
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
 enum JobEmploymentType {
   W2
   FORM_1099
@@ -574,6 +584,7 @@ model Tenant {
   callAuditLogs        CallAuditLog[]
   callNotifications    CallNotification[]
   jobOpportunities     JobOpportunity[]
+  jobInterviews        JobInterview[]
   jobMarketplaceAuditLogs MarketplaceAuditLog[]
   agencyCaseloadChildren AgencyCaseloadChild[]
   eiBillingRecords       EiBillingRecord[]
@@ -663,6 +674,8 @@ model User {
   childServiceNeedsCreated ChildServiceNeed[]  @relation("ChildServiceNeedCreator")
   jobApplicationsSubmitted JobOpportunityApplication[] @relation("JobApplicationApplicant")
   applicationStatusChanges ApplicationStatusHistory[]
+  jobInterviewsScheduled   JobInterview[]              @relation("JobInterviewScheduler")
+  jobInterviewsAsTherapist JobInterview[]              @relation("JobInterviewTherapist")
   postingModerationFlags   PostingModerationFlag[]
   agencyInvitesToApply     AgencyInviteToApply[] @relation("AgencyInviteSender")
   jobMarketplaceAuditLogs  MarketplaceAuditLog[]
@@ -936,6 +949,7 @@ model Therapist {
   marketplaceProfile ProviderMarketplaceProfile?
   eiProviderEnrollments EiProviderEnrollment[]
   eiBillingRecords      EiBillingRecord[]
+  providerPayRates      ProviderPayRate[]
 
   @@index([tenantId])
   @@index([onboardingStatus])
@@ -984,6 +998,7 @@ model Agency {
   callConsentSetting CallConsentSetting?
   childServiceNeeds  ChildServiceNeed[]
   jobOpportunities   JobOpportunity[]
+  jobInterviews      JobInterview[]
   caseloadParentId   String?              @map("caseload_parent_id") @db.Uuid
   caseloadParent     Parent?              @relation("AgencyCaseloadParent", fields: [caseloadParentId], references: [id], onDelete: SetNull)
   caseloadChildren   AgencyCaseloadChild[]
@@ -992,10 +1007,191 @@ model Agency {
   eiCaseBillingProfiles  EiCaseBillingProfile[]
   eiBillingRecords       EiBillingRecord[]
   eiClearinghouseConfigs EiClearinghouseConfig[]
+  branches              AgencyBranch[]
+  departments           AgencyDepartment[]
+  programs              AgencyProgram[]
+  featureModules        AgencyFeatureModule[]
+  platformSettings      AgencyPlatformSetting?
+  permissionGrants      AgencyPermissionGrant[]
+  referrals             AgencyReferral[]
+  providerPayRates      ProviderPayRate[]
 
   @@index([tenantId])
   @@index([caseloadParentId])
   @@map("agencies")
+}
+
+model AgencyBranch {
+  id           String   @id @default(uuid()) @db.Uuid
+  agencyId     String   @map("agency_id") @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  name         String
+  region       String?
+  addressLine1 String?  @map("address_line1")
+  addressLine2 String?  @map("address_line2")
+  city         String?
+  state        String?
+  zipCode      String?  @map("zip_code")
+  phone        String?
+  email        String?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  agency      Agency             @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  departments AgencyDepartment[]
+
+  @@index([agencyId])
+  @@index([tenantId])
+  @@map("agency_branches")
+}
+
+model AgencyDepartment {
+  id        String   @id @default(uuid()) @db.Uuid
+  agencyId  String   @map("agency_id") @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  branchId  String?  @map("branch_id") @db.Uuid
+  name      String
+  code      String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  agency Agency        @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  branch AgencyBranch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+
+  @@index([agencyId])
+  @@index([tenantId])
+  @@index([branchId])
+  @@map("agency_departments")
+}
+
+model AgencyProgram {
+  id          String       @id @default(uuid()) @db.Uuid
+  agencyId    String       @map("agency_id") @db.Uuid
+  tenantId    String       @map("tenant_id") @db.Uuid
+  name        String
+  code        String?
+  serviceType TherapyType? @map("service_type")
+  description String?
+  region      String?
+  active      Boolean      @default(true)
+  settings    Json         @default("{}")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  @@index([agencyId])
+  @@index([tenantId])
+  @@map("agency_programs")
+}
+
+model AgencyFeatureModule {
+  id        String   @id @default(uuid()) @db.Uuid
+  agencyId  String   @map("agency_id") @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  moduleKey String   @map("module_key")
+  enabled   Boolean  @default(true)
+  settings  Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  @@unique([agencyId, moduleKey])
+  @@index([tenantId])
+  @@map("agency_feature_modules")
+}
+
+model AgencyPlatformSetting {
+  id        String   @id @default(uuid()) @db.Uuid
+  agencyId  String   @unique @map("agency_id") @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  settings  Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("agency_platform_settings")
+}
+
+model AgencyPermissionGrant {
+  id         String   @id @default(uuid()) @db.Uuid
+  agencyId   String   @map("agency_id") @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  scopeType  String   @map("scope_type")
+  scopeId    String?  @map("scope_id") @db.Uuid
+  permission String
+  granted    Boolean  @default(true)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  @@index([agencyId])
+  @@index([tenantId])
+  @@index([scopeType, scopeId])
+  @@map("agency_permission_grants")
+}
+
+enum AgencyReferralStatus {
+  NEW
+  CONTACTED
+  SCREENING_STARTED
+  INTAKE_SCHEDULED
+  EVALUATION_NEEDED
+  CONVERTED_TO_CLIENT
+  NOT_ELIGIBLE
+  CLOSED
+}
+
+model AgencyReferral {
+  id               String               @id @default(uuid()) @db.Uuid
+  agencyId         String               @map("agency_id") @db.Uuid
+  tenantId         String               @map("tenant_id") @db.Uuid
+  contactName      String?              @map("contact_name")
+  contactPhone     String?              @map("contact_phone")
+  contactEmail     String?              @map("contact_email")
+  childName        String?              @map("child_name")
+  sourceName       String?              @map("source_name")
+  sourceType       String?              @map("source_type")
+  status           AgencyReferralStatus @default(NEW)
+  notes            String?
+  convertedChildId String?              @map("converted_child_id") @db.Uuid
+  createdAt        DateTime             @default(now()) @map("created_at")
+  updatedAt        DateTime             @updatedAt @map("updated_at")
+
+  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  @@index([agencyId])
+  @@index([tenantId])
+  @@index([status])
+  @@map("agency_referrals")
+}
+
+model ProviderPayRate {
+  id           String       @id @default(uuid()) @db.Uuid
+  agencyId     String       @map("agency_id") @db.Uuid
+  tenantId     String       @map("tenant_id") @db.Uuid
+  therapistId  String       @map("therapist_id") @db.Uuid
+  serviceType  TherapyType? @map("service_type")
+  rateCents    Int          @map("rate_cents")
+  rateUnit     String       @map("rate_unit")
+  effectiveFrom DateTime    @default(now()) @map("effective_from")
+  active       Boolean      @default(true)
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  agency    Agency    @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  therapist Therapist @relation(fields: [therapistId], references: [id], onDelete: Cascade)
+
+  @@index([agencyId])
+  @@index([tenantId])
+  @@index([therapistId])
+  @@map("provider_pay_rates")
 }
 
 model AgencyCaseloadChild {
@@ -1040,14 +1236,15 @@ model AgencyDocument {
 }
 
 model AgencyTherapist {
-  id          String                @id @default(uuid()) @db.Uuid
-  agencyId    String                @map("agency_id") @db.Uuid
-  therapistId String                @map("therapist_id") @db.Uuid
-  role        String                @default("THERAPIST")
-  status      AgencyTherapistStatus @default(PENDING)
-  joinedAt    DateTime?             @map("joined_at")
-  createdAt   DateTime              @default(now()) @map("created_at")
-  updatedAt   DateTime              @updatedAt @map("updated_at")
+  id             String                @id @default(uuid()) @db.Uuid
+  agencyId       String                @map("agency_id") @db.Uuid
+  therapistId    String                @map("therapist_id") @db.Uuid
+  role           String                @default("THERAPIST")
+  status         AgencyTherapistStatus @default(PENDING)
+  hireOnboarding Json?                 @map("hire_onboarding")
+  joinedAt       DateTime?             @map("joined_at")
+  createdAt      DateTime              @default(now()) @map("created_at")
+  updatedAt      DateTime              @updatedAt @map("updated_at")
 
   agency    Agency    @relation(fields: [agencyId], references: [id], onDelete: Cascade)
   therapist Therapist @relation(fields: [therapistId], references: [id], onDelete: Cascade)
@@ -2225,6 +2422,9 @@ model CallSession {
   participants CallParticipant[]
   auditLogs   CallAuditLog[]
   notifications CallNotification[]
+  jobInterview JobInterview? @relation(fields: [jobInterviewId], references: [id], onDelete: SetNull)
+
+  jobInterviewId String? @unique @map("job_interview_id") @db.Uuid
 
   @@index([tenantId])
   @@index([agencyId])
@@ -2427,12 +2627,45 @@ model JobOpportunityApplication {
   therapist      Therapist                @relation(fields: [therapistId], references: [id], onDelete: Cascade)
   applicant      User                     @relation("JobApplicationApplicant", fields: [applicantUserId], references: [id], onDelete: Cascade)
   statusHistory  ApplicationStatusHistory[]
+  interview      JobInterview?
 
   @@unique([jobOpportunityId, therapistId])
   @@index([jobOpportunityId])
   @@index([therapistId])
   @@index([status])
   @@map("job_opportunity_applications")
+}
+
+model JobInterview {
+  id                        String             @id @default(uuid()) @db.Uuid
+  tenantId                  String             @map("tenant_id") @db.Uuid
+  agencyId                  String             @map("agency_id") @db.Uuid
+  applicationId             String             @unique @map("application_id") @db.Uuid
+  scheduledByUserId         String             @map("scheduled_by_user_id") @db.Uuid
+  therapistUserId           String             @map("therapist_user_id") @db.Uuid
+  scheduledAt               DateTime           @map("scheduled_at")
+  durationMinutes           Int                @default(30) @map("duration_minutes")
+  status                    JobInterviewStatus @default(SCHEDULED)
+  recordingRequested        Boolean            @default(false) @map("recording_requested")
+  agencyRecordingConsent    Boolean            @default(false) @map("agency_recording_consent")
+  therapistRecordingConsent Boolean            @default(false) @map("therapist_recording_consent")
+  notes                     String?
+  createdAt                 DateTime           @default(now()) @map("created_at")
+  updatedAt                 DateTime           @updatedAt @map("updated_at")
+
+  tenant        Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  agency        Agency                    @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  application   JobOpportunityApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  scheduledBy   User                      @relation("JobInterviewScheduler", fields: [scheduledByUserId], references: [id], onDelete: Restrict)
+  therapistUser User                      @relation("JobInterviewTherapist", fields: [therapistUserId], references: [id], onDelete: Restrict)
+  callSession   CallSession?
+
+  @@index([tenantId])
+  @@index([agencyId])
+  @@index([therapistUserId])
+  @@index([scheduledAt])
+  @@index([status])
+  @@map("job_interviews")
 }
 
 model ApplicationStatusHistory {

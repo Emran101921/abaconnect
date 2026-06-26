@@ -5,16 +5,29 @@ import 'package:intl/intl.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import 'agency_providers.dart';
 
-class AgencyAppointmentsScreen extends ConsumerWidget {
+class AgencyAppointmentsScreen extends ConsumerStatefulWidget {
   const AgencyAppointmentsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AgencyAppointmentsScreen> createState() =>
+      _AgencyAppointmentsScreenState();
+}
+
+class _AgencyAppointmentsScreenState
+    extends ConsumerState<AgencyAppointmentsScreen> {
+  var _weekOffset = 0;
+
+  @override
+  Widget build(BuildContext context) {
     final dashboard = ref.watch(agencyDashboardProvider);
     final appointments = ref.watch(agencyUpcomingAppointmentsProvider);
+    final weekStart = _weekStart(_weekOffset);
+    final weekEnd = weekStart.add(const Duration(days: 7));
 
     return AppScaffold(
-      title: 'Appointments',
+      title: 'Scheduling',
+      subtitle: 'Agency calendar and upcoming sessions',
+      showPageBreadcrumbs: true,
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(agencyDashboardProvider);
@@ -27,6 +40,26 @@ class AgencyAppointmentsScreen extends ConsumerWidget {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            Row(
+              children: [
+                IconButton(
+                  onPressed: () => setState(() => _weekOffset -= 1),
+                  icon: const Icon(Icons.chevron_left),
+                ),
+                Expanded(
+                  child: Text(
+                    'Week of ${DateFormat.MMMd().format(weekStart)}',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => setState(() => _weekOffset += 1),
+                  icon: const Icon(Icons.chevron_right),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
             dashboard.when(
               loading: () => const LinearProgressIndicator(),
               error: (e, _) => Text('Dashboard error: $e'),
@@ -58,7 +91,7 @@ class AgencyAppointmentsScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              'Upcoming (14 days)',
+              'This week',
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
@@ -69,16 +102,21 @@ class AgencyAppointmentsScreen extends ConsumerWidget {
               ),
               error: (e, _) => Text('Appointments error: $e'),
               data: (list) {
-                if (list.isEmpty) {
+                final weekList = list
+                    .where(
+                      (a) =>
+                          !a.scheduledStart.isBefore(weekStart) &&
+                          a.scheduledStart.isBefore(weekEnd),
+                    )
+                    .toList();
+                if (weekList.isEmpty) {
                   return const Padding(
                     padding: EdgeInsets.all(16),
-                    child: Text(
-                      'No upcoming appointments in the next two weeks.',
-                    ),
+                    child: Text('No appointments scheduled this week.'),
                   );
                 }
                 return Column(
-                  children: list.map((a) {
+                  children: weekList.map((a) {
                     final start = DateFormat.MMMd().add_jm().format(
                       a.scheduledStart,
                     );
@@ -99,5 +137,12 @@ class AgencyAppointmentsScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  DateTime _weekStart(int offset) {
+    final now = DateTime.now();
+    final monday = now.subtract(Duration(days: now.weekday - 1));
+    final day = DateTime(monday.year, monday.month, monday.day);
+    return day.add(Duration(days: offset * 7));
   }
 }

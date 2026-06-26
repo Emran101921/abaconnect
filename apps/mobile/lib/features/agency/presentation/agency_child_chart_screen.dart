@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/layout/dashboard_card.dart';
@@ -16,6 +17,11 @@ import '../../clinical/data/clinical_charts_repository.dart';
 import '../../job_opportunities/data/job_opportunities_repository.dart';
 import '../../ei_billing/data/ei_billing_repository.dart';
 import '../../ei_billing/presentation/ei_billing_forms.dart';
+import '../../agency_platform/agency_platform_constants.dart';
+import '../../agency_platform/data/agency_platform_repository.dart';
+import '../../agency_platform/presentation/agency_platform_providers.dart';
+import '../../agency_platform/widgets/profile_tab_scaffold.dart';
+import '../data/agency_repository.dart';
 import 'agency_profile_screen.dart';
 
 final agencyChildChartProvider =
@@ -96,13 +102,7 @@ class _AgencyChildChartTabsState extends ConsumerState<_AgencyChildChartTabs>
     with SingleTickerProviderStateMixin {
   TabController? _tabs;
 
-  List<String> get _tabLabels => [
-        'Overview',
-        'Documents',
-        'Service needs',
-        'Notes',
-        if (widget.showBillingTab) 'Billing',
-      ];
+  List<String> get _tabLabels => ClientProfileTabs.all;
 
   @override
   void initState() {
@@ -233,38 +233,330 @@ class _AgencyChildChartTabsState extends ConsumerState<_AgencyChildChartTabs>
           Expanded(
             child: TabBarView(
               controller: tabs,
-              children: [
-                _OverviewTab(chart: chart, onEdit: managedChild == null
-                    ? null
-                    : () async {
-                        final updated = await showAgencyChildProfileSheet(
-                          context,
-                          existing: managedChild,
-                        );
-                        if (updated == null || !context.mounted) return;
-                        AppSnackBar.showSuccess(
-                          context,
-                          '${updated.displayName} updated.',
-                        );
-                        ref.invalidate(
-                          clinicalChartsProvider(ClinicalChartsAudience.agency),
-                        );
-                        ref.invalidate(agencyManagedChildrenProvider);
-                        ref.invalidate(agencyChildChartProvider(widget.childId));
-                      }),
-                _DocumentsTab(childId: chart.childId),
-                _ServiceNeedsTab(chart: chart),
-                _NotesTab(chart: chart),
-                if (widget.showBillingTab)
-                  _BillingTab(
-                    childId: widget.childId,
-                    childDisplayName: chart.displayName,
-                  ),
-              ],
+              children: _buildTabViews(
+                context: context,
+                ref: ref,
+                chart: chart,
+                managedChild: managedChild,
+              ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  List<Widget> _buildTabViews({
+    required BuildContext context,
+    required WidgetRef ref,
+    required ChildMedicalChartModel chart,
+    required dynamic managedChild,
+  }) {
+    final auditLogs = ref.watch(agencyClientAuditLogsProvider(widget.childId));
+    VoidCallback? onEdit;
+    if (managedChild != null) {
+      onEdit = () async {
+        final updated = await showAgencyChildProfileSheet(
+          context,
+          existing: managedChild,
+        );
+        if (updated == null || !context.mounted) return;
+        AppSnackBar.showSuccess(
+          context,
+          '${updated.displayName} updated.',
+        );
+        ref.invalidate(clinicalChartsProvider(ClinicalChartsAudience.agency));
+        ref.invalidate(agencyManagedChildrenProvider);
+        ref.invalidate(agencyChildChartProvider(widget.childId));
+      };
+    }
+
+    return [
+      _OverviewTab(chart: chart, onEdit: onEdit),
+      const ProfileTabPlaceholder(
+        title: ClientProfileTabs.family,
+        icon: Icons.family_restroom_outlined,
+        description:
+            'Parent/caregiver contacts, emergency contacts, and service location.',
+      ),
+      _ClientProgramTab(childId: widget.childId),
+      _ServiceNeedsTab(chart: chart),
+      const ProfileTabPlaceholder(
+        title: ClientProfileTabs.authorizations,
+        icon: Icons.verified_user_outlined,
+      ),
+      const ProfileTabPlaceholder(
+        title: ClientProfileTabs.assignedProviders,
+        icon: Icons.medical_services_outlined,
+      ),
+      ProfileTabPlaceholder(
+        title: ClientProfileTabs.insurance,
+        icon: Icons.health_and_safety_outlined,
+        description: chart.insuranceType ?? 'Insurance details not recorded.',
+      ),
+      _MedicalSummaryTab(chart: chart),
+      const ProfileTabPlaceholder(
+        title: ClientProfileTabs.diagnosis,
+        icon: Icons.biotech_outlined,
+      ),
+      const ProfileTabPlaceholder(
+        title: ClientProfileTabs.prescriptions,
+        icon: Icons.medication_outlined,
+      ),
+      const ProfileTabPlaceholder(
+        title: ClientProfileTabs.attendance,
+        icon: Icons.event_available_outlined,
+      ),
+      _ClientSessionsTab(childId: widget.childId),
+      _DocumentsTab(childId: chart.childId),
+      const ProfileTabPlaceholder(
+        title: ClientProfileTabs.goals,
+        icon: Icons.flag_outlined,
+      ),
+      const ProfileTabPlaceholder(
+        title: ClientProfileTabs.progressReports,
+        icon: Icons.assessment_outlined,
+      ),
+      _ClientMeetingsTab(childId: widget.childId),
+      widget.showBillingTab
+          ? _BillingTab(
+              childId: widget.childId,
+              childDisplayName: chart.displayName,
+            )
+          : const ProfileTabPlaceholder(
+              title: ClientProfileTabs.billing,
+              icon: Icons.receipt_long_outlined,
+            ),
+      _NotesTab(chart: chart),
+      _ClientAuditTab(logs: auditLogs),
+    ];
+  }
+}
+
+final agencyChildSessionNotesProvider =
+    FutureProvider.family<List<StaffSessionNoteSummaryModel>, String>((
+  ref,
+  childId,
+) async {
+  return ref.watch(agencyRepositoryProvider).fetchSessionNotesForChild(childId);
+});
+
+class _ClientSessionsTab extends ConsumerWidget {
+  const _ClientSessionsTab({required this.childId});
+
+  final String childId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notes = ref.watch(agencyChildSessionNotesProvider(childId));
+    return notes.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(child: Text('$e')),
+      data: (list) {
+        if (list.isEmpty) {
+          return const ProfileTabPlaceholder(
+            title: ClientProfileTabs.sessions,
+            icon: Icons.note_alt_outlined,
+            description: 'No documented sessions for this client yet.',
+          );
+        }
+        return ListView.separated(
+          padding: const EdgeInsets.all(16),
+          itemCount: list.length,
+          separatorBuilder: (_, _) => const Divider(),
+          itemBuilder: (context, index) {
+            final note = list[index];
+            return ListTile(
+              title: Text(note.therapistName),
+              subtitle: Text(note.sessionDate ?? 'Session'),
+              trailing: AppStatusBadge.fromKind(
+                note.isFullySigned
+                    ? AppStatusKind.completed
+                    : note.awaitingParentSignature
+                        ? AppStatusKind.pending
+                        : AppStatusKind.inProgress,
+                label: note.isFullySigned
+                    ? 'Signed'
+                    : note.awaitingParentSignature
+                        ? 'Awaiting parent'
+                        : 'In progress',
+              ),
+              onTap: () => context.push(
+                '${AppRoutes.agencyHome}/session-notes/${note.sessionId}/form',
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _ClientProgramTab extends ConsumerWidget {
+  const _ClientProgramTab({required this.childId});
+
+  final String childId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final summary = ref.watch(agencyClientCoordinationProvider(childId));
+    return summary.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(child: Text('$e')),
+      data: (data) {
+        if (data == null) {
+          return const ProfileTabPlaceholder(
+            title: ClientProfileTabs.program,
+            icon: Icons.school_outlined,
+          );
+        }
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            DashboardCard(
+              title: 'Service coordination',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    data.assignedCoordinatorName != null
+                        ? 'Coordinator: ${data.assignedCoordinatorName}'
+                        : 'No service coordinator assigned',
+                  ),
+                  if (data.isUrgent)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: AppStatusBadge.fromKind(
+                        AppStatusKind.pending,
+                        label: 'Urgent case',
+                      ),
+                    ),
+                  Text('SC notes: ${data.coordinationNotesCount}'),
+                  if (data.screeningRiskLevel != null)
+                    Text('Screening priority: ${data.screeningRiskLevel}'),
+                  if (data.evaluationRequested)
+                    const Text('Follow-up / evaluation flagged'),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _ClientMeetingsTab extends ConsumerWidget {
+  const _ClientMeetingsTab({required this.childId});
+
+  final String childId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final summary = ref.watch(agencyClientCoordinationProvider(childId));
+    final dateFmt = DateFormat.yMMMd();
+    return summary.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(child: Text('$e')),
+      data: (data) {
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            DashboardCard(
+              title: 'Team meetings & reviews',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (data?.assignedCoordinatorName != null)
+                    Text('SC: ${data!.assignedCoordinatorName}')
+                  else
+                    const Text('No service coordinator assigned yet.'),
+                  if (data?.lastCoordinationNoteAt != null)
+                    Text(
+                      'Last SC contact: '
+                      '${dateFmt.format(data!.lastCoordinationNoteAt!)}',
+                    ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'IFSP reviews, multidisciplinary team meetings, and '
+                    'parent conferences will be scheduled and tracked here.',
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _MedicalSummaryTab extends StatelessWidget {
+  const _MedicalSummaryTab({required this.chart});
+
+  final ChildMedicalChartModel chart;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      children: [
+        DashboardCard(
+          title: 'Medical information',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (chart.pediatricianName != null)
+                Text('Pediatrician: ${chart.pediatricianName}'),
+              if (chart.gender != null) Text('Sex: ${chart.gender}'),
+              if (chart.primaryLanguage != null)
+                Text('Primary language: ${chart.primaryLanguage}'),
+              if (chart.pediatricianName == null &&
+                  chart.gender == null &&
+                  chart.primaryLanguage == null)
+                const Text('No medical details recorded yet.'),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ClientAuditTab extends StatelessWidget {
+  const _ClientAuditTab({required this.logs});
+
+  final AsyncValue<List<AgencyAuditLogModel>> logs;
+
+  @override
+  Widget build(BuildContext context) {
+    return logs.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(child: Text('$e')),
+      data: (list) {
+        if (list.isEmpty) {
+          return const ProfileTabPlaceholder(
+            title: ClientProfileTabs.auditLog,
+            icon: Icons.history,
+            description: 'No audit events recorded for this client yet.',
+          );
+        }
+        return ListView.separated(
+          padding: const EdgeInsets.all(16),
+          itemCount: list.length,
+          separatorBuilder: (_, _) => const Divider(),
+          itemBuilder: (context, index) {
+            final log = list[index];
+            return ListTile(
+              title: Text(log.action),
+              subtitle: Text(log.entityType),
+              trailing: Text(
+                DateFormat.MMMd().add_jm().format(log.createdAt),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

@@ -25,6 +25,13 @@ import '../../features/agency/presentation/agency_invites_screen.dart';
 import '../../features/agency/presentation/agency_onboarding_screen.dart';
 import '../../features/agency/presentation/agency_roster_member_screen.dart';
 import '../../features/agency/presentation/agency_roster_screen.dart';
+import '../../features/agency_platform/presentation/agency_admin_settings_screen.dart';
+import '../../features/agency_platform/presentation/agency_audit_logs_screen.dart';
+import '../../features/agency_platform/presentation/agency_provider_profile_screen.dart';
+import '../../features/agency_platform/presentation/agency_integrations_screen.dart';
+import '../../features/agency_platform/presentation/agency_referrals_screen.dart';
+import '../../features/agency_platform/presentation/agency_reports_screen.dart';
+import '../../features/parent/presentation/parent_session_sign_screen.dart';
 import '../../features/auth/presentation/forgot_password_screen.dart';
 import '../../features/auth/presentation/security_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
@@ -137,6 +144,14 @@ abstract final class AppRoutes {
   static const agencyMarketplace = '/agency/marketplace';
   static const agencyServiceNeeds = '/agency/service-needs';
   static const agencyOpportunities = '/agency/opportunities';
+  static const agencyInterviews = '/agency/interviews';
+  static const agencyAdminSettings = '/agency/admin-settings';
+  static const agencyAuditLogs = '/agency/audit-logs';
+  static const agencyReferrals = '/agency/referrals';
+  static const agencyIntegrations = '/agency/integrations';
+  static const agencyReports = '/agency/reports';
+  static String agencyProviderProfile(String therapistId) =>
+      '/agency/providers/$therapistId';
   static String agencyOpportunityDetail(String jobId) =>
       '$agencyOpportunities/$jobId';
   static const serviceCoordinatorHome = '/service-coordinator';
@@ -181,6 +196,9 @@ abstract final class AppRoutes {
   static const parentAppointments = '/parent/appointments';
   static const parentProfile = '/parent/profile';
   static const sessionHistory = '/parent/session-history';
+  static const parentPendingSignatures = '/parent/signatures';
+  static String parentSessionSign(String sessionId) =>
+      '/parent/sign-session/$sessionId';
   static const treatmentPlans = '/treatment-plans';
   static const complaints = '/complaints';
   static const therapistPlans = '/therapist/plans';
@@ -326,6 +344,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: 'profile',
             name: 'parentProfile',
             builder: (context, state) => const ParentProfileScreen(),
+          ),
+          GoRoute(
+            path: 'signatures',
+            name: 'parentPendingSignatures',
+            builder: (context, state) => const ParentPendingSignaturesScreen(),
+          ),
+          GoRoute(
+            path: 'sign-session/:sessionId',
+            name: 'parentSessionSign',
+            builder: (context, state) => ParentSessionSignScreen(
+              sessionId: state.pathParameters['sessionId']!,
+            ),
           ),
           GoRoute(
             path: 'session-history',
@@ -585,6 +615,38 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 ),
               ),
             ],
+          ),
+          GoRoute(
+            path: 'admin-settings',
+            name: 'agencyAdminSettings',
+            builder: (context, state) => const AgencyAdminSettingsScreen(),
+          ),
+          GoRoute(
+            path: 'audit-logs',
+            name: 'agencyAuditLogs',
+            builder: (context, state) => const AgencyAuditLogsScreen(),
+          ),
+          GoRoute(
+            path: 'referrals',
+            name: 'agencyReferrals',
+            builder: (context, state) => const AgencyReferralsScreen(),
+          ),
+          GoRoute(
+            path: 'integrations',
+            name: 'agencyIntegrations',
+            builder: (context, state) => const AgencyIntegrationsScreen(),
+          ),
+          GoRoute(
+            path: 'reports',
+            name: 'agencyReports',
+            builder: (context, state) => const AgencyReportsScreen(),
+          ),
+          GoRoute(
+            path: 'providers/:therapistId',
+            name: 'agencyProviderProfile',
+            builder: (context, state) => AgencyProviderProfileScreen(
+              therapistId: state.pathParameters['therapistId']!,
+            ),
           ),
           GoRoute(
             path: 'call-audit',

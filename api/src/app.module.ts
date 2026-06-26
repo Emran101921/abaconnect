@@ -49,6 +49,7 @@ import { SecurityModule } from './security/security.module';
 import { MarketplaceModule } from './marketplace/marketplace.module';
 import { JobOpportunitiesModule } from './job-opportunities/job-opportunities.module';
 import { EiBillingModule } from './ei-billing/ei-billing.module';
+import { AgencyPlatformModule } from './agency-platform/agency-platform.module';
 
 @Module({
   imports: [
@@ -111,6 +112,7 @@ import { EiBillingModule } from './ei-billing/ei-billing.module';
     MarketplaceModule,
     JobOpportunitiesModule,
     EiBillingModule,
+    AgencyPlatformModule,
     GraphqlFeatureModule,
   ],
   controllers: [AppController],

@@ -333,16 +333,11 @@ async function seedMarketplaceDemoData(
     },
   });
 
-  await prisma.marketplaceInterest.upsert({
+  await prisma.marketplaceInterest.deleteMany({
     where: { id: DEMO_MARKETPLACE_SEED_IDS.pendingInterest },
-    update: {
-      tenantId,
-      marketplaceRequestId: DEMO_MARKETPLACE_SEED_IDS.activeRequest,
-      providerProfileId: therapistProviderProfileId,
-      status: 'PENDING_PARENT_REVIEW',
-      message: 'Available weekday afternoons for evaluation.',
-    },
-    create: {
+  });
+  await prisma.marketplaceInterest.create({
+    data: {
       id: DEMO_MARKETPLACE_SEED_IDS.pendingInterest,
       tenantId,
       marketplaceRequestId: DEMO_MARKETPLACE_SEED_IDS.activeRequest,

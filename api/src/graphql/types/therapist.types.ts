@@ -353,6 +353,15 @@ export class StaffSessionNoteSummaryType {
 
   @Field()
   hasServiceLog: boolean;
+
+  @Field({ nullable: true })
+  childId?: string;
+
+  @Field({ nullable: true })
+  therapistId?: string;
+
+  @Field()
+  awaitingParentSignature: boolean;
 }
 
 @ObjectType()

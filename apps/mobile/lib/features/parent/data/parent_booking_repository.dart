@@ -223,6 +223,7 @@ class SessionHistoryModel {
     this.hasProgressNote = false,
     this.hasServiceLog = false,
     this.parentFeedback,
+    this.awaitingParentSignature = false,
   });
 
   final String id;
@@ -236,6 +237,7 @@ class SessionHistoryModel {
   final bool hasProgressNote;
   final bool hasServiceLog;
   final String? parentFeedback;
+  final bool awaitingParentSignature;
 
   String get statusLabel {
     switch (status) {
@@ -249,6 +251,64 @@ class SessionHistoryModel {
         return status;
     }
   }
+}
+
+class PendingSessionSignatureModel {
+  const PendingSessionSignatureModel({
+    required this.sessionId,
+    required this.childName,
+    required this.therapistName,
+    this.sessionDate,
+    this.serviceType,
+    this.sessionSummary,
+  });
+
+  final String sessionId;
+  final String childName;
+  final String therapistName;
+  final String? sessionDate;
+  final String? serviceType;
+  final String? sessionSummary;
+}
+
+class ParentSessionNoteReviewModel {
+  const ParentSessionNoteReviewModel({
+    required this.sessionId,
+    required this.childName,
+    required this.therapistName,
+    this.sessionDate,
+    this.serviceType,
+    this.timeFrom,
+    this.timeTo,
+    this.sessionDescription,
+    required this.therapistSigned,
+    required this.parentSigned,
+    required this.readyForParentSignature,
+  });
+
+  final String sessionId;
+  final String childName;
+  final String therapistName;
+  final String? sessionDate;
+  final String? serviceType;
+  final String? timeFrom;
+  final String? timeTo;
+  final String? sessionDescription;
+  final bool therapistSigned;
+  final bool parentSigned;
+  final bool readyForParentSignature;
+}
+
+class ParentSignSessionNoteResultModel {
+  const ParentSignSessionNoteResultModel({
+    required this.sessionId,
+    required this.fullySigned,
+    required this.hasServiceLog,
+  });
+
+  final String sessionId;
+  final bool fullySigned;
+  final bool hasServiceLog;
 }
 
 class ConfirmAppointmentResult {
@@ -560,6 +620,7 @@ class ParentBookingRepository {
           id status childName therapistName therapyType
           completedAt durationMinutes
           progressNoteSummary hasProgressNote hasServiceLog parentFeedback
+          awaitingParentSignature
         }
       }
     ''';
@@ -578,8 +639,112 @@ class ParentBookingRepository {
         hasProgressNote: e['hasProgressNote'] as bool? ?? false,
         hasServiceLog: e['hasServiceLog'] as bool? ?? false,
         parentFeedback: e['parentFeedback'] as String?,
+        awaitingParentSignature:
+            e['awaitingParentSignature'] as bool? ?? false,
       );
     }).toList();
+  }
+
+  Future<List<PendingSessionSignatureModel>> fetchPendingSignatures() async {
+    const query = r'''
+      query {
+        parentPendingSessionSignatures {
+          sessionId
+          childName
+          therapistName
+          sessionDate
+          serviceType
+          sessionSummary
+        }
+      }
+    ''';
+    final result = await _graphql.query(query);
+    final list =
+        result['data']?['parentPendingSessionSignatures'] as List<dynamic>? ??
+            [];
+    return list
+        .map(
+          (e) => PendingSessionSignatureModel(
+            sessionId: e['sessionId'] as String,
+            childName: e['childName'] as String? ?? '',
+            therapistName: e['therapistName'] as String? ?? '',
+            sessionDate: e['sessionDate'] as String?,
+            serviceType: e['serviceType'] as String?,
+            sessionSummary: e['sessionSummary'] as String?,
+          ),
+        )
+        .toList();
+  }
+
+  Future<ParentSessionNoteReviewModel?> fetchSessionNoteForSign(
+    String sessionId,
+  ) async {
+    final result = await _graphql.query('''
+      query(\$sessionId: ID!) {
+        parentSessionNoteForSign(sessionId: \$sessionId) {
+          sessionId
+          childName
+          therapistName
+          sessionDate
+          serviceType
+          timeFrom
+          timeTo
+          sessionDescription
+          therapistSigned
+          parentSigned
+          readyForParentSignature
+        }
+      }
+    ''', variables: {'sessionId': sessionId});
+    final data = result['data']?['parentSessionNoteForSign'] as Map?;
+    if (data == null) return null;
+    return ParentSessionNoteReviewModel(
+      sessionId: data['sessionId'] as String,
+      childName: data['childName'] as String? ?? '',
+      therapistName: data['therapistName'] as String? ?? '',
+      sessionDate: data['sessionDate'] as String?,
+      serviceType: data['serviceType'] as String?,
+      timeFrom: data['timeFrom'] as String?,
+      timeTo: data['timeTo'] as String?,
+      sessionDescription: data['sessionDescription'] as String?,
+      therapistSigned: data['therapistSigned'] as bool? ?? false,
+      parentSigned: data['parentSigned'] as bool? ?? false,
+      readyForParentSignature:
+          data['readyForParentSignature'] as bool? ?? false,
+    );
+  }
+
+  Future<ParentSignSessionNoteResultModel> signSessionNote({
+    required String sessionId,
+    required String signatureName,
+    required double latitude,
+    required double longitude,
+  }) async {
+    final result = await _graphql.query('''
+      mutation(\$input: ParentSignSessionNoteInput!) {
+        parentSignSessionNote(input: \$input) {
+          sessionId
+          fullySigned
+          hasServiceLog
+        }
+      }
+    ''', variables: {
+      'input': {
+        'sessionId': sessionId,
+        'signatureName': signatureName,
+        'latitude': latitude,
+        'longitude': longitude,
+      },
+    });
+    final data = result['data']?['parentSignSessionNote'] as Map?;
+    if (data == null) {
+      throw Exception('Unable to sign session note');
+    }
+    return ParentSignSessionNoteResultModel(
+      sessionId: data['sessionId'] as String,
+      fullySigned: data['fullySigned'] as bool? ?? false,
+      hasServiceLog: data['hasServiceLog'] as bool? ?? false,
+    );
   }
 
   Future<String> downloadServiceLogPdf(String sessionId) async {

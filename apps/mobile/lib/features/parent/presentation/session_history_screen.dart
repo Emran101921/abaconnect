@@ -148,6 +148,14 @@ class _SessionHistoryScreenState extends ConsumerState<SessionHistoryScreen> {
                                       : 'Edit feedback',
                                 ),
                               ),
+                              if (s.awaitingParentSignature)
+                                FilledButton.icon(
+                                  onPressed: () => context.push(
+                                    AppRoutes.parentSessionSign(s.id),
+                                  ),
+                                  icon: const Icon(Icons.draw_outlined),
+                                  label: const Text('Sign session note'),
+                                ),
                               if (s.hasServiceLog)
                                 TextButton.icon(
                                   onPressed: () async {

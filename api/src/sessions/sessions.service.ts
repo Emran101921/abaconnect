@@ -56,6 +56,7 @@ export class SessionsService {
         appointment: true,
         progressNote: true,
         serviceLog: true,
+        soapNote: true,
       },
       orderBy: { createdAt: 'desc' },
       take: 50,
@@ -156,8 +157,7 @@ export class SessionsService {
           'Record arrival and collect self-pay before starting the session',
         );
       }
-      const sessionPaid =
-        appointment.session?.payment?.status === 'SUCCEEDED';
+      const sessionPaid = appointment.session?.payment?.status === 'SUCCEEDED';
       const bookingPaid = sessionPaid
         ? false
         : (await this.prisma.payment.findFirst({
@@ -748,6 +748,289 @@ export class SessionsService {
       });
     }
     return sessions;
+  }
+
+  async listDocumentedSessionsForChild(
+    tenantId: string,
+    childId: string,
+    actorId?: string,
+  ) {
+    const sessions = await this.prisma.session.findMany({
+      where: {
+        childId,
+        child: { tenantId },
+        soapNote: { isNot: null },
+      },
+      include: {
+        child: true,
+        appointment: true,
+        soapNote: true,
+        serviceLog: true,
+        therapist: { include: { user: true } },
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: 50,
+    });
+    if (actorId) {
+      await this.phiAudit.logPhiAccess({
+        tenantId,
+        actorId,
+        action: 'READ',
+        resourceType: 'soap_note',
+        patientId: childId,
+      });
+    }
+    return sessions;
+  }
+
+  mapSessionNoteSummary(session: {
+    id: string;
+    child: { id: string; firstName: string; lastName: string };
+    therapist: { id: string; user: { firstName: string; lastName: string } };
+    appointment: { scheduledStart: Date };
+    soapNote: {
+      signedAt: Date | null;
+      eipFormData: unknown;
+    } | null;
+    serviceLog: { id: string } | null;
+  }) {
+    const eip = session.soapNote?.eipFormData as Record<string, unknown> | null;
+    const therapistSigned = hasInterventionistSignature(eip);
+    const parentSigned = hasParentSignature(eip);
+    const fullySigned =
+      session.soapNote?.signedAt != null || isEipFormFullySigned(eip);
+    return {
+      sessionId: session.id,
+      childId: session.child.id,
+      therapistId: session.therapist.id,
+      childName: `${session.child.firstName} ${session.child.lastName}`,
+      therapistName: `${session.therapist.user.firstName} ${session.therapist.user.lastName}`,
+      sessionDate: session.appointment.scheduledStart.toISOString().slice(0, 10),
+      isFullySigned: fullySigned,
+      hasServiceLog: session.serviceLog != null,
+      awaitingParentSignature:
+        therapistSigned && isReadyForParentSignature(eip) && !parentSigned,
+    };
+  }
+
+  async listPendingParentSignatures(userId: string) {
+    const parent = await this.prisma.parent.findUnique({ where: { userId } });
+    if (!parent) {
+      return [];
+    }
+
+    const sessions = await this.prisma.session.findMany({
+      where: {
+        child: { parentId: parent.id },
+        soapNote: { isNot: null },
+      },
+      include: {
+        child: true,
+        therapist: { include: { user: true } },
+        appointment: true,
+        soapNote: true,
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: 50,
+    });
+
+    const pending = sessions.filter((session) => {
+      const eip = session.soapNote?.eipFormData as Record<string, unknown> | null;
+      return (
+        hasInterventionistSignature(eip) &&
+        isReadyForParentSignature(eip) &&
+        !hasParentSignature(eip)
+      );
+    });
+
+    await this.phiAudit.logPhiAccess({
+      tenantId: parent.tenantId,
+      actorId: userId,
+      action: 'READ',
+      resourceType: 'soap_note',
+    });
+
+    return pending.map((session) => {
+      const eip = session.soapNote?.eipFormData as Record<string, unknown>;
+      return {
+        sessionId: session.id,
+        childName: `${session.child.firstName} ${session.child.lastName}`,
+        therapistName: `${session.therapist.user.firstName} ${session.therapist.user.lastName}`,
+        sessionDate: session.appointment.scheduledStart
+          .toISOString()
+          .slice(0, 10),
+        serviceType:
+          typeof eip.serviceType === 'string' ? eip.serviceType : undefined,
+        sessionSummary:
+          typeof eip.q2SessionDescription === 'string'
+            ? eip.q2SessionDescription.slice(0, 280)
+            : undefined,
+      };
+    });
+  }
+
+  async getSessionNoteForParentSign(userId: string, sessionId: string) {
+    const parent = await this.prisma.parent.findUnique({ where: { userId } });
+    if (!parent) {
+      throw new NotFoundException('Parent profile not found');
+    }
+
+    const session = await this.prisma.session.findFirst({
+      where: {
+        id: sessionId,
+        child: { parentId: parent.id },
+      },
+      include: {
+        child: true,
+        therapist: { include: { user: true } },
+        appointment: true,
+        soapNote: true,
+      },
+    });
+    if (!session?.soapNote) {
+      throw new NotFoundException('Session note not found');
+    }
+
+    const eip = session.soapNote.eipFormData as Record<string, unknown> | null;
+    const therapistSigned = hasInterventionistSignature(eip);
+    const parentSigned = hasParentSignature(eip);
+    const ready = isReadyForParentSignature(eip);
+
+    await this.phiAudit.logPhiAccess({
+      tenantId: parent.tenantId,
+      actorId: userId,
+      action: 'READ',
+      resourceType: 'soap_note',
+      patientId: session.childId,
+    });
+
+    return {
+      sessionId: session.id,
+      childName: `${session.child.firstName} ${session.child.lastName}`,
+      therapistName: `${session.therapist.user.firstName} ${session.therapist.user.lastName}`,
+      sessionDate:
+        typeof eip?.sessionDate === 'string'
+          ? eip.sessionDate
+          : session.appointment.scheduledStart.toISOString().slice(0, 10),
+      serviceType:
+        typeof eip?.serviceType === 'string' ? eip.serviceType : undefined,
+      timeFrom: typeof eip?.timeFrom === 'string' ? eip.timeFrom : undefined,
+      timeTo: typeof eip?.timeTo === 'string' ? eip.timeTo : undefined,
+      sessionDescription:
+        typeof eip?.q2SessionDescription === 'string'
+          ? eip.q2SessionDescription
+          : undefined,
+      therapistSigned,
+      parentSigned,
+      readyForParentSignature: ready,
+    };
+  }
+
+  async parentSignSessionNote(
+    userId: string,
+    input: {
+      sessionId: string;
+      signatureName: string;
+      signatureDate?: string;
+      latitude: number;
+      longitude: number;
+      ipAddress?: string;
+    },
+  ) {
+    const parent = await this.prisma.parent.findUnique({ where: { userId } });
+    if (!parent) {
+      throw new NotFoundException('Parent profile not found');
+    }
+
+    const session = await this.prisma.session.findFirst({
+      where: {
+        id: input.sessionId,
+        child: { parentId: parent.id },
+      },
+      include: { soapNote: true },
+    });
+    if (!session?.soapNote) {
+      throw new NotFoundException('Session note not found');
+    }
+
+    const existing = (session.soapNote.eipFormData ?? {}) as Record<
+      string,
+      unknown
+    >;
+    if (!hasInterventionistSignature(existing)) {
+      throw new BadRequestException(
+        'Therapist signature is required before parent signing.',
+      );
+    }
+    if (!isReadyForParentSignature(existing)) {
+      throw new BadRequestException(
+        'Session note is not ready for parent signature.',
+      );
+    }
+    if (hasParentSignature(existing)) {
+      throw new BadRequestException('Session note is already signed.');
+    }
+
+    const signatureName = input.signatureName.trim();
+    if (!signatureName) {
+      throw new BadRequestException('Signature name is required.');
+    }
+
+    const signedAt = new Date().toISOString();
+    const mergedEip: Record<string, unknown> = {
+      ...existing,
+      parentSignature: signatureName,
+      parentSignatureDate:
+        input.signatureDate?.trim() ||
+        new Date().toISOString().slice(0, 10),
+      parentSignatureLatitude: input.latitude,
+      parentSignatureLongitude: input.longitude,
+      parentSignatureLocationAt: signedAt,
+      parentSignatureIpAddress: input.ipAddress ?? null,
+      parentSignatureRemote: true,
+    };
+
+    const fullySigned = isEipFormFullySigned(mergedEip);
+    const note = await this.prisma.soapNote.update({
+      where: { id: session.soapNote.id },
+      data: {
+        eipFormData: mergedEip as Prisma.InputJsonValue,
+        signedAt: fullySigned ? new Date() : session.soapNote.signedAt,
+      },
+    });
+
+    await this.serviceLogs.ensureFromSessionNote(
+      session.id,
+      note.id,
+      mergedEip,
+    );
+
+    const serviceLog = await this.prisma.serviceLog.findUnique({
+      where: { sessionId: session.id },
+    });
+
+    await this.phiAudit.logPhiAccess({
+      tenantId: parent.tenantId,
+      actorId: userId,
+      action: 'UPDATE',
+      resourceType: 'soap_note',
+      resourceId: session.id,
+      patientId: session.childId,
+    });
+
+    if (fullySigned) {
+      void this.eiBilling
+        .autoCreateFromCompletedSession(session.id)
+        .catch((err) => {
+          void err;
+        });
+    }
+
+    return {
+      sessionId: session.id,
+      fullySigned,
+      hasServiceLog: serviceLog != null,
+    };
   }
 
   async create(data: Record<string, unknown>) {

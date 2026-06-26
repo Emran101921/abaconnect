@@ -66,19 +66,25 @@ class AgencyAppointmentModel {
 class StaffSessionNoteSummaryModel {
   const StaffSessionNoteSummaryModel({
     required this.sessionId,
+    this.childId,
     required this.childName,
     required this.therapistName,
     this.sessionDate,
     required this.isFullySigned,
     this.hasServiceLog = false,
+    this.awaitingParentSignature = false,
+    this.therapistId,
   });
 
   final String sessionId;
+  final String? childId;
+  final String? therapistId;
   final String childName;
   final String therapistName;
   final String? sessionDate;
   final bool isFullySigned;
   final bool hasServiceLog;
+  final bool awaitingParentSignature;
 }
 
 class AgencyTherapistModel {
@@ -1058,24 +1064,45 @@ class AgencyRepository {
     const query = r'''
       query {
         agencySessionNotes {
-          sessionId childName therapistName sessionDate isFullySigned hasServiceLog
+          sessionId           childId therapistId childName therapistName sessionDate
+          isFullySigned hasServiceLog awaitingParentSignature
         }
       }
     ''';
     final result = await _graphql.query(query);
     final list = result['data']?['agencySessionNotes'] as List<dynamic>? ?? [];
-    return list
-        .map(
-          (e) => StaffSessionNoteSummaryModel(
-            sessionId: e['sessionId'] as String,
-            childName: e['childName'] as String? ?? '',
-            therapistName: e['therapistName'] as String? ?? '',
-            sessionDate: e['sessionDate'] as String?,
-            isFullySigned: e['isFullySigned'] as bool? ?? false,
-            hasServiceLog: e['hasServiceLog'] as bool? ?? false,
-          ),
-        )
-        .toList();
+    return list.map(_mapSessionNote).toList();
+  }
+
+  Future<List<StaffSessionNoteSummaryModel>> fetchSessionNotesForChild(
+    String childId,
+  ) async {
+    final result = await _graphql.query('''
+      query(\$childId: ID!) {
+        agencySessionNotesForChild(childId: \$childId) {
+          sessionId           childId therapistId childName therapistName sessionDate
+          isFullySigned hasServiceLog awaitingParentSignature
+        }
+      }
+    ''', variables: {'childId': childId});
+    final list =
+        result['data']?['agencySessionNotesForChild'] as List<dynamic>? ?? [];
+    return list.map(_mapSessionNote).toList();
+  }
+
+  StaffSessionNoteSummaryModel _mapSessionNote(dynamic e) {
+    return StaffSessionNoteSummaryModel(
+      sessionId: e['sessionId'] as String,
+      childId: e['childId'] as String?,
+      therapistId: e['therapistId'] as String?,
+      childName: e['childName'] as String? ?? '',
+      therapistName: e['therapistName'] as String? ?? '',
+      sessionDate: e['sessionDate'] as String?,
+      isFullySigned: e['isFullySigned'] as bool? ?? false,
+      hasServiceLog: e['hasServiceLog'] as bool? ?? false,
+      awaitingParentSignature:
+          e['awaitingParentSignature'] as bool? ?? false,
+    );
   }
 
   Future<String> downloadServiceLogPdf(String sessionId) async {

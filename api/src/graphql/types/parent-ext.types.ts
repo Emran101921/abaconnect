@@ -124,6 +124,78 @@ export class SessionHistoryType {
 
   @Field()
   hasServiceLog: boolean;
+
+  @Field()
+  awaitingParentSignature: boolean;
+}
+
+@ObjectType()
+export class PendingSessionSignatureType {
+  @Field(() => ID)
+  sessionId: string;
+
+  @Field()
+  childName: string;
+
+  @Field()
+  therapistName: string;
+
+  @Field({ nullable: true })
+  sessionDate?: string;
+
+  @Field({ nullable: true })
+  serviceType?: string;
+
+  @Field({ nullable: true })
+  sessionSummary?: string;
+}
+
+@ObjectType()
+export class ParentSessionNoteReviewType {
+  @Field(() => ID)
+  sessionId: string;
+
+  @Field()
+  childName: string;
+
+  @Field()
+  therapistName: string;
+
+  @Field({ nullable: true })
+  sessionDate?: string;
+
+  @Field({ nullable: true })
+  serviceType?: string;
+
+  @Field({ nullable: true })
+  timeFrom?: string;
+
+  @Field({ nullable: true })
+  timeTo?: string;
+
+  @Field({ nullable: true })
+  sessionDescription?: string;
+
+  @Field()
+  therapistSigned: boolean;
+
+  @Field()
+  parentSigned: boolean;
+
+  @Field()
+  readyForParentSignature: boolean;
+}
+
+@ObjectType()
+export class ParentSignSessionNoteResultType {
+  @Field(() => ID)
+  sessionId: string;
+
+  @Field()
+  fullySigned: boolean;
+
+  @Field()
+  hasServiceLog: boolean;
 }
 
 @ObjectType()

@@ -89,7 +89,9 @@ export class AgencyResolver {
   }
 
   @Query(() => AgencyProfileType, { name: 'agencyProfile' })
-  async agencyProfile(@CurrentUser() user: AuthUser): Promise<AgencyProfileType> {
+  async agencyProfile(
+    @CurrentUser() user: AuthUser,
+  ): Promise<AgencyProfileType> {
     if (!user.tenantId) {
       throw new Error('Tenant required');
     }
@@ -655,18 +657,50 @@ export class AgencyResolver {
       user.tenantId,
       user.id,
     );
-    return rows.map((s) => ({
-      sessionId: s.id,
-      childName: `${s.child.firstName} ${s.child.lastName}`,
-      therapistName: `${s.therapist.user.firstName} ${s.therapist.user.lastName}`,
-      sessionDate: s.appointment.scheduledStart.toISOString().slice(0, 10),
-      isFullySigned:
-        s.soapNote?.signedAt != null ||
-        isEipFormFullySigned(
-          s.soapNote?.eipFormData as Record<string, unknown> | null,
-        ),
-      hasServiceLog: s.serviceLog != null,
-    }));
+    return rows.map((s) => this.mapSessionNoteSummaryForGraphql(s));
+  }
+
+  @Query(() => [StaffSessionNoteSummaryType], {
+    name: 'agencySessionNotesForChild',
+  })
+  async agencySessionNotesForChild(
+    @CurrentUser() user: AuthUser,
+    @Args('childId', { type: () => ID }) childId: string,
+  ): Promise<StaffSessionNoteSummaryType[]> {
+    if (!user.tenantId) {
+      throw new Error('Tenant required');
+    }
+    const rows = await this.sessionsService.listDocumentedSessionsForChild(
+      user.tenantId,
+      childId,
+      user.id,
+    );
+    return rows.map((s) => this.mapSessionNoteSummaryForGraphql(s));
+  }
+
+  private mapSessionNoteSummaryForGraphql(session: {
+    id: string;
+    child: { id: string; firstName: string; lastName: string };
+    therapist: { id: string; user: { firstName: string; lastName: string } };
+    appointment: { scheduledStart: Date };
+    soapNote: {
+      signedAt: Date | null;
+      eipFormData: unknown;
+    } | null;
+    serviceLog: { id: string } | null;
+  }): StaffSessionNoteSummaryType {
+    const summary = this.sessionsService.mapSessionNoteSummary(session);
+    return {
+      sessionId: summary.sessionId,
+      childId: summary.childId,
+      therapistId: summary.therapistId,
+      childName: summary.childName,
+      therapistName: summary.therapistName,
+      sessionDate: summary.sessionDate,
+      isFullySigned: summary.isFullySigned,
+      hasServiceLog: summary.hasServiceLog,
+      awaitingParentSignature: summary.awaitingParentSignature,
+    };
   }
 
   @Query(() => SessionNoteFormContextType, {

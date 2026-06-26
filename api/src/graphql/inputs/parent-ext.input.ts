@@ -3,6 +3,7 @@ import { Type } from 'class-transformer';
 import {
   IsBoolean,
   IsDate,
+  IsNumber,
   IsOptional,
   IsString,
   IsUUID,
@@ -243,4 +244,29 @@ export class SubmitScreeningInput {
   @IsOptional()
   @IsBoolean()
   consentGranted?: boolean;
+}
+
+@InputType()
+export class ParentSignSessionNoteInput {
+  @Field(() => ID)
+  @IsUUID()
+  sessionId: string;
+
+  @Field()
+  @IsString()
+  @MinLength(2)
+  signatureName: string;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
+  signatureDate?: string;
+
+  @Field()
+  @IsNumber()
+  latitude: number;
+
+  @Field()
+  @IsNumber()
+  longitude: number;
 }
