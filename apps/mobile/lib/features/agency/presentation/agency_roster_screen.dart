@@ -83,6 +83,9 @@ class _TherapistRosterTab extends ConsumerWidget {
             children: [
               AppDataTable<AgencyTherapistModel>(
                 rows: list,
+                onRowTap: (t) => context.push(
+                  '${AppRoutes.agencyHome}/providers/${t.id}',
+                ),
                 searchHint: 'Search providers…',
                 searchPredicate: (t, q) {
                   final needle = q.toLowerCase();

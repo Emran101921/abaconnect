@@ -62,10 +62,7 @@ class AgencyProviderProfileScreen extends ConsumerWidget {
             _CredentialsTab(therapist: t),
             _ComplianceTab(therapist: t),
             _ProviderCaseloadTab(therapist: t),
-            const ProfileTabPlaceholder(
-              title: ProviderProfileTabs.services,
-              icon: Icons.handshake_outlined,
-            ),
+            _ProviderSessionNotesTab(therapistId: t.id),
             const ProfileTabPlaceholder(
               title: ProviderProfileTabs.availability,
               icon: Icons.calendar_today_outlined,
@@ -258,13 +255,67 @@ class _ProviderCaseloadTab extends ConsumerWidget {
                       onTap: note.childId == null
                           ? null
                           : () => context.push(
-                                '${AppRoutes.agencyHome}/children/${note.childId}',
+                                '${AppRoutes.agencyHome}/children/${note.childId}/chart',
                               ),
                     ),
                 ],
               ),
             ),
           ],
+        );
+      },
+    );
+  }
+}
+
+class _ProviderSessionNotesTab extends ConsumerWidget {
+  const _ProviderSessionNotesTab({required this.therapistId});
+
+  final String therapistId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notes = ref.watch(agencySessionNotesProvider);
+    return notes.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(child: Text(AppSnackBar.messageFromError(e))),
+      data: (list) {
+        final providerNotes = list
+            .where((note) => note.therapistId == therapistId)
+            .toList();
+        if (providerNotes.isEmpty) {
+          return const ProfileTabPlaceholder(
+            title: ProviderProfileTabs.services,
+            icon: Icons.note_alt_outlined,
+            description: 'No session notes documented for this provider yet.',
+          );
+        }
+        return ListView.separated(
+          padding: const EdgeInsets.all(16),
+          itemCount: providerNotes.length,
+          separatorBuilder: (_, _) => const Divider(),
+          itemBuilder: (context, index) {
+            final note = providerNotes[index];
+            return ListTile(
+              title: Text(note.childName),
+              subtitle: Text(note.sessionDate ?? 'Session'),
+              trailing: AppStatusBadge.fromKind(
+                note.isFullySigned
+                    ? AppStatusKind.completed
+                    : note.awaitingParentSignature
+                        ? AppStatusKind.pending
+                        : AppStatusKind.inProgress,
+                label: note.isFullySigned
+                    ? 'Signed'
+                    : note.awaitingParentSignature
+                        ? 'Awaiting parent'
+                        : 'In progress',
+              ),
+              onTap: () => context.push(
+                '${AppRoutes.agencyHome}/session-notes/${note.sessionId}/form',
+              ),
+            );
+          },
         );
       },
     );

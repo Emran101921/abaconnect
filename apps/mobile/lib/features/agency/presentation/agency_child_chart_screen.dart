@@ -21,6 +21,7 @@ import '../../agency_platform/agency_platform_constants.dart';
 import '../../agency_platform/data/agency_platform_repository.dart';
 import '../../agency_platform/presentation/agency_platform_providers.dart';
 import '../../agency_platform/widgets/profile_tab_scaffold.dart';
+import '../../parent/data/parent_booking_repository.dart';
 import '../data/agency_repository.dart';
 import 'agency_profile_screen.dart';
 
@@ -295,22 +296,14 @@ class _AgencyChildChartTabsState extends ConsumerState<_AgencyChildChartTabs>
 
     return [
       _OverviewTab(chart: chart, onEdit: onEdit),
-      const ProfileTabPlaceholder(
-        title: ClientProfileTabs.family,
-        icon: Icons.family_restroom_outlined,
-        description:
-            'Parent/caregiver contacts, emergency contacts, and service location.',
-      ),
+      _ClientFamilyTab(managedChild: managedChild, chart: chart),
       _ClientProgramTab(childId: widget.childId),
       _ServiceNeedsTab(chart: chart),
       const ProfileTabPlaceholder(
         title: ClientProfileTabs.authorizations,
         icon: Icons.verified_user_outlined,
       ),
-      const ProfileTabPlaceholder(
-        title: ClientProfileTabs.assignedProviders,
-        icon: Icons.medical_services_outlined,
-      ),
+      _ClientAssignedProvidersTab(childId: widget.childId),
       ProfileTabPlaceholder(
         title: ClientProfileTabs.insurance,
         icon: Icons.health_and_safety_outlined,
@@ -362,6 +355,145 @@ final agencyChildSessionNotesProvider =
 ) async {
   return ref.watch(agencyRepositoryProvider).fetchSessionNotesForChild(childId);
 });
+
+class _ClientFamilyTab extends StatelessWidget {
+  const _ClientFamilyTab({
+    required this.chart,
+    this.managedChild,
+  });
+
+  final ChildMedicalChartModel chart;
+  final ChildModel? managedChild;
+
+  @override
+  Widget build(BuildContext context) {
+    final child = managedChild;
+    if (child == null) {
+      return const ProfileTabPlaceholder(
+        title: ClientProfileTabs.family,
+        icon: Icons.family_restroom_outlined,
+        description:
+            'Add this child to the agency caseload to manage family contacts.',
+      );
+    }
+    final dateFmt = DateFormat.yMMMd();
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        DashboardCard(
+          title: 'Guardian / caregiver',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (child.guardianName != null)
+                Text('Name: ${child.guardianName}'),
+              if (child.guardianPhone != null)
+                Text('Phone: ${child.guardianPhone}'),
+              if (child.guardianEmail != null)
+                Text('Email: ${child.guardianEmail}'),
+              if (child.guardianName == null &&
+                  child.guardianPhone == null &&
+                  child.guardianEmail == null)
+                const Text('No guardian contact on file.'),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        DashboardCard(
+          title: 'Service location',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (child.addressLine1 != null) Text(child.addressLine1!),
+              if (child.zipCode != null) Text('ZIP ${child.zipCode}'),
+              if (child.addressLine1 == null && child.zipCode == null)
+                const Text('Address not recorded.'),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        DashboardCard(
+          title: 'Child details',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('DOB: ${dateFmt.format(child.dateOfBirth)}'),
+              if (child.primaryLanguage != null)
+                Text('Primary language: ${child.primaryLanguage}'),
+              if (child.gender != null) Text('Sex: ${child.gender}'),
+              if (chart.insuranceType != null)
+                Text('Insurance: ${chart.insuranceType}'),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ClientAssignedProvidersTab extends ConsumerWidget {
+  const _ClientAssignedProvidersTab({required this.childId});
+
+  final String childId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notes = ref.watch(agencyChildSessionNotesProvider(childId));
+    return notes.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(child: Text('$e')),
+      data: (list) {
+        final byTherapist = <String, StaffSessionNoteSummaryModel>{};
+        for (final note in list) {
+          final key = note.therapistId ?? note.therapistName;
+          byTherapist.putIfAbsent(key, () => note);
+        }
+        if (byTherapist.isEmpty) {
+          return const ProfileTabPlaceholder(
+            title: ClientProfileTabs.assignedProviders,
+            icon: Icons.medical_services_outlined,
+            description:
+                'Assigned providers appear after documented sessions.',
+          );
+        }
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            DashboardCard(
+              title: 'Providers with sessions',
+              subtitle: '${byTherapist.length} on caseload',
+              child: Column(
+                children: [
+                  for (final note in byTherapist.values)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.person_outline),
+                      title: Text(note.therapistName),
+                      subtitle: Text(
+                        note.sessionDate != null
+                            ? 'Last session ${note.sessionDate}'
+                            : 'Recent session documented',
+                      ),
+                      trailing: note.therapistId != null
+                          ? const Icon(Icons.chevron_right)
+                          : null,
+                      onTap: note.therapistId == null
+                          ? null
+                          : () => context.push(
+                                AppRoutes.agencyProviderProfile(
+                                  note.therapistId!,
+                                ),
+                              ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
 
 class _ClientSessionsTab extends ConsumerWidget {
   const _ClientSessionsTab({required this.childId});
