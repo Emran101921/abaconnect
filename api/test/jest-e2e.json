@@ -10,5 +10,6 @@
     "^.+\\.(t|j)s$": "ts-jest"
   },
   "testTimeout": 30000,
+  "maxWorkers": 1,
   "forceExit": true
 }

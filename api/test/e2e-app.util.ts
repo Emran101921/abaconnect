@@ -7,7 +7,14 @@ import { join } from 'path';
 import { AppModule } from '../src/app.module';
 import { GraphqlValidationPipe } from '../src/common/pipes/graphql-validation.pipe';
 
+const globalSeedState = globalThis as typeof globalThis & {
+  __abaconnectE2eSeeded?: boolean;
+};
+
 function ensureE2eSeedData(): void {
+  if (globalSeedState.__abaconnectE2eSeeded) {
+    return;
+  }
   execSync('npx prisma migrate deploy', {
     cwd: join(__dirname, '..'),
     env: process.env,
@@ -18,6 +25,7 @@ function ensureE2eSeedData(): void {
     env: process.env,
     stdio: 'pipe',
   });
+  globalSeedState.__abaconnectE2eSeeded = true;
 }
 
 export async function createE2eApp(): Promise<INestApplication> {
