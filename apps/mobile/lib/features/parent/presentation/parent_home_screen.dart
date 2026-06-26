@@ -23,6 +23,7 @@ import '../../notifications/notification_providers.dart';
 import '../../marketplace/data/marketplace_repository.dart';
 import 'parent_category_box.dart';
 import 'parent_dashboard_providers.dart';
+import 'parent_session_sign_screen.dart';
 import 'parent_operations_category_screen.dart';
 
 class ParentHomeScreen extends ConsumerWidget {
@@ -134,6 +135,7 @@ class ParentHomeScreen extends ConsumerWidget {
                 padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
                 child: AppTrustNotice(dense: true),
               ),
+              const ParentPendingSignaturesBanner(),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Column(

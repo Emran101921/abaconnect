@@ -61,6 +61,7 @@ class EipSessionNoteModel {
     this.supervisorSignatureDate,
     this.supervisorLicense,
     this.serverLocked = false,
+    this.parentSignatureRemoteRequested = false,
   });
 
   final String sessionId;
@@ -123,6 +124,10 @@ class EipSessionNoteModel {
 
   /// True when the server has a fully signed, locked note (not merely local signatures).
   final bool serverLocked;
+  final bool parentSignatureRemoteRequested;
+
+  bool get isRemoteParentSignaturePending =>
+      parentSignatureRemoteRequested && !hasGpsVerifiedParentSignature;
 
   bool get hasRequiredClinicalFields =>
       q1IfspOutcomes.trim().isNotEmpty &&
@@ -284,6 +289,7 @@ class EipSessionNoteModel {
     String? supervisorSignatureDate,
     String? supervisorLicense,
     bool? serverLocked,
+    bool? parentSignatureRemoteRequested,
   }) {
     return EipSessionNoteModel(
       sessionId: sessionId,
@@ -358,6 +364,8 @@ class EipSessionNoteModel {
           supervisorSignatureDate ?? this.supervisorSignatureDate,
       supervisorLicense: supervisorLicense ?? this.supervisorLicense,
       serverLocked: serverLocked ?? this.serverLocked,
+      parentSignatureRemoteRequested: parentSignatureRemoteRequested ??
+          this.parentSignatureRemoteRequested,
     );
   }
 
@@ -507,6 +515,8 @@ class EipSessionNoteModel {
       supervisorName: json['supervisorName'] as String?,
       supervisorSignatureDate: json['supervisorSignatureDate'] as String?,
       supervisorLicense: json['supervisorLicense'] as String?,
+      parentSignatureRemoteRequested:
+          json['parentSignatureRemoteRequested'] as bool? ?? false,
     );
   }
 
@@ -568,6 +578,7 @@ class EipSessionNoteModel {
         'supervisorName': supervisorName,
         'supervisorSignatureDate': supervisorSignatureDate,
         'supervisorLicense': supervisorLicense,
+        'parentSignatureRemoteRequested': parentSignatureRemoteRequested,
       };
 
   String toSoapSubjective() => q2SessionDescription.trim();

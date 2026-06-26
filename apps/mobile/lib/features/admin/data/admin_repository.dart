@@ -904,7 +904,8 @@ class AdminRepository {
     const query = r'''
       query {
         adminSessionNotes {
-          sessionId childName therapistName sessionDate isFullySigned hasServiceLog
+          sessionId childId therapistId childName therapistName sessionDate
+          isFullySigned hasServiceLog awaitingParentSignature
         }
       }
     ''';
@@ -914,11 +915,15 @@ class AdminRepository {
         .map(
           (e) => StaffSessionNoteSummaryModel(
             sessionId: e['sessionId'] as String,
+            childId: e['childId'] as String?,
+            therapistId: e['therapistId'] as String?,
             childName: e['childName'] as String? ?? '',
             therapistName: e['therapistName'] as String? ?? '',
             sessionDate: e['sessionDate'] as String?,
             isFullySigned: e['isFullySigned'] as bool? ?? false,
             hasServiceLog: e['hasServiceLog'] as bool? ?? false,
+            awaitingParentSignature:
+                e['awaitingParentSignature'] as bool? ?? false,
           ),
         )
         .toList();

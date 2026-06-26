@@ -16,6 +16,11 @@ import { TherapyType } from '../../generated/prisma/client';
 import { ScreeningsService } from '../screenings/screenings.service';
 import { SessionsService } from '../sessions/sessions.service';
 import {
+  hasInterventionistSignature,
+  hasParentSignature,
+  isReadyForParentSignature,
+} from '../sessions/eip-form.util';
+import {
   BookAppointmentInput,
   BookRecurringAppointmentsInput,
   RescheduleAppointmentInput,
@@ -28,6 +33,7 @@ import {
   SubmitScreeningInput,
   UpdateChildInput,
   UpdateParentProfileInput,
+  ParentSignSessionNoteInput,
 } from './inputs/parent-ext.input';
 import {
   AppointmentType,
@@ -38,6 +44,9 @@ import {
 import {
   ParentDashboardType,
   ParentProfileType,
+  ParentSessionNoteReviewType,
+  ParentSignSessionNoteResultType,
+  PendingSessionSignatureType,
   ReviewType,
   ScreeningResponseType,
   ScreeningTemplateType,
@@ -108,7 +117,49 @@ export class ParentBookingResolver {
       hasProgressNote: Boolean(s.progressNote?.signedAt),
       parentFeedback: s.progressNote?.parentFeedback ?? undefined,
       hasServiceLog: Boolean(s.serviceLog?.parentSignedAt),
+      awaitingParentSignature: this.sessionAwaitingParentSignature(s),
     }));
+  }
+
+  @Query(() => [PendingSessionSignatureType], {
+    name: 'parentPendingSessionSignatures',
+  })
+  async parentPendingSessionSignatures(
+    @CurrentUser() user: AuthUser,
+  ): Promise<PendingSessionSignatureType[]> {
+    return this.sessionsService.listPendingParentSignatures(user.id);
+  }
+
+  @Query(() => ParentSessionNoteReviewType, {
+    name: 'parentSessionNoteForSign',
+  })
+  async parentSessionNoteForSign(
+    @CurrentUser() user: AuthUser,
+    @Args('sessionId', { type: () => ID }) sessionId: string,
+  ): Promise<ParentSessionNoteReviewType> {
+    return this.sessionsService.getSessionNoteForParentSign(user.id, sessionId);
+  }
+
+  @Mutation(() => ParentSignSessionNoteResultType, {
+    name: 'parentSignSessionNote',
+  })
+  async parentSignSessionNote(
+    @CurrentUser() user: AuthUser,
+    @Args('input') input: ParentSignSessionNoteInput,
+  ): Promise<ParentSignSessionNoteResultType> {
+    return this.sessionsService.parentSignSessionNote(user.id, input);
+  }
+
+  private sessionAwaitingParentSignature(session: {
+    soapNote?: { eipFormData: unknown } | null;
+  }): boolean {
+    const eip = session.soapNote?.eipFormData as Record<string, unknown> | null;
+    if (!eip) return false;
+    return (
+      hasInterventionistSignature(eip) &&
+      isReadyForParentSignature(eip) &&
+      !hasParentSignature(eip)
+    );
   }
 
   @Query(() => [ChildType], { name: 'myChildren' })
@@ -233,10 +284,11 @@ export class ParentBookingResolver {
       };
     }
 
-    const checkout = await this.paymentsService.ensureBookingPaymentForAppointment(
-      user.id,
-      appointmentId,
-    );
+    const checkout =
+      await this.paymentsService.ensureBookingPaymentForAppointment(
+        user.id,
+        appointmentId,
+      );
     return {
       appointment: this.mapAppointment({
         ...row,

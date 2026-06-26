@@ -7,6 +7,7 @@ import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/models/dashboard_action_model.dart';
 import '../../../shared/layout/action_button.dart';
+import '../../../shared/models/user_role.dart';
 import '../../../shared/layout/app_page_header.dart';
 import '../../../shared/layout/user_role_badge.dart';
 import '../../../shared/widgets/app_bottom_nav.dart';
@@ -18,9 +19,14 @@ import '../../../shared/widgets/app_stat_card.dart';
 import '../../../shared/widgets/app_wellness_action_menu.dart';
 import '../../../shared/widgets/app_wellness_journey_card.dart';
 import '../../../shared/widgets/dashboard_action_inbox.dart';
+import '../../job_opportunities/data/job_opportunities_repository.dart';
+import '../../job_opportunities/widgets/job_interview_call.dart';
+import '../../job_opportunities/widgets/upcoming_interview_banner.dart';
 import '../../messaging/messaging_providers.dart';
 import '../../notifications/notification_providers.dart';
 import '../../service_coordinator/presentation/sc_providers.dart';
+import '../../agency_platform/widgets/bloomora_compliance_disclaimer.dart';
+import '../../agency_platform/widgets/agency_operational_alerts_banner.dart';
 import 'agency_providers.dart';
 
 class AgencyHomeScreen extends ConsumerWidget {
@@ -33,6 +39,33 @@ class AgencyHomeScreen extends ConsumerWidget {
     final unreadMessages = ref.watch(unreadMessageThreadsProvider);
     final unreadMessageCount = unreadMessages.maybeWhen(
       data: (c) => c,
+      orElse: () => 0,
+    );
+    final jobApplicantCount = ref.watch(agencyJobOpportunitiesProvider).maybeWhen(
+          data: (jobs) => jobs.fold<int>(
+            0,
+            (sum, job) => sum + (job.applicationCount ?? 0),
+          ),
+          orElse: () => 0,
+        );
+    final upcomingInterviewCount =
+        ref.watch(agencyJobInterviewsProvider).maybeWhen(
+              data: (interviews) => interviews
+                  .where(
+                    (interview) =>
+                        interviewIsActive(interview) &&
+                        interview.scheduledAt.isAfter(DateTime.now()),
+                  )
+                  .length,
+              orElse: () => 0,
+            );
+    final upcomingInterviews = ref.watch(agencyJobInterviewsProvider).maybeWhen(
+          data: (rows) => rows,
+          orElse: () => const <JobInterviewModel>[],
+        );
+    final hiringPipeline = ref.watch(agencyHiringPipelineSummaryProvider);
+    final hiringPendingCount = hiringPipeline.maybeWhen(
+      data: (summary) => summary.totalPendingActions,
       orElse: () => 0,
     );
     final user = ref.watch(authStateProvider).valueOrNull?.user;
@@ -53,6 +86,9 @@ class AgencyHomeScreen extends ConsumerWidget {
           ref.invalidate(agencyAnalyticsProvider);
           ref.invalidate(agencyUpcomingAppointmentsProvider);
           ref.invalidate(unreadNotificationsProvider);
+          ref.invalidate(agencyJobOpportunitiesProvider);
+          ref.invalidate(agencyJobInterviewsProvider);
+          ref.invalidate(agencyHiringPipelineSummaryProvider);
         },
         child: AppContentContainer(
           padding: EdgeInsets.zero,
@@ -100,6 +136,56 @@ class AgencyHomeScreen extends ConsumerWidget {
                 padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
                 child: AppTrustNotice(dense: true),
               ),
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: BloomoraComplianceDisclaimer(dense: true),
+              ),
+              const AgencyOperationalAlertsBanner(),
+              UpcomingInterviewBanner(
+                interviews: upcomingInterviews,
+                role: UserRole.agency,
+              ),
+              if (hiringPendingCount > 0)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  child: Card(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .secondaryContainer
+                        .withValues(alpha: 0.45),
+                    child: ListTile(
+                      leading: const Icon(Icons.assignment_outlined),
+                      title: Text(
+                        '$hiringPendingCount hiring action${hiringPendingCount == 1 ? '' : 's'} pending',
+                      ),
+                      subtitle: hiringPipeline.maybeWhen(
+                        data: (summary) {
+                          final parts = <String>[];
+                          if (summary.newApplicants > 0) {
+                            parts.add('${summary.newApplicants} new');
+                          }
+                          if (summary.credentialsSubmitted > 0) {
+                            parts.add(
+                              '${summary.credentialsSubmitted} credentials',
+                            );
+                          }
+                          if (summary.offersPending > 0) {
+                            parts.add('${summary.offersPending} offers out');
+                          }
+                          if (summary.readyToHire > 0) {
+                            parts.add('${summary.readyToHire} ready to hire');
+                          }
+                          return Text(parts.join(' · '));
+                        },
+                        orElse: () => const Text(
+                          'Review applicants across job postings',
+                        ),
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => context.push(AppRoutes.agencyOpportunities),
+                    ),
+                  ),
+                ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: dashboard.when(
@@ -177,10 +263,22 @@ class AgencyHomeScreen extends ConsumerWidget {
                           context.push('${AppRoutes.agencyHome}/call-audit'),
                     ),
                     AppWellnessActionItem(
-                      label: 'Job opportunities',
+                      label: hiringPendingCount > 0
+                          ? 'Job opportunities ($hiringPendingCount hiring actions)'
+                          : jobApplicantCount > 0
+                              ? 'Job opportunities ($jobApplicantCount applicants)'
+                              : 'Job opportunities',
                       icon: Icons.work_outline,
                       variant: AppGlossyButtonVariant.secondary,
                       onTap: () => context.push(AppRoutes.agencyOpportunities),
+                    ),
+                    AppWellnessActionItem(
+                      label: upcomingInterviewCount > 0
+                          ? 'Interview calendar ($upcomingInterviewCount upcoming)'
+                          : 'Interview calendar',
+                      icon: Icons.video_call_outlined,
+                      variant: AppGlossyButtonVariant.secondary,
+                      onTap: () => context.push(AppRoutes.agencyInterviews),
                     ),
                     AppWellnessActionItem(
                       label: 'Service needs',

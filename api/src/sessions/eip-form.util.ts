@@ -116,6 +116,12 @@ export function hasParentSignature(
   );
 }
 
+export function isRemoteParentSignatureRequested(
+  data: Record<string, unknown> | null | undefined,
+): boolean {
+  return data?.parentSignatureRemoteRequested === true;
+}
+
 export function isEipFormFullySigned(
   data: Record<string, unknown> | null | undefined,
 ): boolean {

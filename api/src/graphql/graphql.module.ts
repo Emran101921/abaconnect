@@ -37,11 +37,13 @@ import { TherapistResolver } from './therapist.resolver';
 import { MarketplaceModule } from '../marketplace/marketplace.module';
 import { JobOpportunitiesModule } from '../job-opportunities/job-opportunities.module';
 import { EiBillingModule } from '../ei-billing/ei-billing.module';
+import { AgencyPlatformModule } from '../agency-platform/agency-platform.module';
 import { MarketplaceResolver } from './marketplace.resolver';
 import { JobOpportunityResolver } from './job-opportunity.resolver';
 import { ServiceCoordinatorResolver } from './service-coordinator.resolver';
 import { CallsResolver } from './calls.resolver';
 import { EiBillingResolver } from './ei-billing.resolver';
+import { AgencyPlatformResolver } from './agency-platform.resolver';
 
 @Module({
   imports: [
@@ -74,6 +76,7 @@ import { EiBillingResolver } from './ei-billing.resolver';
     MarketplaceModule,
     JobOpportunitiesModule,
     EiBillingModule,
+    AgencyPlatformModule,
   ],
   providers: [
     ParentBookingResolver,
@@ -90,6 +93,7 @@ import { EiBillingResolver } from './ei-billing.resolver';
     ServiceCoordinatorResolver,
     CallsResolver,
     EiBillingResolver,
+    AgencyPlatformResolver,
   ],
 })
 export class GraphqlFeatureModule {}

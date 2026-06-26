@@ -7,6 +7,8 @@ import '../../core/router/app_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../shared/models/user_role.dart';
+import '../../features/agency_platform/agency_platform_constants.dart';
+import '../../features/agency_platform/presentation/agency_platform_providers.dart';
 import '../../features/notifications/notification_providers.dart';
 import '../../features/parent/presentation/parent_dashboard_providers.dart';
 import '../providers/bottom_nav_badge_providers.dart';
@@ -22,6 +24,7 @@ class AppWebNavItem {
     this.selectedIcon,
     this.badgeCount,
     this.isSelected,
+    this.moduleKey,
   });
 
   final String label;
@@ -30,6 +33,7 @@ class AppWebNavItem {
   final String route;
   final int? badgeCount;
   final bool Function(String location)? isSelected;
+  final String? moduleKey;
 }
 
 AppShellRole? inferAppShellRole({
@@ -520,51 +524,122 @@ List<AppWebNavItem> agencyWebNavItems({required int unreadCount}) {
       icon: Icons.dashboard_outlined,
       selectedIcon: Icons.dashboard_rounded,
       route: AppRoutes.agencyHome,
+      moduleKey: AgencyPlatformModules.dashboard,
       isSelected: (loc) => loc == AppRoutes.agencyHome,
     ),
     AppWebNavItem(
-      label: 'Roster',
+      label: 'Clients',
+      icon: Icons.folder_shared_outlined,
+      selectedIcon: Icons.folder_shared_rounded,
+      route: '${AppRoutes.agencyHome}/charts',
+      moduleKey: AgencyPlatformModules.clients,
+      isSelected: (loc) =>
+          loc.startsWith('${AppRoutes.agencyHome}/charts') ||
+          loc.startsWith('${AppRoutes.agencyHome}/cases') ||
+          loc.startsWith(AppRoutes.agencyChildren),
+    ),
+    AppWebNavItem(
+      label: 'Providers',
       icon: Icons.groups_outlined,
       selectedIcon: Icons.groups_rounded,
       route: '${AppRoutes.agencyHome}/roster',
+      moduleKey: AgencyPlatformModules.providers,
+      isSelected: (loc) =>
+          loc.startsWith('${AppRoutes.agencyHome}/roster') ||
+          loc.startsWith('${AppRoutes.agencyHome}/providers'),
     ),
     AppWebNavItem(
       label: 'Cases',
-      icon: Icons.folder_shared_outlined,
-      selectedIcon: Icons.folder_shared_rounded,
+      icon: Icons.assignment_outlined,
+      selectedIcon: Icons.assignment_rounded,
       route: '${AppRoutes.agencyHome}/cases',
+      moduleKey: AgencyPlatformModules.serviceCoordination,
       isSelected: (loc) => loc.startsWith('${AppRoutes.agencyHome}/cases'),
     ),
     AppWebNavItem(
-      label: 'Charts',
-      icon: Icons.medical_information_outlined,
-      selectedIcon: Icons.medical_information_rounded,
-      route: '${AppRoutes.agencyHome}/charts',
-      isSelected: (loc) => loc.startsWith('${AppRoutes.agencyHome}/charts'),
-    ),
-    AppWebNavItem(
-      label: 'Appointments',
+      label: 'Scheduling',
       icon: Icons.calendar_month_outlined,
       selectedIcon: Icons.calendar_month_rounded,
       route: '${AppRoutes.agencyHome}/appointments',
+      moduleKey: AgencyPlatformModules.scheduling,
     ),
     AppWebNavItem(
-      label: 'Analytics',
+      label: 'Documents',
+      icon: Icons.description_outlined,
+      selectedIcon: Icons.description_rounded,
+      route: AppRoutes.documents,
+      moduleKey: AgencyPlatformModules.documents,
+      isSelected: (loc) => loc.startsWith(AppRoutes.documents),
+    ),
+    AppWebNavItem(
+      label: 'Billing',
+      icon: Icons.receipt_long_outlined,
+      selectedIcon: Icons.receipt_long_rounded,
+      route: AppRoutes.agencyEiBilling,
+      moduleKey: AgencyPlatformModules.billing,
+      isSelected: (loc) => loc.startsWith(AppRoutes.agencyEiBilling),
+    ),
+    AppWebNavItem(
+      label: 'Session notes',
+      icon: Icons.note_alt_outlined,
+      selectedIcon: Icons.note_alt_rounded,
+      route: '${AppRoutes.agencyHome}/session-notes',
+      moduleKey: AgencyPlatformModules.sessionNotes,
+      isSelected: (loc) => loc.contains('/session-notes'),
+    ),
+    AppWebNavItem(
+      label: 'Referrals',
+      icon: Icons.campaign_outlined,
+      selectedIcon: Icons.campaign_rounded,
+      route: AppRoutes.agencyReferrals,
+      moduleKey: AgencyPlatformModules.referrals,
+      isSelected: (loc) => loc.startsWith(AppRoutes.agencyReferrals),
+    ),
+    AppWebNavItem(
+      label: 'Integrations',
+      icon: Icons.hub_outlined,
+      selectedIcon: Icons.hub_rounded,
+      route: AppRoutes.agencyIntegrations,
+      moduleKey: AgencyPlatformModules.integrations,
+      isSelected: (loc) => loc.startsWith(AppRoutes.agencyIntegrations),
+    ),
+    AppWebNavItem(
+      label: 'Reports',
       icon: Icons.insights_outlined,
       selectedIcon: Icons.insights_rounded,
-      route: '${AppRoutes.agencyHome}/analytics',
+      route: AppRoutes.agencyReports,
+      moduleKey: AgencyPlatformModules.reports,
+      isSelected: (loc) => loc.startsWith(AppRoutes.agencyReports),
+    ),
+    AppWebNavItem(
+      label: 'Admin settings',
+      icon: Icons.settings_outlined,
+      selectedIcon: Icons.settings_rounded,
+      route: AppRoutes.agencyAdminSettings,
+      moduleKey: AgencyPlatformModules.adminSettings,
+      isSelected: (loc) => loc.startsWith(AppRoutes.agencyAdminSettings),
+    ),
+    AppWebNavItem(
+      label: 'Audit logs',
+      icon: Icons.history_outlined,
+      selectedIcon: Icons.history_rounded,
+      route: AppRoutes.agencyAuditLogs,
+      moduleKey: AgencyPlatformModules.auditLogs,
+      isSelected: (loc) => loc.startsWith(AppRoutes.agencyAuditLogs),
     ),
     AppWebNavItem(
       label: 'Parent referrals',
       icon: Icons.storefront_outlined,
       selectedIcon: Icons.storefront_rounded,
       route: AppRoutes.agencyMarketplace,
+      moduleKey: AgencyPlatformModules.referrals,
     ),
     AppWebNavItem(
       label: 'Service needs',
       icon: Icons.medical_services_outlined,
       selectedIcon: Icons.medical_services_rounded,
       route: AppRoutes.agencyServiceNeeds,
+      moduleKey: AgencyPlatformModules.clients,
       isSelected: (loc) => loc.startsWith(AppRoutes.agencyServiceNeeds),
     ),
     AppWebNavItem(
@@ -575,11 +650,11 @@ List<AppWebNavItem> agencyWebNavItems({required int unreadCount}) {
       isSelected: (loc) => loc.startsWith(AppRoutes.agencyOpportunities),
     ),
     AppWebNavItem(
-      label: 'NY EI billing',
-      icon: Icons.receipt_long_outlined,
-      selectedIcon: Icons.receipt_long_rounded,
-      route: AppRoutes.agencyEiBilling,
-      isSelected: (loc) => loc.startsWith(AppRoutes.agencyEiBilling),
+      label: 'Interview calendar',
+      icon: Icons.video_call_outlined,
+      selectedIcon: Icons.video_call_rounded,
+      route: AppRoutes.agencyInterviews,
+      isSelected: (loc) => loc.startsWith(AppRoutes.agencyInterviews),
     ),
     AppWebNavItem(
       label: 'Profile',
@@ -740,7 +815,12 @@ class AppWebSidebar extends ConsumerWidget {
       case AppShellRole.admin:
         return adminWebNavItems(unreadCount: unreadCount);
       case AppShellRole.agency:
-        return agencyWebNavItems(unreadCount: unreadCount);
+        final enabled = ref.watch(agencyEnabledModulesProvider);
+        return agencyWebNavItems(unreadCount: unreadCount).where((item) {
+          final key = item.moduleKey;
+          if (key == null) return true;
+          return enabled.contains(key);
+        }).toList();
       case AppShellRole.serviceCoordinator:
         return serviceCoordinatorWebNavItems(unreadCount: unreadCount);
     }

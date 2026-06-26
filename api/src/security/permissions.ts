@@ -24,6 +24,8 @@ export enum Permission {
   MESSAGING_SEND = 'messaging:send',
   MESSAGING_READ = 'messaging:read',
   SUPPORT_READ_LIMITED = 'support:read:limited',
+  AGENCY_SETTINGS_READ = 'agency:settings:read',
+  AGENCY_SETTINGS_WRITE = 'agency:settings:write',
 }
 
 const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
@@ -40,6 +42,21 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     Permission.COMPLIANCE_READ,
     Permission.MESSAGING_READ,
     Permission.MESSAGING_SEND,
+    Permission.AUDIT_READ,
+    Permission.AGENCY_SETTINGS_READ,
+    Permission.AGENCY_SETTINGS_WRITE,
+  ],
+  [UserRole.DEPARTMENT_ADMIN]: [
+    Permission.PHI_READ_TENANT,
+    Permission.PHI_WRITE_ASSIGNED,
+    Permission.MESSAGING_READ,
+    Permission.MESSAGING_SEND,
+    Permission.AUDIT_READ,
+    Permission.AGENCY_SETTINGS_READ,
+  ],
+  [UserRole.PAYROLL_STAFF]: [
+    Permission.BILLING_READ,
+    Permission.PHI_READ_TENANT,
     Permission.AUDIT_READ,
   ],
   [UserRole.BILLING_STAFF]: [
@@ -97,6 +114,8 @@ export function roleDisplayName(role: UserRole | string): string {
   const map: Record<string, string> = {
     PLATFORM_ADMIN: 'Super Admin',
     AGENCY_ADMIN: 'Agency Admin',
+    DEPARTMENT_ADMIN: 'Department Admin',
+    PAYROLL_STAFF: 'Payroll Staff',
     BILLING_STAFF: 'Billing Staff',
     THERAPIST: 'Provider / Therapist',
     PARENT: 'Parent / Patient',
