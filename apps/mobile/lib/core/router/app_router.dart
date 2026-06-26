@@ -30,6 +30,7 @@ import '../../features/agency_platform/presentation/agency_audit_logs_screen.dar
 import '../../features/agency_platform/presentation/agency_provider_profile_screen.dart';
 import '../../features/agency_platform/presentation/agency_integrations_screen.dart';
 import '../../features/agency_platform/presentation/agency_referrals_screen.dart';
+import '../../features/agency_platform/presentation/agency_payroll_screen.dart';
 import '../../features/agency_platform/presentation/agency_reports_screen.dart';
 import '../../features/parent/presentation/parent_session_sign_screen.dart';
 import '../../features/auth/presentation/forgot_password_screen.dart';
@@ -91,6 +92,7 @@ import '../../features/job_opportunities/presentation/admin_marketplace_admin_sc
 import '../../features/job_opportunities/presentation/agency_applicants_screen.dart';
 import '../../features/job_opportunities/presentation/agency_child_service_needs_screen.dart';
 import '../../features/job_opportunities/presentation/agency_opportunities_screen.dart';
+import '../../features/job_opportunities/presentation/agency_interview_calendar_screen.dart';
 import '../../features/job_opportunities/presentation/agency_opportunity_edit_screen.dart';
 import '../../features/job_opportunities/presentation/job_opportunity_detail_screen.dart';
 import '../../features/job_opportunities/presentation/therapist_job_applications_screen.dart';
@@ -150,6 +152,7 @@ abstract final class AppRoutes {
   static const agencyReferrals = '/agency/referrals';
   static const agencyIntegrations = '/agency/integrations';
   static const agencyReports = '/agency/reports';
+  static const agencyPayroll = '/agency/payroll';
   static String agencyProviderProfile(String therapistId) =>
       '/agency/providers/$therapistId';
   static String agencyOpportunityDetail(String jobId) =>
@@ -612,6 +615,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 name: 'agencyChildChart',
                 builder: (context, state) => AgencyChildChartScreen(
                   childId: state.pathParameters['childId']!,
+                  initialTab: state.uri.queryParameters['tab'],
                 ),
               ),
             ],
@@ -640,6 +644,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: 'reports',
             name: 'agencyReports',
             builder: (context, state) => const AgencyReportsScreen(),
+          ),
+          GoRoute(
+            path: 'payroll',
+            name: 'agencyPayroll',
+            builder: (context, state) => const AgencyPayrollScreen(),
           ),
           GoRoute(
             path: 'providers/:therapistId',
@@ -738,6 +747,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 ],
               ),
             ],
+          ),
+          GoRoute(
+            path: 'interviews',
+            name: 'agencyInterviews',
+            builder: (context, state) => const AgencyInterviewCalendarScreen(),
           ),
           GoRoute(
             path: 'marketplace',

@@ -27,7 +27,7 @@ export class DailyCallProvider implements CallProvider {
     }
 
     const roomName = input.roomId.slice(0, 64);
-    await this.ensureRoom(apiKey, roomName);
+    await this.ensureRoom(apiKey, roomName, input.enableRecording === true);
 
     const exp = Math.floor(Date.now() / 1000) + CALL_TOKEN_TTL_SECONDS;
     const tokenRes = await fetch('https://api.daily.co/v1/meeting-tokens', {
@@ -84,7 +84,11 @@ export class DailyCallProvider implements CallProvider {
     }).catch(() => undefined);
   }
 
-  private async ensureRoom(apiKey: string, roomName: string) {
+  private async ensureRoom(
+    apiKey: string,
+    roomName: string,
+    enableRecording = false,
+  ) {
     const res = await fetch('https://api.daily.co/v1/rooms', {
       method: 'POST',
       headers: {
@@ -96,7 +100,7 @@ export class DailyCallProvider implements CallProvider {
         privacy: 'private',
         properties: {
           exp: Math.floor(Date.now() / 1000) + 86400,
-          enable_recording: false,
+          enable_recording: enableRecording ? 'cloud' : false,
         },
       }),
     });

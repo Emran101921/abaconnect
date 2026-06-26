@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Res } from '@nestjs/common';
+import { Response } from 'express';
 import {
   AuthUser,
   CurrentUser,
@@ -78,6 +79,28 @@ export class JobOpportunitiesController {
       user.tenantId ?? '',
       jobOpportunityId,
     );
+  }
+
+  @Get('agency/job-applications/:applicationId/credentials/:documentId/file')
+  @Roles('AGENCY_ADMIN')
+  async downloadApplicationCredential(
+    @CurrentUser() user: AuthUser,
+    @Param('applicationId') applicationId: string,
+    @Param('documentId') documentId: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    const { doc, stream } = await this.jobs.openApplicationCredentialFile(
+      user.id,
+      user.tenantId ?? '',
+      applicationId,
+      documentId,
+    );
+    res.setHeader('Content-Type', doc.mimeType);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${encodeURIComponent(doc.fileName)}"`,
+    );
+    stream.pipe(res);
   }
 
   @Get('therapist/job-opportunities')

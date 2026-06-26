@@ -71,6 +71,7 @@ class _AppDataTableState<T> extends State<AppDataTable<T>> {
     final rows = _filtered;
 
     return Column(
+      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (widget.showSearch && widget.searchPredicate != null)
@@ -136,6 +137,7 @@ class _DesktopTable<T> extends StatelessWidget {
     return Card(
       clipBehavior: Clip.antiAlias,
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
             color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
@@ -215,6 +217,7 @@ class _MobileList<T> extends StatelessWidget {
     final displayCols = priority.isNotEmpty ? priority : columns.take(2).toList();
 
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         for (final row in rows)
           Card(

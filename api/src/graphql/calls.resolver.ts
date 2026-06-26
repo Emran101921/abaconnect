@@ -63,7 +63,8 @@ export class CallsResolver {
   async declineCall(
     @CurrentUser() user: AuthUser,
     @Args('callSessionId', { type: () => ID }) callSessionId: string,
-    @Args('reason', { nullable: true, type: () => String }) reason: string | undefined,
+    @Args('reason', { nullable: true, type: () => String })
+    reason: string | undefined,
     @Req() req: Request,
   ) {
     return this.calls.declineCall(user.id, callSessionId, reason, callCtx(req));
@@ -124,6 +125,7 @@ export class CallsResolver {
       role: filter?.role as never,
       status: filter?.status,
       callType: filter?.callType,
+      callSessionId: filter?.callSessionId,
       from: filter?.from,
       to: filter?.to,
       limit: filter?.limit,

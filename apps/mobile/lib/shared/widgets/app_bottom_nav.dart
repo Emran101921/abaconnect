@@ -40,6 +40,8 @@ class RoleBottomNav extends ConsumerWidget {
       case UserRole.therapist:
         return AppRoutes.therapistAppointments;
       case UserRole.agency:
+      case UserRole.departmentAdmin:
+      case UserRole.payroll:
         return '${AppRoutes.agencyHome}/appointments';
       case UserRole.serviceCoordinator:
         return '${AppRoutes.serviceCoordinatorHome}/cases';
@@ -58,6 +60,8 @@ class RoleBottomNav extends ConsumerWidget {
       case UserRole.therapist:
         return AppRoutes.therapistProfile;
       case UserRole.agency:
+      case UserRole.departmentAdmin:
+      case UserRole.payroll:
         return AppRoutes.agencyProfile;
       case UserRole.serviceCoordinator:
       case UserRole.admin:

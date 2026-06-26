@@ -107,7 +107,7 @@ class AppLayout extends ConsumerWidget {
         surfaceTintColor: Colors.transparent,
       ),
       floatingActionButton: floatingActionButton,
-      body: AppPageBackground(child: pageBody),
+      body: AppPageBackground(child: SizedBox.expand(child: pageBody)),
     );
   }
 
@@ -156,7 +156,7 @@ class AppLayout extends ConsumerWidget {
         actions: appBarActions,
         surfaceTintColor: Colors.transparent,
       ),
-      body: AppPageBackground(child: pageBody),
+      body: AppPageBackground(child: SizedBox.expand(child: pageBody)),
       floatingActionButton: floatingActionButton,
       bottomNavigationBar: navBar,
     );
@@ -203,7 +203,7 @@ class AppLayout extends ConsumerWidget {
         : body;
 
     if (!wide || !constrainBodyOnWide) {
-      return child;
+      return SizedBox.expand(child: child);
     }
 
     return Align(
@@ -217,7 +217,7 @@ class AppLayout extends ConsumerWidget {
             AppSpacing.lg,
             AppSpacing.xxl,
           ),
-          child: child,
+          child: SizedBox.expand(child: child),
         ),
       ),
     );

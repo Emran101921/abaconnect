@@ -23,6 +23,7 @@ import '../../notifications/notification_providers.dart';
 import '../../service_coordinator/presentation/sc_providers.dart';
 import '../../agency_platform/widgets/bloomora_compliance_disclaimer.dart';
 import '../../agency_platform/widgets/agency_operational_alerts_banner.dart';
+import '../../job_opportunities/widgets/agency_hiring_pipeline_banner.dart';
 import 'agency_providers.dart';
 
 class AgencyHomeScreen extends ConsumerWidget {
@@ -107,6 +108,7 @@ class AgencyHomeScreen extends ConsumerWidget {
                 child: BloomoraComplianceDisclaimer(dense: true),
               ),
               const AgencyOperationalAlertsBanner(),
+              const AgencyHiringPipelineBanner(),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: dashboard.when(
@@ -188,6 +190,12 @@ class AgencyHomeScreen extends ConsumerWidget {
                       icon: Icons.work_outline,
                       variant: AppGlossyButtonVariant.secondary,
                       onTap: () => context.push(AppRoutes.agencyOpportunities),
+                    ),
+                    AppWellnessActionItem(
+                      label: 'Interview calendar',
+                      icon: Icons.calendar_month_outlined,
+                      variant: AppGlossyButtonVariant.secondary,
+                      onTap: () => context.push(AppRoutes.agencyInterviews),
                     ),
                     AppWellnessActionItem(
                       label: 'Service needs',

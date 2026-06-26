@@ -1,10 +1,15 @@
-import { Field, ID, InputType } from '@nestjs/graphql';
+import { Field, ID, InputType, Int } from '@nestjs/graphql';
+import { Type } from 'class-transformer';
 import {
+  IsBoolean,
+  IsDate,
   IsIn,
+  IsInt,
   IsNumber,
   IsOptional,
   IsString,
   IsUUID,
+  Min,
   MinLength,
 } from 'class-validator';
 import {
@@ -199,4 +204,184 @@ export class AdminJobModerationInput {
   @IsString()
   @MinLength(3)
   reason?: string;
+}
+
+@InputType()
+export class ScheduleJobInterviewInput {
+  @Field(() => ID)
+  @IsUUID()
+  applicationId!: string;
+
+  @Field()
+  @Type(() => Date)
+  @IsDate()
+  scheduledAt!: Date;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsInt()
+  @Min(15)
+  durationMinutes?: number;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsBoolean()
+  recordingRequested?: boolean;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsBoolean()
+  agencyRecordingConsent?: boolean;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
+  notes?: string;
+}
+
+@InputType()
+export class JobInterviewConsentInput {
+  @Field(() => ID)
+  @IsUUID()
+  interviewId!: string;
+
+  @Field()
+  @IsBoolean()
+  consent!: boolean;
+}
+
+@InputType()
+export class UpdateJobInterviewNotesInput {
+  @Field(() => ID)
+  @IsUUID()
+  interviewId!: string;
+
+  @Field()
+  @IsString()
+  @MinLength(1)
+  notes!: string;
+}
+
+@InputType()
+export class RequestJobApplicationDocumentsInput {
+  @Field(() => ID)
+  @IsUUID()
+  applicationId!: string;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
+  note?: string;
+}
+
+@InputType()
+export class ApproveJobApplicationCredentialsInput {
+  @Field(() => ID)
+  @IsUUID()
+  applicationId!: string;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
+  note?: string;
+}
+
+@InputType()
+export class SendJobOfferInput {
+  @Field(() => ID)
+  @IsUUID()
+  applicationId!: string;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
+  compensationRate?: string;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @Type(() => Date)
+  @IsDate()
+  startDate?: Date;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
+  message?: string;
+}
+
+@InputType()
+export class ScheduleFirstSessionFromHireInput {
+  @Field(() => ID)
+  @IsUUID()
+  applicationId!: string;
+
+  @Field()
+  @Type(() => Date)
+  @IsDate()
+  scheduledStart!: Date;
+
+  @Field(() => Int, { nullable: true })
+  @IsOptional()
+  @IsInt()
+  @Min(15)
+  durationMinutes?: number;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
+  notes?: string;
+}
+
+@InputType()
+export class RescheduleJobInterviewInput {
+  @Field(() => ID)
+  @IsUUID()
+  interviewId!: string;
+
+  @Field()
+  @Type(() => Date)
+  @IsDate()
+  scheduledAt!: Date;
+
+  @Field(() => Int, { nullable: true })
+  @IsOptional()
+  @IsInt()
+  @Min(15)
+  durationMinutes?: number;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
+  notes?: string;
+}
+
+@InputType()
+export class RespondToJobOfferInput {
+  @Field(() => ID)
+  @IsUUID()
+  applicationId!: string;
+
+  @Field()
+  @IsBoolean()
+  accept!: boolean;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsString()
+  note?: string;
+}
+
+@InputType()
+export class UpdateHireOnboardingStepInput {
+  @Field(() => ID)
+  @IsUUID()
+  agencyTherapistLinkId!: string;
+
+  @Field()
+  @IsIn(['W9', 'POLICIES', 'NPI', 'ORIENTATION', 'FIRST_SESSION'])
+  step!: 'W9' | 'POLICIES' | 'NPI' | 'ORIENTATION' | 'FIRST_SESSION';
+
+  @Field()
+  @IsBoolean()
+  complete!: boolean;
 }

@@ -2,6 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { CallsService } from '../calls/calls.service';
 import { JobOpportunitiesService } from './job-opportunities.service';
 
 describe('JobOpportunitiesService publish PHI gate', () => {
@@ -28,6 +29,7 @@ describe('JobOpportunitiesService publish PHI gate', () => {
         JobOpportunitiesService,
         { provide: PrismaService, useValue: prisma },
         { provide: NotificationsService, useValue: notifications },
+        { provide: CallsService, useValue: {} },
       ],
     }).compile();
     service = module.get(JobOpportunitiesService);

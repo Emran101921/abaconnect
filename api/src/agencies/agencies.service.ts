@@ -6,11 +6,7 @@ import {
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
-import {
-  existsSync,
-  mkdirSync,
-  writeFileSync,
-} from 'fs';
+import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import {
   AgencyDocumentType,
@@ -89,10 +85,15 @@ export class AgenciesService {
 
   async resolveAgencyForAdmin(userId: string, tenantId: string) {
     const user = await this.prisma.user.findFirst({
-      where: { id: userId, tenantId, role: 'AGENCY_ADMIN' },
+      where: { id: userId, tenantId },
       include: { agency: true },
     });
-    if (!user) {
+    const agencyAdminRoles = new Set([
+      'AGENCY_ADMIN',
+      'PLATFORM_ADMIN',
+      'DEPARTMENT_ADMIN',
+    ]);
+    if (!user || !agencyAdminRoles.has(user.role)) {
       throw new NotFoundException('Agency admin not found');
     }
     if (user.agencyId && user.agency) {
@@ -152,9 +153,7 @@ export class AgenciesService {
     });
     const uploadedTypes = new Set(docs.map((d) => d.type));
     const requiredDocs: AgencyDocumentType[] = ['BAA', 'BUSINESS_LICENSE'];
-    const missingDocuments = requiredDocs.filter(
-      (t) => !uploadedTypes.has(t),
-    );
+    const missingDocuments = requiredDocs.filter((t) => !uploadedTypes.has(t));
     const profileComplete = Boolean(agency.name?.trim());
     const documentsComplete = missingDocuments.length === 0;
     const canComplete = profileComplete && documentsComplete;
@@ -195,7 +194,10 @@ export class AgenciesService {
     }
     const storageKey = `tenants/${tenantId}/agency-docs/${agencyId}/${Date.now()}_${file.originalname}`;
     const absolutePath = join(this.uploadRoot, storageKey);
-    const dir = join(this.uploadRoot, `tenants/${tenantId}/agency-docs/${agencyId}`);
+    const dir = join(
+      this.uploadRoot,
+      `tenants/${tenantId}/agency-docs/${agencyId}`,
+    );
     if (!existsSync(dir)) {
       mkdirSync(dir, { recursive: true });
     }
@@ -395,11 +397,13 @@ export class AgenciesService {
           status: { in: ['ACTIVE', 'PENDING'] },
         },
       }),
-      this.prisma.appointment.findMany({
-        where: { tenantId, agencyId, therapistId: therapistFilter },
-        select: { childId: true },
-        distinct: ['childId'],
-      }).then((rows) => rows.length),
+      this.prisma.appointment
+        .findMany({
+          where: { tenantId, agencyId, therapistId: therapistFilter },
+          select: { childId: true },
+          distinct: ['childId'],
+        })
+        .then((rows) => rows.length),
       this.prisma.appointment.count({
         where: {
           tenantId,
@@ -670,7 +674,9 @@ export class AgenciesService {
   ) {
     const agency =
       agencyId != null
-        ? await this.prisma.agency.findFirst({ where: { id: agencyId, tenantId } })
+        ? await this.prisma.agency.findFirst({
+            where: { id: agencyId, tenantId },
+          })
         : await this.prisma.agency.findFirst({ where: { tenantId } });
     if (!agency) {
       throw new NotFoundException('Agency not found');
@@ -697,7 +703,11 @@ export class AgenciesService {
     return link.therapist;
   }
 
-  async listUpcomingAppointmentsForAgency(agencyId: string, tenantId: string, days = 14) {
+  async listUpcomingAppointmentsForAgency(
+    agencyId: string,
+    tenantId: string,
+    days = 14,
+  ) {
     const therapistIds = await this.agencyTherapistIds(agencyId);
     const start = new Date();
     start.setHours(0, 0, 0, 0);
@@ -924,9 +934,7 @@ export class AgenciesService {
       include: { child: true },
     });
     if (!enrollment) {
-      throw new NotFoundException(
-        'Child not found on agency-managed caseload',
-      );
+      throw new NotFoundException('Child not found on agency-managed caseload');
     }
     return enrollment.child;
   }
@@ -988,39 +996,39 @@ export class AgenciesService {
 
     const [appointments, sessions, scAssignments, enrollments] =
       await Promise.all([
-      this.prisma.appointment.findMany({
-        where: {
-          tenantId,
-          agencyId,
-          therapistId: therapistFilter,
-          status: { notIn: ['CANCELLED', 'NO_SHOW'] },
-        },
-        include: {
-          child: { include: { parent: { include: { user: true } } } },
-        },
-        orderBy: { scheduledStart: 'desc' },
-      }),
-      this.prisma.session.findMany({
-        where: { tenantId, therapistId: therapistFilter },
-        orderBy: { checkOutAt: 'desc' },
-      }),
-      this.prisma.childServiceCoordinatorAssignment.findMany({
-        where: {
-          agencyId,
-          status: 'ACTIVE',
-          removedAt: null,
-        },
-        include: {
-          child: { include: { parent: { include: { user: true } } } },
-        },
-      }),
-      this.prisma.agencyCaseloadChild.findMany({
-        where: { agencyId, tenantId },
-        include: {
-          child: { include: { parent: { include: { user: true } } } },
-        },
-      }),
-    ]);
+        this.prisma.appointment.findMany({
+          where: {
+            tenantId,
+            agencyId,
+            therapistId: therapistFilter,
+            status: { notIn: ['CANCELLED', 'NO_SHOW'] },
+          },
+          include: {
+            child: { include: { parent: { include: { user: true } } } },
+          },
+          orderBy: { scheduledStart: 'desc' },
+        }),
+        this.prisma.session.findMany({
+          where: { tenantId, therapistId: therapistFilter },
+          orderBy: { checkOutAt: 'desc' },
+        }),
+        this.prisma.childServiceCoordinatorAssignment.findMany({
+          where: {
+            agencyId,
+            status: 'ACTIVE',
+            removedAt: null,
+          },
+          include: {
+            child: { include: { parent: { include: { user: true } } } },
+          },
+        }),
+        this.prisma.agencyCaseloadChild.findMany({
+          where: { agencyId, tenantId },
+          include: {
+            child: { include: { parent: { include: { user: true } } } },
+          },
+        }),
+      ]);
 
     const seedMap = new Map<
       string,

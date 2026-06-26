@@ -17,9 +17,11 @@ export class CallProviderFactory {
   ) {}
 
   getProvider(): CallProvider {
-    const mode = (this.config.get<string>('CALL_VENDOR') ??
+    const mode = (
+      this.config.get<string>('CALL_VENDOR') ??
       this.config.get<string>('TELEHEALTH_VENDOR') ??
-      'stub')
+      'stub'
+    )
       .toLowerCase()
       .trim();
 

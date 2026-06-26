@@ -6,6 +6,7 @@ import '../../../shared/widgets/app_data_table.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_snackbar.dart';
 import '../../../shared/widgets/app_status_badge.dart';
+import '../widgets/application_status_badge.dart';
 import '../data/job_opportunities_repository.dart';
 
 class AdminMarketplaceAdminScreen extends ConsumerStatefulWidget {
@@ -26,7 +27,7 @@ class _AdminMarketplaceAdminScreenState
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 2, vsync: this);
+    _tabs = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -63,6 +64,7 @@ class _AdminMarketplaceAdminScreenState
   @override
   Widget build(BuildContext context) {
     final jobs = ref.watch(adminJobOpportunitiesProvider);
+    final applications = ref.watch(adminJobApplicationsProvider);
     final audit = ref.watch(adminJobMarketplaceAuditProvider);
     final dateFmt = DateFormat.yMMMd().add_jm();
 
@@ -75,6 +77,7 @@ class _AdminMarketplaceAdminScreenState
             controller: _tabs,
             tabs: const [
               Tab(text: 'Job postings'),
+              Tab(text: 'Applications'),
               Tab(text: 'Audit log'),
             ],
           ),
@@ -143,6 +146,56 @@ class _AdminMarketplaceAdminScreenState
                               ),
                             ],
                           ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                applications.when(
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (e, _) => Center(child: Text('$e')),
+                  data: (rows) => RefreshIndicator(
+                    onRefresh: () async =>
+                        ref.invalidate(adminJobApplicationsProvider),
+                    child: ListView(
+                      padding: const EdgeInsets.all(16),
+                      children: [
+                        AppDataTable<JobApplicationModel>(
+                          rows: rows,
+                          searchHint: 'Search applications…',
+                          searchPredicate: (app, q) {
+                            final needle = q.toLowerCase();
+                            return app.therapistName
+                                    .toLowerCase()
+                                    .contains(needle) ||
+                                app.jobTitle.toLowerCase().contains(needle) ||
+                                app.status.toLowerCase().contains(needle);
+                          },
+                          columns: [
+                            AppDataColumn(
+                              label: 'Therapist',
+                              mobilePriority: true,
+                              cellBuilder: (context, app) =>
+                                  Text(app.therapistName),
+                            ),
+                            AppDataColumn(
+                              label: 'Job',
+                              cellBuilder: (context, app) => Text(app.jobTitle),
+                            ),
+                            AppDataColumn(
+                              label: 'Status',
+                              mobilePriority: true,
+                              cellBuilder: (context, app) =>
+                                  ApplicationStatusBadge(status: app.status),
+                            ),
+                            AppDataColumn(
+                              label: 'Applied',
+                              cellBuilder: (context, app) => Text(
+                                dateFmt.format(app.createdAt.toLocal()),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),

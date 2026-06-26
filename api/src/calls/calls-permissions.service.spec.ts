@@ -11,7 +11,10 @@ describe('CallsPermissionsService', () => {
     parent: { findFirst: jest.fn() },
     therapist: { findFirst: jest.fn() },
     appointment: { findFirst: jest.fn(), findMany: jest.fn() },
-    childServiceCoordinatorAssignment: { findFirst: jest.fn(), findMany: jest.fn() },
+    childServiceCoordinatorAssignment: {
+      findFirst: jest.fn(),
+      findMany: jest.fn(),
+    },
     agencyRoster: { findFirst: jest.fn() },
   };
 
@@ -43,9 +46,9 @@ describe('CallsPermissionsService', () => {
         agencyId: null,
       });
 
-    await expect(
-      service.assertCanCall('admin-1', 'parent-1'),
-    ).rejects.toThrow(ForbiddenException);
+    await expect(service.assertCanCall('admin-1', 'parent-1')).rejects.toThrow(
+      ForbiddenException,
+    );
   });
 
   it('blocks agency admin from initiating calls', async () => {
@@ -65,9 +68,9 @@ describe('CallsPermissionsService', () => {
         agencyId: null,
       });
 
-    await expect(
-      service.assertCanCall('agency-1', 'parent-1'),
-    ).rejects.toThrow(ForbiddenException);
+    await expect(service.assertCanCall('agency-1', 'parent-1')).rejects.toThrow(
+      ForbiddenException,
+    );
   });
 
   it('blocks therapist calling unassigned parent', async () => {
@@ -113,8 +116,14 @@ describe('CallsPermissionsService', () => {
     prisma.parent.findFirst.mockResolvedValue({
       children: [{ id: 'child-1' }],
     });
-    prisma.appointment.findFirst.mockResolvedValue({ id: 'apt-1', agencyId: 'a1' });
-    prisma.agency.findUnique.mockResolvedValue({ id: 'a1', callingEnabled: true });
+    prisma.appointment.findFirst.mockResolvedValue({
+      id: 'apt-1',
+      agencyId: 'a1',
+    });
+    prisma.agency.findUnique.mockResolvedValue({
+      id: 'a1',
+      callingEnabled: true,
+    });
 
     const ctx = await service.assertCanCall(
       'parent-user',

@@ -10,6 +10,7 @@ import '../../../shared/models/user_role.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_snackbar.dart';
 import '../../../shared/widgets/glossy_button.dart';
+import '../../job_opportunities/data/job_opportunities_repository.dart';
 import '../call_providers.dart';
 import '../data/call_models.dart';
 import '../widgets/call_disclaimer.dart';
@@ -195,6 +196,9 @@ class _ActiveCallScreenState extends ConsumerState<ActiveCallScreen> {
     setState(() => _ending = true);
     try {
       await ref.read(callsRepositoryProvider).endCall(widget.session.id);
+      if (widget.session.jobInterviewId != null) {
+        _invalidateInterviewProviders();
+      }
     } catch (e) {
       final msg = AppSnackBar.messageFromError(e).toLowerCase();
       final alreadyDone = msg.contains('not active') ||
@@ -207,7 +211,12 @@ class _ActiveCallScreenState extends ConsumerState<ActiveCallScreen> {
         return;
       }
     }
-    if (mounted) _leaveCallScreen(ref);
+    if (mounted) _leaveCallScreen(ref, jobInterviewId: widget.session.jobInterviewId);
+  }
+
+  void _invalidateInterviewProviders() {
+    ref.invalidate(agencyJobInterviewsProvider);
+    ref.invalidate(therapistJobInterviewsProvider);
   }
 
   @override
@@ -219,14 +228,19 @@ class _ActiveCallScreenState extends ConsumerState<ActiveCallScreen> {
         onEndCall: _endCall,
         onCancelRinging: _endCall,
         onRemoteEnded: () {
-          if (mounted) _leaveCallScreen(ref);
+          if (widget.session.jobInterviewId != null) {
+            _invalidateInterviewProviders();
+          }
+          if (mounted) {
+            _leaveCallScreen(ref, jobInterviewId: widget.session.jobInterviewId);
+          }
         },
       ),
     );
   }
 }
 
-void _leaveCallScreen(WidgetRef ref) {
+void _leaveCallScreen(WidgetRef ref, {String? jobInterviewId}) {
   final context = ref.context;
   if (!context.mounted) return;
   if (context.canPop()) {

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,20 +7,18 @@ import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_snackbar.dart';
 import '../../../shared/widgets/glossy_button.dart';
-import '../../agency/data/agency_repository.dart';
 import '../../agency/presentation/agency_providers.dart';
 import '../data/job_opportunities_repository.dart';
+import '../widgets/invite_therapist_sheet.dart';
 import '../widgets/phi_warning_banner.dart';
 
 final agencyJobOpportunityProvider =
     FutureProvider.family<JobOpportunityModel?, String>((ref, jobId) async {
-  final jobs =
-      await ref.watch(agencyJobOpportunitiesProvider.future);
-  try {
-    return jobs.firstWhere((job) => job.id == jobId);
-  } catch (_) {
-    return null;
+  final jobs = await ref.watch(agencyJobOpportunitiesProvider.future);
+  for (final job in jobs) {
+    if (job.id == jobId) return job;
   }
+  return null;
 });
 
 class AgencyOpportunityEditScreen extends ConsumerStatefulWidget {
@@ -37,7 +36,7 @@ class _AgencyOpportunityEditScreenState
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _payRateController = TextEditingController();
-  bool _loaded = false;
+  String? _filledJobId;
   bool _saving = false;
   bool _publishing = false;
 
@@ -50,20 +49,21 @@ class _AgencyOpportunityEditScreenState
   }
 
   void _fill(JobOpportunityModel job) {
-    if (_loaded) return;
+    if (_filledJobId == job.id) return;
     _titleController.text = job.title;
     _descriptionController.text = job.publicDescription ?? '';
     _payRateController.text = job.payRateDisplay ?? '';
-    _loaded = true;
+    _filledJobId = job.id;
   }
 
   Future<void> _saveDraft() async {
     setState(() => _saving = true);
     try {
+      final description = _descriptionController.text.trim();
       await ref.read(jobOpportunitiesRepositoryProvider).updateJobOpportunity(
             jobOpportunityId: widget.jobOpportunityId,
             title: _titleController.text.trim(),
-            publicDescription: _descriptionController.text.trim(),
+            publicDescription: description.isEmpty ? null : description,
             payRateDisplay: _payRateController.text.trim().isEmpty
                 ? null
                 : _payRateController.text.trim(),
@@ -81,52 +81,11 @@ class _AgencyOpportunityEditScreenState
   }
 
   Future<void> _inviteTherapist(BuildContext context) async {
-    final therapists = await ref.read(agencyTherapistsProvider.future);
-    if (!context.mounted) return;
-    if (therapists.isEmpty) {
-      AppSnackBar.showError(context, 'No therapists on agency roster');
-      return;
-    }
-
-    final selected = await showModalBottomSheet<AgencyTherapistModel>(
-      context: context,
-      showDragHandle: true,
-      builder: (ctx) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                child: Text(
-                  'Invite therapist to apply',
-                  style: Theme.of(ctx).textTheme.titleMedium,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Flexible(
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: therapists.length,
-                  itemBuilder: (context, index) {
-                    final therapist = therapists[index];
-                    return ListTile(
-                      title: Text(therapist.displayName),
-                      subtitle: Text(
-                        therapist.email ?? therapist.licenseNumber ?? '',
-                      ),
-                      onTap: () => Navigator.pop(ctx, therapist),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        );
-      },
+    final selected = await showInviteTherapistSheet(
+      context,
+      ref,
+      title: 'Invite therapist to apply',
     );
-
     if (selected == null) return;
 
     try {
@@ -146,12 +105,22 @@ class _AgencyOpportunityEditScreenState
   }
 
   Future<void> _publish() async {
+    if (_filledJobId == null) {
+      AppSnackBar.showError(context, 'Still loading posting details');
+      return;
+    }
+    final title = _titleController.text.trim();
+    if (title.isEmpty) {
+      AppSnackBar.showError(context, 'Public title is required');
+      return;
+    }
     setState(() => _publishing = true);
     try {
+      final description = _descriptionController.text.trim();
       await ref.read(jobOpportunitiesRepositoryProvider).updateJobOpportunity(
             jobOpportunityId: widget.jobOpportunityId,
-            title: _titleController.text.trim(),
-            publicDescription: _descriptionController.text.trim(),
+            title: title,
+            publicDescription: description.isEmpty ? null : description,
             payRateDisplay: _payRateController.text.trim().isEmpty
                 ? null
                 : _payRateController.text.trim(),
@@ -165,7 +134,8 @@ class _AgencyOpportunityEditScreenState
       if (mounted) {
         AppSnackBar.showSuccess(context, 'Job opportunity published');
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('Publish job posting failed: $e\n$stackTrace');
       if (mounted) AppSnackBar.showError(context, e);
     } finally {
       if (mounted) setState(() => _publishing = false);
@@ -175,6 +145,12 @@ class _AgencyOpportunityEditScreenState
   @override
   Widget build(BuildContext context) {
     final jobAsync = ref.watch(agencyJobOpportunityProvider(widget.jobOpportunityId));
+
+    ref.listen(agencyJobOpportunityProvider(widget.jobOpportunityId), (prev, next) {
+      next.whenData((job) {
+        if (job != null) _fill(job);
+      });
+    });
 
     return jobAsync.when(
       loading: () => AppScaffold(
@@ -192,9 +168,9 @@ class _AgencyOpportunityEditScreenState
             body: const Center(child: Text('Posting not found')),
           );
         }
-        _fill(job);
         final canPublish =
             job.status == 'DRAFT' || job.status == 'PAUSED' || job.status == 'BLOCKED';
+        final formReady = _filledJobId == job.id;
 
         return AppScaffold(
           title: 'Edit job posting',
@@ -250,7 +226,8 @@ class _AgencyOpportunityEditScreenState
                   label: 'Publish posting',
                   variant: GlossyButtonVariant.greenTeal,
                   loading: _publishing,
-                  onPressed: _saving || _publishing ? null : _publish,
+                  onPressed:
+                      !formReady || _saving || _publishing ? null : _publish,
                 ),
               ],
               const SizedBox(height: 12),

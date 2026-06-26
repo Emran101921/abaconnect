@@ -612,6 +612,14 @@ List<AppWebNavItem> agencyWebNavItems({required int unreadCount}) {
       isSelected: (loc) => loc.startsWith(AppRoutes.agencyReports),
     ),
     AppWebNavItem(
+      label: 'Payroll',
+      icon: Icons.payments_outlined,
+      selectedIcon: Icons.payments_rounded,
+      route: AppRoutes.agencyPayroll,
+      moduleKey: AgencyPlatformModules.payroll,
+      isSelected: (loc) => loc.startsWith(AppRoutes.agencyPayroll),
+    ),
+    AppWebNavItem(
       label: 'Admin settings',
       icon: Icons.settings_outlined,
       selectedIcon: Icons.settings_rounded,
@@ -648,6 +656,13 @@ List<AppWebNavItem> agencyWebNavItems({required int unreadCount}) {
       selectedIcon: Icons.work_rounded,
       route: AppRoutes.agencyOpportunities,
       isSelected: (loc) => loc.startsWith(AppRoutes.agencyOpportunities),
+    ),
+    AppWebNavItem(
+      label: 'Interviews',
+      icon: Icons.calendar_month_outlined,
+      selectedIcon: Icons.calendar_month_rounded,
+      route: AppRoutes.agencyInterviews,
+      isSelected: (loc) => loc.startsWith(AppRoutes.agencyInterviews),
     ),
     AppWebNavItem(
       label: 'Profile',

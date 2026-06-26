@@ -445,6 +445,10 @@ class AuthRepository {
         return 'COMPLIANCE_AUDITOR';
       case UserRole.support:
         return 'SUPPORT_STAFF';
+      case UserRole.departmentAdmin:
+        return 'DEPARTMENT_ADMIN';
+      case UserRole.payroll:
+        return 'PAYROLL_STAFF';
     }
   }
 
@@ -454,12 +458,16 @@ class AuthRepository {
         return UserRole.therapist;
       case 'AGENCY_ADMIN':
         return UserRole.agency;
+      case 'DEPARTMENT_ADMIN':
+        return UserRole.departmentAdmin;
       case 'SERVICE_COORDINATOR':
         return UserRole.serviceCoordinator;
       case 'PLATFORM_ADMIN':
         return UserRole.admin;
       case 'BILLING_STAFF':
         return UserRole.billing;
+      case 'PAYROLL_STAFF':
+        return UserRole.payroll;
       case 'COMPLIANCE_AUDITOR':
         return UserRole.complianceAuditor;
       case 'SUPPORT_STAFF':
