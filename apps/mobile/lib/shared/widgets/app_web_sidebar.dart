@@ -650,13 +650,6 @@ List<AppWebNavItem> agencyWebNavItems({required int unreadCount}) {
       isSelected: (loc) => loc.startsWith(AppRoutes.agencyOpportunities),
     ),
     AppWebNavItem(
-      label: 'Interview calendar',
-      icon: Icons.video_call_outlined,
-      selectedIcon: Icons.video_call_rounded,
-      route: AppRoutes.agencyInterviews,
-      isSelected: (loc) => loc.startsWith(AppRoutes.agencyInterviews),
-    ),
-    AppWebNavItem(
       label: 'Profile',
       icon: Icons.person_outline,
       selectedIcon: Icons.person_rounded,

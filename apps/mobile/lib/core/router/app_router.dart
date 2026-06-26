@@ -90,7 +90,6 @@ import '../../features/marketplace/presentation/admin_marketplace_screen.dart';
 import '../../features/job_opportunities/presentation/admin_marketplace_admin_screen.dart';
 import '../../features/job_opportunities/presentation/agency_applicants_screen.dart';
 import '../../features/job_opportunities/presentation/agency_child_service_needs_screen.dart';
-import '../../features/job_opportunities/presentation/agency_interview_calendar_screen.dart';
 import '../../features/job_opportunities/presentation/agency_opportunities_screen.dart';
 import '../../features/job_opportunities/presentation/agency_opportunity_edit_screen.dart';
 import '../../features/job_opportunities/presentation/job_opportunity_detail_screen.dart';
@@ -652,9 +651,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'call-audit',
             name: 'agencyCallAudit',
-            builder: (context, state) => AgencyCallAuditScreen(
-              callSessionId: state.uri.queryParameters['callSessionId'],
-            ),
+            builder: (context, state) => const AgencyCallAuditScreen(),
           ),
           GoRoute(
             path: 'invites',
@@ -716,12 +713,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             name: 'agencyServiceNeeds',
             builder: (context, state) =>
                 const AgencyChildServiceNeedsScreen(),
-          ),
-          GoRoute(
-            path: 'interviews',
-            name: 'agencyInterviews',
-            builder: (context, state) =>
-                const AgencyInterviewCalendarScreen(),
           ),
           GoRoute(
             path: 'opportunities',
