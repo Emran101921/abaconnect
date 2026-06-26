@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../shared/utils/analytics_csv_export.dart';
 import '../../../shared/widgets/app_data_table.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_skeleton.dart';
+import '../../../shared/widgets/glossy_button.dart';
 import '../data/agency_platform_repository.dart';
+import '../utils/agency_report_export.dart';
 import '../widgets/bloomora_compliance_disclaimer.dart';
 import 'agency_platform_providers.dart';
 
@@ -20,6 +23,27 @@ class AgencyAuditLogsScreen extends ConsumerWidget {
       title: 'Audit logs',
       subtitle: 'PHI access, permission changes, and sensitive actions',
       showPageBreadcrumbs: true,
+      actions: [
+        logs.maybeWhen(
+          data: (list) => GlossyButton(
+            title: 'Export CSV',
+            icon: Icons.download_outlined,
+            size: GlossyButtonSize.small,
+            fullWidth: false,
+            onPressed: list.isEmpty
+                ? null
+                : () => exportAnalyticsCsv(
+                      context,
+                      csv: auditReportCsv(list),
+                      filename: analyticsExportFilename(
+                        'agency-audit',
+                        'export',
+                      ),
+                    ),
+          ),
+          orElse: () => const SizedBox.shrink(),
+        ),
+      ],
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

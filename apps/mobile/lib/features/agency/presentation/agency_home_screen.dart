@@ -21,6 +21,7 @@ import '../../../shared/widgets/dashboard_action_inbox.dart';
 import '../../messaging/messaging_providers.dart';
 import '../../notifications/notification_providers.dart';
 import '../../service_coordinator/presentation/sc_providers.dart';
+import '../../agency_platform/presentation/agency_platform_providers.dart';
 import '../../agency_platform/widgets/bloomora_compliance_disclaimer.dart';
 import '../../agency_platform/widgets/agency_operational_alerts_banner.dart';
 import 'agency_providers.dart';
@@ -55,6 +56,7 @@ class AgencyHomeScreen extends ConsumerWidget {
           ref.invalidate(agencyAnalyticsProvider);
           ref.invalidate(agencyUpcomingAppointmentsProvider);
           ref.invalidate(unreadNotificationsProvider);
+          ref.invalidate(agencyOperationalAlertsProvider);
         },
         child: AppContentContainer(
           padding: EdgeInsets.zero,
@@ -182,6 +184,24 @@ class AgencyHomeScreen extends ConsumerWidget {
                       variant: AppGlossyButtonVariant.neutral,
                       onTap: () =>
                           context.push('${AppRoutes.agencyHome}/call-audit'),
+                    ),
+                    AppWellnessActionItem(
+                      label: 'Referrals',
+                      icon: Icons.campaign_outlined,
+                      variant: AppGlossyButtonVariant.secondary,
+                      onTap: () => context.push(AppRoutes.agencyReferrals),
+                    ),
+                    AppWellnessActionItem(
+                      label: 'Payroll',
+                      icon: Icons.payments_outlined,
+                      variant: AppGlossyButtonVariant.secondary,
+                      onTap: () => context.push(AppRoutes.agencyPayroll),
+                    ),
+                    AppWellnessActionItem(
+                      label: 'Reports',
+                      icon: Icons.insights_outlined,
+                      variant: AppGlossyButtonVariant.secondary,
+                      onTap: () => context.push(AppRoutes.agencyReports),
                     ),
                     AppWellnessActionItem(
                       label: 'Job opportunities',

@@ -538,6 +538,34 @@ export class AgencyPlatformService {
       });
     }
 
+    try {
+      const [agencyTherapists, payRates] = await Promise.all([
+        this.prisma.agencyTherapist.findMany({
+          where: { agencyId: agency.id },
+          select: { therapistId: true },
+        }),
+        this.prisma.providerPayRate.findMany({
+          where: { agencyId: agency.id, tenantId, active: true },
+          select: { therapistId: true },
+          distinct: ['therapistId'],
+        }),
+      ]);
+      const withRates = new Set(payRates.map((rate) => rate.therapistId));
+      const missingPayRates = agencyTherapists.filter(
+        (link) => !withRates.has(link.therapistId),
+      ).length;
+      if (missingPayRates > 0) {
+        alerts.push({
+          key: 'missing_pay_rates',
+          label: 'Providers missing pay rates',
+          count: missingPayRates,
+          routeHint: 'payroll',
+        });
+      }
+    } catch {
+      // Pay rate tables may be unavailable on older databases.
+    }
+
     return alerts;
   }
 

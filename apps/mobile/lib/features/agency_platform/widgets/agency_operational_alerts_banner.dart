@@ -14,6 +14,8 @@ class AgencyOperationalAlertsBanner extends ConsumerWidget {
         return AppRoutes.agencyReferrals;
       case 'session-notes':
         return '${AppRoutes.agencyHome}/session-notes';
+      case 'payroll':
+        return AppRoutes.agencyPayroll;
       default:
         return null;
     }
