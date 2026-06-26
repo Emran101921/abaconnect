@@ -2,12 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/providers/app_providers.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/layout/dashboard_card.dart';
 import '../../../shared/models/analytics_date_range.dart';
+import '../../../shared/utils/analytics_csv_export.dart';
 import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/glossy_button.dart';
+import '../../agency/data/agency_repository.dart';
 import '../../agency/presentation/agency_providers.dart';
+import '../data/agency_platform_repository.dart';
+import '../utils/agency_report_export.dart';
 
 class AgencyReportsScreen extends ConsumerStatefulWidget {
   const AgencyReportsScreen({super.key});
@@ -84,8 +89,7 @@ class _AgencyReportsScreenState extends ConsumerState<AgencyReportsScreen> {
                   ),
                   const SizedBox(height: 12),
                   const Text(
-                    'Exports will include branch, program, payer, and provider '
-                    'filters in a later release. Use quick links below for live data.',
+                    'Download a CSV snapshot for the selected report type and date range.',
                   ),
                 ],
                 const SizedBox(height: 16),
@@ -97,18 +101,27 @@ class _AgencyReportsScreenState extends ConsumerState<AgencyReportsScreen> {
                         child: const Text('Back'),
                       ),
                     const Spacer(),
-                    GlossyButton(
-                      title: _step < 2 ? 'Next' : 'Open live view',
-                      fullWidth: false,
-                      size: GlossyButtonSize.small,
-                      onPressed: () {
-                        if (_step < 2) {
-                          setState(() => _step += 1);
-                          return;
-                        }
-                        _openLiveView(context, range);
-                      },
-                    ),
+                    if (_step < 2)
+                      GlossyButton(
+                        title: 'Next',
+                        fullWidth: false,
+                        size: GlossyButtonSize.small,
+                        onPressed: () => setState(() => _step += 1),
+                      )
+                    else ...[
+                      TextButton(
+                        onPressed: () => _openLiveView(context, range),
+                        child: const Text('Open live view'),
+                      ),
+                      const SizedBox(width: 8),
+                      GlossyButton(
+                        title: 'Export CSV',
+                        icon: Icons.download_outlined,
+                        fullWidth: false,
+                        size: GlossyButtonSize.small,
+                        onPressed: () => _exportReport(context, range),
+                      ),
+                    ],
                   ],
                 ),
               ],
@@ -166,6 +179,81 @@ class _AgencyReportsScreenState extends ConsumerState<AgencyReportsScreen> {
       default:
         ref.read(agencyAnalyticsDateRangeProvider.notifier).state = range;
         context.push('${AppRoutes.agencyHome}/analytics');
+    }
+  }
+
+  Future<void> _exportReport(
+    BuildContext context,
+    AnalyticsDateRange range,
+  ) async {
+    try {
+      final repo = ref.read(agencyRepositoryProvider);
+      final platformRepo = ref.read(agencyPlatformRepositoryProvider);
+      late final String csv;
+      late final String filename;
+
+      switch (_reportType) {
+        case 'billing':
+          final claims = <AgencyClaimSummaryModel>[];
+          for (final status in const [
+            'DRAFT',
+            'SUBMITTED',
+            'PENDING',
+            'PAID',
+            'DENIED',
+          ]) {
+            final batch = await repo.fetchAnalyticsClaimsList(
+              status,
+              limit: 500,
+              fromDate: range.graphqlFrom,
+              toDate: range.graphqlTo,
+            );
+            claims.addAll(batch);
+          }
+          csv = claimsCsvFromAgency(claims);
+          filename = analyticsExportFilename(
+            'agency-report',
+            'billing',
+            dateRangeSuffix: range.filenameSuffix,
+          );
+        case 'compliance':
+          final notes = await repo.fetchSessionNotes();
+          csv = complianceReportCsv(notes);
+          filename = analyticsExportFilename(
+            'agency-report',
+            'compliance',
+            dateRangeSuffix: range.filenameSuffix,
+          );
+        case 'audit':
+          final logs = await platformRepo.fetchAuditLogs();
+          csv = auditReportCsv(logs);
+          filename = analyticsExportFilename(
+            'agency-report',
+            'audit',
+            dateRangeSuffix: range.filenameSuffix,
+          );
+        case 'productivity':
+        default:
+          final metrics = await repo.fetchTenantAnalytics(
+            fromDate: range.graphqlFrom,
+            toDate: range.graphqlTo,
+          );
+          csv = productivityReportCsv(metrics, range.label);
+          filename = analyticsExportFilename(
+            'agency-report',
+            'productivity',
+            dateRangeSuffix: range.filenameSuffix,
+          );
+      }
+
+      if (!context.mounted) return;
+      await exportAnalyticsCsv(context, csv: csv, filename: filename);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Export failed: $e')),
+        );
+      }
     }
   }
 }

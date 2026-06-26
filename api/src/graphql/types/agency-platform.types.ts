@@ -1,4 +1,4 @@
-import { Field, ID, ObjectType } from '@nestjs/graphql';
+import { Field, ID, Int, ObjectType } from '@nestjs/graphql';
 import { TherapyType } from '../../../generated/prisma/client';
 
 @ObjectType()
@@ -296,4 +296,40 @@ export class AgencyAuditLogType {
 
   @Field()
   createdAt!: Date;
+}
+
+@ObjectType()
+export class AgencyPayrollRunLineType {
+  @Field(() => ID)
+  therapistId!: string;
+
+  @Field()
+  therapistName!: string;
+
+  @Field(() => Int)
+  sessionCount!: number;
+
+  @Field()
+  hours!: number;
+
+  @Field()
+  rateDisplay!: string;
+
+  @Field(() => Int)
+  estimatedPayCents!: number;
+}
+
+@ObjectType()
+export class AgencyPayrollRunPreviewType {
+  @Field()
+  fromDate!: Date;
+
+  @Field()
+  toDate!: Date;
+
+  @Field(() => [AgencyPayrollRunLineType])
+  lines!: AgencyPayrollRunLineType[];
+
+  @Field(() => Int)
+  totalEstimatedPayCents!: number;
 }

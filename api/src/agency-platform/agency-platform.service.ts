@@ -49,7 +49,9 @@ export class AgencyPlatformService {
       },
     });
     if (module && !module.enabled) {
-      throw new ForbiddenException(`Module "${moduleKey}" is disabled for this agency`);
+      throw new ForbiddenException(
+        `Module "${moduleKey}" is disabled for this agency`,
+      );
     }
     return agency;
   }
@@ -259,8 +261,11 @@ export class AgencyPlatformService {
       throw new BadRequestException('Referral already converted to a client');
     }
 
-    const fallbackName = (referral.childName ?? referral.contactName ?? 'New Child')
-      .trim();
+    const fallbackName = (
+      referral.childName ??
+      referral.contactName ??
+      'New Child'
+    ).trim();
     const parts = fallbackName.split(/\s+/).filter(Boolean);
     const firstName = input.firstName?.trim() || parts[0] || 'New';
     const lastName =
@@ -308,10 +313,157 @@ export class AgencyPlatformService {
     return { referral: updated, childId: child.id };
   }
 
+  async getPayrollRunPreview(
+    userId: string,
+    tenantId: string,
+    input: { from: Date; to: Date },
+  ) {
+    const agency = await this.assertModuleEnabled(userId, tenantId, 'payroll');
+    const from = input.from;
+    const to = input.to;
+    if (from > to) {
+      throw new BadRequestException('Start date must be on or before end date');
+    }
+
+    const [sessions, rates] = await Promise.all([
+      this.prisma.session.findMany({
+        where: {
+          tenantId,
+          status: 'COMPLETED',
+          appointment: {
+            agencyId: agency.id,
+            scheduledStart: { gte: from, lte: to },
+          },
+        },
+        include: {
+          therapist: { include: { user: true } },
+          appointment: true,
+        },
+      }),
+      this.prisma.providerPayRate.findMany({
+        where: { agencyId: agency.id, tenantId, active: true },
+        orderBy: { effectiveFrom: 'desc' },
+      }),
+    ]);
+
+    type LineAgg = {
+      therapistId: string;
+      therapistName: string;
+      sessionCount: number;
+      hours: number;
+      estimatedPayCents: number;
+      rateDisplays: Set<string>;
+    };
+
+    const byTherapist = new Map<string, LineAgg>();
+
+    for (const session of sessions) {
+      const therapistId = session.therapistId;
+      const therapist = session.therapist;
+      const therapistName = therapist?.user
+        ? `${therapist.user.firstName ?? ''} ${therapist.user.lastName ?? ''}`.trim()
+        : 'Unknown provider';
+
+      let hours = 0;
+      if (session.durationMinutes != null && session.durationMinutes > 0) {
+        hours = session.durationMinutes / 60;
+      } else if (session.appointment) {
+        const ms =
+          session.appointment.scheduledEnd.getTime() -
+          session.appointment.scheduledStart.getTime();
+        hours = Math.max(0, ms / (1000 * 60 * 60));
+      }
+
+      const rate = this.pickPayRate(
+        rates,
+        therapistId,
+        session.appointment?.therapyType,
+      );
+
+      let payCents = 0;
+      let rateDisplay = 'No rate configured';
+      if (rate) {
+        const unit = rate.rateUnit?.trim() || 'hour';
+        payCents = unit === 'session' ? rate.rateCents : Math.round(hours * rate.rateCents);
+        rateDisplay = `$${(rate.rateCents / 100).toFixed(2)}/${unit}`;
+      }
+
+      const existing = byTherapist.get(therapistId) ?? {
+        therapistId,
+        therapistName,
+        sessionCount: 0,
+        hours: 0,
+        estimatedPayCents: 0,
+        rateDisplays: new Set<string>(),
+      };
+      existing.sessionCount += 1;
+      existing.hours += hours;
+      existing.estimatedPayCents += payCents;
+      if (rate) {
+        existing.rateDisplays.add(rateDisplay);
+      }
+      byTherapist.set(therapistId, existing);
+    }
+
+    const lines = Array.from(byTherapist.values())
+      .map((line) => ({
+        therapistId: line.therapistId,
+        therapistName: line.therapistName,
+        sessionCount: line.sessionCount,
+        hours: Math.round(line.hours * 100) / 100,
+        rateDisplay:
+          [...line.rateDisplays].join(', ') || 'No rate configured',
+        estimatedPayCents: line.estimatedPayCents,
+      }))
+      .sort((a, b) => a.therapistName.localeCompare(b.therapistName));
+
+    const totalEstimatedPayCents = lines.reduce(
+      (sum, line) => sum + line.estimatedPayCents,
+      0,
+    );
+
+    return {
+      fromDate: from,
+      toDate: to,
+      lines,
+      totalEstimatedPayCents,
+    };
+  }
+
+  private pickPayRate(
+    rates: Array<{
+      therapistId: string;
+      serviceType: TherapyType | null;
+      rateCents: number;
+      rateUnit: string;
+      effectiveFrom: Date;
+    }>,
+    therapistId: string,
+    serviceType?: TherapyType | null,
+  ) {
+    const therapistRates = rates.filter(
+      (rate) => rate.therapistId === therapistId,
+    );
+    if (therapistRates.length === 0) {
+      return null;
+    }
+    if (serviceType) {
+      const match = therapistRates.find(
+        (rate) => rate.serviceType === serviceType,
+      );
+      if (match) {
+        return match;
+      }
+    }
+    const general = therapistRates.find((rate) => rate.serviceType == null);
+    return general ?? therapistRates[0];
+  }
+
   async getOperationalAlerts(userId: string, tenantId: string) {
     const agency = await this.resolveAgency(userId, tenantId);
-    const [openReferrals, sessions] = await Promise.all([
-      this.prisma.agencyReferral.count({
+    let openReferrals = 0;
+    try {
+      openReferrals = await this.prisma.agencyReferral.count({
         where: {
           agencyId: agency.id,
           tenantId,
@@ -323,19 +475,25 @@ export class AgencyPlatformService {
             ],
           },
         },
-      }),
-      this.prisma.session.findMany({
-        where: { tenantId, soapNote: { isNot: null } },
-        include: { soapNote: true },
-        orderBy: { updatedAt: 'desc' },
-        take: 300,
-      }),
-    ]);
+      });
+    } catch {
+      openReferrals = 0;
+    }
+
+    const sessions = await this.prisma.session.findMany({
+      where: { tenantId, soapNote: { isNot: null } },
+      include: { soapNote: true },
+      orderBy: { updatedAt: 'desc' },
+      take: 300,
+    });
 
     let unsignedSessionNotes = 0;
     let awaitingParentSignatures = 0;
     for (const session of sessions) {
-      const eip = session.soapNote?.eipFormData as Record<string, unknown> | null;
+      const eip = session.soapNote?.eipFormData as Record<
+        string,
+        unknown
+      > | null;
       if (!isEipFormFullySigned(eip)) {
         unsignedSessionNotes += 1;
       }
@@ -720,7 +878,10 @@ export class AgencyPlatformService {
     });
   }
 
-  private async getOrCreatePlatformSettings(agencyId: string, tenantId: string) {
+  private async getOrCreatePlatformSettings(
+    agencyId: string,
+    tenantId: string,
+  ) {
     const existing = await this.prisma.agencyPlatformSetting.findUnique({
       where: { agencyId },
     });

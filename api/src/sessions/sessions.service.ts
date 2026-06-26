@@ -16,6 +16,7 @@ import {
   hasParentSignature,
   isEipFormFullySigned,
   isReadyForParentSignature,
+  isRemoteParentSignatureRequested,
 } from './eip-form.util';
 import { EiBillingRecordService } from '../ei-billing/ei-billing-record.service';
 import { ServiceLogService } from './service-log.service';
@@ -398,7 +399,12 @@ export class SessionsService {
   ) {
     const session = await this.prisma.session.findUnique({
       where: { id: sessionId },
-      include: { soapNote: true },
+      include: {
+        soapNote: true,
+        appointment: true,
+        child: { include: { parent: true } },
+        therapist: { include: { user: true } },
+      },
     });
     if (!session) {
       throw new NotFoundException('Session not found');
@@ -411,6 +417,10 @@ export class SessionsService {
     }
 
     const eipFormData = this.parseEipFormData(input.eipFormData);
+    const previousEip = session.soapNote?.eipFormData as Record<
+      string,
+      unknown
+    > | null;
     if (eipFormData != null && hasParentSignature(eipFormData)) {
       if (!isReadyForParentSignature(eipFormData)) {
         throw new BadRequestException(
@@ -420,6 +430,21 @@ export class SessionsService {
     }
     const fullySigned =
       eipFormData != null ? isEipFormFullySigned(eipFormData) : false;
+
+    const shouldNotifyParentRemoteSign =
+      eipFormData != null &&
+      isRemoteParentSignatureRequested(eipFormData) &&
+      hasInterventionistSignature(eipFormData) &&
+      isReadyForParentSignature(eipFormData) &&
+      !hasParentSignature(eipFormData) &&
+      previousEip?.parentSignatureRemoteNotifiedAt == null &&
+      (!isRemoteParentSignatureRequested(previousEip) ||
+        (!hasInterventionistSignature(previousEip) &&
+          hasInterventionistSignature(eipFormData)));
+
+    if (shouldNotifyParentRemoteSign) {
+      eipFormData.parentSignatureRemoteNotifiedAt = new Date().toISOString();
+    }
 
     const note = await this.prisma.soapNote.upsert({
       where: { sessionId: session.id },
@@ -490,7 +515,38 @@ export class SessionsService {
         });
     }
 
+    if (shouldNotifyParentRemoteSign && session.child.parent) {
+      void this.notifyParentRemoteSignatureRequest(session).catch(() => undefined);
+    }
+
     return note;
+  }
+
+  private async notifyParentRemoteSignatureRequest(session: {
+    id: string;
+    appointment: { scheduledStart: Date };
+    child: { parent: { userId: string } | null };
+    therapist: { user: { firstName: string | null; lastName: string | null } };
+  }) {
+    const parent = session.child.parent;
+    if (!parent) return;
+
+    const therapistName =
+      `${session.therapist.user.firstName ?? ''} ${session.therapist.user.lastName ?? ''}`.trim() ||
+      'Your therapist';
+    const sessionDate = session.appointment.scheduledStart
+      .toISOString()
+      .slice(0, 10);
+
+    await this.notifications.createForUser(parent.userId, {
+      title: 'Session note ready to sign',
+      body: `${therapistName} requested your signature for the session on ${sessionDate}.`,
+      data: {
+        type: 'PARENT_SESSION_SIGN_REQUESTED',
+        actionType: 'PARENT_SESSION_SIGN_REQUESTED',
+        sessionId: session.id,
+      },
+    });
   }
 
   async findServiceLogBySessionId(sessionId: string) {
@@ -805,7 +861,9 @@ export class SessionsService {
       therapistId: session.therapist.id,
       childName: `${session.child.firstName} ${session.child.lastName}`,
       therapistName: `${session.therapist.user.firstName} ${session.therapist.user.lastName}`,
-      sessionDate: session.appointment.scheduledStart.toISOString().slice(0, 10),
+      sessionDate: session.appointment.scheduledStart
+        .toISOString()
+        .slice(0, 10),
       isFullySigned: fullySigned,
       hasServiceLog: session.serviceLog != null,
       awaitingParentSignature:
@@ -835,7 +893,10 @@ export class SessionsService {
     });
 
     const pending = sessions.filter((session) => {
-      const eip = session.soapNote?.eipFormData as Record<string, unknown> | null;
+      const eip = session.soapNote?.eipFormData as Record<
+        string,
+        unknown
+      > | null;
       return (
         hasInterventionistSignature(eip) &&
         isReadyForParentSignature(eip) &&
@@ -981,8 +1042,7 @@ export class SessionsService {
       ...existing,
       parentSignature: signatureName,
       parentSignatureDate:
-        input.signatureDate?.trim() ||
-        new Date().toISOString().slice(0, 10),
+        input.signatureDate?.trim() || new Date().toISOString().slice(0, 10),
       parentSignatureLatitude: input.latitude,
       parentSignatureLongitude: input.longitude,
       parentSignatureLocationAt: signedAt,
