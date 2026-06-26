@@ -37,9 +37,14 @@ final agencyChildChartProvider =
 });
 
 class AgencyChildChartScreen extends ConsumerWidget {
-  const AgencyChildChartScreen({super.key, required this.childId});
+  const AgencyChildChartScreen({
+    super.key,
+    required this.childId,
+    this.initialTab,
+  });
 
   final String childId;
+  final String? initialTab;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -76,6 +81,7 @@ class AgencyChildChartScreen extends ConsumerWidget {
           chart: chart,
           childId: childId,
           showBillingTab: managedChild != null,
+          initialTab: initialTab,
         );
       },
     );
@@ -87,11 +93,13 @@ class _AgencyChildChartTabs extends ConsumerStatefulWidget {
     required this.chart,
     required this.childId,
     this.showBillingTab = false,
+    this.initialTab,
   });
 
   final ChildMedicalChartModel chart;
   final String childId;
   final bool showBillingTab;
+  final String? initialTab;
 
   @override
   ConsumerState<_AgencyChildChartTabs> createState() =>
@@ -107,7 +115,21 @@ class _AgencyChildChartTabsState extends ConsumerState<_AgencyChildChartTabs>
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: _tabLabels.length, vsync: this);
+    var initialIndex = 0;
+    final tab = widget.initialTab;
+    if (tab != null && tab.isNotEmpty) {
+      final idx = _tabLabels.indexWhere(
+        (label) => label.toLowerCase().startsWith(tab.toLowerCase()),
+      );
+      if (idx >= 0) {
+        initialIndex = idx;
+      }
+    }
+    _tabs = TabController(
+      length: _tabLabels.length,
+      vsync: this,
+      initialIndex: initialIndex,
+    );
   }
 
   @override
@@ -410,9 +432,35 @@ class _ClientProgramTab extends ConsumerWidget {
             icon: Icons.school_outlined,
           );
         }
+        final managed = ref.watch(agencyManagedChildrenProvider);
+        final managedChild = managed.maybeWhen(
+          data: (children) {
+            try {
+              return children.firstWhere((c) => c.id == childId);
+            } catch (_) {
+              return null;
+            }
+          },
+          orElse: () => null,
+        );
+        final dateFmt = DateFormat.yMMMd();
         return ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            if (managedChild != null)
+              DashboardCard(
+                title: 'Caseload profile',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(managedChild.displayName),
+                    Text('DOB: ${dateFmt.format(managedChild.dateOfBirth)}'),
+                    if (managedChild.guardianName != null)
+                      Text('Guardian: ${managedChild.guardianName}'),
+                  ],
+                ),
+              ),
+            if (managedChild != null) const SizedBox(height: 12),
             DashboardCard(
               title: 'Service coordination',
               child: Column(
@@ -432,6 +480,10 @@ class _ClientProgramTab extends ConsumerWidget {
                       ),
                     ),
                   Text('SC notes: ${data.coordinationNotesCount}'),
+                  if (data.lastCoordinationNoteAt != null)
+                    Text(
+                      'Last note: ${dateFmt.format(data.lastCoordinationNoteAt!)}',
+                    ),
                   if (data.screeningRiskLevel != null)
                     Text('Screening priority: ${data.screeningRiskLevel}'),
                   if (data.evaluationRequested)

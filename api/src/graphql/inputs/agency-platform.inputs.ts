@@ -173,6 +173,15 @@ export class UpsertProviderPayRateInput {
 }
 
 @InputType()
+export class AgencyPayrollRunInput {
+  @Field()
+  from!: Date;
+
+  @Field()
+  to!: Date;
+}
+
+@InputType()
 export class ConvertAgencyReferralInput {
   @Field(() => ID)
   referralId!: string;

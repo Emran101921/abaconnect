@@ -612,6 +612,14 @@ List<AppWebNavItem> agencyWebNavItems({required int unreadCount}) {
       isSelected: (loc) => loc.startsWith(AppRoutes.agencyReports),
     ),
     AppWebNavItem(
+      label: 'Payroll',
+      icon: Icons.payments_outlined,
+      selectedIcon: Icons.payments_rounded,
+      route: AppRoutes.agencyPayroll,
+      moduleKey: AgencyPlatformModules.payroll,
+      isSelected: (loc) => loc.startsWith(AppRoutes.agencyPayroll),
+    ),
+    AppWebNavItem(
       label: 'Admin settings',
       icon: Icons.settings_outlined,
       selectedIcon: Icons.settings_rounded,

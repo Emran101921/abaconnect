@@ -42,27 +42,25 @@ export const AGENCY_PLATFORM_MODULE_LABELS: Record<
   audit_logs: 'Audit Logs',
 };
 
-export const DEFAULT_ENABLED_MODULES: Record<
-  AgencyPlatformModuleKey,
-  boolean
-> = {
-  dashboard: true,
-  clients: true,
-  providers: true,
-  agencies: true,
-  service_coordination: true,
-  scheduling: true,
-  session_notes: true,
-  documents: true,
-  billing: true,
-  payroll: false,
-  referrals: true,
-  outreach: false,
-  reports: true,
-  integrations: false,
-  admin_settings: true,
-  audit_logs: true,
-};
+export const DEFAULT_ENABLED_MODULES: Record<AgencyPlatformModuleKey, boolean> =
+  {
+    dashboard: true,
+    clients: true,
+    providers: true,
+    agencies: true,
+    service_coordination: true,
+    scheduling: true,
+    session_notes: true,
+    documents: true,
+    billing: true,
+    payroll: false,
+    referrals: true,
+    outreach: false,
+    reports: true,
+    integrations: false,
+    admin_settings: true,
+    audit_logs: true,
+  };
 
 export const PERMISSION_SCOPE_TYPES = [
   'ROLE',

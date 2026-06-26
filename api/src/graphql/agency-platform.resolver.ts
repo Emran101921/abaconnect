@@ -15,6 +15,7 @@ import {
   UpsertAgencyReferralInput,
   UpsertProviderPayRateInput,
   ConvertAgencyReferralInput,
+  AgencyPayrollRunInput,
 } from './inputs/agency-platform.inputs';
 import {
   AgencyAuditLogType,
@@ -30,6 +31,7 @@ import {
   AgencyReferralType,
   ConvertAgencyReferralResultType,
   ProviderPayRateType,
+  AgencyPayrollRunPreviewType,
 } from './types/agency-platform.types';
 import { AgencyReferralStatus } from '../../generated/prisma/client';
 
@@ -91,7 +93,8 @@ function mapProgram(row: {
     id: row.id,
     name: row.name,
     code: row.code ?? undefined,
-    serviceType: (row.serviceType ?? undefined) as AgencyProgramType['serviceType'],
+    serviceType: (row.serviceType ??
+      undefined) as AgencyProgramType['serviceType'],
     description: row.description ?? undefined,
     region: row.region ?? undefined,
     active: row.active,
@@ -115,9 +118,9 @@ function mapModule(row: {
   };
 }
 
-function mapOverview(overview: Awaited<
-  ReturnType<AgencyPlatformService['getPlatformOverview']>
->): AgencyPlatformOverviewType {
+function mapOverview(
+  overview: Awaited<ReturnType<AgencyPlatformService['getPlatformOverview']>>,
+): AgencyPlatformOverviewType {
   return {
     agencyId: overview.agencyId,
     complianceDisclaimer: overview.complianceDisclaimer,
@@ -258,7 +261,9 @@ export class AgencyPlatformResolver {
     return mapProgram(program);
   }
 
-  @Mutation(() => AgencyFeatureModuleType, { name: 'updateAgencyFeatureModule' })
+  @Mutation(() => AgencyFeatureModuleType, {
+    name: 'updateAgencyFeatureModule',
+  })
   async updateAgencyFeatureModule(
     @CurrentUser() user: AuthUser,
     @Args('input') input: UpdateAgencyFeatureModuleInput,
@@ -318,7 +323,11 @@ export class AgencyPlatformResolver {
       user.tenantId,
       {
         ...input,
-        scopeType: input.scopeType as 'ROLE' | 'DEPARTMENT' | 'PROGRAM' | 'USER',
+        scopeType: input.scopeType as
+          | 'ROLE'
+          | 'DEPARTMENT'
+          | 'PROGRAM'
+          | 'USER',
       },
     );
     return {
@@ -359,7 +368,11 @@ export class AgencyPlatformResolver {
     if (!user.tenantId) {
       throw new Error('Tenant required');
     }
-    await this.platform.assertModuleEnabled(user.id, user.tenantId, 'referrals');
+    await this.platform.assertModuleEnabled(
+      user.id,
+      user.tenantId,
+      'referrals',
+    );
     const rows = await this.platform.listReferrals(user.id, user.tenantId);
     return rows.map((row) => mapReferral(row));
   }
@@ -372,7 +385,11 @@ export class AgencyPlatformResolver {
     if (!user.tenantId) {
       throw new Error('Tenant required');
     }
-    await this.platform.assertModuleEnabled(user.id, user.tenantId, 'referrals');
+    await this.platform.assertModuleEnabled(
+      user.id,
+      user.tenantId,
+      'referrals',
+    );
     const row = await this.platform.upsertReferral(user.id, user.tenantId, {
       ...input,
       status: input.status as AgencyReferralStatus | undefined,
@@ -390,7 +407,11 @@ export class AgencyPlatformResolver {
     if (!user.tenantId) {
       throw new Error('Tenant required');
     }
-    await this.platform.assertModuleEnabled(user.id, user.tenantId, 'referrals');
+    await this.platform.assertModuleEnabled(
+      user.id,
+      user.tenantId,
+      'referrals',
+    );
     const result = await this.platform.convertReferralToClient(
       user.id,
       user.tenantId,
@@ -469,7 +490,9 @@ export class AgencyPlatformResolver {
     };
   }
 
-  @Query(() => [AgencyOperationalAlertType], { name: 'agencyOperationalAlerts' })
+  @Query(() => [AgencyOperationalAlertType], {
+    name: 'agencyOperationalAlerts',
+  })
   async agencyOperationalAlerts(
     @CurrentUser() user: AuthUser,
   ): Promise<AgencyOperationalAlertType[]> {
@@ -477,5 +500,19 @@ export class AgencyPlatformResolver {
       throw new Error('Tenant required');
     }
     return this.platform.getOperationalAlerts(user.id, user.tenantId);
+  }
+
+  @Query(() => AgencyPayrollRunPreviewType, { name: 'agencyPayrollRunPreview' })
+  async agencyPayrollRunPreview(
+    @CurrentUser() user: AuthUser,
+    @Args('input') input: AgencyPayrollRunInput,
+  ): Promise<AgencyPayrollRunPreviewType> {
+    if (!user.tenantId) {
+      throw new Error('Tenant required');
+    }
+    return this.platform.getPayrollRunPreview(user.id, user.tenantId, {
+      from: input.from,
+      to: input.to,
+    });
   }
 }

@@ -596,6 +596,34 @@ class AgencyPlatformRepository {
         )
         .toList();
   }
+
+  Future<AgencyPayrollRunPreviewModel> fetchPayrollRunPreview({
+    required DateTime from,
+    required DateTime to,
+  }) async {
+    final result = await _graphql.query('''
+      query(\$input: AgencyPayrollRunInput!) {
+        agencyPayrollRunPreview(input: \$input) {
+          fromDate toDate totalEstimatedPayCents
+          lines {
+            therapistId therapistName sessionCount hours rateDisplay estimatedPayCents
+          }
+        }
+      }
+    ''', variables: {
+      'input': {
+        'from': from.toIso8601String(),
+        'to': to.toIso8601String(),
+      },
+    });
+    final data = result['data']?['agencyPayrollRunPreview'] as Map?;
+    if (data == null) {
+      throw Exception('Failed to load payroll preview');
+    }
+    return AgencyPayrollRunPreviewModel.fromJson(
+      Map<String, dynamic>.from(data),
+    );
+  }
 }
 
 class AgencyClientCoordinationModel {
@@ -775,6 +803,66 @@ class ProviderPayRateModel {
       rateCents: (json['rateCents'] as num).toInt(),
       rateUnit: json['rateUnit'] as String? ?? 'hour',
       effectiveFrom: DateTime.parse(json['effectiveFrom'] as String),
+    );
+  }
+}
+
+class AgencyPayrollRunLineModel {
+  const AgencyPayrollRunLineModel({
+    required this.therapistId,
+    required this.therapistName,
+    required this.sessionCount,
+    required this.hours,
+    required this.rateDisplay,
+    required this.estimatedPayCents,
+  });
+
+  final String therapistId;
+  final String therapistName;
+  final int sessionCount;
+  final double hours;
+  final String rateDisplay;
+  final int estimatedPayCents;
+
+  factory AgencyPayrollRunLineModel.fromJson(Map<String, dynamic> json) {
+    return AgencyPayrollRunLineModel(
+      therapistId: json['therapistId'] as String,
+      therapistName: json['therapistName'] as String? ?? '',
+      sessionCount: (json['sessionCount'] as num?)?.toInt() ?? 0,
+      hours: (json['hours'] as num?)?.toDouble() ?? 0,
+      rateDisplay: json['rateDisplay'] as String? ?? '',
+      estimatedPayCents: (json['estimatedPayCents'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
+class AgencyPayrollRunPreviewModel {
+  const AgencyPayrollRunPreviewModel({
+    required this.fromDate,
+    required this.toDate,
+    required this.lines,
+    required this.totalEstimatedPayCents,
+  });
+
+  final DateTime fromDate;
+  final DateTime toDate;
+  final List<AgencyPayrollRunLineModel> lines;
+  final int totalEstimatedPayCents;
+
+  factory AgencyPayrollRunPreviewModel.fromJson(Map<String, dynamic> json) {
+    final lines = json['lines'] as List<dynamic>? ?? [];
+    return AgencyPayrollRunPreviewModel(
+      fromDate: DateTime.parse(json['fromDate'] as String),
+      toDate: DateTime.parse(json['toDate'] as String),
+      lines: lines
+          .map(
+            (line) => AgencyPayrollRunLineModel.fromJson(
+              Map<String, dynamic>.from(line as Map),
+            ),
+          )
+          .toList(),
+      totalEstimatedPayCents:
+          (json['totalEstimatedPayCents'] as num?)?.toInt() ?? 0,
     );
   }
 }

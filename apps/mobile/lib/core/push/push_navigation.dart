@@ -46,6 +46,14 @@ void navigateFromPushPayload(
     return;
   }
 
+  final sessionId = data['sessionId'] as String?;
+  if (actionType == 'PARENT_SESSION_SIGN_REQUESTED' &&
+      sessionId != null &&
+      role == UserRole.parent) {
+    router.push(AppRoutes.parentSessionSign(sessionId));
+    return;
+  }
+
   final paymentId = data['paymentId'] as String?;
   if (actionType == 'SESSION_PAYMENT_DUE' &&
       paymentId != null &&
@@ -93,6 +101,68 @@ void navigateFromPushPayload(
     if (actionType == 'MARKETPLACE_SAVED_SEARCH_MATCH' &&
         role == UserRole.agency) {
       router.push(AppRoutes.agencyMarketplace);
+      return;
+    }
+  }
+
+  final jobId = data['jobOpportunityId'] as String?;
+  if (jobId != null) {
+    if (actionType == 'JOB_INVITE_TO_APPLY' && role == UserRole.therapist) {
+      router.push('${AppRoutes.therapistJobOpportunities}/$jobId');
+      return;
+    }
+    if (actionType == 'JOB_APPLICATION_SUBMITTED' && role == UserRole.agency) {
+      router.push('${AppRoutes.agencyOpportunities}/$jobId/applicants');
+      return;
+    }
+    if ((actionType == 'JOB_APPLICATION_CREDENTIALS_UPDATED' ||
+            actionType == 'JOB_OFFER_ACCEPTED' ||
+            actionType == 'JOB_OFFER_DECLINED') &&
+        role == UserRole.agency) {
+      router.push('${AppRoutes.agencyOpportunities}/$jobId/applicants');
+      return;
+    }
+    if (actionType == 'JOB_APPLICATION_STATUS_CHANGED' &&
+        role == UserRole.therapist) {
+      router.push(AppRoutes.therapistJobApplications);
+      return;
+    }
+    if (actionType == 'JOB_APPLICATION_CREDENTIALS_UPDATED' &&
+        role == UserRole.therapist) {
+      router.push(AppRoutes.therapistJobApplications);
+      return;
+    }
+    if (actionType == 'JOB_OFFER_SENT' && role == UserRole.therapist) {
+      router.push(AppRoutes.therapistJobApplications);
+      return;
+    }
+    if (actionType == 'THERAPIST_HIRED_CONTRACTED' &&
+        role == UserRole.therapist) {
+      router.push(AppRoutes.therapistJobApplications);
+      return;
+    }
+    if (actionType == 'JOB_INTERVIEW_COMPLETED' && role == UserRole.agency) {
+      router.push('${AppRoutes.agencyOpportunities}/$jobId/applicants');
+      return;
+    }
+    if ((actionType == 'JOB_INTERVIEW_SCHEDULED' ||
+            actionType == 'JOB_INTERVIEW_RECORDING_CONSENT' ||
+            actionType == 'JOB_INTERVIEW_CANCELLED' ||
+            actionType == 'JOB_INTERVIEW_COMPLETED' ||
+            actionType == 'JOB_INTERVIEW_STARTING_SOON' ||
+            actionType == 'JOB_INTERVIEW_REMINDER') &&
+        role == UserRole.therapist) {
+      router.push(AppRoutes.therapistJobApplications);
+      return;
+    }
+    if ((actionType == 'JOB_INTERVIEW_SCHEDULED' ||
+            actionType == 'JOB_INTERVIEW_RECORDING_CONSENT' ||
+            actionType == 'JOB_INTERVIEW_CANCELLED' ||
+            actionType == 'JOB_INTERVIEW_COMPLETED' ||
+            actionType == 'JOB_INTERVIEW_STARTING_SOON' ||
+            actionType == 'JOB_INTERVIEW_REMINDER') &&
+        role == UserRole.agency) {
+      router.push(AppRoutes.agencyInterviews);
       return;
     }
   }

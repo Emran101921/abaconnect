@@ -41,10 +41,24 @@ class NotificationsScreen extends ConsumerWidget {
     if (n.actionType == 'SESSION_PAYMENT_DUE' && n.paymentId != null) {
       return true;
     }
+    if (n.actionType == 'PARENT_SESSION_SIGN_REQUESTED' && n.sessionId != null) {
+      return true;
+    }
     if (n.jobOpportunityId != null &&
         (n.actionType == 'JOB_INVITE_TO_APPLY' ||
             n.actionType == 'JOB_APPLICATION_SUBMITTED' ||
-            n.actionType == 'JOB_APPLICATION_STATUS_CHANGED')) {
+            n.actionType == 'JOB_APPLICATION_STATUS_CHANGED' ||
+            n.actionType == 'JOB_APPLICATION_CREDENTIALS_UPDATED' ||
+            n.actionType == 'JOB_OFFER_ACCEPTED' ||
+            n.actionType == 'JOB_OFFER_DECLINED' ||
+            n.actionType == 'JOB_OFFER_SENT' ||
+            n.actionType == 'THERAPIST_HIRED_CONTRACTED' ||
+            n.actionType == 'JOB_INTERVIEW_SCHEDULED' ||
+            n.actionType == 'JOB_INTERVIEW_RECORDING_CONSENT' ||
+            n.actionType == 'JOB_INTERVIEW_CANCELLED' ||
+            n.actionType == 'JOB_INTERVIEW_COMPLETED' ||
+            n.actionType == 'JOB_INTERVIEW_STARTING_SOON' ||
+            n.actionType == 'JOB_INTERVIEW_REMINDER')) {
       return true;
     }
     return false;
@@ -108,6 +122,13 @@ class NotificationsScreen extends ConsumerWidget {
       return;
     }
 
+    if (n.actionType == 'PARENT_SESSION_SIGN_REQUESTED' &&
+        n.sessionId != null &&
+        role == UserRole.parent) {
+      context.push(AppRoutes.parentSessionSign(n.sessionId!));
+      return;
+    }
+
     final jobId = n.jobOpportunityId;
     if (jobId != null) {
       if (n.actionType == 'JOB_INVITE_TO_APPLY' && role == UserRole.therapist) {
@@ -118,9 +139,55 @@ class NotificationsScreen extends ConsumerWidget {
         context.push('${AppRoutes.agencyOpportunities}/$jobId/applicants');
         return;
       }
+      if ((n.actionType == 'JOB_APPLICATION_CREDENTIALS_UPDATED' ||
+              n.actionType == 'JOB_OFFER_ACCEPTED' ||
+              n.actionType == 'JOB_OFFER_DECLINED') &&
+          role == UserRole.agency) {
+        context.push('${AppRoutes.agencyOpportunities}/$jobId/applicants');
+        return;
+      }
       if (n.actionType == 'JOB_APPLICATION_STATUS_CHANGED' &&
           role == UserRole.therapist) {
         context.push(AppRoutes.therapistJobApplications);
+        return;
+      }
+      if (n.actionType == 'JOB_APPLICATION_CREDENTIALS_UPDATED' &&
+          role == UserRole.therapist) {
+        context.push(AppRoutes.therapistJobApplications);
+        return;
+      }
+      if (n.actionType == 'JOB_OFFER_SENT' && role == UserRole.therapist) {
+        context.push(AppRoutes.therapistJobApplications);
+        return;
+      }
+      if (n.actionType == 'THERAPIST_HIRED_CONTRACTED' &&
+          role == UserRole.therapist) {
+        context.push(AppRoutes.therapistJobApplications);
+        return;
+      }
+      if (n.actionType == 'JOB_INTERVIEW_COMPLETED' &&
+          role == UserRole.agency) {
+        context.push('${AppRoutes.agencyOpportunities}/$jobId/applicants');
+        return;
+      }
+      if ((n.actionType == 'JOB_INTERVIEW_SCHEDULED' ||
+              n.actionType == 'JOB_INTERVIEW_RECORDING_CONSENT' ||
+              n.actionType == 'JOB_INTERVIEW_CANCELLED' ||
+              n.actionType == 'JOB_INTERVIEW_COMPLETED' ||
+              n.actionType == 'JOB_INTERVIEW_STARTING_SOON' ||
+              n.actionType == 'JOB_INTERVIEW_REMINDER') &&
+          role == UserRole.therapist) {
+        context.push(AppRoutes.therapistJobApplications);
+        return;
+      }
+      if ((n.actionType == 'JOB_INTERVIEW_SCHEDULED' ||
+              n.actionType == 'JOB_INTERVIEW_RECORDING_CONSENT' ||
+              n.actionType == 'JOB_INTERVIEW_CANCELLED' ||
+              n.actionType == 'JOB_INTERVIEW_COMPLETED' ||
+              n.actionType == 'JOB_INTERVIEW_STARTING_SOON' ||
+              n.actionType == 'JOB_INTERVIEW_REMINDER') &&
+          role == UserRole.agency) {
+        context.push(AppRoutes.agencyInterviews);
         return;
       }
     }
