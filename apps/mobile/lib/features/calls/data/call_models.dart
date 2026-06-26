@@ -54,6 +54,7 @@ class CallSessionModel {
     this.tokenExpiresAt,
     this.providerName = 'stub',
     this.participants = const [],
+    this.jobInterviewId,
   });
 
   final String id;
@@ -73,6 +74,7 @@ class CallSessionModel {
   final DateTime? tokenExpiresAt;
   final String providerName;
   final List<CallParticipantModel> participants;
+  final String? jobInterviewId;
 
   bool get isMissed => status == CallSessionStatus.MISSED;
   bool get isEnded => status == CallSessionStatus.ENDED;

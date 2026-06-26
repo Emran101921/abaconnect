@@ -10,6 +10,7 @@ import {
   ChildServiceNeedStatus,
   JobApplicationStatus,
   JobEmploymentType,
+  JobInterviewStatus,
   JobLocationModality,
   JobOpportunityStatus,
   JobServiceType,
@@ -22,6 +23,7 @@ registerEnumType(JobApplicationStatus, { name: 'JobApplicationStatus' });
 registerEnumType(JobEmploymentType, { name: 'JobEmploymentType' });
 registerEnumType(JobLocationModality, { name: 'JobLocationModality' });
 registerEnumType(ChildServiceNeedStatus, { name: 'ChildServiceNeedStatus' });
+registerEnumType(JobInterviewStatus, { name: 'JobInterviewStatus' });
 
 @ObjectType()
 export class PublicJobOpportunityType {
@@ -94,6 +96,9 @@ export class PublicJobOpportunityType {
   @Field(() => Int, { nullable: true })
   applicationCount?: number;
 
+  @Field(() => Int, { nullable: true })
+  pendingActionCount?: number;
+
   @Field()
   disclaimer: string;
 
@@ -102,6 +107,12 @@ export class PublicJobOpportunityType {
 
   @Field({ nullable: true })
   isSaved?: boolean;
+
+  @Field(() => ID, { nullable: true })
+  myApplicationId?: string;
+
+  @Field(() => JobApplicationStatus, { nullable: true })
+  myApplicationStatus?: JobApplicationStatus;
 }
 
 @ObjectType()
@@ -124,6 +135,9 @@ export class ChildServiceNeedType {
   @Field()
   childDisplayName: string;
 
+  @Field(() => ID, { nullable: true })
+  childId?: string;
+
   @Field({ nullable: true })
   jobOpportunityId?: string;
 
@@ -135,6 +149,42 @@ export class ChildServiceNeedType {
 
   @Field()
   createdAt: Date;
+}
+
+@ObjectType()
+export class JobApplicationStatusHistoryType {
+  @Field(() => JobApplicationStatus, { nullable: true })
+  fromStatus?: JobApplicationStatus;
+
+  @Field(() => JobApplicationStatus)
+  toStatus: JobApplicationStatus;
+
+  @Field({ nullable: true })
+  note?: string;
+
+  @Field()
+  changedByName: string;
+
+  @Field()
+  createdAt: Date;
+}
+
+@ObjectType()
+export class JobCredentialDocumentType {
+  @Field(() => ID)
+  id: string;
+
+  @Field()
+  title: string;
+
+  @Field()
+  fileName: string;
+
+  @Field()
+  type: string;
+
+  @Field()
+  uploadedAt: Date;
 }
 
 @ObjectType()
@@ -165,6 +215,51 @@ export class JobApplicationType {
 
   @Field()
   updatedAt: Date;
+
+  @Field(() => [JobCredentialDocumentType])
+  credentialDocuments: JobCredentialDocumentType[];
+
+  @Field(() => [JobApplicationStatusHistoryType])
+  recentStatusHistory: JobApplicationStatusHistoryType[];
+}
+
+@ObjectType()
+export class AgencyHiringPipelineSummaryType {
+  @Field(() => Int)
+  newApplicants: number;
+
+  @Field(() => Int)
+  credentialReview: number;
+
+  @Field(() => Int)
+  credentialsSubmitted: number;
+
+  @Field(() => Int)
+  offersPending: number;
+
+  @Field(() => Int)
+  readyToHire: number;
+
+  @Field(() => Int)
+  totalPendingActions: number;
+}
+
+@ObjectType()
+export class HiringFirstSessionType {
+  @Field(() => ID)
+  appointmentId: string;
+
+  @Field(() => ID)
+  childId: string;
+
+  @Field(() => ID)
+  therapistId: string;
+
+  @Field()
+  scheduledStart: Date;
+
+  @Field()
+  scheduledEnd: Date;
 }
 
 @ObjectType()
@@ -210,6 +305,87 @@ export class JobOpportunityInviteType {
 }
 
 @ObjectType()
+export class JobInterviewType {
+  @Field(() => ID)
+  id: string;
+
+  @Field(() => ID)
+  applicationId: string;
+
+  @Field(() => ID)
+  jobOpportunityId: string;
+
+  @Field()
+  jobTitle: string;
+
+  @Field()
+  therapistName: string;
+
+  @Field({ nullable: true })
+  therapistEmail?: string;
+
+  @Field()
+  agencyName: string;
+
+  @Field()
+  scheduledAt: Date;
+
+  @Field(() => Int)
+  durationMinutes: number;
+
+  @Field(() => JobInterviewStatus)
+  status: JobInterviewStatus;
+
+  @Field()
+  recordingRequested: boolean;
+
+  @Field()
+  agencyRecordingConsent: boolean;
+
+  @Field()
+  therapistRecordingConsent: boolean;
+
+  @Field()
+  recordingEnabled: boolean;
+
+  @Field({ nullable: true })
+  notes?: string;
+
+  @Field(() => ID, { nullable: true })
+  callSessionId?: string;
+}
+
+@ObjectType()
+export class JobInterviewJoinType {
+  @Field(() => ID)
+  interviewId: string;
+
+  @Field()
+  recordingEnabled: boolean;
+
+  @Field()
+  jobTitle: string;
+
+  @Field()
+  therapistName: string;
+
+  @Field()
+  agencyName: string;
+
+  @Field(() => ID)
+  callSessionId: string;
+
+  @Field({ nullable: true })
+  joinUrl?: string;
+
+  @Field()
+  token: string;
+
+  @Field()
+  tokenExpiresAt: Date;
+}
+
+@ObjectType()
 export class JobOpportunityBrowseResultType {
   @Field(() => [PublicJobOpportunityType])
   items: PublicJobOpportunityType[];
@@ -222,6 +398,54 @@ export class JobOpportunityBrowseResultType {
 
   @Field(() => Int)
   total: number;
+}
+
+@ObjectType()
+export class HireOnboardingStepType {
+  @Field()
+  key: string;
+
+  @Field()
+  label: string;
+
+  @Field()
+  complete: boolean;
+
+  @Field({ nullable: true })
+  completedAt?: Date;
+
+  @Field()
+  therapistCanComplete: boolean;
+}
+
+@ObjectType()
+export class HireOnboardingType {
+  @Field(() => ID)
+  agencyTherapistLinkId: string;
+
+  @Field(() => ID)
+  therapistId: string;
+
+  @Field()
+  therapistName: string;
+
+  @Field(() => ID)
+  agencyId: string;
+
+  @Field()
+  agencyName: string;
+
+  @Field(() => [HireOnboardingStepType])
+  steps: HireOnboardingStepType[];
+
+  @Field(() => Int)
+  completedCount: number;
+
+  @Field(() => Int)
+  totalCount: number;
+
+  @Field()
+  isComplete: boolean;
 }
 
 export function mapPublicJobType(

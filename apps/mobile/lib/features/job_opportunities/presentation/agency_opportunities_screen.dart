@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -66,7 +67,8 @@ class _AgencyOpportunitiesScreenState
       if (context.mounted) {
         AppSnackBar.showSuccess(context, 'Job opportunity published');
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('Publish job opportunity failed: $e\n$stackTrace');
       if (context.mounted) {
         AppSnackBar.showError(context, e);
       }
@@ -88,13 +90,29 @@ class _AgencyOpportunitiesScreenState
         ),
       ],
       body: RefreshIndicator(
-        onRefresh: () async => ref.invalidate(agencyJobOpportunitiesProvider),
+        onRefresh: () async {
+          ref.invalidate(agencyJobOpportunitiesProvider);
+          ref.invalidate(agencyHiringPipelineSummaryProvider);
+        },
         child: opportunities.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text('$e')),
+          loading: () => ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: const [
+              SizedBox(height: 240),
+              Center(child: CircularProgressIndicator()),
+            ],
+          ),
+          error: (e, _) => ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: [
+              const SizedBox(height: 120),
+              Center(child: Text(AppSnackBar.messageFromError(e))),
+            ],
+          ),
           data: (rows) {
             final filtered = _filterRows(rows);
             return ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(16),
               children: [
                 const PhiWarningBanner(),

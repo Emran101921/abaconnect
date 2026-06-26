@@ -56,7 +56,10 @@ class UserRoleBadge extends StatelessWidget {
       case UserRole.therapist:
         return (Icons.medical_services_outlined, scheme.secondary);
       case UserRole.agency:
+      case UserRole.departmentAdmin:
         return (Icons.business_outlined, scheme.tertiary);
+      case UserRole.payroll:
+        return (Icons.payments_outlined, scheme.tertiary);
       case UserRole.serviceCoordinator:
         return (Icons.support_agent_outlined, scheme.primary);
       case UserRole.admin:

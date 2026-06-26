@@ -1,5 +1,20 @@
-import { Field, ID, InputType, Int, ObjectType, registerEnumType } from '@nestjs/graphql';
-import { IsEnum, IsInt, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
+import {
+  Field,
+  ID,
+  InputType,
+  Int,
+  ObjectType,
+  registerEnumType,
+} from '@nestjs/graphql';
+import {
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Max,
+  Min,
+} from 'class-validator';
 
 export enum GqlCallType {
   AUDIO = 'AUDIO',
@@ -221,6 +236,11 @@ export class AgencyCallAuditFilterInput {
   @IsOptional()
   @IsEnum(GqlCallType)
   callType?: GqlCallType;
+
+  @Field(() => ID, { nullable: true })
+  @IsOptional()
+  @IsUUID()
+  callSessionId?: string;
 
   @Field({ nullable: true })
   @IsOptional()

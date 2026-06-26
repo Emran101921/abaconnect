@@ -176,6 +176,35 @@ export class DocumentsService {
     return { doc, stream };
   }
 
+  async openFileStreamWithAudit(actorUserId: string, documentId: string) {
+    const doc = await this.prisma.document.findUnique({
+      where: { id: documentId },
+    });
+    if (!doc) {
+      throw new NotFoundException('Document not found');
+    }
+    await this.prisma.documentAccessLog.create({
+      data: { documentId: doc.id, userId: actorUserId, action: 'READ' },
+    });
+    const user = await this.prisma.user.findUnique({
+      where: { id: actorUserId },
+    });
+    if (user) {
+      await this.phiAudit.logPhiAccess({
+        tenantId: user.tenantId,
+        actorId: actorUserId,
+        action: 'READ',
+        resourceType: 'document',
+        resourceId: doc.id,
+      });
+    }
+    const buffer = this.useS3()
+      ? await this.s3.getObjectBuffer(doc.storageKey)
+      : readFileSync(this.resolveAbsolutePath(doc.storageKey));
+    const stream = Readable.from(this.revealPayload(buffer));
+    return { doc, stream };
+  }
+
   private resolveAbsolutePath(storageKey: string): string {
     return join(this.uploadRoot, storageKey.replace(/^tenants\//, ''));
   }

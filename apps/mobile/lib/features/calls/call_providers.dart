@@ -50,6 +50,7 @@ final agencyCallAuditProvider =
     role: params.role,
     status: params.status,
     callType: params.callType,
+    callSessionId: params.callSessionId,
     limit: params.limit,
   );
 });
@@ -89,6 +90,7 @@ class AgencyAuditParams {
     this.role,
     this.status,
     this.callType,
+    this.callSessionId,
     this.limit,
   });
 
@@ -97,6 +99,7 @@ class AgencyAuditParams {
   final String? role;
   final String? status;
   final String? callType;
+  final String? callSessionId;
   final int? limit;
 
   @override
@@ -107,9 +110,17 @@ class AgencyAuditParams {
       other.role == role &&
       other.status == status &&
       other.callType == callType &&
+      other.callSessionId == callSessionId &&
       other.limit == limit;
 
   @override
-  int get hashCode =>
-      Object.hash(childId, userId, role, status, callType, limit);
+  int get hashCode => Object.hash(
+        childId,
+        userId,
+        role,
+        status,
+        callType,
+        callSessionId,
+        limit,
+      );
 }

@@ -27,6 +27,10 @@ import 'therapist_appointment_session_actions.dart';
 import 'self_pay_payment_status_chip.dart';
 import '../../calls/widgets/call_button.dart';
 import '../../job_opportunities/data/job_opportunities_repository.dart';
+import '../../job_opportunities/widgets/hire_onboarding_sheet.dart';
+import '../../job_opportunities/widgets/job_interview_call.dart';
+import '../../job_opportunities/widgets/upcoming_interview_banner.dart';
+import '../../../shared/models/user_role.dart';
 import 'therapist_weekly_progress_section.dart';
 
 final therapistAppointmentsProvider =
@@ -52,6 +56,24 @@ class TherapistHomeScreen extends ConsumerWidget {
           data: (invites) => invites.length,
           orElse: () => 0,
         );
+    final jobInterviews = ref.watch(therapistJobInterviewsProvider);
+    final hireOnboardings = ref.watch(myHireOnboardingsProvider);
+    final jobApplications = ref.watch(therapistMyJobApplicationsProvider);
+    final jobPendingCount = jobApplications.maybeWhen(
+      data: (apps) => jobInterviews.maybeWhen(
+        data: (interviews) => countTherapistJobPendingActions(
+          applications: apps,
+          interviews: interviews,
+        ),
+        orElse: () => apps
+            .where(
+              (a) =>
+                  a.status == 'OFFER_SENT' || a.status == 'CREDENTIAL_REVIEW',
+            )
+            .length,
+      ),
+      orElse: () => 0,
+    );
     final user = ref.watch(authStateProvider).valueOrNull?.user;
     final greetingName =
         user?.fullName?.split(' ').first ?? user?.email.split('@').first ?? 'there';
@@ -70,6 +92,8 @@ class TherapistHomeScreen extends ConsumerWidget {
           ref.invalidate(messageThreadsProvider);
           ref.invalidate(therapistDashboardProvider);
           ref.invalidate(therapistWeeklyProgressProvider);
+          ref.invalidate(therapistJobInterviewsProvider);
+          ref.invalidate(therapistMyJobApplicationsProvider);
         },
         child: AppContentContainer(
           padding: EdgeInsets.zero,
@@ -105,7 +129,9 @@ class TherapistHomeScreen extends ConsumerWidget {
                       size: GlossyButtonSize.medium,
                     ),
                     ActionButton(
-                      label: 'My applications',
+                      label: jobPendingCount > 0
+                          ? 'My applications ($jobPendingCount pending)'
+                          : 'My applications',
                       icon: Icons.assignment_outlined,
                       onPressed: () =>
                           context.push(AppRoutes.therapistJobApplications),
@@ -137,6 +163,40 @@ class TherapistHomeScreen extends ConsumerWidget {
               const Padding(
                 padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
                 child: AppTrustNotice(dense: true),
+              ),
+              jobInterviews.maybeWhen(
+                data: (interviews) => UpcomingInterviewBanner(
+                  interviews: interviews,
+                  role: UserRole.therapist,
+                ),
+                orElse: () => const SizedBox.shrink(),
+              ),
+              hireOnboardings.maybeWhen(
+                data: (rows) {
+                  if (rows.isEmpty) return const SizedBox.shrink();
+                  final onboarding = rows.first;
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                    child: Card(
+                      child: ListTile(
+                        leading: const Icon(Icons.checklist_outlined),
+                        title: Text(
+                          'Complete onboarding with ${onboarding.agencyName}',
+                        ),
+                        subtitle: Text(
+                          '${onboarding.completedCount}/${onboarding.totalCount} steps done',
+                        ),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => showHireOnboardingSheet(
+                          context,
+                          onboarding: onboarding,
+                          therapistView: true,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+                orElse: () => const SizedBox.shrink(),
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -472,8 +532,12 @@ class TherapistHomeScreen extends ConsumerWidget {
                 onTap: () => context.push(AppRoutes.therapistJobOpportunities),
               ),
               _OpsTile(
-                title: 'My applications',
-                subtitle: 'Track submitted agency job applications',
+                title: jobPendingCount > 0
+                    ? 'My applications ($jobPendingCount pending)'
+                    : 'My applications',
+                subtitle: jobPendingCount > 0
+                    ? 'Offers, credentials, or interview consent need your attention'
+                    : 'Track submitted agency job applications',
                 icon: Icons.assignment_outlined,
                 onTap: () => context.push(AppRoutes.therapistJobApplications),
               ),

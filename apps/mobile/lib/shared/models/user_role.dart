@@ -8,7 +8,9 @@ enum UserRole {
   admin,
   billing,
   complianceAuditor,
-  support;
+  support,
+  departmentAdmin,
+  payroll;
 
   String get displayName {
     switch (this) {
@@ -28,6 +30,10 @@ enum UserRole {
         return 'Compliance Auditor';
       case UserRole.support:
         return 'Support Staff';
+      case UserRole.departmentAdmin:
+        return 'Department Admin';
+      case UserRole.payroll:
+        return 'Payroll Staff';
     }
   }
 
@@ -38,11 +44,14 @@ enum UserRole {
       case UserRole.therapist:
         return '/therapist';
       case UserRole.agency:
+      case UserRole.departmentAdmin:
         return '/agency';
       case UserRole.serviceCoordinator:
         return '/service-coordinator';
       case UserRole.billing:
         return '/admin/ei-billing';
+      case UserRole.payroll:
+        return '/agency';
       case UserRole.complianceAuditor:
         return '/admin/compliance';
       case UserRole.support:

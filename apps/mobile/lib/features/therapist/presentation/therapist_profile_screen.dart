@@ -14,6 +14,8 @@ import '../../../shared/widgets/app_scaffold.dart';
 import '../../../shared/widgets/app_status_badge.dart';
 import '../../../shared/widgets/app_trust_notice.dart';
 import '../../../shared/widgets/glossy_button.dart';
+import '../../documents/presentation/documents_screen.dart';
+import '../widgets/therapist_employment_documents_section.dart';
 
 final therapistBadgesProvider = FutureProvider<List<TherapistBadgeModel>>((
   ref,
@@ -120,6 +122,7 @@ class _TherapistProfileScreenState
               ref.invalidate(therapistProfileProvider);
               ref.invalidate(therapistCaseloadChartsProvider);
               ref.invalidate(therapistBadgesProvider);
+              ref.invalidate(documentsProvider);
             },
             child: ListView(
             padding: const EdgeInsets.all(16),
@@ -253,6 +256,8 @@ class _TherapistProfileScreenState
                   ],
                 ),
               ),
+              const SizedBox(height: 16),
+              const TherapistEmploymentDocumentsSection(),
               const SizedBox(height: 16),
               DashboardCard(
                 title: 'Bio',

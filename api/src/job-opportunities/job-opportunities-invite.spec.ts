@@ -2,6 +2,7 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { CallsService } from '../calls/calls.service';
 import { JobOpportunitiesService } from './job-opportunities.service';
 
 describe('JobOpportunitiesService inviteTherapistToApply', () => {
@@ -27,6 +28,7 @@ describe('JobOpportunitiesService inviteTherapistToApply', () => {
         JobOpportunitiesService,
         { provide: PrismaService, useValue: prisma },
         { provide: NotificationsService, useValue: notifications },
+        { provide: CallsService, useValue: {} },
       ],
     }).compile();
     service = module.get(JobOpportunitiesService);

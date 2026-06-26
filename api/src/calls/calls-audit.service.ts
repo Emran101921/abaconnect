@@ -63,7 +63,9 @@ export class CallsAuditService {
     };
 
     const immutableHash = createHash('sha256')
-      .update(JSON.stringify({ ...payload, timestamp: new Date().toISOString() }))
+      .update(
+        JSON.stringify({ ...payload, timestamp: new Date().toISOString() }),
+      )
       .digest('hex');
 
     return this.prisma.callAuditLog.create({

@@ -55,6 +55,31 @@ class JobOpportunityCard extends StatelessWidget {
             const SizedBox(height: AppSpacing.sm),
             Text(opportunity.payRateDisplay!),
           ],
+          if (opportunity.applicationCount != null &&
+              opportunity.applicationCount! > 0) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              '${opportunity.applicationCount} applicant(s)'
+              '${opportunity.pendingActionCount != null && opportunity.pendingActionCount! > 0 ? ' · ${opportunity.pendingActionCount} need action' : ''}',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: opportunity.pendingActionCount != null &&
+                            opportunity.pendingActionCount! > 0
+                        ? Theme.of(context).colorScheme.primary
+                        : null,
+                  ),
+            ),
+          ] else if (opportunity.pendingActionCount != null &&
+              opportunity.pendingActionCount! > 0) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              '${opportunity.pendingActionCount} applicant(s) need action',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+            ),
+          ],
           if (opportunity.publicDescription != null &&
               opportunity.publicDescription!.trim().isNotEmpty) ...[
             const SizedBox(height: AppSpacing.sm),

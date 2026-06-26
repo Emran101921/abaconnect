@@ -437,7 +437,70 @@ export class CallsService {
       deviceType: ctx.deviceType,
     });
 
+    await this.completeJobInterviewAfterCall(
+      session.jobInterviewId,
+      userId,
+      durationSeconds,
+    );
+
     return this.toCallSessionDto(updated);
+  }
+
+  private async completeJobInterviewAfterCall(
+    jobInterviewId: string | null | undefined,
+    actorUserId: string,
+    durationSeconds: number,
+  ) {
+    if (!jobInterviewId) return;
+
+    const interview = await this.prisma.jobInterview.findUnique({
+      where: { id: jobInterviewId },
+      include: {
+        application: { include: { jobOpportunity: true } },
+        agency: true,
+      },
+    });
+    if (!interview || interview.status !== 'IN_PROGRESS') return;
+
+    await this.prisma.jobInterview.update({
+      where: { id: interview.id },
+      data: { status: 'COMPLETED' },
+    });
+
+    await this.prisma.marketplaceAuditLog.create({
+      data: {
+        tenantId: interview.tenantId,
+        eventType: 'JOB_INTERVIEW_COMPLETED',
+        entityType: 'JobInterview',
+        entityId: interview.id,
+        actorUserId,
+        metadata: {
+          applicationId: interview.applicationId,
+          durationSeconds,
+          jobOpportunityId: interview.application.jobOpportunityId,
+        },
+      },
+    });
+
+    const jobTitle = interview.application.jobOpportunity.title;
+    await this.notifications.createForUser(interview.therapistUserId, {
+      title: 'Interview completed',
+      body: `Your video interview for ${jobTitle} has ended.`,
+      data: {
+        type: 'JOB_INTERVIEW_COMPLETED',
+        interviewId: interview.id,
+        jobOpportunityId: interview.application.jobOpportunityId,
+      },
+    });
+    await this.notifications.createForUser(interview.scheduledByUserId, {
+      title: 'Interview completed',
+      body: `The video interview for ${jobTitle} has ended. Review the applicant and send an offer if ready.`,
+      data: {
+        type: 'JOB_INTERVIEW_COMPLETED',
+        interviewId: interview.id,
+        jobOpportunityId: interview.application.jobOpportunityId,
+      },
+    });
   }
 
   async getCallHistory(
@@ -461,7 +524,9 @@ export class CallsService {
     };
 
     if (role === 'AGENCY_ADMIN') {
-      const admin = await this.prisma.user.findUnique({ where: { id: userId } });
+      const admin = await this.prisma.user.findUnique({
+        where: { id: userId },
+      });
       where.agencyId = admin?.agencyId;
     } else if (role === 'SERVICE_COORDINATOR') {
       where.childId = filters.childId;
@@ -510,6 +575,7 @@ export class CallsService {
       role?: UserRole;
       status?: CallSessionStatus;
       callType?: CallType;
+      callSessionId?: string;
       from?: Date;
       to?: Date;
       limit?: number;
@@ -524,6 +590,7 @@ export class CallsService {
       agencyId: admin.agencyId,
     };
     if (filters.childId) where.childId = filters.childId;
+    if (filters.callSessionId) where.callSessionId = filters.callSessionId;
     if (filters.userId) {
       where.OR = [
         { actorUserId: filters.userId },
@@ -561,6 +628,169 @@ export class CallsService {
       orderBy: { createdAt: 'desc' },
     });
     return session ? this.toCallSessionDto(session) : null;
+  }
+
+  async joinJobInterviewCall(
+    userId: string,
+    interviewId: string,
+    ctx: CallRequestContext,
+  ) {
+    const interview = await this.prisma.jobInterview.findUnique({
+      where: { id: interviewId },
+      include: {
+        agency: true,
+        application: { include: { jobOpportunity: true } },
+        scheduledBy: true,
+        therapistUser: true,
+      },
+    });
+    if (!interview) {
+      throw new NotFoundException('Interview not found');
+    }
+
+    const user = await this.requireActiveUser(userId);
+    const isAgencyAdmin =
+      user.role === 'AGENCY_ADMIN' && user.agencyId === interview.agencyId;
+    const isTherapist = userId === interview.therapistUserId;
+    if (!isAgencyAdmin && !isTherapist) {
+      throw new ForbiddenException('Not authorized for this interview');
+    }
+    if (!interview.agency.callingEnabled) {
+      throw new ForbiddenException('Calling is disabled for this agency');
+    }
+    if (interview.status === 'CANCELLED' || interview.status === 'COMPLETED') {
+      throw new BadRequestException('Interview is not joinable');
+    }
+
+    const now = new Date();
+    const windowStart = new Date(
+      interview.scheduledAt.getTime() - 15 * 60 * 1000,
+    );
+    const windowEnd = new Date(
+      interview.scheduledAt.getTime() +
+        interview.durationMinutes * 60 * 1000 +
+        15 * 60 * 1000,
+    );
+    if (now < windowStart || now > windowEnd) {
+      throw new BadRequestException('Interview is outside the join window');
+    }
+
+    const recordingEnabled =
+      interview.recordingRequested &&
+      interview.agencyRecordingConsent &&
+      interview.therapistRecordingConsent;
+
+    let session = await this.prisma.callSession.findFirst({
+      where: { jobInterviewId: interview.id },
+      include: {
+        participants: { include: { user: true } },
+        initiatedBy: true,
+      },
+    });
+
+    const provider = this.providerFactory.getProvider();
+
+    if (!session) {
+      const roomId = `interview-${randomUUID()}`;
+      const startedAt = new Date();
+      const [agencyUser, therapistUser] = await Promise.all([
+        this.requireActiveUser(interview.scheduledByUserId),
+        this.requireActiveUser(interview.therapistUserId),
+      ]);
+
+      session = await this.prisma.callSession.create({
+        data: {
+          tenantId: interview.tenantId,
+          agencyId: interview.agencyId,
+          callType: 'VIDEO',
+          status: 'IN_PROGRESS',
+          initiatedByUserId: userId,
+          providerName: provider.name,
+          providerRoomId: roomId,
+          startedAt,
+          jobInterviewId: interview.id,
+          participants: {
+            create: [
+              {
+                userId: interview.scheduledByUserId,
+                role: agencyUser.role,
+                joinStatus:
+                  userId === interview.scheduledByUserId ? 'JOINED' : 'INVITED',
+                joinedAt:
+                  userId === interview.scheduledByUserId
+                    ? startedAt
+                    : undefined,
+              },
+              {
+                userId: interview.therapistUserId,
+                role: therapistUser.role,
+                joinStatus:
+                  userId === interview.therapistUserId ? 'JOINED' : 'INVITED',
+                joinedAt:
+                  userId === interview.therapistUserId ? startedAt : undefined,
+              },
+            ],
+          },
+        },
+        include: {
+          participants: { include: { user: true } },
+          initiatedBy: true,
+        },
+      });
+
+      await this.prisma.jobInterview.update({
+        where: { id: interview.id },
+        data: { status: 'IN_PROGRESS' },
+      });
+
+      await this.audit.append({
+        tenantId: interview.tenantId,
+        callSessionId: session.id,
+        agencyId: interview.agencyId,
+        actorUserId: userId,
+        actorRole: user.role,
+        targetUserId:
+          userId === interview.therapistUserId
+            ? interview.scheduledByUserId
+            : interview.therapistUserId,
+        eventType: 'CALL_INITIATED',
+        callType: 'VIDEO',
+        callStatus: 'IN_PROGRESS',
+        ipAddress: ctx.ipAddress,
+        userAgent: ctx.userAgent,
+        deviceType: ctx.deviceType,
+        eventDetails: { jobInterviewId: interview.id, recordingEnabled },
+      });
+    } else {
+      await this.prisma.callParticipant.update({
+        where: {
+          callSessionId_userId: { callSessionId: session.id, userId },
+        },
+        data: { joinStatus: 'JOINED', joinedAt: new Date() },
+      });
+      session = await this.loadSession(session.id);
+    }
+
+    const token = await provider.createParticipantToken({
+      roomId: session.providerRoomId!,
+      callType: 'VIDEO',
+      userDisplayName: `${user.firstName} ${user.lastName}`,
+      isOwner: isAgencyAdmin,
+      enableRecording: recordingEnabled,
+    });
+
+    return {
+      ...this.toCallSessionDto(session, {
+        joinUrl: token.joinUrl,
+        token: token.token,
+        tokenExpiresAt: token.expiresAt,
+      }),
+      interviewId: interview.id,
+      recordingEnabled,
+      jobTitle: interview.application.jobOpportunity.title,
+      therapistName: `${interview.therapistUser.firstName} ${interview.therapistUser.lastName}`,
+      agencyName: interview.agency.name,
+    };
   }
 
   async getCallSessionForUser(userId: string, callSessionId: string) {
@@ -683,7 +913,12 @@ export class CallsService {
       providerName: string;
       providerRoomId: string | null;
       createdAt: Date;
-      initiatedBy: { id: string; firstName: string; lastName: string; role: UserRole };
+      initiatedBy: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        role: UserRole;
+      };
       participants: Array<{
         userId: string;
         role: UserRole;

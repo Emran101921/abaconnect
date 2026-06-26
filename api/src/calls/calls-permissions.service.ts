@@ -57,7 +57,11 @@ export class CallsPermissionsService {
       throw new ForbiddenException('Cannot call platform administrators');
     }
 
-    const agencyId = await this.resolveAgencyForCall(caller, recipient, childId);
+    const agencyId = await this.resolveAgencyForCall(
+      caller,
+      recipient,
+      childId,
+    );
     if (agencyId) {
       const agency = await this.prisma.agency.findUnique({
         where: { id: agencyId },
@@ -87,9 +91,10 @@ export class CallsPermissionsService {
     childId?: string,
   ): Promise<string | undefined> {
     if (childId) {
-      const assignment = await this.prisma.childServiceCoordinatorAssignment.findFirst({
-        where: { childId, status: 'ACTIVE', removedAt: null },
-      });
+      const assignment =
+        await this.prisma.childServiceCoordinatorAssignment.findFirst({
+          where: { childId, status: 'ACTIVE', removedAt: null },
+        });
       if (assignment?.agencyId) return assignment.agencyId;
       const apt = await this.prisma.appointment.findFirst({
         where: { childId, status: { notIn: ['CANCELLED'] } },
@@ -238,27 +243,28 @@ export class CallsPermissionsService {
     });
     if (!roster) return false;
 
-    const assignments = await this.prisma.childServiceCoordinatorAssignment.findMany({
-      where: {
-        serviceCoordinatorId: coordinatorUserId,
-        agencyId: coordinator.agencyId,
-        status: 'ACTIVE',
-        removedAt: null,
-        ...(childId ? { childId } : {}),
-      },
-      include: {
-        child: {
-          include: {
-            parent: { include: { user: true } },
-            appointments: {
-              where: { status: { notIn: ['CANCELLED'] } },
-              include: { therapist: { include: { user: true } } },
-              take: 50,
+    const assignments =
+      await this.prisma.childServiceCoordinatorAssignment.findMany({
+        where: {
+          serviceCoordinatorId: coordinatorUserId,
+          agencyId: coordinator.agencyId,
+          status: 'ACTIVE',
+          removedAt: null,
+          ...(childId ? { childId } : {}),
+        },
+        include: {
+          child: {
+            include: {
+              parent: { include: { user: true } },
+              appointments: {
+                where: { status: { notIn: ['CANCELLED'] } },
+                include: { therapist: { include: { user: true } } },
+                take: 50,
+              },
             },
           },
         },
-      },
-    });
+      });
 
     for (const assignment of assignments) {
       if (assignment.child.parent.user.id === recipientId) return true;
@@ -297,7 +303,9 @@ export class CallsPermissionsService {
     }
 
     if (role === 'AGENCY_ADMIN') {
-      const admin = await this.prisma.user.findUnique({ where: { id: userId } });
+      const admin = await this.prisma.user.findUnique({
+        where: { id: userId },
+      });
       if (!admin?.agencyId) {
         throw new ForbiddenException('Agency context required');
       }
@@ -324,7 +332,8 @@ export class CallsPermissionsService {
       const parent = await this.prisma.parent.findFirst({
         where: { userId, children: { some: { id: filters.childId } } },
       });
-      if (!parent) throw new ForbiddenException('Not authorized for this child');
+      if (!parent)
+        throw new ForbiddenException('Not authorized for this child');
       return;
     }
 

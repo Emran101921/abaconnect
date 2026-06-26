@@ -9,14 +9,29 @@ import { toPublicJobOpportunity } from '../job-opportunities/job-opportunity-pri
 import {
   ApplyToJobOpportunityInput,
   AdminJobModerationInput,
+  ApproveJobApplicationCredentialsInput,
   BrowseJobOpportunitiesInput,
   CreateChildServiceNeedInput,
+  JobInterviewConsentInput,
+  RequestJobApplicationDocumentsInput,
+  RespondToJobOfferInput,
+  RescheduleJobInterviewInput,
+  ScheduleFirstSessionFromHireInput,
+  ScheduleJobInterviewInput,
+  SendJobOfferInput,
+  UpdateHireOnboardingStepInput,
   UpdateJobApplicationStatusInput,
+  UpdateJobInterviewNotesInput,
   UpdateJobOpportunityInput,
 } from './inputs/job-opportunity.input';
 import {
   ChildServiceNeedType,
+  AgencyHiringPipelineSummaryType,
+  HiringFirstSessionType,
+  HireOnboardingType,
   JobApplicationType,
+  JobInterviewJoinType,
+  JobInterviewType,
   JobMarketplaceAuditLogType,
   JobOpportunityBrowseResultType,
   JobOpportunityInviteType,
@@ -42,6 +57,7 @@ export class JobOpportunityResolver {
       internalScheduleJson: JSON.stringify(row.internalSchedule ?? {}),
       status: row.status,
       childDisplayName: `${row.child.firstName} ${row.child.lastName.charAt(0)}.`,
+      childId: row.child.id,
       jobOpportunityId: row.jobOpportunity?.id,
       jobOpportunityTitle: row.jobOpportunity?.title,
       jobOpportunityStatus: row.jobOpportunity?.status,
@@ -56,7 +72,14 @@ export class JobOpportunityResolver {
       user.id,
       user.tenantId ?? '',
     );
-    return rows.map((row) => mapPublicJobType(toPublicJobOpportunity(row)));
+    const pendingByJob = await this.jobs.agencyPendingActionsByJob(
+      user.id,
+      user.tenantId ?? '',
+    );
+    return rows.map((row) => ({
+      ...mapPublicJobType(toPublicJobOpportunity(row)),
+      pendingActionCount: pendingByJob[row.id] ?? 0,
+    }));
   }
 
   @Query(() => [JobApplicationType], { name: 'agencyJobApplications' })
@@ -74,7 +97,29 @@ export class JobOpportunityResolver {
     return rows.map((row) => this.mapApplication(row));
   }
 
-  @Query(() => JobOpportunityBrowseResultType, { name: 'browseJobOpportunities' })
+  @Query(() => AgencyHiringPipelineSummaryType, {
+    name: 'agencyHiringPipelineSummary',
+  })
+  @Roles('AGENCY_ADMIN')
+  async agencyHiringPipelineSummary(@CurrentUser() user: AuthUser) {
+    return this.jobs.agencyHiringPipelineSummary(user.id, user.tenantId ?? '');
+  }
+
+  @Query(() => [HireOnboardingType], { name: 'agencyHireOnboardings' })
+  @Roles('AGENCY_ADMIN')
+  async agencyHireOnboardings(@CurrentUser() user: AuthUser) {
+    return this.jobs.listAgencyHireOnboardings(user.id, user.tenantId ?? '');
+  }
+
+  @Query(() => [HireOnboardingType], { name: 'myHireOnboardings' })
+  @Roles('THERAPIST')
+  async myHireOnboardings(@CurrentUser() user: AuthUser) {
+    return this.jobs.listMyHireOnboardings(user.id, user.tenantId ?? '');
+  }
+
+  @Query(() => JobOpportunityBrowseResultType, {
+    name: 'browseJobOpportunities',
+  })
   @Roles('THERAPIST')
   async browseJobOpportunities(
     @CurrentUser() user: AuthUser,
@@ -118,10 +163,7 @@ export class JobOpportunityResolver {
   @Query(() => [JobOpportunityInviteType], { name: 'myJobOpportunityInvites' })
   @Roles('THERAPIST')
   async myJobOpportunityInvites(@CurrentUser() user: AuthUser) {
-    return this.jobs.listJobInvitesForTherapist(
-      user.id,
-      user.tenantId ?? '',
-    );
+    return this.jobs.listJobInvitesForTherapist(user.id, user.tenantId ?? '');
   }
 
   @Query(() => [PublicJobOpportunityType], { name: 'savedJobOpportunities' })
@@ -227,7 +269,9 @@ export class JobOpportunityResolver {
         borough: input.borough,
         county: input.county,
         serviceRadiusMiles: input.serviceRadiusMiles,
-        schedule: input.scheduleJson ? JSON.parse(input.scheduleJson) : undefined,
+        schedule: input.scheduleJson
+          ? JSON.parse(input.scheduleJson)
+          : undefined,
         languageRequirement: input.languageRequirement,
         employmentType: input.employmentType,
         payRateMin: input.payRateMin,
@@ -351,6 +395,101 @@ export class JobOpportunityResolver {
     return this.mapApplication(row);
   }
 
+  @Mutation(() => JobApplicationType, {
+    name: 'requestJobApplicationDocuments',
+  })
+  @Roles('AGENCY_ADMIN')
+  async requestJobApplicationDocuments(
+    @CurrentUser() user: AuthUser,
+    @Args('input') input: RequestJobApplicationDocumentsInput,
+  ) {
+    const row = await this.jobs.requestDocuments(
+      user.id,
+      user.tenantId ?? '',
+      input.applicationId,
+      input.note,
+    );
+    return this.mapApplication(row);
+  }
+
+  @Mutation(() => JobInterviewType, { name: 'updateJobInterviewNotes' })
+  @Roles('AGENCY_ADMIN')
+  async updateJobInterviewNotes(
+    @CurrentUser() user: AuthUser,
+    @Args('input') input: UpdateJobInterviewNotesInput,
+  ) {
+    const row = await this.jobs.updateJobInterviewNotes(
+      user.id,
+      user.tenantId ?? '',
+      input.interviewId,
+      input.notes,
+    );
+    return this.mapInterview(row);
+  }
+
+  @Mutation(() => JobApplicationType, { name: 'sendJobOffer' })
+  @Roles('AGENCY_ADMIN')
+  async sendJobOffer(
+    @CurrentUser() user: AuthUser,
+    @Args('input') input: SendJobOfferInput,
+  ) {
+    const row = await this.jobs.sendJobOffer(
+      user.id,
+      user.tenantId ?? '',
+      input,
+    );
+    return this.mapApplication(row);
+  }
+
+  @Mutation(() => JobApplicationType, {
+    name: 'approveJobApplicationCredentials',
+  })
+  @Roles('AGENCY_ADMIN')
+  async approveJobApplicationCredentials(
+    @CurrentUser() user: AuthUser,
+    @Args('input') input: ApproveJobApplicationCredentialsInput,
+  ) {
+    const row = await this.jobs.approveApplicationCredentials(
+      user.id,
+      user.tenantId ?? '',
+      input.applicationId,
+      input.note,
+    );
+    return this.mapApplication(row);
+  }
+
+  @Mutation(() => JobApplicationType, {
+    name: 'refreshJobApplicationCredentials',
+  })
+  @Roles('THERAPIST')
+  async refreshJobApplicationCredentials(
+    @CurrentUser() user: AuthUser,
+    @Args('applicationId', { type: () => ID }) applicationId: string,
+  ) {
+    const row = await this.jobs.refreshJobApplicationCredentials(
+      user.id,
+      user.tenantId ?? '',
+      applicationId,
+    );
+    return this.mapApplication(row);
+  }
+
+  @Mutation(() => JobApplicationType, { name: 'respondToJobOffer' })
+  @Roles('THERAPIST')
+  async respondToJobOffer(
+    @CurrentUser() user: AuthUser,
+    @Args('input') input: RespondToJobOfferInput,
+  ) {
+    const row = await this.jobs.respondToJobOffer(
+      user.id,
+      user.tenantId ?? '',
+      input.applicationId,
+      input.accept,
+      input.note,
+    );
+    return this.mapApplication(row);
+  }
+
   @Mutation(() => JobApplicationType, { name: 'markTherapistHiredContracted' })
   @Roles('AGENCY_ADMIN')
   async markTherapistHiredContracted(
@@ -367,7 +506,9 @@ export class JobOpportunityResolver {
     return this.mapApplication(row);
   }
 
-  @Mutation(() => Boolean, { name: 'addTherapistToAgencyRosterFromApplication' })
+  @Mutation(() => Boolean, {
+    name: 'addTherapistToAgencyRosterFromApplication',
+  })
   @Roles('AGENCY_ADMIN')
   async addTherapistToAgencyRosterFromApplication(
     @CurrentUser() user: AuthUser,
@@ -381,7 +522,41 @@ export class JobOpportunityResolver {
     return true;
   }
 
-  @Mutation(() => PublicJobOpportunityType, { name: 'adminPauseJobOpportunity' })
+  @Mutation(() => HiringFirstSessionType, {
+    name: 'scheduleFirstSessionFromHire',
+  })
+  @Roles('AGENCY_ADMIN')
+  async scheduleFirstSessionFromHire(
+    @CurrentUser() user: AuthUser,
+    @Args('input') input: ScheduleFirstSessionFromHireInput,
+  ) {
+    return this.jobs.scheduleFirstSessionFromHire(
+      user.id,
+      user.tenantId ?? '',
+      input,
+    );
+  }
+
+  @Mutation(() => HireOnboardingType, { name: 'updateHireOnboardingStep' })
+  @Roles('AGENCY_ADMIN', 'THERAPIST')
+  async updateHireOnboardingStep(
+    @CurrentUser() user: AuthUser,
+    @Args('input') input: UpdateHireOnboardingStepInput,
+  ) {
+    const role = user.roles?.includes('AGENCY_ADMIN')
+      ? 'AGENCY_ADMIN'
+      : 'THERAPIST';
+    return this.jobs.updateHireOnboardingStep(
+      user.id,
+      user.tenantId ?? '',
+      input,
+      role,
+    );
+  }
+
+  @Mutation(() => PublicJobOpportunityType, {
+    name: 'adminPauseJobOpportunity',
+  })
   @Roles('PLATFORM_ADMIN')
   async adminPauseJobOpportunity(
     @CurrentUser() user: AuthUser,
@@ -396,7 +571,9 @@ export class JobOpportunityResolver {
     return mapPublicJobType(toPublicJobOpportunity(row));
   }
 
-  @Mutation(() => PublicJobOpportunityType, { name: 'adminRemoveJobOpportunity' })
+  @Mutation(() => PublicJobOpportunityType, {
+    name: 'adminRemoveJobOpportunity',
+  })
   @Roles('PLATFORM_ADMIN')
   async adminRemoveJobOpportunity(
     @CurrentUser() user: AuthUser,
@@ -411,14 +588,215 @@ export class JobOpportunityResolver {
     return mapPublicJobType(toPublicJobOpportunity(row));
   }
 
+  @Query(() => [JobInterviewType], { name: 'agencyJobInterviews' })
+  @Roles('AGENCY_ADMIN')
+  async agencyJobInterviews(
+    @CurrentUser() user: AuthUser,
+    @Args('from', { nullable: true }) from?: Date,
+    @Args('to', { nullable: true }) to?: Date,
+  ) {
+    const rows = await this.jobs.listAgencyJobInterviews(
+      user.id,
+      user.tenantId ?? '',
+      from,
+      to,
+    );
+    return rows.map((row) => this.mapInterview(row));
+  }
+
+  @Query(() => JobInterviewType, {
+    name: 'jobInterviewForApplication',
+    nullable: true,
+  })
+  @Roles('AGENCY_ADMIN')
+  async jobInterviewForApplication(
+    @CurrentUser() user: AuthUser,
+    @Args('applicationId', { type: () => ID }) applicationId: string,
+  ) {
+    const row = await this.jobs.getJobInterviewForApplication(
+      user.id,
+      user.tenantId ?? '',
+      applicationId,
+    );
+    return row ? this.mapInterview(row) : null;
+  }
+
+  @Query(() => [JobInterviewType], { name: 'myJobInterviews' })
+  @Roles('THERAPIST')
+  async myJobInterviews(@CurrentUser() user: AuthUser) {
+    const rows = await this.jobs.listTherapistJobInterviews(
+      user.id,
+      user.tenantId ?? '',
+    );
+    return rows.map((row) => this.mapInterview(row));
+  }
+
+  @Mutation(() => JobInterviewType, { name: 'scheduleJobInterview' })
+  @Roles('AGENCY_ADMIN')
+  async scheduleJobInterview(
+    @CurrentUser() user: AuthUser,
+    @Args('input') input: ScheduleJobInterviewInput,
+  ) {
+    const row = await this.jobs.scheduleJobInterview(
+      user.id,
+      user.tenantId ?? '',
+      input,
+    );
+    return this.mapInterview(row);
+  }
+
+  @Mutation(() => JobInterviewType, {
+    name: 'grantJobInterviewRecordingConsent',
+  })
+  @Roles('AGENCY_ADMIN', 'THERAPIST')
+  async grantJobInterviewRecordingConsent(
+    @CurrentUser() user: AuthUser,
+    @Args('input') input: JobInterviewConsentInput,
+  ) {
+    const row = await this.jobs.grantJobInterviewRecordingConsent(
+      user.id,
+      user.tenantId ?? '',
+      input.interviewId,
+      input.consent,
+    );
+    return this.mapInterview(row);
+  }
+
+  @Mutation(() => JobInterviewType, { name: 'cancelJobInterview' })
+  @Roles('AGENCY_ADMIN')
+  async cancelJobInterview(
+    @CurrentUser() user: AuthUser,
+    @Args('interviewId', { type: () => ID }) interviewId: string,
+    @Args('reason', { nullable: true }) reason?: string,
+  ) {
+    const row = await this.jobs.cancelJobInterview(
+      user.id,
+      user.tenantId ?? '',
+      interviewId,
+      reason,
+    );
+    return this.mapInterview(row);
+  }
+
+  @Mutation(() => JobInterviewType, { name: 'rescheduleJobInterview' })
+  @Roles('AGENCY_ADMIN')
+  async rescheduleJobInterview(
+    @CurrentUser() user: AuthUser,
+    @Args('input') input: RescheduleJobInterviewInput,
+  ) {
+    const row = await this.jobs.rescheduleJobInterview(
+      user.id,
+      user.tenantId ?? '',
+      input,
+    );
+    return this.mapInterview(row);
+  }
+
+  @Mutation(() => JobInterviewType, { name: 'completeJobInterviewManually' })
+  @Roles('AGENCY_ADMIN')
+  async completeJobInterviewManually(
+    @CurrentUser() user: AuthUser,
+    @Args('interviewId', { type: () => ID }) interviewId: string,
+    @Args('note', { nullable: true }) note?: string,
+  ) {
+    const row = await this.jobs.completeJobInterviewManually(
+      user.id,
+      user.tenantId ?? '',
+      interviewId,
+      note,
+    );
+    return this.mapInterview(row);
+  }
+
+  @Mutation(() => JobInterviewJoinType, { name: 'joinJobInterview' })
+  @Roles('AGENCY_ADMIN', 'THERAPIST')
+  async joinJobInterview(
+    @CurrentUser() user: AuthUser,
+    @Args('interviewId', { type: () => ID }) interviewId: string,
+  ) {
+    const row = await this.jobs.joinJobInterview(
+      user.id,
+      user.tenantId ?? '',
+      interviewId,
+      {},
+    );
+    return {
+      interviewId: row.interviewId,
+      recordingEnabled: row.recordingEnabled,
+      jobTitle: row.jobTitle,
+      therapistName: row.therapistName,
+      agencyName: row.agencyName,
+      callSessionId: row.id,
+      joinUrl: row.joinUrl,
+      token: row.token!,
+      tokenExpiresAt: row.tokenExpiresAt!,
+    };
+  }
+
+  private mapInterview(row: {
+    id: string;
+    applicationId: string;
+    scheduledAt: Date;
+    durationMinutes: number;
+    status: string;
+    recordingRequested: boolean;
+    agencyRecordingConsent: boolean;
+    therapistRecordingConsent: boolean;
+    notes?: string | null;
+    callSession?: { id: string } | null;
+    application: {
+      jobOpportunity: { id: string; title: string };
+      therapist?: {
+        user?: { firstName: string; lastName: string; email?: string };
+      };
+    };
+    agency: { name: string };
+  }): JobInterviewType {
+    const therapist = row.application.therapist?.user;
+    const recordingEnabled =
+      row.recordingRequested &&
+      row.agencyRecordingConsent &&
+      row.therapistRecordingConsent;
+    return {
+      id: row.id,
+      applicationId: row.applicationId,
+      jobOpportunityId: row.application.jobOpportunity.id,
+      jobTitle: row.application.jobOpportunity.title,
+      therapistName: therapist
+        ? `${therapist.firstName} ${therapist.lastName}`
+        : 'Therapist',
+      therapistEmail: therapist?.email,
+      agencyName: row.agency.name,
+      scheduledAt: row.scheduledAt,
+      durationMinutes: row.durationMinutes,
+      status: row.status as never,
+      recordingRequested: row.recordingRequested,
+      agencyRecordingConsent: row.agencyRecordingConsent,
+      therapistRecordingConsent: row.therapistRecordingConsent,
+      recordingEnabled,
+      notes: row.notes ?? undefined,
+      callSessionId: row.callSession?.id,
+    };
+  }
+
   private mapApplication(row: {
     id: string;
     status: string;
     message?: string | null;
+    credentialSnapshot?: unknown;
     createdAt: Date;
     updatedAt: Date;
-    therapist?: { user?: { firstName: string; lastName: string; email: string } };
+    therapist?: {
+      user?: { firstName: string; lastName: string; email: string };
+    };
     jobOpportunity?: { id: string; title: string };
+    statusHistory?: Array<{
+      fromStatus: string | null;
+      toStatus: string;
+      note?: string | null;
+      createdAt: Date;
+      changedBy?: { firstName: string; lastName: string };
+    }>;
   }): JobApplicationType {
     return {
       id: row.id,
@@ -432,6 +810,18 @@ export class JobOpportunityResolver {
       jobTitle: row.jobOpportunity?.title ?? '',
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
+      credentialDocuments: this.jobs.parseCredentialDocuments(
+        row.credentialSnapshot,
+      ),
+      recentStatusHistory: (row.statusHistory ?? []).map((entry) => ({
+        fromStatus: entry.fromStatus as never,
+        toStatus: entry.toStatus as never,
+        note: entry.note ?? undefined,
+        changedByName: entry.changedBy
+          ? `${entry.changedBy.firstName} ${entry.changedBy.lastName}`.trim()
+          : 'System',
+        createdAt: entry.createdAt,
+      })),
     };
   }
 }

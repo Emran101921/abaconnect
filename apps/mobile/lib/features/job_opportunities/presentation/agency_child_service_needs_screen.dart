@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -57,16 +58,17 @@ class _AgencyChildServiceNeedsScreenState
   Future<void> _generatePosting(String needId) async {
     setState(() => _generatingNeedId = needId);
     try {
-      final job = await ref
+      final jobId = await ref
           .read(jobOpportunitiesRepositoryProvider)
           .generateJobOpportunity(needId);
       ref.invalidate(agencyChildServiceNeedsProvider);
       ref.invalidate(agencyJobOpportunitiesProvider);
       if (mounted) {
         AppSnackBar.showSuccess(context, 'Draft posting created');
-        context.push(AppRoutes.agencyOpportunityDetail(job.id));
+        context.push(AppRoutes.agencyOpportunityDetail(jobId));
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('Generate job posting failed: $e\n$stackTrace');
       if (mounted) AppSnackBar.showError(context, e);
     } finally {
       if (mounted) setState(() => _generatingNeedId = null);
@@ -190,8 +192,20 @@ class _AgencyChildServiceNeedsScreenState
                                 title: Text(
                                   '${need.serviceType} · ${need.childDisplayName}',
                                 ),
-                                subtitle: Text(need.status),
-                                trailing: need.jobOpportunityId == null
+                                subtitle: Text(
+                                  need.status == 'FILLED'
+                                      ? 'Filled · posting closed'
+                                      : need.status,
+                                ),
+                                trailing: need.status == 'FILLED' &&
+                                        need.childId != null
+                                    ? TextButton(
+                                        onPressed: () => context.push(
+                                          '${AppRoutes.agencyHome}/children/${need.childId}/chart',
+                                        ),
+                                        child: const Text('Child chart'),
+                                      )
+                                    : need.jobOpportunityId == null
                                     ? TextButton(
                                         onPressed: _generatingNeedId == need.id
                                             ? null
@@ -223,7 +237,7 @@ class _AgencyChildServiceNeedsScreenState
                           .toList(),
                     ),
               loading: () => const CircularProgressIndicator(),
-              error: (e, _) => Text('$e'),
+              error: (e, _) => Text(AppSnackBar.messageFromError(e)),
             ),
           ],
         ),

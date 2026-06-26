@@ -95,7 +95,9 @@ class _CallHistoryTile extends StatelessWidget {
 }
 
 class AgencyCallAuditScreen extends ConsumerStatefulWidget {
-  const AgencyCallAuditScreen({super.key});
+  const AgencyCallAuditScreen({super.key, this.callSessionId});
+
+  final String? callSessionId;
 
   @override
   ConsumerState<AgencyCallAuditScreen> createState() =>
@@ -111,20 +113,25 @@ class _AgencyCallAuditScreenState extends ConsumerState<AgencyCallAuditScreen> {
     final params = AgencyAuditParams(
       status: _statusFilter,
       callType: _callTypeFilter,
+      callSessionId: widget.callSessionId,
       limit: 100,
     );
     final logs = ref.watch(agencyCallAuditProvider(params));
 
     return AppScaffold(
-      title: 'Call audit log',
+      title: widget.callSessionId == null
+          ? 'Call audit log'
+          : 'Interview call audit',
       body: RefreshIndicator(
         onRefresh: () async => ref.invalidate(agencyCallAuditProvider(params)),
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            const Text(
-              'Metadata only — no call content is stored.',
-              style: TextStyle(fontWeight: FontWeight.w600),
+            Text(
+              widget.callSessionId == null
+                  ? 'Metadata only — no call content is stored.'
+                  : 'Audit events for this interview call session.',
+              style: const TextStyle(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 12),
             Wrap(

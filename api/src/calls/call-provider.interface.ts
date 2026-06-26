@@ -15,6 +15,7 @@ export interface CreateCallRoomInput {
   callType: 'AUDIO' | 'VIDEO';
   userDisplayName: string;
   isOwner?: boolean;
+  enableRecording?: boolean;
 }
 
 export interface CallProvider {

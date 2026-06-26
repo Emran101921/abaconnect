@@ -300,6 +300,7 @@ class CallsRepository {
     String? role,
     String? status,
     String? callType,
+    String? callSessionId,
     int? limit,
   }) async {
     final result = await _graphql.query(
@@ -311,6 +312,7 @@ class CallsRepository {
           if (role != null) 'role': role,
           if (status != null) 'status': status,
           if (callType != null) 'callType': callType,
+          if (callSessionId != null) 'callSessionId': callSessionId,
           if (limit != null) 'limit': limit,
         },
       },
